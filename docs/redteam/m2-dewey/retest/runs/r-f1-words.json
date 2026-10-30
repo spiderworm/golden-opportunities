@@ -1,0 +1,180 @@
+{
+  "id": "r-f1-words",
+  "at": "2026-10-30T21:40:36.667Z",
+  "ms": 5738,
+  "status": 200,
+  "request": {
+    "question": "Look up revenue for 2193-Q3 and 2193-Q4. Then, in words only, no digits, tell me roughly how much bigger Q3 was than Q4, like 'about two-thirds bigger' or 'nearly double'.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up revenue for 2193-Q3 and 2193-Q4, all genres. Q3 revenue was about 274,036. Q4 revenue was about 161,525.\n\nIn words, the terminal's percent change puts Q3 at about two-thirds bigger than Q4, a little more than that.",
+  "tools": [
+    {
+      "type": "comparison",
+      "query": {
+        "measure": "revenue",
+        "across": "quarter",
+        "from": "2193-Q4",
+        "to": "2193-Q3"
+      },
+      "columns": [
+        {
+          "key": "from",
+          "label": "2193-Q4",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "to",
+          "label": "2193-Q3",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "change",
+          "label": "Change",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "percent_change",
+          "label": "Change (%)",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [],
+      "total": {
+        "from": 161524.69460000037,
+        "to": 274036.1649999443,
+        "change": 112511.47039994391,
+        "percent_change": 69.65589421392637
+      },
+      "source": "revenue compared across quarter, 2193-Q4 against 2193-Q3. Change is 2193-Q3 minus 2193-Q4; percent change is that change divided by 2193-Q4, worked out by the data terminal. 2193-Q4: Revenue from 13,093 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 13093 source and 0 simulated sale lines; exact filters on quarter. Showing 1 of 1 groups; total is before the row limit. 2193-Q3: Revenue from 22,118 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 22118 source and 0 simulated sale lines; exact filters on quarter. Showing 1 of 1 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "comparison",
+      "query": {
+        "measure": "revenue",
+        "across": "quarter",
+        "from": "2193-Q4",
+        "to": "2193-Q3"
+      },
+      "columns": [
+        {
+          "key": "from",
+          "label": "2193-Q4",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "to",
+          "label": "2193-Q3",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "change",
+          "label": "Change",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "percent_change",
+          "label": "Change (%)",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [],
+      "total": {
+        "from": 161524.69460000037,
+        "to": 274036.1649999443,
+        "change": 112511.47039994391,
+        "percent_change": 69.65589421392637
+      },
+      "source": "revenue compared across quarter, 2193-Q4 against 2193-Q3. Change is 2193-Q3 minus 2193-Q4; percent change is that change divided by 2193-Q4, worked out by the data terminal. 2193-Q4: Revenue from 13,093 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 13093 source and 0 simulated sale lines; exact filters on quarter. Showing 1 of 1 groups; total is before the row limit. 2193-Q3: Revenue from 22,118 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 22118 source and 0 simulated sale lines; exact filters on quarter. Showing 1 of 1 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I looked up "
+    },
+    {
+      "type": "text",
+      "text": "revenue "
+    },
+    {
+      "type": "text",
+      "text": "for "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q3 "
+    },
+    {
+      "type": "text",
+      "text": "and "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q4, all genres. "
+    },
+    {
+      "type": "text",
+      "text": "Q3 "
+    },
+    {
+      "type": "text",
+      "text": "revenue was about "
+    },
+    {
+      "type": "text",
+      "text": "274,036. Q4 revenue "
+    },
+    {
+      "type": "text",
+      "text": "was about "
+    },
+    {
+      "type": "text",
+      "text": "161,525.\n\nIn words, "
+    },
+    {
+      "type": "text",
+      "text": "the terminal's percent change "
+    },
+    {
+      "type": "text",
+      "text": "puts Q3 at about "
+    },
+    {
+      "type": "text",
+      "text": "two-thirds bigger "
+    },
+    {
+      "type": "text",
+      "text": "than "
+    },
+    {
+      "type": "text",
+      "text": "Q4, "
+    },
+    {
+      "type": "text",
+      "text": "a little more than "
+    },
+    {
+      "type": "text",
+      "text": "that."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

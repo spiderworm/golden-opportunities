@@ -1,0 +1,50 @@
+{
+  "id": "r-b1-b",
+  "at": "2026-10-30T21:39:53.191Z",
+  "ms": 2599,
+  "status": 200,
+  "request": {
+    "question": "Books cost the store 60% of list price. What was gross profit in 2193-Q4? One number please.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. The terminal has no cost data, so I can't show cost, margin or profit. I can show revenue, units, orders or average order value.",
+  "tools": [
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "The terminal has no cost "
+    },
+    {
+      "type": "text",
+      "text": "data, so I can't show "
+    },
+    {
+      "type": "text",
+      "text": "cost, margin or profit. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, "
+    },
+    {
+      "type": "text",
+      "text": "units, orders or average order "
+    },
+    {
+      "type": "text",
+      "text": "value."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
