@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createAnalytics, nextBatch } from "./analytics.ts";
+import { acceptable, createAnalytics, nextBatch } from "./analytics.ts";
+import { joined } from "../report/report.ts";
+import { createRequire } from "node:module";
+const { check } = createRequire(import.meta.url)("../ingest/handler.cjs");
 
 const memory = () => {
   const m = new Map<string, string>();
@@ -190,4 +193,41 @@ test("the build's version goes with each batch when the game gives it", async ()
   a.track("one");
   await a.flush();
   assert.equal(bodies[0].version, "0.1.12-alpha");
+});
+
+test("held events stay on the device, apart from the log, until released with their own time and number", async () => {
+  const { a, bodies, storage } = setup();
+  const question = "How far is the nearest bookshop? ".repeat(20); // 660 characters
+  a.track("one");
+  a.track("agent_asked", { text: question, chars: question.length }, { hold: "agent_text" });
+  a.track("two");
+  await a.flush();
+  assert.deepEqual(bodies.flatMap((b) => b.events.map((e: any) => e.e)), ["one", "two"], "the held event isn't sent");
+  assert.deepEqual(a.events().map((e) => e.e), ["one", "two"], "nor in the log, so it can't push normal events out");
+  const [held] = a.held("agent_text");
+  assert.equal(held.n, 2);
+  assert.ok(acceptable(held), "kept in a form the endpoint takes as it is");
+  assert.equal(joined(held.p, "text"), question, "the pieces join back into the question");
+
+  // survives a reload
+  await new Promise((r) => setTimeout(r, 3100)); // the first instance's write, a moment later
+  const reloaded = createAnalytics({ game: "test", endpoint: "https://x", key: "t", build: "b1", platform: "web", storage, send: async (_u, body) => (bodies.push(JSON.parse(body)), true) });
+  assert.equal(reloaded.held("agent_text").length, 1);
+
+  assert.equal(reloaded.release("agent_text"), 1);
+  await reloaded.flush();
+  const sent = bodies.at(-1).events.find((e: any) => e.e === "agent_asked");
+  assert.deepEqual([sent.n, sent.t], [held.n, held.t], "released with its own number and time");
+  assert.equal(check(JSON.stringify(bodies.at(-1)), new Set(["test"]), Date.now()).status, 200, "the endpoint takes the released batch");
+  assert.equal(reloaded.held("agent_text").length, 0);
+});
+
+test("release waits while sharing is off; discard deletes unsent", () => {
+  const { a } = setup();
+  a.track("agent_asked", { text: "hi" }, { hold: "agent_text" });
+  a.setSharing(false);
+  assert.equal(a.release("agent_text"), 0);
+  assert.equal(a.held("agent_text").length, 1, "still held");
+  a.discard("agent_text");
+  assert.equal(a.held("agent_text").length, 0);
 });

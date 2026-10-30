@@ -8,6 +8,14 @@
 // the endpoint says it has them, so play offline is sent later; a batch sent as
 // the app is put away may arrive without the answer getting back, so each
 // event carries its install's running number (n) and the report drops repeats.
+//
+// Held events (David, 30 Oct 2026, for Orbital Books' questions to its agent):
+// track(e, p, { hold: "agent_text" }) keeps an event on the device, in a store
+// of its own, and sends nothing, until release("agent_text") moves it into the
+// outbox with its own time and running number. A deliberate, knowing exception
+// to "never content": text players type may be held, longer strings split into
+// pieces the endpoint takes (key, key_2, key_3, …; ../report's joined() puts
+// them back), so released events go unchanged.
 
 import { deviceProps } from "../device/device.ts";
 import { automation, testLab } from "../environment/environment.ts";
@@ -49,6 +57,8 @@ const BATCH_BYTES = 12_000; // a request's events, under the endpoint's 16 KB (i
 const WRITE_MS = 3000;
 const SEND_MS = 60_000;
 const DEVICE_MS = 1500;
+const HELD_MAX = 1000; // a held class's events kept on the device: the oldest go first
+const HELD_TEXT = 7000; // a held string's most characters (35 pieces of 200)
 
 // The endpoint's function answers only CloudFront, which signs each request
 // to it (an origin access control), and a POST's signature needs the body's
@@ -89,7 +99,7 @@ export function createAnalytics(options: Options) {
   const store = o.storage ?? (typeof localStorage === "undefined" ? undefined : localStorage);
   const send = o.send ?? post;
   const keep = o.keep ?? 3000;
-  const K = { log: `${o.key}.events`, outbox: `${o.key}.outbox`, install: `${o.key}.install`, n: `${o.key}.eventNo`, off: `${o.key}.sharingOff`, early: `${o.key}.earlySent` };
+  const K = { log: `${o.key}.events`, outbox: `${o.key}.outbox`, held: `${o.key}.held`, install: `${o.key}.install`, n: `${o.key}.eventNo`, off: `${o.key}.sharingOff`, early: `${o.key}.earlySent` };
   const read = <T>(k: string, fallback: T): T => {
     try {
       const v = store?.getItem(k);
@@ -116,6 +126,8 @@ export function createAnalytics(options: Options) {
   let outbox: Sent[] | null = null;
   const loaded = () => (log ??= read<Event[]>(K.log, []));
   const queued = () => (outbox ??= read<Sent[]>(K.outbox, []));
+  let heldStore: Record<string, Sent[]> | null = null;
+  const holding = () => (heldStore ??= read<Record<string, Sent[]>>(K.held, {}));
 
   // Written to storage a moment later, not as each event comes: writing the
   // whole log on every event cost Waddleberg a dropped frame on David's Pixel
@@ -141,13 +153,24 @@ export function createAnalytics(options: Options) {
     pending = 0;
     write(K.log, loaded());
     write(K.outbox, queued());
+    if (heldStore) write(K.held, heldStore);
     write(K.n, n);
   }
 
-  function track(event: string, props: Record<string, unknown> = {}) {
-    if (!NAME.test(event)) {
+  function track(event: string, props: Record<string, unknown> = {}, how: { hold?: string } = {}) {
+    if (!NAME.test(event) || (how.hold !== undefined && !NAME.test(how.hold))) {
       // the endpoint takes lower_snake_case names only: a game bug, not the player's
-      console.warn(`[analytics] "${event}" isn't a valid event name (lower_snake_case, at most 40 characters); not recorded`);
+      console.warn(`[analytics] "${how.hold !== undefined && !NAME.test(how.hold) ? how.hold : event}" isn't a valid event or hold name (lower_snake_case, at most 40 characters); not recorded`);
+      return;
+    }
+    if (how.hold !== undefined) {
+      // kept on the device only, outside the log, so it can't push normal events out
+      const ev: Sent = { t: Date.now(), s: session, n: ++n, e: event, p: pieces(props) };
+      const h = ((holding()[how.hold] ??= []));
+      h.push(ev);
+      if (h.length > HELD_MAX) h.splice(0, h.length - HELD_MAX);
+      later();
+      o.log?.(event, ev.p);
       return;
     }
     const ev: Sent = { t: Date.now(), s: session, n: ++n, e: event, p: flat(props) };
@@ -242,6 +265,26 @@ export function createAnalytics(options: Options) {
       save();
     },
     install: () => install,
+    /** a held class's events, oldest first */
+    held: (hold: string): Sent[] => (holding()[hold] ?? []).slice(),
+    /** sends a held class's events (in the outbox, with their own time and running number); none while sharing is off or there's no endpoint, when they stay held. How many went. */
+    release(hold: string): number {
+      const h = holding()[hold];
+      if (!h?.length || !sharing || !o.endpoint) return 0;
+      const q = queued();
+      q.push(...h);
+      q.sort((a, b) => a.n - b.n);
+      if (q.length > OUTBOX_MAX) q.splice(0, q.length - OUTBOX_MAX);
+      delete holding()[hold];
+      save();
+      void flush();
+      return h.length;
+    },
+    /** deletes a held class's events from the device, unsent */
+    discard(hold: string) {
+      delete holding()[hold];
+      save();
+    },
   };
 }
 
@@ -261,6 +304,19 @@ export function flat(p: Record<string, unknown>): Props {
     else out[key] = (typeof v === "string" ? v : JSON.stringify(v)).slice(0, 200);
   }
   return out;
+}
+/** a held event's props: like flat(), but a string over 200 characters (up to 7000) goes in pieces: key, key_2, key_3, … */
+export function pieces(p: Record<string, unknown>): Props {
+  const out: Props = {};
+  for (const [k, v] of Object.entries(p ?? {})) {
+    if (v === undefined || v === null) continue;
+    const key = k.slice(0, 36);
+    const text = typeof v === "string" ? v.slice(0, HELD_TEXT) : null;
+    if (text === null || text.length <= 200) Object.assign(out, flat({ [key]: v }));
+    else for (let i = 0; i * 200 < text.length; i++) out[i ? `${key}_${i + 1}` : key] = text.slice(i * 200, i * 200 + 200);
+    if (Object.keys(out).length >= 40) break;
+  }
+  return Object.fromEntries(Object.entries(out).slice(0, 40));
 }
 export function acceptable(e: Event): boolean {
   if (!Number.isFinite(e.t) || typeof e.s !== "string" || e.s.length > 16 || !NAME.test(e.e)) return false;

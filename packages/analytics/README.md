@@ -30,6 +30,11 @@ and never content, recorded on the device first.
    a `device` event once per startup; Play's test robots sending as platform `testlab` (left out of reports,
    never dropped); automated runs sending nothing, in a log of their own; events cleaned to what the endpoint
    takes; the log from before sending began sent once.
+   Held events (David, 30 Oct 2026, a knowing exception to "never content"): `track(e, props, { hold: "agent_text" })`
+   keeps an event on the device only, in its own store (at most 1000 a class, apart from the log), sending nothing.
+   `release("agent_text")` sends them later with their own time and running number (not while sharing is off);
+   `held(class)` reads them, `discard(class)` deletes them. A held string may run to 7000 characters, kept in
+   pieces the endpoint takes (`text`, `text_2`, …); `joined(p, "text")` in `src/report` puts it back together.
 3. Put a "Share play data" switch in the game's menu (`sharing()` / `setSharing()`), and show the install id (`install()`) in its diagnostics.
 4. Android: add `android/TestLab.md`'s lines to `MainActivity`.
 5. Add the game's name to the stack's `Games` parameter and deploy it again (below). The endpoint refuses games it doesn't know.
