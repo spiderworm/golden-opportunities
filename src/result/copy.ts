@@ -64,8 +64,11 @@ export function badgeText(amount: string, value: number): string {
   return `${sign(value)}${amount} vs holding course`;
 }
 
-/** A measure's value as the card shows it: whole dollars, whole orders and points, happiness to one decimal. */
-export function measureText(id: MeasureId, value: number): string {
+/** The precision the card shows each measure at: whole dollars, orders and points, happiness to one decimal. */
+const STEP: Record<MeasureId, number> = { profit: 1, readers: 1, happiness: 0.1, culture: 1 };
+
+/** A number already at its measure's precision, as the card writes it. */
+function formatMeasure(id: MeasureId, value: number): string {
   switch (id) {
     case "profit":
       return `${value < 0 ? "-" : ""}${moneyText(value)}`;
@@ -73,9 +76,39 @@ export function measureText(id: MeasureId, value: number): string {
       return value.toFixed(1);
     case "readers":
     case "culture":
-      return Math.round(value).toLocaleString("en-US");
+      return value.toLocaleString("en-US");
   }
 }
+
+/** Rounds to a step, with a little slack so 68.3 / 0.1 doesn't land on 683.0000001. */
+const toStep = (value: number, step: number, round: (x: number) => number) => round(value / step + (round === Math.ceil ? -1e-9 : 1e-9)) * step;
+
+/**
+ * A goal and a result at display precision. Goals round up, so the shown goal
+ * is never less than what meeting it takes (7,166.25 readers shows as 7,167).
+ * A result short of its goal never shows as reaching the shown goal: it rounds
+ * down instead. Whether the goal was met comes from the score, never from these.
+ */
+export function shownAgainstGoal(value: number, goal: number, met: boolean, step: number): { value: number; goal: number } {
+  const shownGoal = toStep(goal, step, Math.ceil);
+  let shown = Math.round(value / step) * step;
+  if (!met && shown >= shownGoal) shown = toStep(value, step, Math.floor);
+  return { value: shown, goal: shownGoal };
+}
+
+/** A measure's result, goal and last year as the card shows them. */
+export function measureTexts(m: MeasureScore): { result: string; goal: string; lastYear: string } {
+  const step = STEP[m.id];
+  const shown = shownAgainstGoal(m.result, m.goal, metGoal(m), step);
+  return {
+    result: formatMeasure(m.id, shown.value),
+    goal: formatMeasure(m.id, shown.goal),
+    lastYear: formatMeasure(m.id, Math.round(m.lastYear / step) * step),
+  };
+}
+
+/** The engine's own verdict: only a result at or past the goal scores 100. */
+const metGoal = (m: MeasureScore) => m.score >= 100;
 
 /** "A-" set with a true minus sign. */
 export function gradeText(grade: Grade): string {
@@ -94,16 +127,14 @@ export function heldCourseText(score: number, grade: Grade): string {
 
 /** Where a result stands: the boss lines turn on it. */
 function standing(m: MeasureScore): "met" | "short" | "below" {
-  return m.result >= m.goal ? "met" : m.result >= m.lastYear ? "short" : "below";
+  return metGoal(m) ? "met" : m.result >= m.lastYear ? "short" : "below";
 }
-
-/** Whole percent change from last year: culture's {pct} and {goalPct}. */
-const pctOver = (value: number, lastYear: number) => Math.round((value / lastYear - 1) * 100);
 
 /** Each measure's boss on its result (section 4, "Boss lines"). The numbers are the card's. */
 export function bossLine(m: MeasureScore): string {
-  const result = measureText(m.id, m.result);
-  const goal = measureText(m.id, m.goal);
+  const { result, goal } = measureTexts(m);
+  // Culture's {pct} and {goalPct}: whole percents over last year, held to the same rounding rule.
+  const pct = shownAgainstGoal((m.result / m.lastYear - 1) * 100, (m.goal / m.lastYear - 1) * 100, metGoal(m), 1);
   const lines: Record<MeasureId, Record<ReturnType<typeof standing>, string>> = {
     profit: {
       met: `PROFIT: ${result}. GOAL: ${goal}. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED.`,
@@ -122,7 +153,7 @@ export function bossLine(m: MeasureScore): string {
     },
     culture: {
       met: "CULTURE INCREASED. YOU MAY CELEBRATE FOR 0.5 MINUTES.",
-      short: `CULTURE INCREASED ${pctOver(m.result, m.lastYear)}%. CULTURE TARGET: ${pctOver(m.goal, m.lastYear)}%. PLEASE CULTURE HARDER.`,
+      short: `CULTURE INCREASED ${pct.value}%. CULTURE TARGET: ${pct.goal}%. PLEASE CULTURE HARDER.`,
       below: "CULTURE HAS DECREASED. THE MINISTRY IS UNCULTURED BY THIS.",
     },
   };

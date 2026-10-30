@@ -16,7 +16,7 @@ import {
   foundFooter,
   gradeText,
   heldCourseText,
-  measureText,
+  measureTexts,
   moneyShort,
   RESULT_COPY as COPY,
   scoreText,
@@ -206,12 +206,13 @@ function ReportCard({ plan, holdCourse, holdingCourse }: { plan: Card; holdCours
           <tbody>
             {plan.measures.map((m) => {
               const held = holdCourse.measures.find((h) => h.id === m.id);
+              const text = measureTexts(m);
               return (
                 <tr key={m.id}>
                   <th scope="row">{c.measures[m.id]}</th>
-                  <td>{measureText(m.id, m.result)}</td>
-                  <td>{measureText(m.id, m.lastYear)}</td>
-                  <td>{measureText(m.id, m.goal)}</td>
+                  <td>{text.result}</td>
+                  <td>{text.lastYear}</td>
+                  <td>{text.goal}</td>
                   <td>
                     <span className={styles.measureScore}>{scoreText(m.score, m.grade)}</span>
                     {m.exceeds && <span className={styles.award}>{c.exceeds}</span>}
