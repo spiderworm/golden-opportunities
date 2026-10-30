@@ -80,20 +80,23 @@ function formatMeasure(id: MeasureId, value: number): string {
   }
 }
 
-/** Rounds to a step, with a little slack so 68.3 / 0.1 doesn't land on 683.0000001. */
-const toStep = (value: number, step: number, round: (x: number) => number) => round(value / step + (round === Math.ceil ? -1e-9 : 1e-9)) * step;
-
 /**
- * A goal and a result at display precision. Goals round up, so the shown goal
- * is never less than what meeting it takes (7,166.25 readers shows as 7,167).
- * A result short of its goal never shows as reaching the shown goal: it rounds
- * down instead. Whether the goal was met comes from the score, never from these.
+ * A goal and a result at display precision, never on opposite sides of each
+ * other from the engine's verdict. Goals round up, so the shown goal is never
+ * less than what meeting it takes (7,166.25 readers shows as 7,167). Results
+ * round to nearest unless that crosses the shown goal; then they round toward
+ * the verdict: up when the goal was met, down when it wasn't. `met` comes from
+ * the score, never from these numbers.
  */
 export function shownAgainstGoal(value: number, goal: number, met: boolean, step: number): { value: number; goal: number } {
-  const shownGoal = toStep(goal, step, Math.ceil);
-  let shown = Math.round(value / step) * step;
-  if (!met && shown >= shownGoal) shown = toStep(value, step, Math.floor);
-  return { value: shown, goal: shownGoal };
+  // Steps are 1 and 0.1: scale by a whole number, which keeps 68.3 at 683 (68.3 / 0.1 is 682.99...).
+  const per = Math.round(1 / step);
+  // The slack absorbs float noise: a 5% goal computes as 5.0000000001%, which shouldn't show as 6%.
+  const shownGoal = Math.ceil(goal * per - 1e-9);
+  let shown = Math.round(value * per);
+  if (met && shown < shownGoal) shown = Math.ceil(value * per);
+  if (!met && shown >= shownGoal) shown = Math.min(Math.floor(value * per), shownGoal - 1);
+  return { value: shown / per, goal: shownGoal / per };
 }
 
 /** A measure's result, goal and last year as the card shows them. */

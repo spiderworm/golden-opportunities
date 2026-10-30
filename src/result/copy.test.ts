@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MeasureScore } from "~/game-stub/types";
-import { administratorLine, bossLine, fractionWords, heldCourseText, measureTexts, scoreText } from "./copy";
+import { administratorLine, bossLine, fractionWords, heldCourseText, measureTexts, scoreText, shownAgainstGoal } from "./copy";
 
 const measure = (id: MeasureScore["id"], result: number, lastYear: number, goal: number): MeasureScore => ({
   id,
@@ -44,6 +44,26 @@ describe("the report card's words", () => {
     expect(measureTexts(measure("happiness", 68.3, 65.07, 68.3))).toMatchObject({ result: "68.3", goal: "68.3" });
     // Culture up 4.6% against a 5% target reads 4%, not 5%.
     expect(bossLine(measure("culture", 17_368 * 1.046, 17_368, 17_368 * 1.05))).toBe("CULTURE INCREASED 4%. CULTURE TARGET: 5%. PLEASE CULTURE HARDER.");
+  });
+
+  it("never shows a met result below the shown goal (Audit's re-check of #44)", () => {
+    expect(measureTexts(measure("profit", 39_524.2, 37_642, 39_524.1))).toMatchObject({ result: "$39,525", goal: "$39,525" });
+    expect(measureTexts(measure("happiness", 68.325, 65.07, 68.3241))).toMatchObject({ result: "68.4", goal: "68.4" });
+    expect(bossLine(measure("profit", 39_524.2, 37_642, 39_524.1))).toBe(
+      "PROFIT: $39,525. GOAL: $39,525. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED.",
+    );
+  });
+
+  it("keeps every shown result on the engine's side of the shown goal", () => {
+    for (const step of [1, 0.1]) {
+      for (let i = 0; i < 2000; i++) {
+        const goal = 50 + Math.random() * 100;
+        const value = goal + (Math.random() - 0.5) * step * 4;
+        const met = value >= goal;
+        const shown = shownAgainstGoal(value, goal, met, step);
+        expect(shown.value >= shown.goal).toBe(met);
+      }
+    }
   });
 
   it("gives the Administrator a whole shop, a fraction of one, or a chair", () => {
