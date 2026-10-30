@@ -126,7 +126,10 @@ export default function Result({ loaderData }: Route.ComponentProps) {
               <span className={styles.tag} data-source={rule.source}>
                 {COPY.assumptions.tags[rule.source]}
               </span>
-              <span>{rule.text}</span>
+              <span>
+                {rule.text}
+                {rule.usedByPlan && <span className={styles.usedLabel}>{COPY.assumptions.used}</span>}
+              </span>
             </li>
           ))}
         </ul>

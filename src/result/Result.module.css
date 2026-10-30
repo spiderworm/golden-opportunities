@@ -222,6 +222,14 @@
   background: var(--color-accent-wash);
 }
 
+.usedLabel {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-accent-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .rule:not([data-used]) {
   color: var(--color-text-muted);
 }

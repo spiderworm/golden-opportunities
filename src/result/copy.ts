@@ -17,6 +17,8 @@ export const RESULT_COPY = {
     intro:
       'The simulation is small on purpose. Each line below is one rule it follows. "From your data" means it was measured from 2193. "Assumed" means the data can\'t show it, so we chose a value.',
     tags: { data: "From your data", assumed: "Assumed", setup: "Setup" } satisfies Record<Assumption["source"], string>,
+    /** Shown on each rule the player's option used, so the highlight isn't color alone. */
+    used: "Your plan used this rule.",
   },
   discoveries: {
     heading: "What you found",
