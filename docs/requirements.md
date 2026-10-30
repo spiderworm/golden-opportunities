@@ -66,7 +66,7 @@ Due **3 November 2026**. Golden Analytics will extend if asked; David will decid
 
 ## Process
 
-- **All work reaches `main` through pull requests David approves.** (David, 30 Oct)
+- **All work reaches `main` through pull requests.** (David, 30 Oct)
 - **Two agent approvals can merge a PR** (David, 30 Oct, later the same day): once two non-author agents have approved a PR in signed comments, one of them Audit (unless Audit is an author), it can be merged without David. David still can merge himself.
 - **Every PR description names the agent that wrote the code; reviews are PR comments signed with the reviewer's name.** (David, 30 Oct)
 - **Conflicts are resolved in the commits that cause them:** PR branches are rebased onto `main`, with no merge commits. (David, 30 Oct)
