@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import { Icon } from "./icons";
-import type { Track } from "./track";
+import type { Track } from "~/platform/analytics/track";
 import styles from "./NotificationsBell.module.css";
 
 export interface StationNotification {
