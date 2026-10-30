@@ -1,5 +1,6 @@
 import { type RouteConfig, layout } from "@react-router/dev/routes";
 
+import assistantRoutes from "./assistant/routes";
 import investigateRoutes from "./investigate/routes";
 import { queryRoutes } from "./query/routes";
 import stationRoutes from "./station/routes";
@@ -9,4 +10,5 @@ import stationRoutes from "./station/routes";
 export default [
   layout("shell/layout.tsx", [...stationRoutes, ...investigateRoutes]),
   ...queryRoutes,
+  ...assistantRoutes,
 ] satisfies RouteConfig;
