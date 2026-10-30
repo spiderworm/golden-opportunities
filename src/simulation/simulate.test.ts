@@ -5,39 +5,51 @@ import type { BookshopTables } from "~/bookshop/types";
 import { runQuery } from "~/query/run-query.server";
 import { baseline, eventWeeks, historyOf, OBSERVED_EXTRAS, quarterDays, replayedDay, unpromoted } from "./model";
 import { simulateQuarter } from "./simulate";
-import type { OptionId } from "./types";
+import type { LeverId, Plan } from "./types";
 
 const data = joinBookshop(tables as BookshopTables);
 const history = historyOf(data);
 const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const weekday = (day: string) => new Date(`${day}T00:00:00Z`).getUTCDay();
-const profitChange = (option: OptionId, seed: number) => {
-  const { plan, holdCourse } = simulateQuarter({ option }, seed, data).outcome.totals;
+const plan = (...levers: LeverId[]): Plan => ({ levers });
+const HOLD = plan();
+const PLANS: Plan[] = [HOLD, plan("repick"), plan("events"), plan("sale"), plan("repick", "events"), plan("repick", "sale"), plan("events", "sale")];
+const profitChange = (p: Plan, seed: number) => {
+  const { plan, holdCourse } = simulateQuarter(p, seed, data).outcome.totals;
   return plan.grossProfit - holdCourse.grossProfit;
+};
+const median = (values: number[]) => {
+  const s = [...values].sort((a, b) => a - b);
+  return (s[Math.floor((s.length - 1) / 2)] + s[Math.ceil((s.length - 1) / 2)]) / 2;
 };
 
 describe("determinism", () => {
   it("gives the same output for the same seed", () => {
-    for (const option of ["A", "B", "C", "D"] as const) expect(simulateQuarter({ option }, 42, data)).toEqual(simulateQuarter({ option }, 42, data));
+    for (const p of PLANS) expect(simulateQuarter(p, 42, data)).toEqual(simulateQuarter(p, 42, data));
   });
 
   it("varies with the seed", () => {
-    expect(simulateQuarter({ option: "A" }, 1, data).lines).not.toEqual(simulateQuarter({ option: "A" }, 2, data).lines);
+    expect(simulateQuarter(HOLD, 1, data).lines).not.toEqual(simulateQuarter(HOLD, 2, data).lines);
   });
 
   it("gives every plan the same holding-course line for a seed", () => {
-    const hold = simulateQuarter({ option: "A" }, 7, data);
+    const hold = simulateQuarter(HOLD, 7, data);
     expect(hold.doNothingLines).toEqual(hold.lines);
-    for (const option of ["B", "C", "D"] as const) {
-      const result = simulateQuarter({ option }, 7, data);
+    for (const p of PLANS.slice(1)) {
+      const result = simulateQuarter(p, 7, data);
       expect(result.doNothingLines).toEqual(hold.doNothingLines);
       expect(result.outcome.totals.holdCourse).toEqual(hold.outcome.totals.plan);
       expect(result.outcome.reportCard.holdCourse).toEqual(hold.outcome.reportCard.plan);
     }
   });
 
+  it("refuses an invalid plan", () => {
+    for (const levers of [["sale", "repick"], ["repick", "repick"], ["repick", "events", "sale"], ["option"]])
+      expect(() => simulateQuarter({ levers } as Plan, 1, data)).toThrow(/Invalid plan/);
+  });
+
   it("accepts the full unsigned 32-bit range", () => {
-    expect(simulateQuarter({ option: "A" }, 0xffffffff, data).lines.length).toBeGreaterThan(7000);
+    expect(simulateQuarter(HOLD, 0xffffffff, data).lines.length).toBeGreaterThan(7000);
   });
 });
 
@@ -76,7 +88,7 @@ describe("the replay", () => {
   });
 
   it("serves its lines through the query layer as Q1 2194", () => {
-    const { lines, outcome } = simulateQuarter({ option: "C" }, 5, data);
+    const { lines, outcome } = simulateQuarter(plan("repick"), 5, data);
     expect(new Set(lines.map((l) => l.id)).size).toBe(lines.length);
     expect(lines.every((l) => l.date >= "2194-01-01" && l.date <= "2194-03-31" && l.quarter === 1)).toBe(true);
     const view = { periods: ["2194-Q1" as const], includeUndated: false, simulatedSales: lines };
@@ -87,7 +99,7 @@ describe("the replay", () => {
 });
 
 describe("last year, measured with the same recipe (scoring.md, Audit's full-precision values)", () => {
-  const card = simulateQuarter({ option: "A" }, 1, data).outcome.reportCard.plan;
+  const card = simulateQuarter(HOLD, 1, data).outcome.reportCard.plan;
   const lastYear = Object.fromEntries(card.measures.map((m) => [m.id, m.lastYear]));
   const goal = Object.fromEntries(card.measures.map((m) => [m.id, m.goal]));
 
@@ -106,31 +118,30 @@ describe("last year, measured with the same recipe (scoring.md, Audit's full-pre
   });
 });
 
-describe("the options against holding course (m1-slice section 3)", () => {
-  it("B: revenue rises a little, gross profit falls about 22%, readers rise about 20%", () => {
+describe("the levers against holding course (m1-slice section 3)", () => {
+  it("the sale: revenue rises a little, gross profit falls about 22%, readers rise about 20%", () => {
     for (const seed of SEEDS) {
-      const { plan, holdCourse } = simulateQuarter({ option: "B" }, seed, data).outcome.totals;
-      expect(plan.revenue / holdCourse.revenue - 1).toBeGreaterThan(0);
-      expect(plan.revenue / holdCourse.revenue - 1).toBeLessThan(0.06);
-      expect(plan.grossProfit / holdCourse.grossProfit - 1).toBeGreaterThan(-0.25);
-      expect(plan.grossProfit / holdCourse.grossProfit - 1).toBeLessThan(-0.18);
-      expect(plan.orders! / holdCourse.orders! - 1).toBeCloseTo(0.2, 1);
+      const { plan: mine, holdCourse } = simulateQuarter(plan("sale"), seed, data).outcome.totals;
+      expect(mine.revenue / holdCourse.revenue - 1).toBeGreaterThan(0);
+      expect(mine.revenue / holdCourse.revenue - 1).toBeLessThan(0.06);
+      expect(mine.grossProfit / holdCourse.grossProfit - 1).toBeGreaterThan(-0.25);
+      expect(mine.grossProfit / holdCourse.grossProfit - 1).toBeLessThan(-0.18);
+      expect(mine.orders! / holdCourse.orders! - 1).toBeCloseTo(0.2, 1);
     }
   });
 
-  it("A is holding course", () => {
-    expect(profitChange("A", 1)).toBe(0);
+  it("holding course is no change", () => {
+    expect(profitChange(HOLD, 1)).toBe(0);
   });
 
-  it("C: about +$1.5k", () => {
-    const changes = SEEDS.map((seed) => profitChange("C", seed));
-    const mean = changes.reduce((t, c) => t + c, 0) / changes.length;
+  it("the re-pick: about +$1.5k", () => {
+    const mean = SEEDS.reduce((t, seed) => t + profitChange(plan("repick"), seed), 0) / SEEDS.length;
     expect(mean).toBeGreaterThan(1000);
     expect(mean).toBeLessThan(2000);
   });
 
-  it("D: within -$0.4k to +$2.3k, plus a margin for the noise in what each night's orders buy", () => {
-    const changes = SEEDS.map((seed) => profitChange("D", seed));
+  it("author nights: within -$0.4k to +$2.3k, plus a margin for the noise in what each night's orders buy", () => {
+    const changes = SEEDS.map((seed) => profitChange(plan("events"), seed));
     for (const change of changes) {
       expect(change).toBeGreaterThan(-800);
       expect(change).toBeLessThan(2700);
@@ -140,39 +151,117 @@ describe("the options against holding course (m1-slice section 3)", () => {
     expect(mean).toBeLessThan(1300);
   });
 
-  it("D holds 12 nights on Tuesday to Thursday, in different weeks, each adding 30 to 70 orders", () => {
+  it("author nights: 12 nights on Tuesday to Thursday, in different weeks, each adding 30 to 70 orders", () => {
     expect(eventWeeks()).toHaveLength(13);
     for (const seed of SEEDS) {
-      const { outcome } = simulateQuarter({ option: "D" }, seed, data);
-      const facts = outcome.facts;
-      if (facts.option !== "D") throw new Error("expected D's facts");
-      expect(facts.events).toBe(12);
-      expect(facts.eventCosts).toBe(2400);
-      expect(facts.orders).toBeGreaterThanOrEqual(360);
-      expect(facts.orders).toBeLessThanOrEqual(840);
-      expect(outcome.totals.plan.orders! - outcome.totals.holdCourse.orders!).toBe(facts.orders);
+      const { outcome } = simulateQuarter(plan("events"), seed, data);
+      const events = outcome.facts.events!;
+      expect(events.nights).toBe(12);
+      expect(events.eventCosts).toBe(2400);
+      expect(events.orders).toBeGreaterThanOrEqual(360);
+      expect(events.orders).toBeLessThanOrEqual(840);
+      expect(outcome.totals.plan.orders! - outcome.totals.holdCourse.orders!).toBe(events.orders);
+      // Alone, the nights' own gross profit less their cost is the whole change.
+      expect(events.gross - events.eventCosts).toBeCloseTo(outcome.facts.amount, 6);
     }
+  });
+
+  it("two levers: the sale's 15% replaces every discount, and it clones author-night orders too", () => {
+    const { lines, outcome } = simulateQuarter(plan("events", "sale"), 3, data);
+    expect(lines.every((l) => l.discount === 0.15)).toBe(true);
+    const nightsOnly = simulateQuarter(plan("events"), 3, data).outcome.totals.plan.orders!;
+    expect(outcome.totals.plan.orders! / nightsOnly - 1).toBeCloseTo(0.2, 1);
+  });
+
+  it("two levers: the re-pick and the author nights nearly add up", () => {
+    // Not exactly: a night's orders that include a featured title are priced by that month's pick.
+    for (const seed of [1, 2, 3]) {
+      const both = profitChange(plan("repick", "events"), seed);
+      expect(Math.abs(both - profitChange(plan("repick"), seed) - profitChange(plan("events"), seed))).toBeLessThan(200);
+    }
+  });
+});
+
+describe("the overall score, against Plot's calibration on seeds 1 to 20 (scoring.md)", () => {
+  const seeds = Array.from({ length: 20 }, (_, i) => i + 1);
+  const overall = (p: Plan) => seeds.map((seed) => simulateQuarter(p, seed, data).outcome.reportCard.plan.overall);
+  const scores = (p: Plan) => overall(p).map((o) => o.score);
+  const within = (values: number[], min: number, max: number) => {
+    expect(Math.min(...values)).toBeGreaterThanOrEqual(min);
+    expect(Math.max(...values)).toBeLessThanOrEqual(max);
+  };
+
+  it("holding course: 67 to 70, median 67, bound by Profit", () => {
+    const o = overall(HOLD);
+    within(o.map((x) => x.score), 67, 70);
+    expect(median(o.map((x) => x.score))).toBe(67);
+    expect(o.filter((x) => x.binding.includes("profit")).length).toBeGreaterThanOrEqual(18);
+  });
+
+  it("the re-pick: 71 to 76, median 72", () => {
+    within(scores(plan("repick")), 71, 76);
+    expect(Math.abs(median(scores(plan("repick"))) - 72)).toBeLessThanOrEqual(1);
+  });
+
+  it("author nights: 69 to 89, median 72", () => {
+    within(scores(plan("events")), 69, 89);
+    expect(Math.abs(median(scores(plan("events"))) - 72)).toBeLessThanOrEqual(1);
+  });
+
+  it("the re-pick and author nights: 85 to 91, median 87, bound by Happiness", () => {
+    const o = overall(plan("repick", "events"));
+    within(o.map((x) => x.score), 85, 91);
+    expect(median(o.map((x) => x.score))).toBe(87);
+    expect(o.every((x) => x.binding.includes("happiness"))).toBe(true);
+  });
+
+  it("any plan with the sale: 38 to 45, an F, bound by Profit", () => {
+    for (const p of [plan("sale"), plan("repick", "sale"), plan("events", "sale")]) {
+      const o = overall(p);
+      within(o.map((x) => x.score), 38, 45);
+      expect(o.every((x) => x.grade === "F" && x.binding.includes("profit"))).toBe(true);
+    }
+  });
+
+  it("gives author-night visits +20 Happiness, capped at 100", () => {
+    const card = (p: Plan) => simulateQuarter(p, 4, data).outcome.reportCard.plan.measures.find((m) => m.id === "happiness")!;
+    expect(card(plan("events")).result).toBeGreaterThan(card(HOLD).result + 1);
+    expect(card(plan("events")).result).toBeLessThanOrEqual(100);
   });
 });
 
 describe("the result copy", () => {
   it("fills every option's sentences, with no unfilled values", () => {
-    for (const option of ["A", "B", "C", "D"] as const) {
-      const { happened, assumptions } = simulateQuarter({ option }, 1, data).outcome;
+    for (const p of PLANS) {
+      const { happened, assumptions } = simulateQuarter(p, 1, data).outcome;
       expect(happened.length).toBeGreaterThanOrEqual(2);
       for (const text of [...happened, ...assumptions.map((a) => a.text)]) expect(text).not.toMatch(/[{}]|NaN|undefined/);
     }
   });
 
   it("marks the rules the plan used, and only those", () => {
-    const used = (option: OptionId) => simulateQuarter({ option }, 1, data).outcome.assumptions.filter((a) => a.usedByPlan).map((a) => a.id);
-    expect(used("D")).toEqual(["replay", "cost-of-goods", "event-orders", "event-cost"]);
-    expect(used("B")).toEqual(["replay", "botm-price", "cost-of-goods", "sale-response"]);
+    const used = (p: Plan) => simulateQuarter(p, 1, data).outcome.assumptions.filter((a) => a.usedByPlan).map((a) => a.id);
+    const always = ["replay", "botm-price", "botm-extra", "no-cannibalization", "cost-of-goods"];
+    expect(used(HOLD)).toEqual(always);
+    expect(used(plan("events"))).toEqual([...always, "event-orders", "event-cost"]);
+    expect(used(plan("events", "sale"))).toEqual([...always, "sale-response", "event-orders", "event-cost"]);
   });
 
   it("fills the assumptions from the data", () => {
-    const text = simulateQuarter({ option: "B" }, 1, data).outcome.assumptions.map((a) => a.text).join("\n");
+    const text = simulateQuarter(plan("sale"), 1, data).outcome.assumptions.map((a) => a.text).join("\n");
     expect(text).toContain("between 19 and 173 extra copies; the middle value was 50");
     expect(text).toContain("average order value of $13.96");
+  });
+
+  it("shows one move's sentences in full, and two moves' without their comparisons, then the total", () => {
+    const one = simulateQuarter(plan("repick"), 1, data).outcome.happened;
+    expect(one).toHaveLength(3);
+    expect(one[2]).toMatch(/^Gross profit was [+-]\$[\d,]+ compared with holding course\.$/);
+    const two = simulateQuarter(plan("repick", "events"), 1, data).outcome.happened;
+    expect(two).toHaveLength(5);
+    expect(two[0]).toMatch(/^The three new picks/);
+    expect(two[2]).toMatch(/^The 12 author nights/);
+    expect(two[4]).toMatch(/^Together, your two moves changed gross profit by \+\$[\d,]+ compared with holding course\.$/);
+    expect(simulateQuarter(HOLD, 1, data).outcome.happened[0]).toBe("You kept the schedule.");
   });
 });

@@ -20,6 +20,8 @@ export interface Order {
   day: string;
   items: Item[];
   kind: OrderKind;
+  /** A visit the station-wide sale brought in. */
+  saleClone?: boolean;
 }
 
 export const itemOf = (line: DeepReadonly<SaleLine>): Item => ({

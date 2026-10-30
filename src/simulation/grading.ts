@@ -1,13 +1,20 @@
-// From a result to a score (docs/design/scoring.md, "From a result to a score").
-import type { Grade, MeasureId, MeasureScore, ReportCard } from "./types";
+// From a result to a score, and the overall score (docs/design/scoring.md,
+// "The report card" and "From a result to a score"). The flags for the
+// lowest-measure lines follow docs/design/m1-copy.md, so the UI never works out
+// scoring itself.
+import type { Certificate, Grade, MeasureId, MeasureScore, ReportCard } from "./types";
 import { MEASURE_IDS } from "./types";
 
 /** The stretch on last year, and the smallest step as a share of the 2193 quarterly average (both *tune*). */
 export const STRETCH = 0.05;
 export const STEP = 0.01;
+/** Matching last year scores this. */
+export const ANCHOR = 70;
 /** Points lost per whole share of scale below last year: 2.5 per 1%. */
 export const BELOW_PENALTY = 250;
-export const WELL_ROUNDED_BONUS = 3;
+/** A measure this close to the overall score, or closer, gets a warning. */
+export const CLOSE_MARGIN = 3;
+export const WELL_ROUNDED = 80;
 
 export const roundHalfUp = (value: number) => Math.floor(value + 0.5);
 
@@ -19,9 +26,9 @@ export function goalFor(lastYear: number, quarterlyAverage: number): number {
 /** The unrounded score, 0 to 100. */
 export function rawScore(result: number, lastYear: number, goal: number, quarterlyAverage: number): number {
   if (result >= goal) return 100;
-  if (result >= lastYear) return 65 + (35 * (result - lastYear)) / (goal - lastYear);
+  if (result >= lastYear) return ANCHOR + ((100 - ANCHOR) * (result - lastYear)) / (goal - lastYear);
   const scale = Math.max(Math.abs(lastYear), Math.abs(quarterlyAverage));
-  return Math.max(0, 65 - (BELOW_PENALTY * (lastYear - result)) / scale);
+  return Math.max(0, ANCHOR - (BELOW_PENALTY * (lastYear - result)) / scale);
 }
 
 /** Rounded half up; only a result at or past the goal shows 100. */
@@ -44,21 +51,37 @@ export interface MeasureInput {
   quarterlyAverage: number;
 }
 
-export function scoreMeasure(id: MeasureId, { result, lastYear, quarterlyAverage }: MeasureInput): MeasureScore & { raw: number } {
+export function scoreMeasure(id: MeasureId, { result, lastYear, quarterlyAverage }: MeasureInput): MeasureScore {
   const goal = goalFor(lastYear, quarterlyAverage);
-  const raw = rawScore(result, lastYear, goal, quarterlyAverage);
-  const score = shownScore(raw, result >= goal);
-  return { id, result, lastYear, goal, score, grade: gradeFor(score), exceeds: result > goal, raw };
+  const met = result >= goal;
+  const score = shownScore(rawScore(result, lastYear, goal, quarterlyAverage), met);
+  return { id, result, lastYear, goal, score, grade: gradeFor(score), met, exceeds: result > goal };
 }
 
+/** The overall score is the lowest measure's: no averaging, no bonus. Certificates never change it. */
 export function reportCard(inputs: Record<MeasureId, MeasureInput>): ReportCard {
-  const scored = MEASURE_IDS.map((id) => scoreMeasure(id, inputs[id]));
-  const wellRounded = scored.every((m) => m.score >= 80);
-  const mean = scored.reduce((sum, m) => sum + m.raw, 0) / scored.length;
-  const combined = Math.min(100, roundHalfUp(mean + (wellRounded ? WELL_ROUNDED_BONUS : 0)));
+  const measures = MEASURE_IDS.map((id) => scoreMeasure(id, inputs[id]));
+  const score = Math.min(...measures.map((m) => m.score));
+  const allMet = measures.every((m) => m.met);
+  const below = measures.filter((m) => m.result < m.lastYear);
+  const sacrifice = !allMet && below.some((low) => measures.some((m) => m.id !== low.id && m.exceeds));
+  const certificates: Certificate[] = measures.filter((m) => m.exceeds).map((m) => ({ id: "exceeds", measure: m.id }));
+  if (score >= WELL_ROUNDED) certificates.push({ id: "wellRounded" });
   return {
-    measures: scored.map(({ raw: _raw, ...measure }) => measure),
-    combined: { score: combined, grade: gradeFor(combined) },
-    wellRounded,
+    measures,
+    overall: {
+      score,
+      grade: gradeFor(score),
+      binding: measures.filter((m) => m.score === score).map((m) => m.id),
+      // Array sort is stable, so equally close measures keep card order.
+      closeBehind: measures
+        .filter((m) => m.score > score && m.score <= score + CLOSE_MARGIN)
+        .sort((a, b) => a.score - b.score)
+        .map((m) => m.id),
+      closeMargin: CLOSE_MARGIN,
+      allMet,
+      sacrifice,
+    },
+    certificates,
   };
 }
