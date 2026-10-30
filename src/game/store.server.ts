@@ -1,13 +1,14 @@
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync, writeFileSync, unlinkSync, statSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, writeFileSync, unlinkSync, statSync, readdirSync, utimesSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import { withSaveLock, SaveLockBusy } from './lock.server.ts';
 import type { GameSave } from './types';
 
 const ID = /^[A-Za-z0-9_-]{43}$/;
 const MAX_BYTES = 16 * 1024 * 1024;
 export function isSaveId(value: string): boolean { return ID.test(value); }
 export class SaveError extends Error {
-  readonly code: 'MISSING_SAVE' | 'INVALID_SAVE' | 'SAVE_BUSY' | 'STALE_SAVE';
+  readonly code: 'MISSING_SAVE' | 'INVALID_SAVE' | 'SAVE_BUSY' | 'STALE_SAVE' | 'SAVE_CAPACITY';
   constructor(code: SaveError['code']) { super(code); this.code = code; }
 }
 function validate(save: GameSave, id: string): void {
@@ -32,13 +33,61 @@ function validate(save: GameSave, id: string): void {
     }
   }
 }
-/** Local single-machine storage. Atomic rename and an exclusive update lock protect readers and competing writers. */
-export function createSaveStore(directory: string) {
+export const SAVE_LIMITS = { count: 200, bytes: 256 * 1024 * 1024, idleMs: 30 * 24 * 60 * 60 * 1000 } as const;
+interface StoreOptions { maxCount?: number; maxBytes?: number; idleMs?: number; now?: () => number }
+/** Disk-backed LRU and budget; a directory lock serializes admission across processes. */
+export function createSaveStore(directory: string, options: StoreOptions = {}) {
+  const maxCount = options.maxCount ?? SAVE_LIMITS.count;
+  const maxBytes = options.maxBytes ?? SAVE_LIMITS.bytes;
+  const idleMs = options.idleMs ?? SAVE_LIMITS.idleMs;
+  const now = options.now ?? Date.now;
+  if (![maxCount, maxBytes, idleMs].every(n => Number.isSafeInteger(n) && n > 0)) throw new Error('Invalid save budget');
   const file = (id: string) => { if (!isSaveId(id)) throw new SaveError('MISSING_SAVE'); return path.join(directory, id + '.json'); };
-  const read = (id: string): GameSave => {
+  const remove = (target: string) => { try { unlinkSync(target); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; } };
+  let assertOwned = () => {};
+  const locked = <T>(operation: () => T): T => {
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    try {
+      return withSaveLock(directory, check => {
+        const previous = assertOwned; assertOwned = check;
+        try { return operation(); } finally { assertOwned = previous; }
+      });
+    } catch (error) { if (error instanceof SaveLockBusy) throw new SaveError('SAVE_BUSY'); throw error; }
+  };
+  const touch = (target: string) => { assertOwned(); const time = new Date(now()); utimesSync(target, time, time); };
+  // mtime is the durable last-used time, including reads. It survives process restarts.
+  const inventory = (protectedId?: string) => {
+    const entries: { id: string; target: string; bytes: number; touched: number; locked: boolean }[] = [];
+    for (const name of readdirSync(directory)) {
+      // Atomic-write leftovers are safe to remove while holding the directory lock.
+      if (/^[A-Za-z0-9_-]{43}\.json\.[a-f0-9]{16}\.tmp$/.test(name)) { remove(path.join(directory, name)); continue; }
+      if (!/^[A-Za-z0-9_-]{43}\.json$/.test(name)) continue;
+      const id = name.slice(0, -5); const target = file(id); const stat = statSync(target);
+      const busy = existsSync(target + '.lock');
+      if (id !== protectedId && !busy && now() - stat.mtimeMs >= idleMs) { assertOwned(); unlinkSync(target); continue; }
+      entries.push({ id, target, bytes: stat.size, touched: stat.mtimeMs, locked: busy });
+    }
+    return entries;
+  };
+  const makeRoom = (extraCount: number, extraBytes: number, protectedId?: string) => {
+    const entries = inventory(protectedId);
+    let count = entries.length + extraCount;
+    let bytes = entries.reduce((sum, entry) => sum + entry.bytes, extraBytes);
+    const victims = entries.filter(e => e.id !== protectedId && !e.locked).sort((a, b) => a.touched - b.touched || a.id.localeCompare(b.id));
+    const evict: typeof victims = [];
+    while (count > maxCount || bytes > maxBytes) {
+      const victim = victims.shift();
+      if (!victim) throw new SaveError('SAVE_CAPACITY');
+      evict.push(victim); count--; bytes -= victim.bytes;
+    }
+    for (const victim of evict) { assertOwned(); unlinkSync(victim.target); }
+  };
+  const readUnlocked = (id: string): GameSave => {
     const target = file(id);
     try {
-      if (statSync(target).size > MAX_BYTES) throw new SaveError('INVALID_SAVE');
+      const stat = statSync(target);
+      if (now() - stat.mtimeMs >= idleMs && !existsSync(target + '.lock')) { assertOwned(); unlinkSync(target); throw new SaveError('MISSING_SAVE'); }
+      if (stat.size > MAX_BYTES) throw new SaveError('INVALID_SAVE');
       const save = JSON.parse(readFileSync(target, 'utf8')) as GameSave;
       validate(save, id); return save;
     } catch (error) {
@@ -53,29 +102,39 @@ export function createSaveStore(directory: string) {
     return json;
   };
   return {
-    read,
+    read(id: string): GameSave {
+      file(id);
+      return locked(() => { const save = readUnlocked(id); makeRoom(0, 0, id); touch(file(id)); return save; });
+    },
     create(): GameSave {
-      mkdirSync(directory, { recursive: true, mode: 0o700 });
-      const save: GameSave = { version: 1, id: randomBytes(32).toString('base64url'), seed: randomBytes(4).readUInt32LE(), revision: 0, discoveries: [], played: [] };
-      writeFileSync(file(save.id), encode(save), { flag: 'wx', mode: 0o600 });
-      return save;
+      return locked(() => {
+        const save: GameSave = { version: 1, id: randomBytes(32).toString('base64url'), seed: randomBytes(4).readUInt32LE(), revision: 0, discoveries: [], played: [] };
+        const json = encode(save); makeRoom(1, Buffer.byteLength(json));
+        assertOwned();
+        writeFileSync(file(save.id), json, { flag: 'wx', mode: 0o600 }); touch(file(save.id));
+        return save;
+      });
     },
     update(id: string, revision: number, change: (save: GameSave) => void): GameSave {
-      const target = file(id); const lock = target + '.lock';
-      try { writeFileSync(lock, '', { flag: 'wx', mode: 0o600 }); }
-      catch (error) { if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new SaveError('SAVE_BUSY'); throw error; }
-      const temporary = target + '.' + randomBytes(8).toString('hex') + '.tmp';
-      try {
-        const save = read(id);
+      const target = file(id);
+      return locked(() => {
+        if (existsSync(target + '.lock')) throw new SaveError('SAVE_BUSY');
+        const save = readUnlocked(id);
         if (save.revision !== revision) throw new SaveError('STALE_SAVE');
         change(save); save.revision = revision + 1;
         if (save.id !== id) throw new SaveError('INVALID_SAVE');
-        writeFileSync(temporary, encode(save), { flag: 'wx', mode: 0o600 });
-        renameSync(temporary, target); return save;
-      } finally {
-        try { unlinkSync(temporary); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-        unlinkSync(lock);
-      }
+        assertOwned();
+        const json = encode(save);
+        // Reserve the full temporary file, not just growth, to bound peak bytes too.
+        makeRoom(0, Buffer.byteLength(json), id);
+        const temporary = target + '.' + randomBytes(8).toString('hex') + '.tmp';
+        try {
+          assertOwned();
+          writeFileSync(temporary, json, { flag: 'wx', mode: 0o600 }); touch(temporary);
+          assertOwned();
+          renameSync(temporary, target); return save;
+        } finally { remove(temporary); }
+      });
     },
   };
 }
