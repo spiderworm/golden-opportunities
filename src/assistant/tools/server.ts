@@ -61,17 +61,25 @@ const figures = (from: number | null | undefined, to: number | null | undefined)
 
 /**
  * Runs a comparison as two queries, one per side, and works out the change here, so the assistant never does
- * arithmetic of its own: every figure it can state comes back from a tool, with a source.
+ * arithmetic of its own: every figure it can state comes back from a tool, with a source. Each side is also
+ * grouped by the compared dimension, so its label comes back in the data's own rows. The compared values are
+ * the model's free text, so they appear in headings and the source only as the data returned them; a side
+ * that matched nothing is named in fixed words (Audit, #32).
  */
 async function runComparison(c: Comparison, endpoint: { url: URL; token: string }): Promise<{ result: ComparisonResult; sides: number[] }> {
-  const side = (value: string) => runQuery(checkQuery({ measure: c.measure, by: c.by, filter: { ...c.filter, [c.across]: [value] } }), endpoint);
+  const side = (value: string) => runQuery(checkQuery({ measure: c.measure, by: [...c.by, c.across], filter: { ...c.filter, [c.across]: [value] } }), endpoint);
   const [a, b] = await Promise.all([side(c.from), side(c.to)]);
+  const labelOf = (rows: QueryResult["rows"]) => {
+    const value = rows.find((r) => typeof r[c.across] === "string")?.[c.across];
+    return typeof value === "string" ? value : null;
+  };
+  const labels = { from: labelOf(a.rows), to: labelOf(b.rows) };
   const dim = c.by[0];
   const number = (label: string, key: string): ComparisonResult["columns"][number] => ({ key, label, type: "number", nullable: true });
   const columns = [
     ...(dim ? [a.columns.find((col: QueryColumn) => col.key === dim) ?? { key: dim, label: dim, type: "string" as const, nullable: true }] : []),
-    number(c.from, "from"),
-    number(c.to, "to"),
+    number(labels.from ?? "First value", "from"),
+    number(labels.to ?? "Second value", "to"),
     number("Change", "change"),
     number("Change (%)", "percent_change"),
   ];
@@ -84,11 +92,14 @@ async function runComparison(c: Comparison, endpoint: { url: URL; token: string 
     rows = keys.map((k) => ({ [dim]: k, ...figures(fromByKey.get(k), toByKey.get(k)) }));
   }
   const source = [
-    `${c.measure} compared across ${c.across}, ${c.from} against ${c.to}. Change is ${c.to} minus ${c.from}; percent change is that change divided by ${c.from}, worked out by the data terminal.`,
-    `${c.from}: ${a.source}`,
-    `${c.to}: ${b.source}`,
+    `${c.measure} compared across ${c.across}, ${labels.from ?? "the first value"} against ${labels.to ?? "the second value"}.`,
+    ...(labels.from ? [] : ["No sales matched the first value."]),
+    ...(labels.to ? [] : ["No sales matched the second value."]),
+    "Change is the second minus the first; percent change is that change divided by the first, worked out by the data terminal.",
+    `${labels.from ?? "First value"}: ${a.source}`,
+    `${labels.to ?? "Second value"}: ${b.source}`,
   ].join(" ");
-  return { result: { columns, rows, total: figures(a.total, b.total), source }, sides: [a.rows.length, b.rows.length] };
+  return { result: { columns, rows, total: figures(a.total, b.total), labels, source }, sides: [a.rows.length, b.rows.length] };
 }
 
 // Every successful lookup gets a ref ("a", "b", ...) and each of its rows one more ("a1", "a2", ...). The model

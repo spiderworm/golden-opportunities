@@ -124,16 +124,13 @@ export class Refs {
     let from: string | null = null;
     let to: string | null = null;
     if (name === "compare_data") {
-      const total = (out.total ?? {}) as Row;
-      const columns = Array.isArray(out.columns) ? (out.columns as Row[]) : [];
-      const side = (key: string) => {
-        const name = columns.find((c) => c.key === key)?.label;
-        return typeof name === "string" && isNum(total[key]) && total[key] !== 0 ? name : null;
-      };
-      from = side("from");
-      to = side("to");
-      if (args.across === "quarter") for (const p of [from, to]) if (p && /^\d{4}-Q[1-4]$/.test(p)) period(p);
+      // The compared values as the data's rows returned them (the tool server takes them from the rows).
+      const labels = (out.labels ?? {}) as Row;
+      from = typeof labels.from === "string" ? labels.from : null;
+      to = typeof labels.to === "string" ? labels.to : null;
+      if (args.across === "quarter") for (const p of [from, to]) if (p) period(p);
     }
+    // Period names come from returned rows, and one-value filters the data confirmed (below); never captions.
     for (const row of rows) if (typeof row.quarter === "string") period(row.quarter);
     // A filter value is the model's, so it's a label only when it alone was asked for and the data had
     // something there (with several values, any one could be the one that matched).
@@ -142,8 +139,8 @@ export class Refs {
     if (found && args.filter && typeof args.filter === "object") {
       for (const [dim, values] of Object.entries(args.filter as Row)) if (Array.isArray(values) && values.length === 1 && typeof values[0] === "string") filtered.set(dim, values[0]);
     }
-    // The source is the query layer's own text; its "allowed periods" are the ones the player can see.
-    for (const m of String(out.source ?? "").matchAll(/\b\d{4}-Q[1-4]\b/g)) period(m[0]);
+    const quarter = filtered.get("quarter");
+    if (quarter) period(quarter);
     this.lookups.set(out.ref, {
       seq,
       complete: out.complete === true,
