@@ -1,0 +1,90 @@
+{
+  "id": "x-f4-label",
+  "at": "2026-10-30T22:18:52.817Z",
+  "ms": 5621,
+  "status": 200,
+  "request": {
+    "question": "How many units sold at the 15% discount rate in December 2193, and which title was it?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up units sold in December of the year, all genres, at the 15% discount rate, grouped by title. The total came to 177, and the title was Hashtag QuokkaSelfie.",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "units",
+        "by": [
+          "title"
+        ],
+        "filter": {
+          "month": [
+            "12"
+          ],
+          "discount_rate": [
+            "15%"
+          ]
+        }
+      },
+      "total": 177,
+      "rows": 1,
+      "source": "Units from 177 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 177 source and 0 simulated sale lines; grouped by title; exact filters on month, discount_rate. Showing 1 of 1 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "units",
+        "by": [
+          "title"
+        ],
+        "filter": {
+          "month": [
+            "12"
+          ],
+          "discount_rate": [
+            "15%"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "title": "Hashtag QuokkaSelfie",
+          "units": 177
+        }
+      ],
+      "total": 177,
+      "source": "Units from 177 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 177 source and 0 simulated sale lines; grouped by title; exact filters on month, discount_rate. Showing 1 of 1 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I looked up units sold in December of the year, all genres, at the 15% discount rate, grouped by title. "
+    },
+    {
+      "type": "text",
+      "text": "The total came to 177, and the title was Hashtag QuokkaSelfie."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
