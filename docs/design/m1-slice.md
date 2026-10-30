@@ -7,8 +7,8 @@ Status: **draft for David's approval.** Plot wrote it and Goldy coordinates it. 
 - **Decided:** the player sees the rules before deciding. Effects appear only after in-game time has passed. Projections, which may not hold true, may come later, once David has played the game.
 - **Decided:** the names Dewey and the Commerce Office. "Meridian Station" was approved on condition that it clears a check, and it didn't: it is a location in Microsoft's Halo. A replacement is proposed in section 1.
 - **Decided:** we generate whatever data gameplay needs, including customers and demographics (see `arc.md`).
-- **Open:** scoring. David doesn't want gross profit to be the only score. Other measures, including ones that aren't about money, are under discussion. Customer measures such as satisfaction can now come from generated customers.
-- **Open:** an event director. David wants a separate LLM, behind the scenes, to watch play and drive events. That would add unpredictability to the seasonal baseline in section 4. Its design is to follow.
+- **Decided:** scoring is a report card of four measures (Profit, Readers served, Happiness, Culture) plus a combined score. See `scoring.md`, which also proposes M1's reduced report card.
+- **Decided:** the event director is Almanac ("Alma"). It sets up events, stretches goals and plays the book market. See `scoring.md`.
 
 M1 is the thinnest slice that can be played end to end: an alert, then the revenue chart, then one decision, then one simulated quarter, then the result.
 
@@ -131,7 +131,7 @@ After the quarter plays out, the result screen shows:
 - **Assumptions:** every lever from section 4, each tagged "from your data" or "assumed", with its value.
 - **Discoveries:** insights A, B and C, each marked found if the player opened a view that shows it. For example, C counts as found once the player has looked at a title by month with the 15% filter applied. Points aren't the main reward; this is.
 
-**Score:** gross profit compared with holding course, in dollars. **Proposal:** M1 has no business-health meter; it begins in M2.
+**Score:** superseded by `scoring.md`. M1 shows a reduced report card: the four measures, graded against last year's Q1 plus 5%, with the do-nothing line still shown for comparison.
 
 ## 6. The in-game agent: Dewey
 
