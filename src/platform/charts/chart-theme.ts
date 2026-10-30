@@ -17,6 +17,12 @@ export const chartTheme = {
   quarterRamp: ["#4b43a8", "#6b5cff", "#9488ff", "#c4bdff"],
   /** Heatmap: from barely off the surface to the lightest violet. */
   heatRamp: ["#1f2547", "#36378a", "#6b5cff", "#c4bdff"],
+  /**
+   * Series that aren't quarters: the dataviz reference's dark categorical
+   * slots, in their fixed order. Validated on the panel surface
+   * (validate_palette.js --mode dark --surface #161c30: all checks pass).
+   */
+  categorical: ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"],
   inkOnLight: "#0f1424",
   inkOnDark: "#f2f4ff",
   font: '"Inter", system-ui, sans-serif',
@@ -29,6 +35,18 @@ export function quarterColor(quarter: string, allQuarters: readonly string[]): s
   // Latest quarters take the lightest steps.
   const step = ramp.length - (allQuarters.length - index);
   return ramp[Math.max(0, step)]!;
+}
+
+/** Most series a chart colors; past this, show a table instead of generating hues. */
+export const MAX_SERIES = chartTheme.categorical.length;
+
+/**
+ * A series' color. Quarters take the ordinal violet ramp; anything else takes
+ * the categorical slots in order of appearance.
+ */
+export function seriesColor(dimension: string, key: string | null, index: number, quarters: readonly string[]): string {
+  if (dimension === "quarter" && key) return quarterColor(key, quarters);
+  return chartTheme.categorical[index % chartTheme.categorical.length]!;
 }
 
 export const tooltipStyle = {

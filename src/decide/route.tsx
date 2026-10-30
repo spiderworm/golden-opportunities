@@ -8,6 +8,7 @@ import { trackServer } from "~/platform/analytics/analytics.server";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
 import { DECIDE_COPY as COPY, OPTIONS } from "./copy";
+import { PlanRefused, readPlan } from "./read-plan.server";
 import styles from "./Decide.module.css";
 
 export const handle: ShellHandle = { title: "Decisions" };
@@ -31,13 +32,15 @@ export function shouldRevalidate({ formMethod, defaultShouldRevalidate }: Should
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const form = await request.formData();
-  const option = form.get("option");
-  if (typeof option !== "string" || !OPTIONS.some((o) => o.id === option)) {
-    return data({ ok: false as const }, { status: 400 });
+  let option: OptionId;
+  try {
+    option = await readPlan(request);
+  } catch (error) {
+    if (error instanceof PlanRefused) return data({ ok: false as const }, { status: error.status });
+    throw error;
   }
   if (getPlan(request)) return data({ ok: false as const }, { status: 409 });
-  submitPlan(request, { option: option as OptionId });
+  submitPlan(request, { option });
   trackServer("plan_submitted", { option });
   return { ok: true as const };
 }

@@ -158,6 +158,6 @@ export function monthsInScope(visibleQuarters: readonly string[], selectedQuarte
 }
 
 /** Sums and counts are zero where nothing sold; averages have no value there. */
-export function isTotal(measure: ChartMeasure): boolean {
-  return measure !== "avg_order_value" && measure !== "avg_discount";
+export function isTotal(measure: Measure): boolean {
+  return !measure.startsWith("avg_");
 }

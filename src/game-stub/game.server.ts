@@ -6,11 +6,12 @@
 // illustrative effect sizes from the M1 design (docs/design/m1-slice.md,
 // section 3): they are placeholders, not a model. The sentences and rules are
 // Plot's copy (docs/design/m1-copy.md), filled with these placeholder numbers.
-import { runQuery } from "~/investigate/query-stub.server";
-import type { QueryView } from "~/query/types";
+import { runQuery } from "~/query/run-query.server";
+import { BASELINE_VIEW } from "~/query/view.server";
 import type { Assumption, Metrics, MonthOutcome, OptionId, Outcome, Plan } from "./types";
 
-const VIEW: QueryView = { periods: ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"], includeUndated: true };
+// 2193 is the history every playthrough replays.
+const VIEW = BASELINE_VIEW;
 const COST_OF_GOODS = 0.6;
 const EVENT_COST = 200;
 const EVENTS = 12;

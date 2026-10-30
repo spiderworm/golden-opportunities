@@ -1,7 +1,8 @@
 // The assistant's MCP server: started by Claude Code over stdio (`node src/assistant/tools/server.ts`), one per
 // answer. It speaks just enough MCP for tools (initialize, tools/list, tools/call, ping), by hand, so there is
 // no SDK surface to audit. Queries go to the app's POST /api/query with the bearer token from the environment
-// (ORBITAL_QUERY_URL, ORBITAL_QUERY_TOKEN); the URL must be on this machine, so the token can't be sent away.
+// (ORBITAL_QUERY_URL, ORBITAL_QUERY_TOKEN); the URL's host must be a loopback IP literal, so the token can't be
+// sent away.
 // ORBITAL_PINS=0 removes pin_chart, for pages with nowhere to put a pin.
 
 import { createInterface } from "node:readline";
@@ -11,6 +12,7 @@ import { checkChart, checkQuery, describeData, SERVER_NAME, ToolInputError, TOOL
 const MAX_LINE = 65_536;
 const MAX_RESPONSE = 1_000_000;
 const QUERY_TIMEOUT_MS = 15_000;
+const LOOPBACK = ["127.0.0.1", "[::1]"];
 
 type Rpc = { jsonrpc?: string; id?: string | number | null; method?: string; params?: { name?: unknown; arguments?: unknown; protocolVersion?: unknown } };
 type Content = { content: { type: "text"; text: string }[]; isError?: boolean };
@@ -19,7 +21,9 @@ export function queryEndpoint(env: NodeJS.ProcessEnv = process.env): { url: URL;
   const token = env.ORBITAL_QUERY_TOKEN;
   if (!token) throw new Error("ORBITAL_QUERY_TOKEN is not set.");
   const url = new URL(env.ORBITAL_QUERY_URL ?? "");
-  if (url.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) throw new Error("ORBITAL_QUERY_URL must be http on this machine.");
+  // Loopback IP literals only, never a hostname (not even localhost): a hostname is resolved, and a hostile
+  // resolver or hosts file could send the bearer token off the machine.
+  if (url.protocol !== "http:" || !LOOPBACK.includes(url.hostname) || url.username || url.password) throw new Error("ORBITAL_QUERY_URL must be http to a loopback IP (127.0.0.1 or [::1]).");
   return { url, token };
 }
 

@@ -1,7 +1,8 @@
 // The result screen's words, exactly as Plot wrote them
 // (docs/design/m1-copy.md, sections 4 to 6). Change them there first.
+// The discoveries' own text is server-only: see discoveries.server.ts.
 // {braces} are filled by the functions below.
-import type { Assumption, DiscoveryId } from "~/game-stub/types";
+import type { Assumption } from "~/game-stub/types";
 
 export const RESULT_COPY = {
   title: "Q1 2194: the results",
@@ -26,20 +27,6 @@ export const RESULT_COPY = {
     notFound: "Not found",
   },
 } as const;
-
-export const DISCOVERIES: { id: DiscoveryId; found: string; notFound: string }[] = [
-  {
-    id: "A",
-    found: "The whole store slowed. Every genre fell by a similar share, and orders fell while order size held.",
-    notFound: "Compare Q3 and Q4 by genre, and look at average order value.",
-  },
-  { id: "B", found: "Weekdays emptied; weekends held.", notFound: "Break Q3 and Q4 down by weekday." },
-  {
-    id: "C",
-    found: "Nonfiction's rise was one discounted title, and every month had one: the Book of the Month.",
-    notFound: "Look closer at the one genre that grew, then break it down by discount.",
-  },
-];
 
 /** "$161,525": money in sentences. */
 export function moneyText(value: number): string {

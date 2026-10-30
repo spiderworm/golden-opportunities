@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 
 import type { QueryResult } from "~/query/types";
-import { barHeight, barModel, barOption, TOP_RANKED } from "./charts/bar-option";
-import { quarterColor } from "~/platform/charts/chart-theme";
+import { Icon } from "~/shell/icons";
+import { categoryHeight, categoryModel, categoryOption, legendItems, TOP_RANKED } from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
-import { DIMENSION_LABELS, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "./format";
-import { canCompare, monthsInScope, CHART_MEASURES, GROUPINGS, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
+import { Legend } from "./charts/Legend";
+import { ResultTable } from "./charts/ResultTable";
+import { DIMENSION_LABELS, formatDimensionValue, MEASURE_LABELS } from "./format";
+import { canCompare, CHART_MEASURES, GROUPINGS, monthsInScope, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
 import styles from "./Investigate.module.css";
 
 export interface MeasureChartProps {
@@ -17,21 +19,25 @@ export interface MeasureChartProps {
   onCompare: (compare: boolean) => void;
   onDrill: (value: string) => void;
   onTable: (shown: boolean) => void;
+  /** Pins this view to the pinned charts; `pinned` when an identical one is already there. */
+  onPin: () => void;
+  pinned: boolean;
 }
 
-export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCompare, onDrill, onTable }: MeasureChartProps) {
+export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCompare, onDrill, onTable, onPin, pinned }: MeasureChartProps) {
   const [table, setTable] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const selected = state.filters[state.by] ?? [];
   const months = state.by === "month" ? monthsInScope(quarters, state.filters.quarter) : [];
   const model = useMemo(
-    () => barModel(result, state.by, state.compare, months, { top: showAll ? undefined : TOP_RANKED, keep: selected }),
+    () =>
+      categoryModel(result, state.by, state.compare ? "quarter" : null, months, { top: showAll ? undefined : TOP_RANKED, keep: selected }),
     [result, state.by, state.compare, months.join(), showAll, selected.join("\u0000")],
   );
   const option = useMemo(
-    () => barOption(model, { measure: state.measure, by: state.by, selected, quarters }),
+    () => categoryOption(model, { selected, quarters }),
     // selected is derived from state.filters, which changes identity with each navigation.
-    [model, state.measure, state.by, selected.join("\u0000"), quarters],
+    [model, selected.join("\u0000"), quarters],
   );
   const title = `${MEASURE_LABELS[state.measure]} by ${DIMENSION_LABELS[state.by].toLowerCase()}`;
 
@@ -89,53 +95,20 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
           >
             Table
           </button>
+          <button type="button" className={styles.toggle} onClick={onPin} disabled={pinned} title={pinned ? "Already pinned" : "Pin this chart below"}>
+            <Icon name="pin" size={14} /> {pinned ? "Pinned" : "Pin"}
+          </button>
         </div>
       </header>
 
       {table ? (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                {result.columns.map((c) => (
-                  <th key={c.key} scope="col" className={c.type === "number" ? styles.numeric : undefined}>
-                    {c.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {result.rows.map((row, i) => (
-                <tr key={i}>
-                  {result.columns.map((c) => (
-                    <td key={c.key} className={c.type === "number" ? styles.numeric : undefined}>
-                      {c.type === "number"
-                        ? formatMeasure(state.measure, row[c.key as ChartMeasure])
-                        : formatDimensionValue(c.key as Grouping, row[c.key as Grouping])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ResultTable result={result} />
       ) : (
         <>
-          {state.compare && (
-            <ul className={styles.legend} aria-label="Quarters">
-              {quarters
-                .filter((q) => model.series.some((s) => s.quarter === q))
-                .map((q) => (
-                  <li key={q}>
-                    <span className={styles.legendSwatch} style={{ background: quarterColor(q, quarters) }} />
-                    {formatDimensionValue("quarter", q)}
-                  </li>
-                ))}
-            </ul>
-          )}
+          <Legend items={legendItems(model, quarters)} label="Quarters" />
           <EChart
             option={option}
-            height={barHeight(model)}
+            height={categoryHeight(model)}
             label={`${title}. Click a bar to filter the screen to it.`}
             onCategoryClick={drillAt}
             categoryAxis={model.horizontal ? "y" : "x"}
