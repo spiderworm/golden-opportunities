@@ -35,6 +35,20 @@ describe("investigate", () => {
   });
 });
 
+describe("the queries it sends", () => {
+  it("never sends filter: undefined, and lists quarters from the view, sales or not", () => {
+    const sent: unknown[] = [];
+    const recording: typeof runQuery = (query, v) => {
+      sent.push(query);
+      return runQuery(query, v);
+    };
+    const future: QueryView = { ...view, periods: [...view.periods, "2194-Q1"] };
+    const result = investigate(DEFAULT_STATE, recording, future);
+    expect(sent.every((q) => !Object.hasOwn(q as object, "filter") || (q as { filter: unknown }).filter !== undefined)).toBe(true);
+    expect(result.options.quarter).toEqual([...quarters, "2194-Q1"]);
+  });
+});
+
 describe("the title view", () => {
   it("appears for exactly one title, by month, ignoring its own month filter", () => {
     expect(investigate(DEFAULT_STATE, runQuery, view).titleView).toBeNull();

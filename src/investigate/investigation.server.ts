@@ -70,39 +70,41 @@ export function buildTile(
   return { measure, quarter, previousQuarter, value: find(quarter), previous: find(previousQuarter) };
 }
 
-function toQueryFilter(filters: Filters): Query["filter"] {
-  return Object.keys(filters).length ? filters : undefined;
+/** Spread into a query: the filter key only when there is one, never `filter: undefined`, which the engine rejects. */
+function withFilter(filters: Filters): Pick<Query, "filter"> {
+  return Object.keys(filters).length ? { filter: filters } : {};
 }
 
 export function investigate(state: InvestigateState, runQuery: RunQuery, view: QueryView): Investigation {
   const run = (query: Query) => runQuery(query, view);
   const option = (dimension: keyof FilterOptions) => values(run({ measure: "units", by: [dimension] }), dimension);
   const options: FilterOptions = {
-    quarter: option("quarter"),
+    // The periods the server lets the player see, not the ones that happen to have sales.
+    quarter: [...view.periods].sort(),
     genre: option("genre"),
     format: option("format"),
     publisher: option("publisher"),
     discount_rate: option("discount_rate"),
   };
 
-  const tileFilter = toQueryFilter(filtersExcept(state.filters, ["quarter"]));
+  const tileFilter = withFilter(filtersExcept(state.filters, ["quarter"]));
   const tiles = TILE_MEASURES.map((measure) =>
-    buildTile(measure, run({ measure, by: ["quarter"], filter: tileFilter }), options.quarter, state.filters),
+    buildTile(measure, run({ measure, by: ["quarter"], ...tileFilter }), options.quarter, state.filters),
   );
 
   const chartBy = state.compare ? ([state.by, "quarter"] as const) : ([state.by] as const);
-  const chart = run({ measure: state.measure, by: chartBy, filter: toQueryFilter(filtersExcept(state.filters, [state.by])) });
+  const chart = run({ measure: state.measure, by: chartBy, ...withFilter(filtersExcept(state.filters, [state.by])) });
   const heatmap = run({
     measure: state.measure,
     by: ["weekday", "month"],
-    filter: toQueryFilter(filtersExcept(state.filters, ["weekday", "month"])),
+    ...withFilter(filtersExcept(state.filters, ["weekday", "month"])),
   });
 
   const title = state.filters.title?.length === 1 ? state.filters.title[0]! : null;
   const titleView = title
     ? {
         title,
-        result: run({ measure: state.measure, by: ["month"], filter: toQueryFilter(filtersExcept(state.filters, ["month"])) }),
+        result: run({ measure: state.measure, by: ["month"], ...withFilter(filtersExcept(state.filters, ["month"])) }),
       }
     : null;
 
