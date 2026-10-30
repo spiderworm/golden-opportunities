@@ -1,3 +1,4 @@
+import { getGameSession } from "~/game/session.server";
 import type { StationNotification } from "./NotificationsBell";
 
 export interface StationState {
@@ -6,14 +7,9 @@ export interface StationState {
   alerts: StationNotification[];
 }
 
-/**
- * Placeholder game state. Frank's game state (the save, the clock, the visible
- * periods) will own the date, and Plot's design the alert wording; swap this
- * for the real source when it lands.
- */
-export function getStationState(): StationState {
+export function getStationState(request: Request): StationState {
   return {
-    date: "2194-01-04",
+    date: getGameSession(request).date,
     alerts: [
       {
         id: "q4-revenue-down",
