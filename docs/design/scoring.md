@@ -4,7 +4,7 @@ Status: **decided by David with Plot, October 30, 2026,** in a one-question-at-a
 
 ## The report card
 
-Each quarter the player is graded on **four measures**, each scored out of 100. The **combined score** is their plain average.
+Each quarter the player is graded on **four measures**, each scored out of 100. The **overall score is the lowest of the four**, always. Raise two measures by sacrificing a third, and the overall score falls. David: "our really really mean robot overlord bosses make our overall score to whatever our lowest measure is. Just that. Always."
 
 | Measure | What it rewards | Boss (sets its goals) |
 | --- | --- | --- |
@@ -13,9 +13,9 @@ Each quarter the player is graded on **four measures**, each scored out of 100. 
 | **Happiness** | Readers finding what they love | The Readers' Guild survey drone |
 | **Culture** | Widening what the station reads | The Ministry of Culture |
 
-The Station Administrator owns the combined score, and misunderstands it.
+The Station Administrator announces the overall score. The boss of the lowest measure takes the credit, or the blame.
 
-**The chart:** a line chart over time, with quarters along the bottom. Each measure has its own colored line, and the combined score has one too. Award markers sit on the quarters where awards were won.
+**The chart:** a line chart over time, with quarters along the bottom. Each measure has its own colored line, and the overall score has one too. Award markers sit on the quarters where awards were won.
 
 **Letter grades.** Scores are computed unrounded, then rounded half up to a whole number (82.5 becomes 83) for display and grading. A measure that hasn't reached its goal is capped at 99 after rounding, so only meeting the goal earns an A+. The ranges are inclusive:
 
@@ -33,11 +33,11 @@ The Station Administrator owns the combined score, and misunderstands it.
 | 60–69 | D |
 | 0–59 | F |
 
-**Order of operations for the combined score:**
-1. Compute each measure's unrounded score.
-2. Well-Rounded Shop is earned if every measure's **rounded** score is 80 or more.
-3. Combined = the mean of the four **unrounded** scores, plus 3 if Well-Rounded, capped at 100.
-4. Round the combined score half up, then grade it.
+**The overall score:**
+- **Overall** = the lowest of the four measures' rounded scores. It gets a letter grade from the same table.
+- **Binding:** every measure whose score equals the overall score. Ties share the blame and are named together.
+- **Close behind:** any other measure within 3 points of the overall score. It gets a warning.
+- There's no bonus and no averaging. Certificates (see Awards) are honors and never change the score.
 
 ## Goals
 
@@ -56,19 +56,19 @@ The Station Administrator owns the combined score, and misunderstands it.
 Each measure is graded on progress from last year (the floor) toward the goal:
 
 - **At or above the goal:** 100, an A+. A result strictly above the goal also earns the Exceeds Requirements award; the score stays capped at 100.
-- **Between last year and the goal:** 65 + 35 × (result − last) ÷ (goal − last). Matching last year scores 65, a D. The denominator is always positive, because every goal is above last year.
-- **Below last year:** 65 − 250 × (last − result) ÷ scale, down to 0, where scale = max(|last|, the measure's 2193 quarterly average). That's 2.5 points for every 1% of scale (*tune*). Using the scale keeps the score finite when last year is zero, and stops a worsening loss from being rewarded when last year was negative.
+- **Between last year and the goal:** 70 + 30 × (result − last) ÷ (goal − last). Matching last year scores 70, a C−. The denominator is always positive, because every goal is above last year.
+- **Below last year:** 70 − 250 × (last − result) ÷ scale, down to 0, where scale = max(|last|, the measure's 2193 quarterly average). That's 2.5 points for every 1% of scale (*tune*). Using the scale keeps the score finite when last year is zero, and stops a worsening loss from being rewarded when last year was negative.
 
 **Edge cases.** These use Profit, whose 2193 quarterly average is $68,828, so its step is $688:
 
 | Last year | Goal | Result | Score |
 | --- | --- | --- | --- |
-| $0 | $688 | $0 | 65 |
-| $0 | $688 | $344 | 82.49 at the full-precision step ($688.28), shown as 82 (B−) |
-| −$100 | −$100 + max($5, $688) = $588 | −$103 | 65 − 250 × 3 ÷ 68,828 = 64.99, shown as 65 (D) |
+| $0 | $688 | $0 | 70 |
+| $0 | $688 | $344 | 84.99 at the full-precision step ($688.28), shown as 85 (B) |
+| −$100 | −$100 + max($5, $688) = $588 | −$103 | 70 − 250 × 3 ÷ 68,828 = 69.99, shown as 70 (C−) |
 | −$100 | $588 | $600 | 100, plus Exceeds Requirements |
-| $37,642 | $39,524 | $37,642 | 65 |
-| $37,642 | $39,524 | $28,802 | 65 − 250 × 8,840 ÷ 68,828 = 32.9, shown as 33 (F) |
+| $37,642 | $39,524 | $37,642 | 70 |
+| $37,642 | $39,524 | $28,802 | 70 − 250 × 8,840 ÷ 68,828 = 37.9, shown as 38 (F) |
 
 **Why not result ÷ goal?** That ratio crowds every grade into the top of the scale. On Q1 profit, the best M1 option and doing nothing came out 4 points apart. Grading progress makes decisions visible on the card. Alma's stretches and events decide how hard each goal is. David's verdict: "Let's try your recommendation, see how well it works out."
 
@@ -99,12 +99,12 @@ Culture values stay hidden. Each quarter the Ministry announces its top contribu
 
 ## Awards
 
-Awards are honors, not points, with one exception: Well-Rounded Shop adds **+3** to that quarter's combined score, still capped at 100. Awards appear as markers on the chart and as plaques on a shelf in the 3D shop.
+Awards are certificates: honors that never change the score. Awards appear as markers on the chart and as plaques on a shelf in the 3D shop.
 
 | Award | Earned for | Presented by |
 | --- | --- | --- |
-| **Exceeds Requirements** | Any measure past its goal | That measure's boss |
-| **Well-Rounded Shop** | All four measures at 80 or above in a quarter | The Station Administrator |
+| **Exceeds Requirements** | Any measure strictly above its goal (it still scores 100; meeting the goal exactly scores 100 without the certificate) | That measure's boss |
+| **Well-Rounded Shop** | All four measures at 80 or above, so the overall score is 80 or above | The Station Administrator |
 | **Comeback** | Restoring a measure that dropped sharply the quarter before | The boss who set the recovery goal |
 | **Weathered the Storm** | Meeting goals in a quarter Alma hit with a major event | The Commerce Office |
 | **Annual awards** | The same awards over a whole year, at an annual review where every boss gives a verdict | All the bosses, unanimously |
@@ -143,7 +143,14 @@ M1 is one decision and one quarter, with no market and no Alma. **Proposal** (Pl
 
 **Visits and readers.** In M1, one visit is one distinct order ID. There is no browsing without buying until M2 generates customers. **Readers served** is the number of distinct orders in the quarter: 6,825 in Q1 2193.
 
-**How each option creates orders** (this replaces the per-line wording given to Frank earlier; the totals don't change):
+**The plan: up to two levers** (decided by David). The player chooses 0 to 2 of three levers: `repick` (re-pick the Books of the Month), `events` (weekday author nights) and `sale` (station-wide sale). Choosing none is holding course. Without `repick`, the previous manager's scheduled picks run.
+
+**How the levers combine.** They apply in this order: author nights, then Books of the Month, then the sale.
+- The sale's 15% replaces every discount, including the picks'. Discounts don't stack.
+- The sale clones every order, including author-night orders and Book of the Month extras.
+- The picks' extra copies always apply, whichever titles are featured.
+
+**How each lever creates orders** (this replaces the per-line wording given to Frank earlier; the totals don't change):
 - **The replay calendar:** each 2194 day replays the 2193 day 364 days earlier, so it falls on the same weekday. If that day lands outside the month, it steps back another week. Daily noise drops or clones whole orders, scaling each day's count by a factor drawn from 0.97 to 1.03. Days with no 2193 sales replay as days with no sales.
 - **Removing 2193's Book of the Month:** the table's extra copies (43, 55 and 58 for January to March) are removed at random from that pick's lines in that month. An order left empty disappears. The pick's remaining copies return to full price.
 - **Book of the Month extra copies:** each extra copy is a new one-line order. Its day is drawn from that month's open days, weighted by each day's baseline orders, from the run's seed.
@@ -153,7 +160,7 @@ M1 is one decision and one quarter, with no market and no Alma. **Proposal** (Pl
 **Happiness.** Computed per order, then averaged over every order in the quarter. A quarter with no orders scores 50.
 - **Quality:** Q = 100 × clamp((r − 3.0) ÷ 1.7, 0, 1), where r is the mean, over the order's lines, of each line's title average rating (from every rating of that title).
 - **Value:** V = 50 + 50 × (1 − e^(−d ÷ 0.075)), where d is the mean discount over the order's lines. Full price gives 50; 15% off gives 93. The curve gives diminishing returns within an order. Diminishing returns across quarters ("a permanent sale stops registering") start in M2.
-- **Order happiness:** 0.6 × Q + 0.4 × V. Comfort and Found it join in M2.
+- **Order happiness:** 0.6 × Q + 0.4 × V, plus 20 for an author-night order, capped at 100. The +20 applies to every order with the author-night kind, including the sale's clones of them. Readers at an author night enjoy the night out. Comfort and Found it join in M2.
 
 **Culture.**
 - **Title value:** v = 1 + 9 × clamp((r − 3.0) ÷ 1.7, 0, 1) + 3 × (number of awards for the title). Here r is the title's average rating, and awards join on the exact title. Values run from 1.0 (*Soft, Pliable Truth*) to 15.8 (*The Mallemaroking*).
@@ -174,7 +181,7 @@ M1 is one decision and one quarter, with no market and no Alma. **Proposal** (Pl
 | Happiness | 65.07 | 64.92 | 64.67 | 64.68 | 64.84 | 0.65 |
 | Culture | 17,368 | 22,331 | 27,326 | 21,590 | 22,154 | 222 |
 
-**M1 goals** (Q1 2193 plus 5%; no extra stretch, because Alma isn't in M1):
+**M1 goals** (Q1 2193 plus 5%, for every plan; no extra stretch, because Alma isn't in M1):
 
 | Measure | Goal |
 | --- | ---: |
@@ -183,4 +190,14 @@ M1 is one decision and one quarter, with no market and no Alma. **Proposal** (Pl
 | Happiness | 68.32 |
 | Culture | 18,236 |
 
-This gives every M1 option a distinct shape on the card. The sale lifts Readers served and Happiness, and sinks Profit. The quiet picks lift Profit and Culture. The author nights lift Readers served and Culture, but gamble on Profit.
+**Calibration (seeds 1 to 20, Sim's engine with these rules).** Overall score range, then median, then the measure that usually binds:
+
+| Plan | Overall | Usually bound by |
+| --- | --- | --- |
+| None (hold course) | 67–70, median 67 (D) | Profit |
+| Any plan with `sale` | about 38–42 (F) | Profit |
+| `repick` | 71–76, median 72 (C−) | Happiness or Readers served |
+| `events` | 69–89, median 72 (C−) | Profit |
+| `repick` + `events` | 85–91, median 87 (B+) | Happiness |
+
+Combining both data findings (the Book of the Month pattern and the weekday slump) beats either alone. Each alone beats holding course, and the sale fails however it's combined. David asked for exactly this: "making it possible, reasonable for M1 plan grades to be much higher, better".
