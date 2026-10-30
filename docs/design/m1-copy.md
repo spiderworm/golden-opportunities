@@ -146,8 +146,21 @@ So no more than three capitalized lines show before the table.
 For the Station Administrator, `{fraction}` is the score in words: the nearest of THREE-FIFTHS, TWO-THIRDS, SEVEN-TENTHS, THREE-QUARTERS, FOUR-FIFTHS, FIVE-SIXTHS, NINE-TENTHS and NINETEEN-TWENTIETHS. It is prefixed with "ABOUT" when the fraction isn't exact: 75 is "THREE-QUARTERS", and 78 is "ABOUT THREE-QUARTERS".
 
 **Lowest-measure lines.** These are spoken by the binding measure's boss, under the overall score.
-- If all four measures are at 100, show only that line.
-- Otherwise, show the one-binder or tie line. Then, if a sacrifice backfired, the sacrifice line. Then at most one close-behind line, for the closest measure.
+These lines aren't matched first-come. Each line has an exact condition (`r` is a measure's result, `g` its goal, `last` its Q1 2193 value):
+
+| Line | Shows when |
+| --- | --- |
+| All met | Every measure has r ≥ g, so every score is 100 |
+| One binder | Not all met, and exactly one measure has the lowest score |
+| Tie | Not all met, and two or more measures share the lowest score. Name them all: "{A} AND {B}", or "{A}, {B} AND {C}" |
+| Sacrifice | Not all met, at least one measure has r < last, and a different measure has r > g |
+| Close behind | Not all met, and some non-binding measure's score is at most 3 above the overall score. Show it only for the closest such measure; if two are equally close, use card order (Profit, Readers served, Happiness, Culture) |
+
+What shows, in this order:
+- All met: that line alone.
+- Otherwise: the one-binder or tie line, then the sacrifice line if its condition holds, then the close-behind line if its condition holds. That's at most three lines.
+
+Certificates are separate from these lines and use their own conditions. Exceeds Requirements goes to each measure with r > g, strictly; meeting the goal exactly scores 100 but earns no certificate. Well-Rounded Shop goes to a card where every score is 80 or more. Certificates can appear alongside any of the lines above.
 
 `{MEASURE}` is the measure's name in capitals: PROFIT, READERS SERVED, HAPPINESS, CULTURE.
 
@@ -155,9 +168,9 @@ For the Station Administrator, `{fraction}` is the score in words: the nearest o
 | --- | --- |
 | One measure sets the score | `{MEASURE} HAS SET YOUR SCORE: {score}. THE OTHER MEASURES WERE IRRELEVANT. WE ADMIRED THEM BRIEFLY.` |
 | A tie sets the score | `{MEASURE} AND {MEASURE} HAVE JOINTLY SET YOUR SCORE: {score}. WE ARE SUSPICIOUS OF TIES.` |
-| A sacrifice backfired (one measure fell below last year while another rose past its goal) | `YOU RAISED ONE MEASURE BY LOWERING ANOTHER. WE ONLY COUNT THE LOWER ONE. THIS IS POLICY.` |
-| All four at 100 | `ALL MEASURES EXCEEDED REQUIREMENTS. YOUR SCORE IS 100. WE ARE RECALIBRATING OUR EXPECTATIONS UPWARD.` |
-| Close behind (each) | `{MEASURE} WAS {n} POINTS FROM SETTING YOUR SCORE. IT IS WATCHING.` |
+| Sacrifice | `YOU RAISED ONE MEASURE BY LOWERING ANOTHER. WE ONLY COUNT THE LOWER ONE. THIS IS POLICY.` |
+| All met | `ALL MEASURES MET REQUIREMENTS. YOUR SCORE IS 100. WE ARE RECALIBRATING OUR EXPECTATIONS UPWARD.` |
+| Close behind | `{MEASURE} WAS {n} POINTS FROM SETTING YOUR SCORE. IT IS WATCHING.` |
 
 **Numbers in the lines:** goals are rounded up for display, and a result that falls short of its goal is rounded down. That way a result never appears to meet a goal it missed: culture up 4.6% against a 5% target reads "CULTURE INCREASED 4%".
 
