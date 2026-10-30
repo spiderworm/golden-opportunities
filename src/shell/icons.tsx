@@ -89,6 +89,12 @@ const paths = {
   filter: <path d="M4 6h16M7 12h10M10 18h4" />,
   chevronDown: <path d="m6 9 6 6 6-6" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  pin: (
+    <>
+      <path d="M9 4h6l-1 6 3 3v2H7v-2l3-3z" />
+      <path d="M12 15v5" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof paths;
