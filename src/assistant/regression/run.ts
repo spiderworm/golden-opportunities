@@ -16,7 +16,9 @@ for (const c of CASES.filter((c) => !only.length || only.includes(c.id))) {
   });
   const events: WireEvent[] = (await res.text()).split("\n").filter(Boolean).map((l) => JSON.parse(l));
   const text = events.flatMap((e) => (e.type === "text" ? [e.text] : [])).join("");
-  const problems = res.ok ? c.checks.map((check) => check({ text, events })).filter((p) => p !== null) : [`HTTP ${res.status}`];
+  // An empty, errored or unfinished answer fails outright: the checks are mostly absence checks.
+  const broken = !res.ok ? `HTTP ${res.status}` : events.some((e) => e.type === "error") ? "ended with an error" : events.at(-1)?.type !== "done" ? "never finished" : !text.trim() ? "said nothing" : null;
+  const problems = broken ? [broken] : c.checks.map((check) => check({ text, events })).filter((p) => p !== null);
   if (problems.length) failed++;
   console.log(`${problems.length ? "FAIL" : "ok  "} ${c.id} (${c.finding}) [${events.map((e) => e.type).filter((t) => t !== "text").join(", ")}]`);
   console.log(`     ${text.replace(/\n+/g, " ")}`);

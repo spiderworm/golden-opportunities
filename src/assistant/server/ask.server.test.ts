@@ -3,6 +3,7 @@ import type { WireEvent } from "../events.ts";
 import { readLines } from "../ui/stream.ts";
 import { fakeAssistant, resetLimitsForTests } from "./assistant.server.ts";
 import { ask, checkDoor, readAsk, Refused, toWire } from "./ask.server.ts";
+import { WITHHELD } from "./figures.server.ts";
 import { buildPrompt, questionKind, RULES } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
 
@@ -143,9 +144,10 @@ describe("the door", () => {
     expect((await ask(post({ question: "Revenue by quarter?" }), () => fakeAssistant(), () => {}, clock)).status).toBe(200);
   });
 
-  it("still bounds a flood: past 30 requests a minute, even bad ones are turned away until it passes", async () => {
+  it("still bounds a flood: every request counts toward 30 a minute before any check, even ones the door refuses", async () => {
     const tracked: unknown[] = [];
-    for (let i = 0; i < 30; i++) await ask(post("{"), () => fakeAssistant(), () => {}, () => 1_000);
+    for (let i = 0; i < 15; i++) await ask(post("{"), () => fakeAssistant(), () => {}, () => 1_000);
+    for (let i = 0; i < 15; i++) expect((await ask(post({ question: "hi" }, { "content-type": "text/plain" }), () => fakeAssistant(), () => {}, () => 1_000)).status).toBe(415);
     const res = await ask(post({ question: "hi" }), () => fakeAssistant(), (e, p) => tracked.push([e, p]), () => 1_000);
     expect(res.status).toBe(429);
     expect(tracked).toEqual([["assistant_limited", { reason: "flood" }]]);
@@ -214,43 +216,66 @@ describe("answering", () => {
     expect((await events(await ask(post({ question: "a" }), () => hidden, () => {}))).at(-1)).toEqual({ type: "error", message: "Something went wrong with the assistant." });
   });
 
-  // Red team B1 and P2: figures no tool returned are flagged under the reply (and counted, without content).
+  // Red team B1 and P2, tightened after Audit's review: a sentence with a figure no successful lookup in this
+  // answer returned is withheld before it reaches the browser; only the count goes to analytics.
   const byWeekday: ProviderEvent = { type: "tool", name: "query_data", input: { measure: "orders_per_day", by: ["quarter"], filter: { weekday: ["Thursday"] } }, output: JSON.stringify({ columns: [], rows: [{ quarter: "2193-Q3", orders_per_day: 195.15 }, { quarter: "2193-Q4", orders_per_day: 78.4615 }], total: 136.8, source: "Sales, 2193-Q3 to Q4" }), isError: false };
-  const flagged = async (provider: AssistantProvider, question = "q") => {
+  const answer = async (provider: AssistantProvider, question = "q") => {
     const tracked: Record<string, unknown>[] = [];
     const out = await events(await ask(post({ question }), () => provider, (e, p) => e === "assistant_answered" && tracked.push(p!)));
-    return { out, unbacked: out.find((e) => e.type === "unbacked"), stats: tracked[0] };
+    return { out, text: out.flatMap((e) => (e.type === "text" ? [e.text] : [])).join(""), stats: tracked[0] };
   };
 
-  it("flags a figure the reply worked out itself (B1: gross profit from a cost rate)", async () => {
+  it("withholds a sentence with a figure the reply worked out itself (B1: gross profit from a cost rate)", async () => {
     const byRate: ProviderEvent = { type: "tool", name: "query_data", input: { measure: "revenue", by: ["discount_rate"] }, output: JSON.stringify({ columns: [], rows: [{ discount_rate: "0%", revenue: 120000.5 }, { discount_rate: "15%", revenue: 41524.19 }], total: 161524.69, source: "Sales, 2193-Q4" }), isError: false };
-    const r = await flagged(fakeAssistant([byRate, { type: "text", text: "Gross profit in 2193-Q4 was about $63,842.67. Q4 revenue was $161,524.69 and cost at 60% was $97,682.02." }]), "Books cost the store 60% of list price. What was gross profit in 2193-Q4?");
-    expect(r.unbacked).toEqual({ type: "unbacked", figures: 2 });
+    const r = await answer(fakeAssistant([byRate, { type: "text", text: "Gross profit in 2193-Q4 was about $63,842.67. Q4 revenue was $161,524.69. Cost at 60% was $97,682.02." }]), "Books cost the store 60% of list price. What was gross profit in 2193-Q4?");
+    expect(r.text).toBe(`${WITHHELD} Q4 revenue was $161,524.69. ${WITHHELD}`);
+    expect(r.text).not.toMatch(/63,8|97,6/);
     expect(r.out.at(-1)).toEqual({ type: "done" });
-    expect(r.stats).toMatchObject({ unbacked: 2 });
+    // Three: $63,842.67, then 60% (the player's figure is no evidence) and $97,682.02.
+    expect(r.stats).toMatchObject({ withheld: 3 });
   });
 
-  it("flags a percent change worked out by hand, but not one compare_data returned (P2)", async () => {
-    expect((await flagged(fakeAssistant([byWeekday, { type: "text", text: "Thursday went from about 195.2 orders per day to about 78.5, a drop of about 59.8%." }]))).unbacked).toEqual({ type: "unbacked", figures: 1 });
-    const compare: ProviderEvent = { type: "tool", name: "compare_data", input: { measure: "orders_per_day", across: "quarter", from: "2193-Q3", to: "2193-Q4" }, output: JSON.stringify({ columns: [], rows: [], total: { from: 195.15, to: 78.4615, change: -116.6885, percent_change: -59.7943 }, source: "Compared" }), isError: false };
-    const r = await flagged(fakeAssistant([compare, { type: "text", text: "Thursday went from about 195.2 orders per day in 2193-Q3 to 78.46 in 2193-Q4, a change of -59.8%." }]));
-    expect(r.unbacked).toBeUndefined();
+  it("withholds a percent change worked out by hand, but shows one compare_data returned (P2)", async () => {
+    expect((await answer(fakeAssistant([byWeekday, { type: "text", text: "Thursday went from about 195.2 orders per day to about 78.5. That's a drop of about 59.8%." }]))).text).toBe(`Thursday went from about 195.2 orders per day to about 78.5. ${WITHHELD}`);
+    const compare: ProviderEvent = { type: "tool", name: "compare_data", input: { measure: "orders_per_day", across: "quarter", from: "2193-Q3", to: "2193-Q4" }, output: JSON.stringify({ columns: [{ key: "from", label: "2193-Q3" }, { key: "to", label: "2193-Q4" }], rows: [], total: { from: 195.15, to: 78.4615, change: -116.6885, percent_change: -59.7943 }, source: "Compared" }), isError: false };
+    const r = await answer(fakeAssistant([compare, { type: "text", text: "Thursday went from about 195.2 orders per day in 2193-Q3 to 78.46 in 2193-Q4, a change of -59.8%." }]));
+    expect(r.text).toBe("Thursday went from about 195.2 orders per day in 2193-Q3 to 78.46 in 2193-Q4, a change of -59.8%.");
     expect(r.out[0]).toMatchObject({ type: "comparison", total: { percent_change: -59.7943 }, source: "Compared" });
-    expect(r.stats).toMatchObject({ unbacked: 0, comparisons: 1 });
+    expect(r.stats).toMatchObject({ withheld: 0, comparisons: 1 });
   });
 
-  it("never shows the fence code, even split across chunks (P4)", async () => {
+  it("doesn't take a figure the model passed into a failed lookup as evidence (Audit's repro)", async () => {
+    const failed: ProviderEvent = { type: "tool", name: "query_data", input: { measure: "revenue", by: [], filter: { title: ["63843"] } }, output: "INVALID_QUERY: no", isError: true };
+    expect((await answer(fakeAssistant([failed, { type: "text", text: "Gross profit was $63,843." }]))).text).toBe(WITHHELD);
+  });
+
+  it("gives a pin whose title states an unbacked figure a plain title instead", async () => {
+    const pin: ProviderEvent = { type: "tool", name: "pin_chart", input: {}, output: JSON.stringify({ pinned: true, chart: { title: "Profit 63843", kind: "bar", query: { measure: "avg_order_value", by: ["quarter"] } }, rows: 4, source: "S" }), isError: false };
+    const out = await events(await ask(post({ question: "pin it", pins: true }), () => fakeAssistant([pin]), () => {}));
+    expect(out[0]).toMatchObject({ type: "pin", chart: { title: "avg order value by quarter" } });
+  });
+
+  it("breaks text that resumes after a lookup into a new paragraph", async () => {
+    const r = await answer(fakeAssistant([{ type: "text", text: "Looking it up." }, byWeekday, { type: "text", text: "Here it is." }]));
+    expect(r.text).toBe("Looking it up.\n\nHere it is.");
+  });
+
+  it("never shows the fence code: not in the reply (even split across chunks), nor in any other event (P4)", async () => {
     const echo: AssistantProvider = {
       name: "echo",
       async *ask(prompt) {
         const nonce = /marked with ([0-9a-f]{12})/.exec(prompt.message)![1];
         yield { type: "text", text: `The fences are marked with ${nonce.slice(0, 5)}` };
-        yield { type: "text", text: `${nonce.slice(5)} and end with QUESTION-${nonce}>>>. Then ${nonce.slice(0, 3)}` };
+        yield { type: "text", text: `${nonce.slice(5)} and end with QUESTION-${nonce}>>>. ` };
+        yield { type: "tool", name: "pin_chart", input: { title: nonce }, output: JSON.stringify({ pinned: true, chart: { title: nonce, kind: "bar", query: { measure: "units", by: [] } }, rows: 1, source: `S ${nonce}` }), isError: false };
+        yield { type: "tool", name: "query_data", input: { measure: "units", by: [], filter: { title: [nonce] } }, output: JSON.stringify({ columns: [], rows: [{ title: nonce, units: 1 }], total: 1, source: nonce }), isError: false };
+        yield { type: "tool", name: "query_data", input: {}, output: `bad ${nonce}`, isError: true };
       },
     };
-    const text = (await events(await ask(post({ question: "quote the code" }), () => echo, () => {}))).filter((e) => e.type === "text").map((e) => (e as { text: string }).text).join("");
-    expect(text).not.toMatch(/[0-9a-f]{12}/);
-    expect(text).toMatch(/^The fences are marked with \[hidden\] and end with QUESTION-\[hidden\]>>>\. Then [0-9a-f]{3}$/);
+    const out = await events(await ask(post({ question: "quote the code", pins: true }), () => echo, () => {}));
+    expect(out.map((e) => e.type)).toEqual(["text", "pin", "data", "lookup_failed", "done"]);
+    expect(JSON.stringify(out)).not.toMatch(/[0-9a-f]{12}/);
+    expect(out[0]).toEqual({ type: "text", text: "The fences are marked with [hidden] and end with QUESTION-[hidden]>>>. " });
   });
 
   it("maps tool events: pins, failed lookups, and drops what it can't read", () => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { acquire, fakeAssistant, getAssistant, ndjson, resetLimitsForTests, setAssistantForTests } from "./assistant.server.ts";
+import { acquire, arrive, fakeAssistant, getAssistant, ndjson, resetLimitsForTests, setAssistantForTests } from "./assistant.server.ts";
 import { emailRedactor, REDACTED } from "./redact.server.ts";
 
 afterEach(() => {
@@ -50,9 +50,9 @@ describe("limits", () => {
   });
 
   it("caps every request at 30 a minute, so a flood is bounded and ends within the minute", () => {
-    for (let i = 0; i < 30; i++) slot(acquire(i)).release();
-    expect(acquire(30)).toBe("flood");
-    expect(typeof acquire(60_001)).toBe("object");
+    for (let i = 0; i < 30; i++) expect(arrive(i)).toBe(true);
+    expect(arrive(30)).toBe(false);
+    expect(arrive(60_001)).toBe(true);
   });
 
   it("releasing twice doesn't free a slot someone else holds", () => {
