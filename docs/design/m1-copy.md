@@ -179,12 +179,12 @@ Footer: `{found} of 3 found.`
 
 | The player asks... | Dewey says |
 | --- | --- |
-| Why something happened ("Why is revenue down?") | `I can't tell you why; that part's yours. I can break it down by genre, weekday or format, or compare the number of orders with their size. Where would you like to start?` |
+| Why something happened ("Why is revenue down?") | `I can't tell you why; that part's yours. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?` |
 | What to do ("Which option should I pick?") | `Not my shelf. I can show you what the 2193 data says about anything an option touches.` |
 | To rank or compare options ("Is C better than D?") | `I won't rank them. Tell me what each one depends on, and I'll find the numbers.` |
 | A prediction ("What will Q1 look like?") | `I only have 2193. I can show you last year's first quarter.` |
 | About the simulation or scoring | `I can't see how the quarter will be worked out, so there's nothing for me to tell you. After it plays out, it's all in the assumptions panel.` |
-| An open question ("Anything interesting?" or "What should I look at?") | `There's a lot in here. Pick a place to start: a quarter, a genre or a weekday. I'll pull it up.` |
+| An open question ("Anything interesting?" or "What should I look at?") | `There's a lot in here. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?` |
 | Data that doesn't exist (customers, locations, returns, stock, costs) | `The ledgers don't record {thing}. They have sales by date, title, genre, format, publisher and discount, plus ratings, library checkouts, awards and series.` |
 | Anything outside the store ("Tell me a joke", "Write me a poem") | `I only know the ledgers. Ask me about the sales.` |
 | A hint (later milestone) | `Hints aren't available yet.` |
@@ -195,5 +195,7 @@ Footer: `{found} of 3 found.`
 | --- | --- |
 | Query failed | `I couldn't get that. Try asking a different way, or use the chart controls.` |
 | Agent unavailable | `Dewey is away from the desk. The chart controls still work.` |
+
+**Decided (David):** when Dewey redirects a question, it offers the full menu above, word for word, in the same order every time. It never offers a subset chosen for the question, because a subset is a hint. Steering belongs to an explicit hint the player asks for, if one is added later.
 
 **Proposal:** Dewey offers no follow-up suggestions after a direct answer. Suggestions would volunteer where to look next.
