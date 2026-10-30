@@ -123,7 +123,9 @@ Options (title, then one line):
 | The Ministry of Culture (Culture) | `CULTURE INCREASED. YOU MAY CELEBRATE FOR 0.5 MINUTES.` | `CULTURE INCREASED {pct}%. CULTURE TARGET: {goalPct}%. PLEASE CULTURE HARDER.` | `CULTURE HAS DECREASED. THE MINISTRY IS UNCULTURED BY THIS.` |
 | The Station Administrator (combined) | `COMBINED SCORE: {score}. THIS IS A WHOLE SHOP.` (100) | `COMBINED SCORE: {score}. THIS IS {fraction} OF A SHOP. PLEASE ACQUIRE THE REMAINDER.` (60 to 99) | `COMBINED SCORE: {score}. THE ADMINISTRATOR WILL NEED TO SIT DOWN.` (below 60) |
 
-For the Station Administrator, `{fraction}` is the score in words: "THREE-QUARTERS" for 75, "ABOUT FOUR-FIFTHS" for 80, and so on, rounded to a simple fraction.
+For the Station Administrator, `{fraction}` is the score in words: the nearest of THREE-FIFTHS, TWO-THIRDS, SEVEN-TENTHS, THREE-QUARTERS, FOUR-FIFTHS, FIVE-SIXTHS, NINE-TENTHS and NINETEEN-TWENTIETHS. It is prefixed with "ABOUT" when the fraction isn't exact: 75 is "THREE-QUARTERS", and 78 is "ABOUT THREE-QUARTERS".
+
+**Numbers in the lines:** goals are rounded up for display, and a result that falls short of its goal is rounded down. That way a result never appears to meet a goal it missed: culture up 4.6% against a 5% target reads "CULTURE INCREASED 4%".
 
 ### What happened
 
