@@ -6,6 +6,7 @@ import { reportCard } from "./grading";
 import { ledger, measures, ratingsOf, type Ledger, type Ratings } from "./measures";
 import { baseline, historyOf, leversFor, MONTHS, PICK_DISCOUNT, run, YEAR, type History, type Run } from "./model";
 import { linesOf, ordersOf, type Order } from "./orders";
+import { has, isPlan } from "./plan";
 import type { HappenedFacts, MeasureId, Metrics, Plan, ReportCard, SimulationResult } from "./types";
 import { MEASURE_IDS } from "./types";
 
@@ -42,6 +43,8 @@ function prepare(data: DeepReadonly<BookshopData>): Prepared {
   return result;
 }
 
+const HOLD_COURSE: Plan = { levers: [] };
+
 const metricsOf = (l: Ledger): Metrics => ({ ...l });
 
 function cardFor(p: Prepared, r: Run): ReportCard {
@@ -57,8 +60,14 @@ function cardFor(p: Prepared, r: Run): ReportCard {
 function pickedCopies(r: Run) {
   let baseCopies = 0;
   let discountCost = 0;
+  let extra = 0;
   for (const order of r.orders) {
-    if (order.kind === "pick-extra") continue;
+    // The sale's clones are the sale's doing, not the picks'.
+    if (order.saleClone) continue;
+    if (order.kind === "pick-extra") {
+      extra += 1;
+      continue;
+    }
     const isbn = r.picks[MONTHS.indexOf(order.day.slice(5, 7) as (typeof MONTHS)[number])];
     for (const item of order.items)
       if (item.isbn === isbn) {
@@ -66,50 +75,47 @@ function pickedCopies(r: Run) {
         discountCost += PICK_DISCOUNT * item.listPrice;
       }
   }
-  const extra = r.orders.filter((o) => o.kind === "pick-extra").length;
   return { extra, baseCopies, discountCost };
 }
 
 function factsFor(plan: Plan, r: Run, mine: Ledger, hold: Ledger): HappenedFacts {
-  switch (plan.option) {
-    case "A":
-      return { option: "A", ...pickedCopies(r), profit: mine.grossProfit };
-    case "B":
-      return {
-        option: "B",
-        unitsPct: mine.units / hold.units - 1,
-        perBook: hold.grossProfit / hold.units - mine.grossProfit / mine.units,
-        revPct: mine.revenue / hold.revenue - 1,
-        profitPct: mine.grossProfit / hold.grossProfit - 1,
-      };
-    case "C":
-      return { option: "C", ...pickedCopies(r), amount: mine.grossProfit - hold.grossProfit };
-    case "D": {
-      const nights = ledger(r.orders.filter((o: Order) => o.kind === "event"));
-      const orders = r.nights.reduce((t, n) => t + n.orders, 0);
-      return {
-        option: "D",
-        events: r.nights.length,
-        orders,
-        perNight: orders / r.nights.length,
-        gross: nights.grossProfit,
-        eventCosts: mine.eventCosts,
-        amount: mine.grossProfit - hold.grossProfit,
-      };
-    }
+  const facts: HappenedFacts = { amount: mine.grossProfit - hold.grossProfit };
+  if (plan.levers.length === 0) facts.holdCourse = { ...pickedCopies(r), profit: mine.grossProfit };
+  if (has(plan, "repick")) facts.repick = pickedCopies(r);
+  if (has(plan, "events")) {
+    // The nights' own orders, before the sale clones any of them.
+    const nights = ledger(r.orders.filter((o) => o.kind === "event" && !o.saleClone));
+    const orders = r.nights.reduce((t, n) => t + n.orders, 0);
+    facts.events = { nights: r.nights.length, orders, perNight: orders / r.nights.length, gross: nights.grossProfit, eventCosts: mine.eventCosts };
   }
+  if (has(plan, "sale"))
+    facts.sale = {
+      unitsPct: mine.units / hold.units - 1,
+      perBook: hold.grossProfit / hold.units - mine.grossProfit / mine.units,
+      revPct: mine.revenue / hold.revenue - 1,
+      profitPct: mine.grossProfit / hold.grossProfit - 1,
+    };
+  return facts;
 }
 
 /** Plays Q1 2194 under the plan, and under holding course from the same seed (a 32-bit unsigned integer). */
 export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<BookshopData>): SimulationResult {
+  if (!isPlan(plan)) throw new Error("Invalid plan: 0 to 2 distinct levers, in LEVER_IDS order");
   const p = prepare(data);
   const base = baseline(p.history, seed);
-  const holdRun = run(p.history, base, seed, leversFor("A"));
-  const planRun = plan.option === "A" ? holdRun : run(p.history, base, seed, leversFor(plan.option));
+  const holdRun = run(p.history, base, seed, leversFor(HOLD_COURSE));
+  const planRun = plan.levers.length === 0 ? holdRun : run(p.history, base, seed, leversFor(plan));
   const hold = ledger(holdRun.orders);
   const mine = ledger(planRun.orders, planRun.nights.length);
 
-  const saleChange = (response: number) => ledger(run(p.history, base, seed, leversFor("B", response)).orders).grossProfit - hold.grossProfit;
+  // What the sale adds to the plan's other moves (for a plan without the sale, what adding it would have done).
+  const others: Plan = { levers: plan.levers.filter((l) => l !== "sale") };
+  const profitOf = (levers: Plan, response?: number) => {
+    const r = run(p.history, base, seed, leversFor(levers, response));
+    return ledger(r.orders, r.nights.length).grossProfit;
+  };
+  const withoutSale = profitOf(others);
+  const saleChange = (response: number) => profitOf({ levers: [...others.levers, "sale"] }, response) - withoutSale;
   const facts = factsFor(plan, planRun, mine, hold);
   const monthOf = (orders: readonly Order[], month: string) => {
     const l = ledger(orders.filter((o) => o.day.slice(5, 7) === month));
@@ -120,7 +126,7 @@ export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<Boo
     lines: linesOf(planRun.orders, YEAR),
     doNothingLines: linesOf(holdRun.orders, YEAR),
     outcome: {
-      plan: { option: plan.option },
+      plan: { levers: [...plan.levers] },
       quarter: `${YEAR}-Q1`,
       monthly: MONTHS.map((month) => ({
         month: `${YEAR}-${month}`,
@@ -129,7 +135,7 @@ export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<Boo
       })),
       totals: { plan: metricsOf(mine), holdCourse: metricsOf(hold) },
       reportCard: { plan: cardFor(p, planRun), holdCourse: cardFor(p, holdRun) },
-      assumptions: assumptions(plan.option, { averageOrderValue: p.averageOrderValue, saleAt10: saleChange(0.1), saleAt30: saleChange(0.3) }),
+      assumptions: assumptions(plan, { averageOrderValue: p.averageOrderValue, saleAt10: saleChange(0.1), saleAt30: saleChange(0.3) }),
       happened: happened(facts),
       facts,
     },

@@ -1,14 +1,28 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getQueryToken } from './access.server';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { issueGameQueryToken } from '../game/query-token.server';
+import { saves } from '../game/session.server';
+import { rmSync } from 'node:fs';
 import { createQueryHandler } from './http.server';
 import { QueryError } from './errors';
 import type { QueryResult } from './types';
+
+const { directory } = await vi.hoisted(async () => {
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  return { directory: mkdtempSync(tmpdir() + '/query-http-') };
+});
+vi.mock('../platform/analytics/instance.server', () => ({ DATA_DIR: directory }));
+vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }));
+const save = saves.create();
+const capability = issueGameQueryToken(save.id);
+const getQueryToken = () => capability.token;
+afterAll(() => { capability.revoke(); rmSync(directory, { recursive: true, force: true }); });
 
 const url = 'http://localhost:3000/api/query';
 const result: QueryResult = { columns: [], rows: [], total: 0, source: 'Test source' };
 const payload = JSON.stringify({ measure: 'revenue', by: ['quarter'] });
 function request(body: BodyInit = payload, headers: Record<string, string> = {}, target = url): Request {
-  return new Request(target, { method: 'POST', headers: { origin: 'http://localhost:3000', 'content-type': 'application/json', ...headers }, body, duplex: 'half' } as RequestInit);
+  return new Request(target, { method: 'POST', headers: { cookie: 'orbital_save=' + save.id, origin: 'http://localhost:3000', 'content-type': 'application/json', ...headers }, body, duplex: 'half' } as RequestInit);
 }
 function handler() {
   const run = vi.fn(() => result); const track = vi.fn();
@@ -26,7 +40,7 @@ describe('bounded query resource endpoint', () => {
     expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(response.headers.get('access-control-allow-origin')).toBeNull();
   });
-  it('accepts only the startup bearer capability for non-browser clients, without changing the view', async () => {
+  it('accepts the save-bound bearer capability for non-browser clients', async () => {
     const { handle, run, track } = handler();
     const response = await handle(new Request(url, { method: 'POST', headers: { authorization: `Bearer ${getQueryToken()}`, 'content-type': 'application/json' }, body: payload }));
     expect(response.status).toBe(200);

@@ -24,3 +24,26 @@ test('other screens never load the 3D station', async ({ page }) => {
   await page.waitForLoadState('networkidle');
   expect(scripts.filter(path => /StationScene|\/three\/|@react-three/.test(path))).toEqual([]);
 });
+
+test('the station opens inside, then wherever the player left it', async ({ page }) => {
+  await page.goto('/?analytics-test=1');
+  const station = page.getByRole('region', { name: 'The station' });
+  const control = station.getByRole('button', { name: /Go inside|Step outside/ });
+  const still = station.getByText("can't show the station in 3D");
+  await expect(control.or(still)).toBeVisible({ timeout: 15_000 });
+  test.skip(await still.isVisible(), 'no WebGL 2 here: the still picture has no camera to move');
+
+  // A first visit starts inside, and stays there.
+  await expect(control).toHaveText('Step outside');
+  await page.waitForTimeout(3_000);
+  await expect(control).toHaveText('Step outside');
+
+  await control.click();
+  await expect(control).toHaveText('Go inside');
+  await page.reload();
+  await expect(control).toHaveText('Go inside', { timeout: 15_000 });
+
+  await control.click();
+  await page.reload();
+  await expect(control).toHaveText('Step outside', { timeout: 15_000 });
+});

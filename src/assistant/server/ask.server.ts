@@ -113,6 +113,8 @@ export async function readAsk(request: Request, deadlineMs = 5_000): Promise<Ask
 // from a tool, the model or the CLI (Audit, #32: a validation error echoed a model-written key). The model
 // still reads the tool's own error.
 export const LOOKUP_FAILED = "The terminal couldn't run that lookup.";
+/** When the answer's query session has ended (Frank's save-bound token: revoked, expired, or the save moved on). */
+export const SESSION_ENDED = "That session ended. Reload the page to continue.";
 export const UNAVAILABLE = "The assistant is unavailable right now. Try again in a moment.";
 export const TIMED_OUT = "The assistant took too long, so it was stopped.";
 export const FAILED = "Something went wrong with the assistant.";
@@ -123,7 +125,9 @@ export const FAILED = "Something went wrong with the assistant.";
  */
 export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
   if (event.type === "text") return event;
-  if (event.isError) return { type: "lookup_failed", message: LOOKUP_FAILED };
+  // Keyed on the query layer's error code, which the tool server puts first ("SESSION_ENDED: ..."); the rest of
+  // the text is never shown.
+  if (event.isError) return { type: "lookup_failed", message: event.output.startsWith("SESSION_ENDED:") ? SESSION_ENDED : LOOKUP_FAILED };
   let output: Record<string, unknown>;
   try {
     output = JSON.parse(event.output);

@@ -1,14 +1,16 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { CapsuleGeometry, Color, MeshStandardMaterial, Object3D, SphereGeometry, type InstancedMesh } from "three";
+import { CapsuleGeometry, Color, MeshStandardMaterial, Object3D, Quaternion, SphereGeometry, Vector3, type InstancedMesh } from "three";
 
+import type { Bookshop } from "./bookshop";
 import { merged } from "./geometry";
 import { MAX_SHOPPERS } from "../scene-params";
 
 // Browsing customers, drawn as simple figures until real character models
 // arrive. Each walks between browsing spots and stops at each for a while.
 // Instance 0 is the keeper behind the counter; the rest come and go with
-// the shop's busyness.
+// the shop's busyness. Now and then a shopper walks off with a book and sets
+// it down wherever they stop next, or leaves one leaning; the robots tidy up.
 
 /** Where a shopper stands to browse, and which way they face (radians about Y, 0 = +z). */
 const SPOTS: [x: number, z: number, facing: number][] = [
@@ -26,6 +28,10 @@ const SPOTS: [x: number, z: number, facing: number][] = [
 ];
 const KEEPER: [number, number, number] = [3.1, 0.2, Math.PI / 2];
 const SPEED = 0.8;
+/** The chance a shopper leaving a spot takes a book with them, and that they leave one leaning. */
+const TAKE_CHANCE = 0.35;
+const LEAN_CHANCE = 0.25;
+const Y_AXIS = new Vector3(0, 1, 0);
 
 const COATS = ["#d0705a", "#5a8fd0", "#e0b45a", "#6fbf8f", "#b27ad6", "#e6e1d3", "#5ac2c2", "#d65a8f"];
 
@@ -36,6 +42,8 @@ interface Walker {
   walk: number;
   browse: number;
   started: number;
+  /** The stray book they're holding (a bookshop slot), or -1. */
+  carrying: number;
 }
 
 const randomSpot = (not: number) => {
@@ -47,10 +55,10 @@ const randomSpot = (not: number) => {
 function plan(from: number, to: number, now: number): Walker {
   const [ax, az] = SPOTS[from]!;
   const [bx, bz] = SPOTS[to]!;
-  return { from, to, walk: Math.hypot(bx - ax, bz - az) / SPEED, browse: 3 + Math.random() * 6, started: now };
+  return { from, to, walk: Math.hypot(bx - ax, bz - az) / SPEED, browse: 3 + Math.random() * 6, started: now, carrying: -1 };
 }
 
-export function Shoppers({ count }: { count: number }) {
+export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
   const ref = useRef<InstancedMesh>(null);
   const { geometry, material } = useMemo(
     () => ({
@@ -69,6 +77,7 @@ export function Shoppers({ count }: { count: number }) {
     [],
   );
   const dummy = useMemo(() => new Object3D(), []);
+  const hand = useMemo(() => ({ at: new Vector3(), turn: new Quaternion() }), []);
 
   useEffect(() => {
     const mesh = ref.current;
@@ -91,15 +100,39 @@ export function Shoppers({ count }: { count: number }) {
     mesh.setMatrixAt(0, dummy.matrix);
     for (let i = 0; i < count; i++) {
       let w = walkers[i]!;
-      if (now - w.started > w.walk + w.browse) w = walkers[i] = plan(w.to, randomSpot(w.to), now);
+      if (now - w.started > w.walk + w.browse) {
+        const [sx, sz] = SPOTS[w.to]!;
+        const next = plan(w.to, randomSpot(w.to), now);
+        if (Math.random() < TAKE_CHANCE) next.carrying = shop.take(sx, sz);
+        if (Math.random() < LEAN_CHANCE) shop.lean(sx, sz);
+        w = walkers[i] = next;
+      }
       const t = Math.min(1, (now - w.started) / Math.max(w.walk, 0.001));
       const [ax, az] = SPOTS[w.from]!;
       const [bx, bz, facing] = SPOTS[w.to]!;
       const walking = t < 1;
       dummy.position.set(ax + (bx - ax) * t, walking ? Math.abs(Math.sin(now * 7 + i)) * 0.05 : 0, az + (bz - az) * t);
-      dummy.rotation.set(0, walking ? Math.atan2(bx - ax, bz - az) : facing, 0);
+      const heading = Math.atan2(bx - ax, bz - az);
+      dummy.rotation.set(0, walking ? heading : facing, 0);
       dummy.updateMatrix();
       mesh.setMatrixAt(i + 1, dummy.matrix);
+      if (w.carrying >= 0) {
+        if (walking) {
+          hand.at.set(dummy.position.x + Math.sin(heading) * 0.3, 0.95, dummy.position.z + Math.cos(heading) * 0.3);
+          shop.hold(w.carrying, hand.at, hand.turn.setFromAxisAngle(Y_AXIS, heading));
+        } else {
+          shop.setDown(w.carrying, bx, bz, heading);
+          w.carrying = -1;
+        }
+      }
+    }
+    // Anyone who has left the shop puts down what they were holding.
+    for (let i = count; i < MAX_SHOPPERS; i++) {
+      const w = walkers[i]!;
+      if (w.carrying < 0) continue;
+      const [bx, bz, facing] = SPOTS[w.to]!;
+      shop.setDown(w.carrying, bx, bz, facing);
+      w.carrying = -1;
     }
     mesh.count = count + 1;
     mesh.instanceMatrix.needsUpdate = true;
