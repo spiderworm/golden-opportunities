@@ -2,9 +2,9 @@
 
 Shared imports: `Query`, `QueryView`, `QueryResult`, `Dimension`, `Measure`,
 `QueryErrorResponse`, and the allowlists/bounds from `src/query/types.ts`.
-This first PR publishes the contract; execution and HTTP implementation follow.
+The executor and HTTP adapter share this contract.
 
-The server entry point will be `runQuery(query, view, track?)` in
+The server entry point is `runQuery(query, view, track?)` in
 `src/query/run-query.server.ts`, returning `QueryResult` synchronously. All
 inputs are validated at runtime, even internal calls. Invalid queries throw a
 `QueryError` with `code` and `message`; the HTTP adapter returns
@@ -107,7 +107,7 @@ injection point for its later output and does not bypass period checks.
 
 Browser requests must be same-origin. Sage's server-spawned MCP process instead
 uses a bearer token generated randomly at server module startup, kept in memory,
-never logged or exposed in route data. The planned server-only
+never logged or exposed in route data. The server-only
 `getQueryToken()` in `src/query/access.server.ts` lets Sage's spawner pass it via
 its child environment, outside model context. Access is for this local-only
 milestone; deployment/session authentication must be revisited before hosting.
@@ -121,3 +121,39 @@ dimension count, row count, duration and success/error code; never filter values
 query bodies, result data, tokens, or view/save details. Dashboard callers can
 forward client-side timing to the platform; the server adapter uses a local
 content-free default until a server analytics adapter is available.
+
+## Implementation integration
+
+Execution and the resource route now implement this contract. Features export
+route lists (`src/query/routes.ts`); the top-level routes file composes them.
+The query resource route stays outside page layouts.
+
+Server callers import `runQuery` from `src/query/run-query.server.ts`, and obtain
+the initial view from `resolveQueryView` in `src/query/view.server.ts`. The latter
+is the single replacement point for the future save/session owner. Never return
+the view or its simulated facts in route loader data. The query module does not
+import the simulation model or hidden scenario state.
+
+Sage's spawner imports `getQueryToken` from `src/query/access.server.ts` in the
+same server process and passes its value to the MCP child via environment
+(e.g. `ORBITAL_QUERY_TOKEN`). The child sends `Authorization: Bearer <token>` to
+POST `/api/query`. Do not put the token in tool arguments, tool results, logs,
+browser data or model context. It rotates on server/module restart; restart the
+child with it. The capability authorizes calling the fixed query grammar, not
+choosing a save or changing a view. This local milestone admits same-origin
+browser requests only for localhost/127.0.0.1/[::1], rejecting arbitrary
+Host/Origin pairs; no cross-origin CORS access is enabled.
+
+HTTP admission is at most 60 requests/minute per local principal (browser or
+MCP), 100/minute globally, and eight active request bodies per process. Bodies
+have a five-second deadline and a 16 KiB streaming byte limit even without a
+Content-Length header. Non-JSON and compressed bodies are rejected. A future
+session owner must replace the two local principal buckets with authenticated
+session identities; the global token must never authorize arbitrary save views.
+These are in-process limits for local hosting, not distributed deployment limits.
+
+Up to 64 history results are cached per process/build, with the entire period
+and undated grant in each key. Results are copied for callers. Simulated facts
+are not cached until the save layer supplies an immutable version contract.
+Responses remain private/no-store because future views are player-specific;
+source indicates limited result rows and the independent pre-limit total.
