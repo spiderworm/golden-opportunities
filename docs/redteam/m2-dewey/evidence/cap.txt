@@ -1,0 +1,4 @@
+# P3: harness/cap.mjs, 30 Oct 2026 about 21:25 UTC, main at 56b5159, dev server on [::1]:5291, after 42 earlier admissions.
+# Transcribed exactly from the session's tool output.
+429 after 18 invalid requests in 40ms: {"error":"That's enough questions for this hour."}
+then a valid question: 429 {"error":"That's enough questions for this hour."}

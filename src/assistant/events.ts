@@ -8,6 +8,8 @@ export type WireEvent =
   | ({ type: "data"; query: unknown } & QueryResult)
   | ({ type: "comparison"; query: unknown } & ComparisonResult)
   | { type: "pin"; chart: ChartSpec; source: string }
+  /** The reply stated figures that no lookup in this answer returned (a count, never the figures). */
+  | { type: "unbacked"; figures: number }
   | { type: "lookup_failed"; message: string }
   | { type: "error"; message: string }
   | { type: "done" };
