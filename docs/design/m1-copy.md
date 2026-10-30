@@ -99,6 +99,34 @@ Options (title, then one line):
 | Score line | `{+/-}${amount} gross profit` |
 | Buttons | `See the assumptions`, `Back to the ledgers` |
 
+### Report card
+
+| Element | String |
+| --- | --- |
+| Heading | `Report card` |
+| Combined label | `Combined score` |
+| Score with grade | `{score} ({grade})` |
+| Held-course comparison | `If you had held course: {score} ({grade})` |
+| Columns | `Measure`, `This quarter`, `Q1 2193`, `Goal`, `Score`, `If you had held course` |
+| Measures | `Profit`, `Readers served`, `Happiness`, `Culture` |
+| Award tag | `Exceeds Requirements` |
+| Well-Rounded Shop | `Well-Rounded Shop: every measure scored 80 or more, which adds 3 to the combined score.` |
+| Note | `Each goal is Q1 2193 plus 5%. Matching last year scores 65, a D. Meeting the goal scores 100, an A+.` |
+
+**Boss lines.** One line per measure, chosen by the result: at or past the goal, between last year and the goal, or below last year. Bosses speak in capitals. The numbers are the card's.
+
+| Boss (measure) | At or past the goal | Between last year and the goal | Below last year |
+| --- | --- | --- | --- |
+| The Commerce Office (Profit) | `PROFIT: ${result}. GOAL: ${goal}. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED.` | `PROFIT ROSE. IT DID NOT ROSE ENOUGH. WE HAVE NOTED THIS IN A SPREADSHEET.` | `PROFIT FELL BELOW LAST YEAR. THIS IS THE OPPOSITE OF WHAT WE REQUESTED.` |
+| The Throughput Subcommittee (Readers served) | `{result} READERS PASSED THROUGH THE DOOR. THE DOOR PERFORMED ADMIRABLY. SO DID YOU.` | `{result} READERS. THE DOOR HAS CAPACITY FOR MORE. THE DOOR IS DISAPPOINTED.` | `FEWER READERS THAN LAST YEAR. WE HAVE INSPECTED THE DOOR. THE DOOR IS NOT AT FAULT.` |
+| The Readers' Guild survey drone (Happiness) | `HAPPINESS: {result}. THIS EXCEEDS THE REQUIRED HAPPINESS. PLEASE DO NOT BECOME COMPLACENT ABOUT HAPPINESS.` | `HAPPINESS: {result}. PLEASE BE {goal}.` | `HAPPINESS HAS DECLINED. THE DRONE HAS RECORDED SEVERAL SIGHS.` |
+| The Ministry of Culture (Culture) | `CULTURE INCREASED. YOU MAY CELEBRATE FOR 0.5 MINUTES.` | `CULTURE INCREASED {pct}%. CULTURE TARGET: {goalPct}%. PLEASE CULTURE HARDER.` | `CULTURE HAS DECREASED. THE MINISTRY IS UNCULTURED BY THIS.` |
+| The Station Administrator (combined) | `COMBINED SCORE: {score}. THIS IS A WHOLE SHOP.` (100) | `COMBINED SCORE: {score}. THIS IS {fraction} OF A SHOP. PLEASE ACQUIRE THE REMAINDER.` (60 to 99) | `COMBINED SCORE: {score}. THE ADMINISTRATOR WILL NEED TO SIT DOWN.` (below 60) |
+
+For the Station Administrator, `{fraction}` is the score in words: "THREE-QUARTERS" for 75, "ABOUT FOUR-FIFTHS" for 80, and so on, rounded to a simple fraction.
+
+The Commerce Office's middle line keeps "DID NOT ROSE" on purpose: robots aren't perfect.
+
 ### What happened
 
 Each option has three sentences, filled from the model.
