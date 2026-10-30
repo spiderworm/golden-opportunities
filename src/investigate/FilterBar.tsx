@@ -3,23 +3,26 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "~/shell/icons";
 import { DIMENSION_LABELS, formatDimensionValue } from "./format";
 import type { FilterOptions } from "./investigation.server";
-import { FILTER_DIMENSIONS, type FilterDimension, type Filters } from "./state";
+import { discountChoice, FILTER_DIMENSIONS, type DiscountChoice, type FilterDimension, type Filters } from "./state";
 import styles from "./Investigate.module.css";
 
 const MENUS = ["quarter", "genre", "format", "publisher"] as const satisfies readonly (keyof FilterOptions)[];
+/** Dimensions with their own menu; the rest show as chips. */
+const IN_MENUS: readonly FilterDimension[] = [...MENUS, "discount_rate", "discounted"];
 
 export interface FilterBarProps {
   filters: Filters;
   options: FilterOptions;
   onChange: (dimension: FilterDimension, values: string[]) => void;
+  onDiscount: (choice: DiscountChoice) => void;
   onClear: () => void;
 }
 
 /** One row of filters above everything they scope. */
-export function FilterBar({ filters, options, onChange, onClear }: FilterBarProps) {
+export function FilterBar({ filters, options, onChange, onDiscount, onClear }: FilterBarProps) {
   const any = FILTER_DIMENSIONS.some((d) => filters[d]?.length);
   // Menus show their own selections; chips cover the rest (the heatmap's weekday and month).
-  const chipped = FILTER_DIMENSIONS.filter((d) => !(MENUS as readonly string[]).includes(d) && filters[d]?.length);
+  const chipped = FILTER_DIMENSIONS.filter((d) => !IN_MENUS.includes(d) && filters[d]?.length);
 
   return (
     <div className={styles.filterBar} role="group" aria-label="Filters">
@@ -36,6 +39,7 @@ export function FilterBar({ filters, options, onChange, onClear }: FilterBarProp
             onChange={(values) => onChange(dimension, values)}
           />
         ))}
+        <DiscountMenu choice={discountChoice(filters)} rates={options.discount_rate} onChange={onDiscount} />
       </div>
       {any && (
         <ul className={styles.chips} aria-label="Other filters">
@@ -66,17 +70,7 @@ export function FilterBar({ filters, options, onChange, onClear }: FilterBarProp
   );
 }
 
-function FilterMenu({
-  dimension,
-  options,
-  selected,
-  onChange,
-}: {
-  dimension: keyof FilterOptions;
-  options: string[];
-  selected: string[];
-  onChange: (values: string[]) => void;
-}) {
+function usePopover() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
@@ -97,6 +91,21 @@ function FilterMenu({
     };
   }, [open]);
 
+  return { open, setOpen, rootRef, panelId };
+}
+
+function FilterMenu({
+  dimension,
+  options,
+  selected,
+  onChange,
+}: {
+  dimension: keyof FilterOptions;
+  options: string[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const { open, setOpen, rootRef, panelId } = usePopover();
   const summary =
     selected.length === 0 ? "All" : selected.length === 1 ? formatDimensionValue(dimension, selected[0]) : `${selected.length} selected`;
 
@@ -124,6 +133,54 @@ function FilterMenu({
               onChange={(e) => onChange(e.target.checked ? [...selected, value] : selected.filter((v) => v !== value))}
             />
             {formatDimensionValue(dimension, value)}
+          </label>
+        ))}
+      </fieldset>
+    </div>
+  );
+}
+
+/** One choice: every sale, full price, any discount, or a single rate. */
+function DiscountMenu({ choice, rates, onChange }: { choice: DiscountChoice; rates: string[]; onChange: (choice: DiscountChoice) => void }) {
+  const { open, setOpen, rootRef, panelId } = usePopover();
+  const choices: { value: DiscountChoice; label: string }[] = [
+    { value: "all", label: "All sales" },
+    { value: "full", label: "Full price" },
+    { value: "any", label: "Any discount" },
+    ...rates
+      .filter((rate) => parseFloat(rate) !== 0)
+      .map((rate) => ({ value: rate as DiscountChoice, label: formatDimensionValue("discount_rate", rate) })),
+  ];
+  const summary = choice === "all" ? "All" : (choices.find((c) => c.value === choice)?.label ?? "All");
+
+  return (
+    <div className={styles.filterMenu} ref={rootRef}>
+      <button
+        type="button"
+        className={styles.filterButton}
+        data-active={choice !== "all" || undefined}
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen(!open)}
+      >
+        <span className={styles.filterName}>Discount</span>
+        <span className={styles.filterSummary}>{summary}</span>
+        <Icon name="chevronDown" size={16} />
+      </button>
+      <fieldset id={panelId} className={styles.filterPanel} hidden={!open}>
+        <legend className={styles.visuallyHidden}>Discount</legend>
+        {choices.map((c) => (
+          <label key={c.value} className={styles.filterOption}>
+            <input
+              type="radio"
+              name={panelId}
+              checked={choice === c.value}
+              onChange={() => {
+                onChange(c.value);
+                setOpen(false);
+              }}
+            />
+            {c.label}
           </label>
         ))}
       </fieldset>

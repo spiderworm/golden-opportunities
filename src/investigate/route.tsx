@@ -3,7 +3,8 @@ import { useLocation, useNavigation, useSearchParams } from "react-router";
 import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
 import type { QueryView } from "~/query/types";
 import type { ShellHandle } from "~/shell/Shell";
-import { noopTrack } from "~/shell/track";
+import { track } from "~/platform/analytics/analytics.client";
+import { trackServer } from "~/platform/analytics/analytics.server";
 import type { Route } from "./+types/route";
 import { FilterBar } from "./FilterBar";
 import { Heatmap } from "./Heatmap";
@@ -11,7 +12,17 @@ import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
 import { runQuery } from "./query-stub.server";
-import { DEFAULT_STATE, parseState, setFilter, toggleCell, toggleFilterValue, toSearchParams, type InvestigateState } from "./state";
+import {
+  DEFAULT_STATE,
+  parseState,
+  setDiscount,
+  setFilter,
+  toggleCell,
+  toggleFilterValue,
+  toSearchParams,
+  type InvestigateState,
+} from "./state";
+import { TitleView } from "./TitleView";
 import styles from "./Investigate.module.css";
 
 export const handle: ShellHandle = { title: "Investigate" };
@@ -25,17 +36,23 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export function loader({ request }: Route.LoaderArgs) {
+  const started = performance.now();
   const state = parseState(new URL(request.url).searchParams);
-  return { state, ...investigate(state, runQuery, VIEW) };
+  const investigation = investigate(state, runQuery, VIEW);
+  trackServer("investigate_loaded", {
+    durationMs: Math.round(performance.now() - started),
+    measure: state.measure,
+    by: state.by,
+    filters: Object.keys(state.filters).length,
+  });
+  return { state, ...investigation };
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {
-  const { state, tiles, chart, heatmap, options } = loaderData;
+  const { state, tiles, chart, heatmap, titleView, options } = loaderData;
   const [, setSearchParams] = useSearchParams();
   const navigation = useNavigation();
   const location = useLocation();
-  // TODO(analytics): switch to track from ~/platform/analytics/analytics.client when it merges.
-  const track = noopTrack;
   const refreshing = navigation.state === "loading" && navigation.location?.pathname === location.pathname;
 
   function update(next: InvestigateState) {
@@ -50,6 +67,11 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
         onChange={(dimension, values) => {
           track("investigate_filter_changed", { dimension, values: values.length });
           update(setFilter(state, dimension, values));
+        }}
+        onDiscount={(choice) => {
+          // Rates are labels like "15%", not content; "all", "full" and "any" are fixed choices.
+          track("investigate_discount_filtered", { choice });
+          update(setDiscount(state, choice));
         }}
         onClear={() => {
           track("investigate_filters_cleared");
@@ -80,9 +102,27 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
         }}
         onTable={(shown) => track("investigate_table_toggled", { shown })}
       />
+      {titleView && (
+        <TitleView
+          state={state}
+          title={titleView.title}
+          result={titleView.result}
+          quarters={options.quarter}
+          onMonth={(month) => {
+            const next = toggleFilterValue(state, "month", month);
+            track("investigate_drilldown", { source: "title_view", dimension: "month", selected: next.filters.month?.length ?? 0 });
+            update(next);
+          }}
+          onClose={() => {
+            track("investigate_title_closed");
+            update(setFilter(state, "title", []));
+          }}
+        />
+      )}
       <Heatmap
         state={state}
         result={heatmap}
+        quarters={options.quarter}
         onCell={(weekday, month) => {
           const next = toggleCell(state, weekday, month);
           track("investigate_drilldown", { source: "heatmap", dimension: "weekday_month", selected: next.filters.month ? 1 : 0 });

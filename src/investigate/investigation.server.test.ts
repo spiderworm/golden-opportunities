@@ -35,6 +35,32 @@ describe("investigate", () => {
   });
 });
 
+describe("the queries it sends", () => {
+  it("never sends filter: undefined, and lists quarters from the view, sales or not", () => {
+    const sent: unknown[] = [];
+    const recording: typeof runQuery = (query, v) => {
+      sent.push(query);
+      return runQuery(query, v);
+    };
+    const future: QueryView = { ...view, periods: [...view.periods, "2194-Q1"] };
+    const result = investigate(DEFAULT_STATE, recording, future);
+    expect(sent.every((q) => !Object.hasOwn(q as object, "filter") || (q as { filter: unknown }).filter !== undefined)).toBe(true);
+    expect(result.options.quarter).toEqual([...quarters, "2194-Q1"]);
+  });
+});
+
+describe("the title view", () => {
+  it("appears for exactly one title, by month, ignoring its own month filter", () => {
+    expect(investigate(DEFAULT_STATE, runQuery, view).titleView).toBeNull();
+    const title = "Hashtag QuokkaSelfie";
+    const drilled = investigate({ ...DEFAULT_STATE, filters: { title: [title], month: ["12"] } }, runQuery, view);
+    expect(drilled.titleView?.title).toBe(title);
+    expect(drilled.titleView?.result.rows.length).toBe(12);
+    const twoTitles = investigate({ ...DEFAULT_STATE, filters: { title: [title, "The Thing Is"] } }, runQuery, view);
+    expect(twoTitles.titleView).toBeNull();
+  });
+});
+
 describe("buildTile", () => {
   const byQuarter = { columns: [], total: 0, source: "", rows: [{ quarter: "2193-Q1", units: 5 }, { quarter: "2193-Q3", units: 9 }] };
 

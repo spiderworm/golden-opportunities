@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_STATE, filtersExcept, parseState, toggleCell, toggleFilterValue, toSearchParams } from "./state";
+import { DEFAULT_STATE, discountChoice, filtersExcept, monthsInScope, parseState, setDiscount, toggleCell, toggleFilterValue, toSearchParams } from "./state";
 
 describe("investigate state", () => {
   it("round-trips through the URL", () => {
@@ -10,12 +10,14 @@ describe("investigate state", () => {
   });
 
   it("falls back to defaults for anything it doesn't know", () => {
-    expect(parseState(new URLSearchParams("measure=profit&by=colour&title=Dune"))).toEqual(DEFAULT_STATE);
+    expect(parseState(new URLSearchParams("measure=profit&by=colour&author=Someone"))).toEqual(DEFAULT_STATE);
     expect(toSearchParams(DEFAULT_STATE).toString()).toBe("");
   });
 
-  it("only compares quarters when the grouping isn't time", () => {
+  it("only compares quarters when the grouping isn't time or titles", () => {
     expect(parseState(new URLSearchParams("by=month&compare=quarter")).compare).toBe(false);
+    expect(parseState(new URLSearchParams("by=title&compare=quarter")).compare).toBe(false);
+    expect(parseState(new URLSearchParams("by=weekday&compare=quarter")).compare).toBe(true);
     expect(parseState(new URLSearchParams("by=format&compare=quarter")).compare).toBe(true);
   });
 
@@ -40,5 +42,23 @@ describe("investigate state", () => {
 
   it("leaves out a view's own dimensions", () => {
     expect(filtersExcept({ genre: ["Fiction"], month: ["03"] }, ["genre"])).toEqual({ month: ["03"] });
+  });
+
+  it("keeps the discount filter to one choice", () => {
+    const rate = setDiscount(DEFAULT_STATE, "15%");
+    expect(rate.filters).toEqual({ discount_rate: ["15%"] });
+    expect(discountChoice(rate.filters)).toBe("15%");
+    const any = setDiscount(rate, "any");
+    expect(any.filters).toEqual({ discounted: ["yes"] });
+    expect(discountChoice(any.filters)).toBe("any");
+    expect(setDiscount(any, "full").filters).toEqual({ discount_rate: ["0%"] });
+    expect(discountChoice(setDiscount(any, "full").filters)).toBe("full");
+    expect(setDiscount(any, "all").filters).toEqual({});
+  });
+
+  it("lists the months in the quarters in scope", () => {
+    const visible = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
+    expect(monthsInScope(visible)).toHaveLength(12);
+    expect(monthsInScope(visible, ["2193-Q4", "2193-Q1"])).toEqual(["01", "02", "03", "10", "11", "12"]);
   });
 });
