@@ -2,6 +2,9 @@ import { serverAnalytics } from "./analytics.server";
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const MAX_BODY_BYTES = 256;
+const READ_DEADLINE_MS = 2000;
+const MAX_PER_MINUTE = 30;
+let recent: number[] = [];
 
 type Answer = { status: number; body: { on: boolean } | { error: string } };
 
@@ -26,7 +29,15 @@ export async function setSharingFromRequest(request: Request, apply = (on: boole
   }
   if (!LOOPBACK.has(host) || origin !== new URL(request.url).origin) return { status: 403, body: { error: "same-origin requests only" } };
   if (!(request.headers.get("content-type") ?? "").startsWith("application/json")) return { status: 415, body: { error: "JSON only" } };
-  const text = await readCapped(request, MAX_BODY_BYTES);
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (declared > MAX_BODY_BYTES) return { status: 413, body: { error: "too large" } };
+  // Admission before the body is read: a flood can't tie the server up reading bodies.
+  const now = Date.now();
+  recent = recent.filter((t) => now - t < 60_000);
+  if (recent.length >= MAX_PER_MINUTE) return { status: 429, body: { error: "too many requests" } };
+  recent.push(now);
+  const text = await readCapped(request, MAX_BODY_BYTES, READ_DEADLINE_MS);
+  if (text === "timeout") return { status: 408, body: { error: "too slow" } };
   if (text === null) return { status: 413, body: { error: "too large" } };
   let on: unknown;
   try {
@@ -41,21 +52,35 @@ export async function setSharingFromRequest(request: Request, apply = (on: boole
   return { status: 200, body: { on } };
 }
 
-/** The body as text, or null once it passes the cap; never buffers more than the cap. */
-async function readCapped(request: Request, cap: number): Promise<string | null> {
+/** For tests: forget recent requests. */
+export function resetAdmission() {
+  recent = [];
+}
+
+/** The body as text; null once it passes the cap, "timeout" past the deadline. Never buffers more than the cap. */
+async function readCapped(request: Request, cap: number, deadlineMs: number): Promise<string | null | "timeout"> {
   if (!request.body) return "";
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<"timeout">((resolve) => (timer = setTimeout(() => resolve("timeout"), deadlineMs)));
   for (;;) {
-    const { done, value } = await reader.read();
+    const next = await Promise.race([reader.read(), deadline]);
+    if (next === "timeout") {
+      void reader.cancel();
+      return "timeout";
+    }
+    const { done, value } = next;
     if (done) break;
     size += value.byteLength;
     if (size > cap) {
+      clearTimeout(timer);
       await reader.cancel();
       return null;
     }
     chunks.push(value);
   }
+  clearTimeout(timer);
   return new TextDecoder().decode(Buffer.concat(chunks));
 }

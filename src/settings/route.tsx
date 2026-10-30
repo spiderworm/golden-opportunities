@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouteLoaderData } from "react-router";
 
-import { installId, setSharing, sharing, track } from "~/platform/analytics/analytics.client";
+import { setSharing, startAnalytics, track } from "~/platform/analytics/analytics.client";
 import type { loader as rootLoader } from "~/root";
 import styles from "./Settings.module.css";
 
@@ -14,17 +14,23 @@ export default function Settings() {
   // Analytics start in the browser, so read their state after the first render.
   const [state, setState] = useState<{ on: boolean; install: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
   useEffect(() => {
-    setState({ on: sharing(), install: installId() });
+    if (!root) return;
+    // A child's effects run before the root's, so make sure analytics have
+    // started (it's idempotent) before reading their state.
+    const analytics = startAnalytics(root.instance);
+    setState({ on: analytics.sharing(), install: analytics.install() });
     track("settings_opened");
-  }, []);
+  }, [root?.instance]);
 
   async function toggle() {
     if (!state || saving) return;
     const on = !state.on;
     setSaving(true);
-    await setSharing(on);
+    const confirmed = await setSharing(on);
     setState({ ...state, on });
+    setUnconfirmed(!confirmed);
     setSaving(false);
   }
 
@@ -52,6 +58,11 @@ export default function Settings() {
             <span className={styles.knob} />
           </button>
         </div>
+        {unconfirmed && (
+          <p className={styles.warning} role="status">
+            The game couldn't confirm this with its server. {state?.on ? "Try again in a moment." : "This browser has stopped sending, and the server will be told again the next time the game opens."}
+          </p>
+        )}
         <dl className={styles.ids}>
           <dt>Install number</dt>
           <dd>{state?.install || "…"}</dd>

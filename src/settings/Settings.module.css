@@ -103,3 +103,12 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   word-break: break-all;
 }
+
+.warning {
+  margin: 16px 0 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--color-down) 15%, transparent);
+  color: var(--color-text);
+  font-size: 14px;
+}

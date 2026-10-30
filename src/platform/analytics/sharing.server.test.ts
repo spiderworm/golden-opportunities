@@ -1,5 +1,7 @@
-import { expect, test } from "vitest";
-import { setSharingFromRequest } from "./sharing.server";
+import { beforeEach, expect, test } from "vitest";
+import { resetAdmission, setSharingFromRequest } from "./sharing.server";
+
+beforeEach(() => resetAdmission());
 
 const URL_ = "http://localhost:5173/api/analytics/sharing";
 const req = (body: string, headers: Record<string, string> = {}, method = "POST", url = URL_) =>
@@ -34,4 +36,32 @@ test("anything but a small {on: boolean} body changes nothing", async () => {
   expect((await run(req(`{"on":false,"pad":"${"x".repeat(400)}"}`))).status).toBe(413);
   expect((await run(req('{"on":false}', { "content-type": "text/plain" }))).status).toBe(415);
   expect((await run(req("", {}, "GET"))).status).toBe(405);
+});
+
+test("a body that never finishes times out, and a flood is refused before its body is read", async () => {
+  const stalled = new Request(URL_, {
+    method: "POST",
+    headers: { origin: "http://localhost:5173", "content-type": "application/json" },
+    body: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{"on":')); } }),
+    // @ts-expect-error Node needs this for a streamed body
+    duplex: "half",
+  });
+  expect((await run(stalled)).status).toBe(408);
+  resetAdmission();
+  for (let i = 0; i < 30; i++) expect((await run(req('{"on":true}'))).status).toBe(200);
+  let pulled = false;
+  const flood = new Request(URL_, {
+    method: "POST",
+    headers: { origin: "http://localhost:5173", "content-type": "application/json" },
+    // highWaterMark 0: the stream is pulled only when someone reads it.
+    body: new ReadableStream({ pull(c) { pulled = true; c.enqueue(new TextEncoder().encode('{"on":false}')); c.close(); } }, { highWaterMark: 0 }),
+    // @ts-expect-error Node needs this for a streamed body
+    duplex: "half",
+  });
+  expect((await run(flood)).status).toBe(429);
+  expect(pulled).toBe(false);
+});
+
+test("a declared length over the cap is refused without reading", async () => {
+  expect((await run(req('{"on":false}', { "content-length": "9999" }))).status).toBe(413);
 });

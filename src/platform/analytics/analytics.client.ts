@@ -37,17 +37,26 @@ export const track: Track = (event, props, options) => {
 
 /** For the Settings screen: the "Share play data" switch and the install ID shown under it. */
 export const sharing = () => analytics?.sharing() ?? true;
-export async function setSharing(on: boolean): Promise<void> {
+/**
+ * The "Share play data" switch, for the browser and the server together.
+ * Resolves true once the server has confirmed. On false, the browser's
+ * choice still stands; if sharing is off, the server is told again at the
+ * next page load.
+ */
+export async function setSharing(on: boolean): Promise<boolean> {
   analytics?.setSharing(on);
-  await tellServer(on);
+  return tellServer(on);
 }
 export const installId = () => analytics?.install() ?? "";
 
-/** The server keeps its own play data (queries, Dewey); the same switch stops it. */
-async function tellServer(on: boolean): Promise<void> {
+/** The server keeps its own play data (queries, Dewey); the same switch stops it. True once it confirms. */
+async function tellServer(on: boolean): Promise<boolean> {
   try {
-    await fetch("/api/analytics/sharing", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ on }) });
+    const res = await fetch("/api/analytics/sharing", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ on }) });
+    if (!res.ok) return false;
+    const body: unknown = await res.json();
+    return typeof body === "object" && body !== null && (body as { on?: unknown }).on === on;
   } catch {
-    // offline or the server is down; it's told again at the next page load if sharing is off
+    return false; // offline or the server is down
   }
 }
