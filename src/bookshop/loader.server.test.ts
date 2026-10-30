@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { joinBookshop, loadBookshop } from './loader';
+import { joinBookshop } from './joins';
+import { loadBookshop } from './loader.server';
 import tables from './data.json';
 import type { BookshopTables } from './types';
 
