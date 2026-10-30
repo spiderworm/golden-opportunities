@@ -227,7 +227,8 @@ export function lowestMeasureLines(card: ReportCard): string[] {
 export function lowestMeasureSpeakers(card: ReportCard): string {
   const c = RESULT_COPY.reportCard;
   if (card.overall.allMet) return c.bosses.overall;
-  const bosses = card.overall.binding.map((id) => c.bosses[id]);
+  // "The Commerce Office and the Ministry of Culture": only the first name opens with a capital.
+  const bosses = card.overall.binding.map((id, i) => (i === 0 ? c.bosses[id] : c.bosses[id].replace(/^The /, "the ")));
   return bosses.length < 2 ? bosses[0]! : `${bosses.slice(0, -1).join(", ")} and ${bosses.at(-1)}`;
 }
 
