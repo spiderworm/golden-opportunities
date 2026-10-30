@@ -1,6 +1,8 @@
 /* The ledger speaks: plain and factual, no praise or blame. */
 .page {
   display: grid;
+  /* minmax(0, ...) so the report card's table scrolls instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   max-width: 1180px;
 }
@@ -36,12 +38,103 @@
   letter-spacing: -0.01em;
 }
 
-.scoreLine[data-tone="up"] {
-  color: var(--color-up);
+.grade {
+  margin-left: 10px;
+  color: var(--color-text-muted);
+  font-size: 22px;
+  font-weight: 600;
 }
 
-.scoreLine[data-tone="down"] {
-  color: var(--color-down);
+/* The card is a real table, so it reads row by row; it scrolls on narrow screens. */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.reportCard {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.reportCard th,
+.reportCard td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.reportCard th:first-child {
+  text-align: left;
+}
+
+.reportCard thead th {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reportCard tbody th {
+  font-weight: 500;
+}
+
+.measureScore {
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.award {
+  display: inline-block;
+  margin: 12px 0 0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--color-up-wash);
+  color: var(--color-up);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* The bosses speak in capitals; the copy is already in capitals. */
+.bosses {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--color-border);
+  list-style: none;
+}
+
+.bosses li {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.boss {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.bossLine {
+  quotes: none;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 760px) {
+  .bosses li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+td .award {
+  margin: 0 0 0 8px;
 }
 
 .tiles {

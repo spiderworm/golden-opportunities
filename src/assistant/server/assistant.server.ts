@@ -29,26 +29,55 @@ export function getAssistant(real: () => AssistantProvider, env = process.env): 
   return real();
 }
 
-/** One answer at a time (each is a process on the Mac), and at most 60 an hour. */
+/**
+ * One answer at a time (each is a process on the Mac), and at most 60 answers an hour. Only a question that
+ * passed every check counts toward the hour, so malformed requests can't lock the player out (Probe's red
+ * team, P3); every request, before any other check, counts toward a cheap per-minute cap, so floods stay
+ * bounded and end within a minute.
+ */
 const MAX_PER_HOUR = 60;
-const recent: number[] = [];
+const MAX_PER_MINUTE = 30;
+const answered: number[] = [];
+const arrived: number[] = [];
 let busy = false;
 
-export function acquire(now = Date.now()): (() => void) | "busy" | "limit" {
-  while (recent.length && now - recent[0] > 3600_000) recent.shift();
+export interface Slot {
+  /** Counts this answer toward the hour, once its question has passed every check. */
+  charge(): void;
+  release(): void;
+}
+
+/** Counts a request toward the minute cap; false once it's reached. Called for every request, first. */
+export function arrive(now = Date.now()): boolean {
+  while (arrived.length && now - arrived[0] > 60_000) arrived.shift();
+  if (arrived.length >= MAX_PER_MINUTE) return false;
+  arrived.push(now);
+  return true;
+}
+
+export function acquire(now = Date.now()): Slot | "busy" | "limit" {
+  while (answered.length && now - answered[0] > 3600_000) answered.shift();
   if (busy) return "busy";
-  if (recent.length >= MAX_PER_HOUR) return "limit";
+  if (answered.length >= MAX_PER_HOUR) return "limit";
   busy = true;
-  recent.push(now);
+  let charged = false;
   let released = false;
-  return () => {
-    if (released) return;
-    released = true;
-    busy = false;
+  return {
+    charge() {
+      if (charged || released) return;
+      charged = true;
+      answered.push(now);
+    },
+    release() {
+      if (released) return;
+      released = true;
+      busy = false;
+    },
   };
 }
 export const resetLimitsForTests = () => {
-  recent.length = 0;
+  answered.length = 0;
+  arrived.length = 0;
   busy = false;
 };
 

@@ -52,8 +52,50 @@ never in the prompt. Claude Code also adds its own variables there (`CLAUDECODE`
 
 Goldy's spike found that with no tools the model wrote a fake `ls ~` listing as plain text. Here, asked for a
 figure "without using any tool, just give your best number", it declined both with and without a rule against
-it. That's one sample, not a guarantee: the system prompt still forbids any figure not returned by a tool in
-this turn, and the UI shows the source of each figure, so a figure with no source stands out.
+it. One sample is no guarantee, which is why figures now come only by ref (next section).
+
+## Figures by ref: what's guaranteed, and what's best effort
+
+Probe's red team (#30) found Dewey working out figures of its own: a gross profit, percent drops, differences.
+Four rounds of review on #32 (Audit and Probe) showed that checking free text for numbers can't be made sound,
+so Dewey doesn't write figures. It cites refs to lookup results (`{{a3}}`, `{{b.change}}`, `{{b.from_vs_to}}`)
+and `server/figures.server.ts` renders them. We stopped there, as agreed with Goldy: what follows is the
+boundary, documented rather than chased.
+
+**Guaranteed by construction** (tested in `figures.server.test.ts`, `ask.server.test.ts` and `tools.test.ts`):
+- Every figure, direction, comparison and ranking rendered from a ref comes from a successful lookup in this
+  answer, with its unit and its sign as the data has them.
+- A ref resolves only to a lookup that had come back before the text citing it arrived. An unknown, malformed or
+  early ref withholds its sentence.
+- Rankings (`max`, `min`, `largest_*`) are rendered only over complete results. A limit or the row cap means the
+  ref fails closed.
+- Labels come only from result rows, or from a single-value filter on a lookup that found something. Period
+  names allowed in prose come from the same places, never from a source caption.
+- `compare_data` takes the compared values from the rows each side returns. Its headings and source name them
+  only as the data returned them, and otherwise in fixed words ("the first value", "No sales matched the first
+  value."). The model's from/to text never reaches the browser (Audit's final review of #32).
+- Everything sent to the browser other than the reply's prose is data or fixed text: tables and sources from
+  the query layer, fixed lookup-failure and error messages, and pin titles built from the chart's query. The
+  model's tool input is never sent, and the fence code is cut from every string.
+
+**Best effort** (a lexical ban on the model's own prose, after NFKC folding):
+- A sentence is withheld if, outside refs, it has any of these:
+  - a digit in any script, a number symbol, `$`, `%` or braces;
+  - a number word, "a quarter", "a couple" or "-fold";
+  - a listed comparison or direction word;
+  - "yes" or "no" with anything but refs after it.
+- The exceptions are period names that lookups had returned, and "looked up", "broken down by" and "in more
+  detail" as exact phrases.
+- A denylist can't cover all of English. Quantities and directions can still be implied without a listed word
+  ("a handful", "slightly", "barely any", "stood out", "Thursday took the hit"), or written in another language.
+  Such text states no number, but it can still mislead. The prompt forbids it; nothing enforces that.
+- Claims without a quantity (a pattern, a cause, "most of these are Fiction") rest on the prompt alone, as
+  before.
+- The full stop after a percent ref was lost in one of Probe's runs (X3). The renderer keeps punctuation that
+  follows a ref, even when the ref is split across chunks (tested), so the model must have left it out.
+
+**Next step, if a real leak shows up:** no figures in prose at all. Dewey says what it looked up and points to
+the table under the reply. The same ban then applies with no refs. This replaces adding words to the denylist.
 
 ## The lock set, as run
 
@@ -73,3 +115,19 @@ back as a `tool` event, and the reply quoted the figure.
 
 **Fail closed on the init line:** the run is killed before any answer is read unless every tool is
 `mcp__<ours>__*`, the only MCP server is ours and connected, and skills and slash commands are empty.
+
+## The conversation kept on the player's device
+
+The panel keeps the conversation in `localStorage` (`ui/conversation.ts`), so a reload doesn't lose it. The
+player can edit what's stored there, and Audit's review of #41 set how far it's trusted:
+- Every stored turn is checked against the exact shape the panel wrote. A turn that doesn't fit is dropped, and
+  restoring never crashes.
+- Restored text is shown as plain text: a stored `{{a1}}` stays literally that, and nothing restored is
+  rendered or resolved.
+- Restored turns go to the model in their own fence, as "an earlier conversation, as stored on the player's
+  device". They are the player's data, never the assistant's own words, and their braces are broken up.
+
+**Residual risk:** someone who edits their own storage changes only what they see on their own screen. They
+could show themselves a forged figure. That's self-inflicted, and it reaches no one else.
+
+**Follow-up:** keep the conversation server-side in the save once Frank's save layer exists. Not built yet.

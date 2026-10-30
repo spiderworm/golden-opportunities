@@ -8,7 +8,20 @@ import { track } from "~/platform/analytics/analytics.client";
 import { EChart } from "~/platform/charts/EChart";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
-import { badgeText, foundFooter, moneyShort, RESULT_COPY as COPY, scoreLine, seasonNote } from "./copy";
+import type { ReportCard as Card } from "~/game-stub/types";
+import {
+  administratorLine,
+  badgeText,
+  bossLine,
+  foundFooter,
+  gradeText,
+  heldCourseText,
+  measureTexts,
+  moneyShort,
+  RESULT_COPY as COPY,
+  scoreText,
+  seasonNote,
+} from "./copy";
 import { earnedDiscoveries, type EarnedDiscovery } from "./discoveries.server";
 import { OUTCOME_COLORS, outcomeOption } from "./outcome-chart";
 import styles from "./Result.module.css";
@@ -68,12 +81,20 @@ export default function Result({ loaderData }: Route.ComponentProps) {
       <header className={styles.header}>
         <h2 className={styles.title}>{COPY.title}</h2>
         <div className={styles.score}>
-          <span className={styles.scoreHeading}>{COPY.scoreHeading}</span>
-          <span className={styles.scoreLine} data-tone={tone(outcome.score.value)}>
-            {scoreLine(outcome.score.value, outcome.score.label)}
+          <span className={styles.scoreHeading}>{COPY.reportCard.combined}</span>
+          <span className={styles.scoreLine}>
+            {outcome.reportCard.plan.combined.score}
+            <span className={styles.grade}>{gradeText(outcome.reportCard.plan.combined.grade)}</span>
           </span>
+          {!holdingCourse && (
+            <span className={styles.scoreHeading}>
+              {heldCourseText(outcome.reportCard.holdCourse.combined.score, outcome.reportCard.holdCourse.combined.grade)}
+            </span>
+          )}
         </div>
       </header>
+
+      <ReportCard plan={outcome.reportCard.plan} holdCourse={outcome.reportCard.holdCourse} holdingCourse={holdingCourse} />
 
       <section className={styles.tiles} aria-label="Totals">
         <Tile label={COPY.tiles.grossProfit} value={moneyShort(plan.grossProfit)} delta={plan.grossProfit - holdCourse.grossProfit} money holdingCourse={holdingCourse} />
@@ -160,6 +181,64 @@ function LegendItem({ color, label }: { color: string; label: string }) {
       <span className={styles.legendLine} style={{ background: color }} />
       {label}
     </li>
+  );
+}
+
+function ReportCard({ plan, holdCourse, holdingCourse }: { plan: Card; holdCourse: Card; holdingCourse: boolean }) {
+  const c = COPY.reportCard;
+  return (
+    <section className={styles.card} aria-labelledby="report-card-heading">
+      <h3 id="report-card-heading" className={styles.cardTitle}>
+        {c.heading}
+      </h3>
+      <div className={styles.tableWrap}>
+        <table className={styles.reportCard}>
+          <thead>
+            <tr>
+              <th scope="col">{c.columns.measure}</th>
+              <th scope="col">{c.columns.result}</th>
+              <th scope="col">{c.columns.lastYear}</th>
+              <th scope="col">{c.columns.goal}</th>
+              <th scope="col">{c.columns.score}</th>
+              {!holdingCourse && <th scope="col">{c.columns.holdCourse}</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {plan.measures.map((m) => {
+              const held = holdCourse.measures.find((h) => h.id === m.id);
+              const text = measureTexts(m);
+              return (
+                <tr key={m.id}>
+                  <th scope="row">{c.measures[m.id]}</th>
+                  <td>{text.result}</td>
+                  <td>{text.lastYear}</td>
+                  <td>{text.goal}</td>
+                  <td>
+                    <span className={styles.measureScore}>{scoreText(m.score, m.grade)}</span>
+                    {m.exceeds && <span className={styles.award}>{c.exceeds}</span>}
+                  </td>
+                  {!holdingCourse && <td className={styles.muted}>{held ? scoreText(held.score, held.grade) : ""}</td>}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {plan.wellRounded && <p className={styles.award}>{c.wellRounded}</p>}
+      <p className={styles.note}>{c.goalsNote}</p>
+      <ul className={styles.bosses}>
+        <li>
+          <span className={styles.boss}>{c.bosses.combined}</span>
+          <q className={styles.bossLine}>{administratorLine(plan.combined.score)}</q>
+        </li>
+        {plan.measures.map((m) => (
+          <li key={m.id}>
+            <span className={styles.boss}>{c.bosses[m.id]}</span>
+            <q className={styles.bossLine}>{bossLine(m)}</q>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

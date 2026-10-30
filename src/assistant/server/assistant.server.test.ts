@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { acquire, fakeAssistant, getAssistant, ndjson, resetLimitsForTests, setAssistantForTests } from "./assistant.server.ts";
+import { acquire, arrive, fakeAssistant, getAssistant, ndjson, resetLimitsForTests, setAssistantForTests } from "./assistant.server.ts";
 import { emailRedactor, REDACTED } from "./redact.server.ts";
 
 afterEach(() => {
@@ -22,23 +22,46 @@ describe("choosing a provider", () => {
 });
 
 describe("limits", () => {
-  it("allows one answer at a time, and at most 60 an hour", () => {
-    const release = acquire(0);
-    expect(typeof release).toBe("function");
+  const slot = (s: ReturnType<typeof acquire>) => {
+    if (typeof s === "string") throw new Error(`refused: ${s}`);
+    return s;
+  };
+
+  it("allows one answer at a time, and at most 60 charged answers an hour", () => {
+    const first = slot(acquire(0));
     expect(acquire(1)).toBe("busy");
-    (release as () => void)();
-    for (let i = 1; i < 60; i++) (acquire(i) as () => void)();
-    expect(acquire(100)).toBe("limit");
-    expect(typeof acquire(3600_001)).toBe("function");
+    first.charge();
+    first.release();
+    // 2.1 s apart, so the per-minute cap never trips.
+    for (let i = 1; i < 60; i++) {
+      const s = slot(acquire(i * 2_100));
+      s.charge();
+      s.release();
+    }
+    expect(acquire(60 * 2_100)).toBe("limit");
+    expect(typeof acquire(3600_001)).toBe("object");
+  });
+
+  it("doesn't count requests that were never charged (malformed ones) toward the hour", () => {
+    for (let i = 0; i < 100; i++) slot(acquire(i * 2_100)).release();
+    const s = slot(acquire(100 * 2_100));
+    s.charge();
+    s.release();
+  });
+
+  it("caps every request at 30 a minute, so a flood is bounded and ends within the minute", () => {
+    for (let i = 0; i < 30; i++) expect(arrive(i)).toBe(true);
+    expect(arrive(30)).toBe(false);
+    expect(arrive(60_001)).toBe(true);
   });
 
   it("releasing twice doesn't free a slot someone else holds", () => {
-    const first = acquire(0) as () => void;
-    first();
-    const second = acquire(1);
-    first();
+    const first = slot(acquire(0));
+    first.release();
+    const second = slot(acquire(1));
+    first.release();
     expect(acquire(2)).toBe("busy");
-    (second as () => void)();
+    second.release();
   });
 });
 
