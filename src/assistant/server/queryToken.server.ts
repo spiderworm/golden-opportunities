@@ -1,11 +1,9 @@
-// The token the assistant's tool server sends to POST /api/query. Frank's getQueryToken()
-// (src/query/access.server.ts) will replace this; until it lands, ORBITAL_QUERY_TOKEN stands in, and without
-// it the assistant says the data terminal isn't connected rather than starting.
+// The token the assistant's tool server sends to POST /api/query: Frank's server-only capability, passed to
+// the tool server through its environment, never into the model's context. Frank is binding it to the
+// player's save (issueGameQueryToken), and this is the one place that will change when he does.
 
-import { AssistantUnavailable } from "./provider.server.ts";
+import { getQueryToken } from "~/query/access.server";
 
-export function queryToken(env = process.env): string {
-  const token = env.ORBITAL_QUERY_TOKEN;
-  if (!token) throw new AssistantUnavailable("The data terminal isn't connected yet.");
-  return token;
+export function queryToken(): string {
+  return getQueryToken();
 }
