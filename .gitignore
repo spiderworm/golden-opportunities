@@ -9,3 +9,6 @@
 # Playwright
 /playwright-report/
 /test-results/
+
+# This copy of the app: its instance ID and server-side analytics
+/.data/
