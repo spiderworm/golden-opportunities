@@ -175,11 +175,11 @@ describe("calling tools against the app", () => {
     ]);
     expect(result.columns.map((c: { key: string }) => c.key)).toEqual(["genre", "from", "to", "change", "percent_change"]);
     expect(result.rows).toEqual([
-      { genre: "Mystery", from: 200, to: 150, change: -50, percent_change: -25 },
-      { genre: "Poetry", from: 40, to: null, change: null, percent_change: null },
-      { genre: "Sci-Fi", from: null, to: 10, change: null, percent_change: null },
+      { genre: "Mystery", from: 200, to: 150, change: -50, percent_change: -25, direction: "fell" },
+      { genre: "Poetry", from: 40, to: null, change: null, percent_change: null, direction: null },
+      { genre: "Sci-Fi", from: null, to: 10, change: null, percent_change: null, direction: null },
     ]);
-    expect(result.total).toEqual({ from: 240, to: 160, change: -80, percent_change: (-80 / 240) * 100 });
+    expect(result.total).toEqual({ from: 240, to: 160, change: -80, percent_change: (-80 / 240) * 100, direction: "fell" });
     expect(result.source).toMatch(/^revenue compared across quarter, 2193-Q3 against 2193-Q4\. .*2193-Q3: Genres, 2193-Q3 2193-Q4: Genres, 2193-Q4$/);
   });
 

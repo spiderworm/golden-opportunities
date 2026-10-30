@@ -49,6 +49,32 @@ describe("what backs a figure", () => {
     expect(unbacked(evidence(query("revenue", [], 123.45)), "Revenue was -$123.45.")).toEqual(["-$123.45"]);
   });
 
+  it("direction words are part of the sign: a rise needs a positive change, a fall a negative one (Goldy)", () => {
+    // The real run: revenue from 2193-Q2 (164,436.94) to 2193-Q4 (161,524.69) fell 2,912.25, or -1.77%.
+    const e = evidence(["compare_data", { measure: "revenue" }, { columns: [], rows: [], total: { from: 164436.94, to: 161524.69, change: -2912.25, percent_change: -1.7711, direction: "fell" }, source: "S" }]);
+    expect(unbacked(e, "That is a rise of about 1.8% over Q4.")).toEqual(["1.8%"]);
+    expect(unbacked(e, "Revenue grew 1.8%.")).toEqual(["1.8%"]);
+    expect(unbacked(e, "Revenue increased by $2,912.")).toEqual(["$2,912"]);
+    expect(unbacked(e, "Revenue was about $2,912 higher in 2193-Q2 than in 2193-Q4.")).toEqual(["$2,912"]);
+    expect(unbacked(e, "Revenue rose -1.8%.")).toEqual(["-1.8%"]);
+    expect(unbacked(e, "Revenue fell by about 2,912 from 2193-Q2 to 2193-Q4, a drop of 1.8%.")).toEqual([]);
+    expect(unbacked(e, "Revenue declined 1.8%, or $2,912 lower.")).toEqual([]);
+    expect(unbacked(e, "A change of -1.8%, or 1.8 percent.")).toEqual([]);
+  });
+
+  it("a direction word in one clause doesn't bind another, and levels are checked as levels", () => {
+    const e = evidence(["compare_data", { measure: "units" }, { columns: [], rows: [{ genre: "Nonfiction", from: 278, to: 339, change: 61, percent_change: 21.94, direction: "rose" }, { genre: "SciFi/Fantasy", from: 7523, to: 4246, change: -3277, percent_change: -43.56, direction: "fell" }], total: { from: 7801, to: 4585, change: -3216, percent_change: -41.2, direction: "fell" }, source: "S" }]);
+    expect(unbacked(e, "SciFi/Fantasy fell by 3,277, and Nonfiction rose by 61.")).toEqual([]);
+    expect(unbacked(e, "SciFi/Fantasy rose by 3,277; Nonfiction fell by 61.")).toEqual(["3,277", "61"]);
+    expect(unbacked(e, "Nonfiction rose from 278 to 339, up 21.9%.")).toEqual([]);
+    // "Looked up" and "broken down" aren't directions; labels take none.
+    const rate = evidence(["query_data", { measure: "units", by: ["month"], filter: { discount_rate: ["15%"] } }, { columns: [], rows: [{ month: "01", units: 658 }], total: 658, source: "S" }]);
+    expect(unbacked(rate, "I looked up units at a 15% discount rate, broken down by month, 658 in all.")).toEqual([]);
+    expect(unbacked(rate, "Units rose at the 15% rate.")).toEqual([]);
+    // With no direction in its own clause, the sentence's applies.
+    expect(unbacked(e, "Nonfiction fell the most, by about 21.9%.")).toEqual(["21.9%"]);
+  });
+
   it("the unit must match: no free small figures, money only from money, percents only from percents", () => {
     expect(unbacked(new Evidence(), "Revenue was $7, or 3.")).toEqual(["$7", "3"]);
     const units = evidence(query("units", [], 15));

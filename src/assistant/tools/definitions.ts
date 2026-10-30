@@ -33,6 +33,8 @@ export interface ComparisonFigures {
   to: number | null;
   change: number | null;
   percent_change: number | null;
+  /** The change's direction in words, from `from` to `to`, so the assistant can't state it backwards. */
+  direction: "rose" | "fell" | "unchanged" | null;
 }
 export interface ComparisonResult {
   columns: { key: string; label: string; type: "string" | "number"; nullable: boolean }[];
@@ -74,7 +76,7 @@ export const TOOLS = [
   {
     name: "compare_data",
     description:
-      "Compares one measure between two values of one dimension (two quarters, two weekdays, two genres), optionally broken down by one other dimension. Returns each side's figure, the change (to minus from) and the percent change, computed by the data terminal, with a source line. Use it whenever the player asks for a difference, a change, a rise or fall, or a percent change: never work one out yourself.",
+      "Compares one measure between two values of one dimension (two quarters, two weekdays, two genres), optionally broken down by one other dimension. Returns each side's figure, the change (to minus from), the percent change and the direction (rose or fell, from 'from' to 'to'), computed by the data terminal, with a source line. Use it whenever the player asks for a difference, a change, a rise or fall, or a percent change: never work one out yourself. State each change from 'from' to 'to' with its direction word ('fell by 2,912 from 2193-Q2 to 2193-Q4'), never turned around ('Q2 was higher').",
     inputSchema: {
       type: "object",
       properties: {

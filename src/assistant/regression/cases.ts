@@ -39,7 +39,7 @@ export const CASES: Case[] = [
     finding: "David's play-through",
     question: "Compare most recent Q4 with Q4 of the year prior, please",
     // One lookup to see which quarters exist is fine; repeating earlier tables isn't.
-    checks: [noUnbacked, atMostLookups(1), has(/only 2193|no Q4 from the year before|not in the data|isn't in the data/i, "didn't say the year isn't there")],
+    checks: [noUnbacked, atMostLookups(1), has(/only (holds |has )?2193|no Q4 from the year before|no 2192|not in the data|isn't in the data/i, "didn't say the year isn't there")],
   },
   {
     id: "genre-difference",
