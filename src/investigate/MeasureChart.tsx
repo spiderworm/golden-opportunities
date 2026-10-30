@@ -6,7 +6,7 @@ import { categoryHeight, categoryModel, categoryOption, legendItems, TOP_RANKED 
 import { EChart } from "~/platform/charts/EChart";
 import { Legend } from "./charts/Legend";
 import { ResultTable } from "./charts/ResultTable";
-import { DIMENSION_LABELS, formatDimensionValue, MEASURE_LABELS } from "./format";
+import { ADDITIVE, DIMENSION_LABELS, formatDimensionValue, MEASURE_LABELS, periodLabel } from "./format";
 import { canCompare, CHART_MEASURES, GROUPINGS, monthsInScope, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
 import styles from "./Investigate.module.css";
 
@@ -34,10 +34,27 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
       categoryModel(result, state.by, state.compare ? "quarter" : null, months, { top: showAll ? undefined : TOP_RANKED, keep: selected }),
     [result, state.by, state.compare, months.join(), showAll, selected.join("\u0000")],
   );
+  // "{share}% of {period}" only when the bars are the whole period: an additive
+  // measure, and no filter but the quarter (the chart ignores its own grouping's).
+  const whole = ADDITIVE.includes(state.measure) && Object.entries(state.filters).every(([d, v]) => d === "quarter" || d === state.by || !v?.length);
+  const period = periodLabel(state.filters.quarter?.length ? state.filters.quarter : quarters);
   const option = useMemo(
-    () => categoryOption(model, { selected, quarters }),
+    () =>
+      categoryOption(model, {
+        selected,
+        quarters,
+        share: !whole
+          ? undefined
+          : model.seriesBy === "quarter"
+            ? {
+                // Comparing quarters: each bar against its own quarter.
+                total: (s) => model.series[s]?.values.reduce<number>((t, v) => t + (v ?? 0), 0) ?? null,
+                period: (s) => formatDimensionValue("quarter", model.series[s]?.key),
+              }
+            : { total: () => result.total, period: () => period },
+      }),
     // selected is derived from state.filters, which changes identity with each navigation.
-    [model, selected.join("\u0000"), quarters],
+    [model, selected.join("\u0000"), quarters, whole, period, result.total],
   );
   const title = `${MEASURE_LABELS[state.measure]} by ${DIMENSION_LABELS[state.by].toLowerCase()}`;
 
@@ -65,7 +82,7 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
             </select>
           </label>
           <label className={styles.select}>
-            <span className={styles.selectLabel}>By</span>
+            <span className={styles.selectLabel}>Break down by</span>
             <select value={state.by} onChange={(e) => onGroup(e.target.value as Grouping)}>
               {GROUPINGS.map((g) => (
                 <option key={g} value={g}>
@@ -101,7 +118,9 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
         </div>
       </header>
 
-      {table ? (
+      {result.rows.length === 0 ? (
+        <p className={styles.empty}>No sales match these filters.</p>
+      ) : table ? (
         <ResultTable result={result} />
       ) : (
         <>
@@ -109,7 +128,7 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
           <EChart
             option={option}
             height={categoryHeight(model)}
-            label={`${title}. Click a bar to filter the screen to it.`}
+            label={`${title}. Click to look closer.`}
             onCategoryClick={drillAt}
             categoryAxis={model.horizontal ? "y" : "x"}
           />
@@ -124,7 +143,7 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
       <p className={styles.source}>
         {selected.length > 0
           ? `Filtered to ${selected.map((v) => formatDimensionValue(state.by, v)).join(", ")}. Click a highlighted bar again to clear it. `
-          : "Click a bar to filter the screen to it. "}
+          : result.rows.length > 0 ? "Click to look closer. " : ""}
         Source: {result.source}
       </p>
     </section>

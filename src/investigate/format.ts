@@ -4,7 +4,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 export const MEASURE_LABELS: Record<Measure, string> = {
   revenue: "Revenue",
-  units: "Items sold",
+  units: "Units sold",
   orders: "Orders",
   avg_discount: "Average discount",
   avg_rating: "Average rating",
@@ -29,7 +29,7 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
 
 /** How a dimension value reads on screen: "2193-Q4" as "Q4 2193", "03" as "Mar". */
 export function formatDimensionValue(dimension: Dimension, value: string | null | undefined): string {
-  if (value === null || value === undefined) return "Unknown";
+  if (value === null || value === undefined) return dimension === "title" ? "Unknown title" : "Unknown";
   if (dimension === "quarter") {
     const match = /^(\d+)-(Q[1-4])$/.exec(value);
     return match ? `${match[2]} ${match[1]}` : value;
@@ -39,6 +39,23 @@ export function formatDimensionValue(dimension: Dimension, value: string | null 
   if (dimension === "discount_rate") return parseFloat(value) === 0 ? "Full price" : `${value} off`;
   return value;
 }
+
+/**
+ * A span of visible quarters in words: "2193" for a whole year, "Q1 2193" for
+ * one quarter, "2193 and Q1 2194" once the played quarter joins the ledgers.
+ */
+export function periodLabel(quarters: readonly string[]): string {
+  const byYear = new Map<string, string[]>();
+  for (const q of [...quarters].sort()) {
+    const [year, quarter] = q.split("-") as [string, string];
+    byYear.set(year, [...(byYear.get(year) ?? []), quarter]);
+  }
+  const parts = [...byYear].flatMap(([year, qs]) => (qs.length === 4 ? [year] : qs.map((q) => `${q} ${year}`)));
+  return parts.length < 2 ? (parts[0] ?? "") : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+}
+
+/** Measures whose values add up, so a part can be a share of the whole. */
+export const ADDITIVE: readonly Measure[] = ["revenue", "units", "orders"];
 
 /** Short form for axes and tight spaces: "Q4" rather than "Q4 2193". */
 export function formatDimensionShort(dimension: Dimension, value: string | null | undefined): string {

@@ -1,4 +1,4 @@
-import { useLocation, useNavigation, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigation, useSearchParams } from "react-router";
 
 import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
 import type { ShellHandle } from "~/shell/Shell";
@@ -6,13 +6,14 @@ import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { Route } from "./+types/route";
 import { FilterBar } from "./FilterBar";
-import { DIMENSION_LABELS, MEASURE_LABELS } from "./format";
+import { DIMENSION_LABELS, MEASURE_LABELS, periodLabel } from "./format";
 import { Heatmap } from "./Heatmap";
 import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
 import { runQuery } from "~/query/run-query.server";
 import { getGameSession } from "~/game/session.server";
+import { getPlan } from "~/game/game.server";
 import {
   DEFAULT_STATE,
   filtersExcept,
@@ -30,7 +31,13 @@ import { usePins } from "./pins/usePins";
 import { TitleView } from "./TitleView";
 import styles from "./Investigate.module.css";
 
-export const handle: ShellHandle = { title: "Investigate" };
+// "Ledgers: 2193", then "Ledgers: 2193 and Q1 2194" once the played quarter is in them.
+export const handle: ShellHandle = {
+  title: (data) => {
+    const quarters = (data as { options?: { quarter?: string[] } } | undefined)?.options?.quarter;
+    return quarters?.length ? `Ledgers: ${periodLabel(quarters)}` : "Investigate";
+  },
+};
 
 
 export function meta({}: Route.MetaArgs) {
@@ -48,11 +55,11 @@ export function loader({ request }: Route.LoaderArgs) {
     by: state.by,
     filters: Object.keys(state.filters).length,
   });
-  return { state, ...investigation };
+  return { state, ...investigation, planned: getPlan(request) !== null };
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {
-  const { state, tiles, chart, heatmap, titleView, options } = loaderData;
+  const { state, tiles, chart, heatmap, titleView, options, planned } = loaderData;
   const [, setSearchParams] = useSearchParams();
   const navigation = useNavigation();
   const location = useLocation();
@@ -68,6 +75,15 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   return (
     <div className={styles.layout}>
       <div className={styles.page} data-refreshing={refreshing || undefined} aria-busy={refreshing}>
+        <div className={styles.pageActions}>
+          <Link
+            to={planned ? "/result" : "/decide"}
+            className={styles.planLink}
+            onClick={() => track("investigate_plan_link", { to: planned ? "result" : "decide" })}
+          >
+            {planned ? "See the results" : "Write the plan"}
+          </Link>
+        </div>
         <FilterBar
           filters={state.filters}
           options={options}
