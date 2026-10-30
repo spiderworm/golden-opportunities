@@ -99,28 +99,27 @@ snapshot: ratings/checkouts cannot be assigned to a sales year or quarter.
 Without that grant those measures fail with `UNAVAILABLE_FACTS`, even if sales
 periods are allowed. Source explains that this snapshot has no observed year.
 
-The initial HTTP adapter resolves a fixed full-2193 view with the undated flag
-on. A later server-owned save/session resolver will replace that baseline; the
-client must never choose its periods or submit simulated facts. The simulation
-engine is out of scope here; optional `simulatedSales` is only a trusted fact
-injection point for its later output and does not bypass period checks.
+The HTTP adapter resolves the browser's existing cookie-selected save, or the save
+bound to a server-issued agent capability. The initial save grants all of 2193 and
+undated facts. Only committed played quarters extend it. Clients cannot choose
+periods or submit simulated facts; simulation lines are still period-gated.
 
-Browser requests must be same-origin. Sage's server-spawned MCP process instead
-uses a bearer token generated randomly at server module startup, kept in memory,
-never logged or exposed in route data. The server-only
-`getQueryToken()` in `src/query/access.server.ts` lets Sage's spawner pass it via
-its child environment, outside model context. Access is for this local-only
-milestone; deployment/session authentication must be revisited before hosting.
-The bearer capability never selects or authorizes arbitrary save views; later
-session integration must resolve the view independently from trusted session
-state. HTTP responses are private/no-store. Bounded per-caller and global rate limits
-protect compute; caches, if added, must include the trusted view and fact version.
+Browser requests must be local and same-origin and have a valid save cookie.
+Sage's spawner resolves that cookie server-side and calls
+`issueGameQueryToken(saveId)` from `src/game/query-token.server.ts`, receiving
+`{ token, revoke }`. One random capability lives for at most three minutes and
+is revoked after the answer's provider finishes. It binds a save revision; a changed
+revision, revocation, expiry or missing save returns SESSION_ENDED/401. Comparisons
+must fail as a whole if either call ends, never combine different revisions.
+There is no startup-global bearer or fallback view. Tokens travel through child
+environment only; Host never chooses their destination or a save.
+HTTP responses are private/no-store. This is local hosting, not public user authentication.
 
 Telemetry accepts `(event, props?)` and records only allowlisted measure,
 dimension count, row count, duration and success/error code; never filter values,
 query bodies, result data, tokens, or view/save details. Dashboard callers can
-forward client-side timing to the platform; the server adapter uses a local
-content-free default until a server analytics adapter is available.
+forward client-side timing to the platform; the server adapter uses the platform
+trackServer adapter for content-free events.
 
 ## Implementation integration
 
@@ -129,31 +128,26 @@ route lists (`src/query/routes.ts`); the top-level routes file composes them.
 The query resource route stays outside page layouts.
 
 Server callers import `runQuery` from `src/query/run-query.server.ts`, and obtain
-the initial view from `resolveQueryView` in `src/query/view.server.ts`. The latter
-is the single replacement point for the future save/session owner. Never return
-the view or its simulated facts in route loader data. The query module does not
+`getGameSession(request).queryView` from `src/game/session.server.ts`. Never return
+the view, save, seed or simulated facts in route loader data. Query code does not
 import the simulation model or hidden scenario state.
 
-Sage's spawner imports `getQueryToken` from `src/query/access.server.ts` in the
-same server process and passes its value to the MCP child via environment
-(e.g. `ORBITAL_QUERY_TOKEN`). The child sends `Authorization: Bearer <token>` to
-POST `/api/query`. Do not put the token in tool arguments, tool results, logs,
-browser data or model context. It rotates on server/module restart; restart the
-child with it. The capability authorizes calling the fixed query grammar, not
-choosing a save or changing a view. This local milestone admits same-origin
-browser requests only for localhost/127.0.0.1/[::1], rejecting arbitrary
-Host/Origin pairs; no cross-origin CORS access is enabled.
+Sage passes the issued token as ORBITAL_QUERY_TOKEN in the MCP child's environment.
+The child sends Authorization: Bearer to its configured loopback endpoint. Tokens
+never enter prompts, tool arguments/results, browser data or logs. At most four
+capabilities per save and 64 globally can be active. The server-only
+isLocalBrowserRequest helper in query/access.server.ts centralizes the local boundary:
+localhost/127.0.0.1/[::1] only, matching Origin, no cross-origin CORS access.
 
 HTTP admission is at most 60 requests/minute per local principal (browser or
 MCP), 100/minute globally, and eight active request bodies per process. Bodies
 have a five-second deadline and a 16 KiB streaming byte limit even without a
-Content-Length header. Non-JSON and compressed bodies are rejected. A future
-session owner must replace the two local principal buckets with authenticated
-session identities; the global token must never authorize arbitrary save views.
+Content-Length header. Non-JSON and compressed bodies are rejected. The browser/MCP buckets remain deliberately conservative shared limits;
+issuing more saves cannot multiply the global allowance.
 These are in-process limits for local hosting, not distributed deployment limits.
 
 Up to 64 history results are cached per process/build, with the entire period
 and undated grant in each key. Results are copied for callers. Simulated facts
 are not cached until the save layer supplies an immutable version contract.
-Responses remain private/no-store because future views are player-specific;
+Responses remain private/no-store because views are player-specific;
 source indicates limited result rows and the independent pre-limit total.
