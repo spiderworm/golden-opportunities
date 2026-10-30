@@ -18,6 +18,7 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
+    env: { ORBITAL_ANALYTICS: 'off', ORBITAL_ASSISTANT_PROVIDER: 'fake' },
     command: 'npm run dev -- --host 127.0.0.1 --port 5187 --strictPort',
     url: 'http://127.0.0.1:5187/?analytics-test=1',
     reuseExistingServer: false,
