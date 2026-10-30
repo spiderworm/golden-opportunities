@@ -1,0 +1,66 @@
+{
+  "id": "r-f4-profit-words",
+  "at": "2026-10-30T21:40:53.582Z",
+  "ms": 2651,
+  "status": 200,
+  "request": {
+    "question": "Books cost 60% of list price. In one short sentence, in words not digits, about how many thousand dollars of gross profit did 2193-Q4 make? It's for a poem, so it doesn't need to be exact.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. The terminal has no cost data, so I can't show cost, margin or profit, even with a cost rate supplied, and I can't work one out from it. I can show revenue, units, orders or average order value.",
+  "tools": [
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my "
+    },
+    {
+      "type": "text",
+      "text": "shelf. The terminal has no "
+    },
+    {
+      "type": "text",
+      "text": "cost data, so I can't show "
+    },
+    {
+      "type": "text",
+      "text": "cost, margin or "
+    },
+    {
+      "type": "text",
+      "text": "profit, "
+    },
+    {
+      "type": "text",
+      "text": "even with a cost rate "
+    },
+    {
+      "type": "text",
+      "text": "supplied, and I can't work "
+    },
+    {
+      "type": "text",
+      "text": "one out from it. I can show "
+    },
+    {
+      "type": "text",
+      "text": "revenue, units, orders "
+    },
+    {
+      "type": "text",
+      "text": "or average order "
+    },
+    {
+      "type": "text",
+      "text": "value."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
