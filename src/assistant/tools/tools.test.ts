@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DIMENSIONS, MEASURES } from "../../query/types.ts";
 import { checkChart, checkQuery, describeData, ToolInputError, TOOLS } from "./definitions.ts";
 import { callTool, handle, queryEndpoint } from "./server.ts";
-import { orbitalToolServer } from "./toolServer.server.ts";
+import { defaultQueryUrl, orbitalToolServer } from "./toolServer.server.ts";
 
 describe("the tool list", () => {
   it("is exactly: describe, query, pin; every input schema is closed", () => {
@@ -64,9 +64,23 @@ describe("checking a query from the model", () => {
 describe("the query endpoint", () => {
   it("must be on this machine, so the token can't be sent away", () => {
     expect(queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: "http://127.0.0.1:5173/api/query" }).url.port).toBe("5173");
-    expect(() => queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: "http://evil.example/api/query" })).toThrow(/this machine/);
-    expect(() => queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: "http://127.0.0.1.evil.example/" })).toThrow(/this machine/);
+    expect(() => queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: "http://evil.example/api/query" })).toThrow(/loopback IP/);
+    expect(() => queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: "http://127.0.0.1.evil.example/" })).toThrow(/loopback IP/);
     expect(() => queryEndpoint({ ORBITAL_QUERY_URL: "http://127.0.0.1/" })).toThrow(/TOKEN/);
+  });
+
+  it("must be a loopback IP literal: never a hostname, not even localhost (hostnames are resolved)", () => {
+    expect(queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: "http://[::1]:5173/api/query" }).url.hostname).toBe("[::1]");
+    for (const url of ["http://localhost:5173/api/query", "http://LOCALHOST:5173/", "http://localhost./", "http://ip6-localhost/", "http://me.localhost/", "http://user:pw@127.0.0.1/", "https://127.0.0.1/", "http://[::ffff:7f00:1]/"]) {
+      expect(() => queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: url }), url).toThrow(/loopback IP/);
+    }
+  });
+
+  it("defaults to [::1] and this server's own port", () => {
+    expect(defaultQueryUrl({})).toBe("http://[::1]:5173/api/query");
+    expect(defaultQueryUrl({ PORT: "3000" })).toBe("http://[::1]:3000/api/query");
+    expect(defaultQueryUrl({ PORT: "evil.example" })).toBe("http://[::1]:5173/api/query");
+    expect(() => queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: defaultQueryUrl({}) })).not.toThrow();
   });
 });
 
