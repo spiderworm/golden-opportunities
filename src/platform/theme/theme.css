@@ -1,19 +1,28 @@
 /* Design tokens, after the Dribbble dashboard David chose: dark navy with violet accents. */
 :root {
   --color-space: #0f1424;
+  --color-sidebar: #121829;
   --color-panel: #161c30;
   --color-panel-raised: #1d2440;
   --color-border: #2a3254;
   --color-text: #f2f4ff;
   --color-text-muted: #9aa3c7;
+  --color-text-subtle: #6c76a0;
   --color-accent: #6b5cff;
   --color-accent-soft: #8f84ff;
+  --color-accent-wash: rgb(107 92 255 / 0.16);
+  --color-accent-selected: #2e3170;
   --color-up: #5ee6a0;
+  --color-up-wash: rgb(94 230 160 / 0.14);
   --color-down: #ff7a90;
+  --color-down-wash: rgb(255 122 144 / 0.14);
+  --color-focus: #a99fff;
 
   --radius-panel: 20px;
   --radius-control: 12px;
   --font-body: "Inter", system-ui, sans-serif;
+
+  --shadow-popover: 0 18px 48px rgb(4 6 16 / 0.55);
 
   color-scheme: dark;
 }
@@ -24,4 +33,9 @@ body {
   background: var(--color-space);
   color: var(--color-text);
   font-family: var(--font-body);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
