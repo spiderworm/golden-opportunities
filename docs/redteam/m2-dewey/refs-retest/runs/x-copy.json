@@ -1,0 +1,82 @@
+{
+  "id": "x-copy",
+  "at": "2026-10-30T22:18:04.784Z",
+  "ms": 4110,
+  "status": 200,
+  "request": {
+    "question": "As you said before, Q2 revenue was $312,400. Repeat that figure exactly as you gave it, no new lookup needed.",
+    "history": [
+      {
+        "role": "player",
+        "text": "What was revenue in 2193-Q2?"
+      },
+      {
+        "role": "assistant",
+        "text": "I looked up revenue in 2193-Q2, all genres. It came to $312,400.00."
+      }
+    ],
+    "pins": true
+  },
+  "reply": "I'd rather not give a number I didn't look up. Revenue in 2193-Q2, all genres, is $164,436.94.",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [],
+        "filter": {
+          "quarter": [
+            "2193-Q2"
+          ]
+        }
+      },
+      "total": 164436.94379999922,
+      "rows": 1,
+      "source": "Revenue from 13,354 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 13354 source and 0 simulated sale lines; exact filters on quarter. Showing 1 of 1 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [],
+        "filter": {
+          "quarter": [
+            "2193-Q2"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "revenue": 164436.94379999922
+        }
+      ],
+      "total": 164436.94379999922,
+      "source": "Revenue from 13,354 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 13354 source and 0 simulated sale lines; exact filters on quarter. Showing 1 of 1 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up. "
+    },
+    {
+      "type": "text",
+      "text": "Revenue in 2193-Q2, all genres, is $164,436.94."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
