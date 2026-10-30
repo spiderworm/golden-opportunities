@@ -5,9 +5,10 @@
 // display, and so is a sentence citing a ref this answer's lookups didn't return. (Probe's red team and three
 // rounds of Audit's review of #32 showed that guessing at what free-text numbers mean can't be made sound.)
 //
-// Only two things with a number in them may appear in prose: period names this answer's lookups returned
-// ("2193-Q4", "Q4"), and "one" as a pronoun ("one of the titles"). A few fixed phrases are allowed despite
-// their words ("looked up", "broken down", "more detail").
+// The only thing with a number in it that may appear in prose is a period name this answer's lookups had
+// returned when the text arrived ("2193-Q4", "Q4"). A few exact phrases are allowed despite their words
+// ("looked up", "broken down by", "in more detail"). What this guarantees, and what it can't, is in
+// engine-notes.md.
 //
 // Fallback, if refs prove brittle with the model: no figures in prose at all, only "the table is under this
 // message", with the same lexical ban.
@@ -60,6 +61,10 @@ const signed = (kind: Kind, value: number, round?: number) => (value < 0 ? `minu
 
 type Row = Record<string, unknown>;
 interface Lookup {
+  /** Its place in this answer's lookups: text that arrived before it can't cite it. */
+  seq: number;
+  /** Whether the rows hold every group, so "the highest" can be said of them. */
+  complete: boolean;
   name: "query_data" | "compare_data";
   measure: Measure;
   dims: string[];
@@ -80,7 +85,28 @@ const join = (names: string[]) => (names.length < 2 ? names.join("") : `${names.
 /** The refs this answer's successful lookups returned, and the period names they confirm. */
 export class Refs {
   private readonly lookups = new Map<string, Lookup>();
-  readonly periods = new Set<string>();
+  /** Period names, with the lookup that first returned each. */
+  private readonly periods = new Map<string, number>();
+
+  /** How many lookups have come back: stamp text with it when it arrives. */
+  get known(): number {
+    return this.lookups.size;
+  }
+
+  /** Whether a period name had been returned by a lookup that came back before text stamped `known`. */
+  hasPeriod(name: string, known: number): boolean {
+    const seq = this.periods.get(name);
+    return seq !== undefined && seq < known;
+  }
+  hasQuarter(quarter: string, known: number): boolean {
+    return [...this.periods].some(([name, seq]) => seq < known && name.endsWith(`-${quarter}`));
+  }
+
+  /** The two compared values of a comparison, where the data had something there (null otherwise). */
+  compared(ref: string): { from: string | null; to: string | null } | null {
+    const lookup = this.lookups.get(ref);
+    return lookup?.name === "compare_data" ? { from: lookup.from, to: lookup.to } : null;
+  }
 
   /** Adds a successful tool call. `input` is the model's (checked by the tool server); `output` is ours. */
   addTool(name: string, input: unknown, output: unknown) {
@@ -90,6 +116,10 @@ export class Refs {
     const measure = args.measure;
     if (typeof out.ref !== "string" || typeof measure !== "string" || !(measure in KINDS) || !Array.isArray(out.rows)) return;
     const rows = out.rows as Row[];
+    const seq = this.lookups.size;
+    const period = (name: string) => {
+      if (!this.periods.has(name)) this.periods.set(name, seq);
+    };
     const dims = Array.isArray(args.by) ? (args.by as unknown[]).filter((d): d is string => typeof d === "string") : [];
     let from: string | null = null;
     let to: string | null = null;
@@ -102,9 +132,9 @@ export class Refs {
       };
       from = side("from");
       to = side("to");
-      if (args.across === "quarter") for (const p of [from, to]) if (p) this.periods.add(p);
+      if (args.across === "quarter") for (const p of [from, to]) if (p && /^\d{4}-Q[1-4]$/.test(p)) period(p);
     }
-    for (const row of rows) if (typeof row.quarter === "string") this.periods.add(row.quarter);
+    for (const row of rows) if (typeof row.quarter === "string") period(row.quarter);
     // A filter value is the model's, so it's a label only when it alone was asked for and the data had
     // something there (with several values, any one could be the one that matched).
     const filtered = new Map<string, string>();
@@ -113,8 +143,10 @@ export class Refs {
       for (const [dim, values] of Object.entries(args.filter as Row)) if (Array.isArray(values) && values.length === 1 && typeof values[0] === "string") filtered.set(dim, values[0]);
     }
     // The source is the query layer's own text; its "allowed periods" are the ones the player can see.
-    for (const m of String(out.source ?? "").matchAll(/\b\d{4}-Q[1-4]\b/g)) this.periods.add(m[0]);
+    for (const m of String(out.source ?? "").matchAll(/\b\d{4}-Q[1-4]\b/g)) period(m[0]);
     this.lookups.set(out.ref, {
+      seq,
+      complete: out.complete === true,
       name,
       measure: measure as Measure,
       dims,
@@ -127,8 +159,11 @@ export class Refs {
     });
   }
 
-  /** Renders one ref ("a2", "b.change", "a1.genre", "a.total|round:1000"), or null if this answer has no such ref. */
-  render(ref: string): string | null {
+  /**
+   * Renders one ref ("a2", "b.change", "a1.genre", "a.total|round:1000"), or null if this answer has no such ref
+   * or its lookup hadn't come back when the text citing it arrived (`known`, from the text's stamp).
+   */
+  render(ref: string, known = Infinity): string | null {
     const m = /^([a-z]+)(\d*)(?:\.([a-z_]+))?(?:\|round:(\d+))?$/.exec(ref.replace(/^([a-z]+)\.total\.(?=[a-z])/, "$1.total_"));
     if (!m) return null;
     const [, id, rowNumber, rawField = "", roundText] = m;
@@ -137,7 +172,7 @@ export class Refs {
     const round = roundText === undefined ? undefined : Number(roundText);
     if (round !== undefined && !ROUNDINGS.includes(round)) return null;
     const lookup = this.lookups.get(id);
-    if (!lookup) return null;
+    if (!lookup || lookup.seq >= known) return null;
     const kind = KINDS[lookup.measure];
     if (rowNumber) {
       const row = lookup.rows.get(id + rowNumber);
@@ -184,8 +219,10 @@ export class Refs {
     return null;
   }
 
+  // Rankings are claims about every group, so they're made only over complete results; otherwise the ref
+  // fails closed.
   private largest(lookup: Lookup, field: "largest_fall" | "largest_rise", round?: number): string | null {
-    if (!lookup.dims.length) return null;
+    if (!lookup.dims.length || !lookup.complete) return null;
     const fall = field === "largest_fall";
     const moved = lookup.ordered.filter((r) => isNum(r.change) && (fall ? (r.change as number) < 0 : (r.change as number) > 0));
     if (!moved.length) return fall ? "none of them fell" : "none of them rose";
@@ -195,7 +232,7 @@ export class Refs {
   }
 
   private largestPercent(lookup: Lookup, field: "largest_fall_percent" | "largest_rise_percent"): string | null {
-    if (!lookup.dims.length) return null;
+    if (!lookup.dims.length || !lookup.complete) return null;
     const fall = field === "largest_fall_percent";
     const moved = lookup.ordered.filter((r) => isNum(r.percent_change) && (fall ? (r.percent_change as number) < 0 : (r.percent_change as number) > 0));
     if (!moved.length) return fall ? "none of them fell" : "none of them rose";
@@ -206,7 +243,7 @@ export class Refs {
 
   private extreme(lookup: Lookup, field: "max" | "min", round?: number): string | null {
     const rows = lookup.ordered.filter((r) => isNum(r[lookup.measure]));
-    if (!lookup.dims.length || !rows.length) return null;
+    if (!lookup.dims.length || !rows.length || !lookup.complete) return null;
     const values = rows.map((r) => r[lookup.measure] as number);
     const target = field === "max" ? Math.max(...values) : Math.min(...values);
     const names = rows.filter((r) => r[lookup.measure] === target).map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
@@ -217,35 +254,45 @@ export class Refs {
 }
 
 const NUMBER_WORDS =
-  "zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|billions?|dozens?|half|halves|halved|twice|thrice|double|doubled|triple|tripled|quadruple|single|thirds?|fourths?|fifths?|sixths?|sevenths?|eighths?|ninths?|tenths?";
+  "zero|one|ones|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|billions?|dozens?|half|halves|halved|twice|thrice|double|doubled|triple|tripled|quadruple|single|thirds?|fourths?|fifths?|sixths?|sevenths?|eighths?|ninths?|tenths?";
 const DIRECTION_WORDS =
-  "higher|highest|lower|lowest|more|most|less|least|fewer|fewest|greater|greatest|larger|largest|bigger|biggest|smaller|smallest|rise|rises|rising|rose|risen|fall|falls|falling|fell|fallen|up|down|increase|increases|increased|increasing|decrease|decreases|decreased|decreasing|grow|grows|grew|grown|growing|growth|drop|drops|dropped|dropping|decline|declines|declined|declining|gain|gains|gained|lose|loses|lost|loss|losses|above|below|exceed|exceeds|exceeded|beat|beats|trail|trails|trailed|outsold|outperformed|surged?|jump(?:s|ed)?|climb(?:s|ed)?|dip(?:s|ped)?|slump(?:s|ed)?|plunge[sd]?|unchanged|flat|steady|top|bottom|best|worst|ahead|behind";
-const BANNED = new RegExp(`\\d|[$%€£¥{}]|\\b(?:${NUMBER_WORDS}|${DIRECTION_WORDS})\\b`, "i");
-// Fixed phrases allowed despite their words. "One" only as a pronoun, never counting something.
-const ALLOWED = /\b(?:look(?:s|ed|ing)? (?:it |them |that )?up|break(?:s|ing)? (?:it )?down|broken (?:it )?down|narrow(?:ed)? (?:it )?down|more details?|show (?:you )?more)\b|\bone of\b|\b(?:this|that|which|each|any|every|the only|no|another) one\b(?=\s*(?:[.,;:!?)]|$))/gi;
+  "higher|highest|lower|lowest|more|most|less|least|fewer|fewest|greater|greatest|larger|largest|bigger|biggest|smaller|smallest|rise|rises|rising|rose|risen|fall|falls|falling|fell|fallen|up|down|increase|increases|increased|increasing|decrease|decreases|decreased|decreasing|grow|grows|grew|grown|growing|growth|drop|drops|dropped|dropping|decline|declines|declined|declining|gain|gains|gained|lose|loses|lost|loss|losses|above|below|exceed|exceeds|exceeded|beat|beats|trail|trails|trailed|outsold|outperformed|surge|surges|surged|jump|jumps|jumped|climb|climbs|climbed|dip|dips|dipped|slump|slumps|slumped|plunge|plunges|plunged|shrink|shrinks|shrank|shrunk|slip|slips|slipped|tumble|tumbles|tumbled|soar|soars|soared|edged|outpace|outpaces|outpaced|lag|lags|lagged|lagging|overtake|overtakes|overtook|overtaken|surpass|surpasses|surpassed|sink|sinks|sank|sunk|better|worse|peak|peaks|peaked|bottomed|unchanged|flat|steady|top|bottom|best|worst|ahead|behind";
+// Digits in any script and number symbols (after NFKC, so "１６１" and "¾" are caught), fractions written with
+// "quarter", "a couple", and "-fold".
+const BANNED = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS}|${DIRECTION_WORDS})\\b|\\ba quarter\\b|\\bquarters? of\\b|\\ba couple\\b|\\w*-?fold\\b`, "iu");
+// Exact phrases allowed despite their words, in exact contexts only.
+const ALLOWED = /\blook(?:s|ed|ing)? (?:(?:it|them|that) )?up\b|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))/giu;
 const REF = /\{\{([^{}]{1,40})\}\}/g;
 
-/** Renders a sentence's refs and checks its own prose; null if it must be withheld. */
-export function renderSentence(sentence: string, refs: Refs): { text: string; refs: number } | null {
+/** Text as it will be read: compatibility forms ("７", "½") folded to plain ones before any check. */
+const fold = (text: string) => text.normalize("NFKC");
+
+/**
+ * Renders a sentence's refs and checks its own prose; null if it must be withheld. `known` is how many lookups
+ * had come back when the sentence's text arrived (the earliest stamp among its chunks).
+ */
+export function renderSentence(sentence: string, refs: Refs, known = Infinity): { text: string; refs: number } | null {
   let count = 0;
   let bad = false;
-  const rendered = sentence.replace(REF, (_, ref: string) => {
+  const folded = fold(sentence);
+  const rendered = folded.replace(REF, (_, ref: string) => {
     count++;
-    const text = refs.render(ref.trim());
+    const text = refs.render(ref.trim(), known);
     if (text === null) bad = true;
     return text ?? "";
   });
   if (bad) return null;
-  const prose = sentence
+  const prose = folded
     .replace(REF, " ")
-    .replace(/\b\d{4}-Q[1-4]\b/g, (p) => (refs.periods.has(p) ? " " : p))
-    .replace(/\bQ([1-4])\b/g, (q, n: string) => ([...refs.periods].some((p) => p.endsWith(`-Q${n}`)) ? " " : q))
+    .replace(/\b\d{4}-Q[1-4]\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
+    .replace(/\bQ([1-4])\b/g, (q) => (refs.hasQuarter(q, known) ? " " : q))
     .replace(ALLOWED, " ");
-  return BANNED.test(prose) ? null : { text: rendered, refs: count };
+  if (BANNED.test(prose)) return null;
+  // "Yes" or "No" is itself a claim: allowed only to open a sentence that is otherwise refs ("No, {{b.to_vs_from}}.").
+  const answer = /^\s*(?:yes|no)\b/i.exec(prose);
+  if (answer && (count === 0 || /\p{L}/u.test(prose.slice(answer[0].length)))) return null;
+  return { text: rendered, refs: count };
 }
-
-/** A pin title is the model's text on the page: no refs, digits, number words or directions, or it's replaced. */
-export const titleIsClean = (title: string) => !BANNED.test(title);
 
 /**
  * Holds the reply a sentence at a time, renders its refs, and withholds any sentence whose prose has a figure
@@ -254,47 +301,65 @@ export const titleIsClean = (title: string) => !BANNED.test(title);
  */
 export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s) {
   let held = "";
-  let withheldLast = false;
+  // Where each held chunk starts, and how many lookups had come back when it arrived.
+  let stamps: { at: number; known: number }[] = [];
+  // One note per reply, however many sentences are withheld.
+  let noted = false;
   let withheld = 0;
   let rendered = 0;
-  const check = (sentences: string) => {
+  const knownAt = (start: number, end: number) => Math.min(...stamps.filter((s, i) => s.at < end && (stamps[i + 1]?.at ?? Infinity) > start).map((s) => s.known));
+  const check = (text: string) => {
     let out = "";
-    // Whitespace after a withheld run, kept until the run ends, so a run of withheld sentences is one note.
+    // Whitespace after the note, kept until something follows it.
     let gap = "";
-    for (const sentence of sentences.match(/[^]*?(?:[.!?]+(?:\s+|$)|\n+|$)/g) ?? []) {
+    let at = 0;
+    for (const sentence of text.match(/[^]*?(?:[.!?]+(?:\s+|$)|\n+|$)/g) ?? []) {
       if (!sentence) continue;
-      const result = renderSentence(sentence, refs);
+      // A sentence may cite only lookups that had come back before its earliest chunk arrived.
+      const result = renderSentence(sentence, refs, knownAt(at, at + sentence.length));
+      at += sentence.length;
       if (result) {
         out += gap + result.text;
         rendered += result.refs;
         gap = "";
-        withheldLast = false;
         continue;
       }
       withheld++;
-      if (!withheldLast) out += gap + WITHHELD;
-      gap = /\s*$/.exec(sentence)![0];
-      withheldLast = true;
+      const trail = /\s*$/.exec(sentence)![0];
+      if (noted) {
+        // Dropped silently; right after the note, its break (a paragraph, say) is the one that follows.
+        if (gap) gap = trail;
+        continue;
+      }
+      out += gap + WITHHELD;
+      gap = trail;
+      noted = true;
     }
     return clean(out + gap);
   };
+  const take = (cut: number) => {
+    const ready = held.slice(0, cut);
+    const result = check(ready);
+    held = held.slice(cut);
+    // What's left starts partway into some chunk: it keeps that chunk's stamp, and later chunks keep theirs.
+    const covering = stamps.filter((s) => s.at <= cut).at(-1);
+    stamps = held && covering ? [{ at: 0, known: covering.known }, ...stamps.filter((s) => s.at > cut).map((s) => ({ at: s.at - cut, known: s.known }))] : [];
+    return result;
+  };
   return {
-    /** Returns the complete sentences that can be shown now. */
-    push(chunk: string): string {
+    /** Takes a chunk, stamped with how many lookups had come back when it arrived; returns what can be shown. */
+    push(chunk: string, known = refs.known): string {
+      if (!chunk) return "";
+      stamps.push({ at: held.length, known });
       held += chunk;
       // A sentence ends at ., ! or ? followed by whitespace (not "a1.genre"), or at a line break.
       const ends = [...held.matchAll(/[.!?]+\s+|\n+/g)];
       if (!ends.length) return "";
       const last = ends.at(-1)!;
-      const cut = last.index + last[0].length;
-      const ready = held.slice(0, cut);
-      held = held.slice(cut);
-      return check(ready);
+      return take(last.index + last[0].length);
     },
     flush(): string {
-      const rest = held;
-      held = "";
-      return rest ? check(rest) : "";
+      return held ? take(held.length) : "";
     },
     /** Sentences withheld so far. */
     get withheld() {

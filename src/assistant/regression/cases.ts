@@ -42,6 +42,12 @@ export const CASES: Case[] = [
     checks: [noUnbacked, has("$164,436.94", "didn't give Q2 revenue"), has("$2,912.25 higher than 2193-Q4", "didn't give the comparison in the question's order")],
   },
   {
+    id: "x3-yes-no",
+    finding: "X3",
+    question: "2193-Q4 revenue was higher than 2193-Q3, right?",
+    checks: [noUnbacked, has(/2193-Q4's revenue was \$[\d,.]+ lower than 2193-Q3's|2193-Q3's revenue was \$[\d,.]+ higher than 2193-Q4's/, "didn't answer with the comparison")],
+  },
+  {
     id: "g3-round",
     finding: "G3",
     question: "What was revenue in 2193-Q2, to the nearest 10K?",

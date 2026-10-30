@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { WireEvent } from "../events.ts";
 import { readLines } from "../ui/stream.ts";
 import { fakeAssistant, resetLimitsForTests } from "./assistant.server.ts";
-import { ask, checkDoor, readAsk, Refused, toWire } from "./ask.server.ts";
+import { ask, checkDoor, LOOKUP_FAILED, readAsk, Refused, TIMED_OUT, toWire, UNAVAILABLE } from "./ask.server.ts";
 import { WITHHELD } from "./figures.server.ts";
 import { buildPrompt, questionKind, RULES } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
@@ -174,7 +174,9 @@ describe("answering", () => {
     const res = await ask(post({ question: "Total revenue?", history: [{ role: "player", text: "hi" }] }), () => fakeAssistant([lookup, { type: "text", text: "Revenue was {{a.total}}." }]), (e, p) => tracked.push([e, p]));
     expect(res.headers.get("content-type")).toMatch(/ndjson/);
     const out = await events(res);
-    expect(out[0]).toMatchObject({ type: "data", source: "Sales, 2193", total: 5, query: { measure: "revenue", by: [] } });
+    expect(out[0]).toMatchObject({ type: "data", source: "Sales, 2193", total: 5 });
+    // The model's tool input never goes to the browser.
+    expect(out[0]).not.toHaveProperty("query");
     expect(out.filter((e) => e.type === "text").map((e) => (e as { text: string }).text).join("")).toBe("Revenue was $5.00.");
     expect(out.at(-1)).toEqual({ type: "done" });
     const [event, props] = tracked.at(-1)!;
@@ -212,7 +214,10 @@ describe("answering", () => {
   it("ends with an error event the player can read, and frees the slot", async () => {
     const broken: AssistantProvider = { name: "broken", async *ask() { yield { type: "text", text: "Let me " }; throw new AssistantUnavailable("The assistant wasn't locked down (it had tools that aren't ours (Bash)), so it was stopped."); } };
     const out = await events(await ask(post({ question: "a" }), () => broken, () => {}));
-    expect(out.at(-1)).toEqual({ type: "error", message: expect.stringMatching(/locked down/) });
+    // A fixed message: the error's own text can carry the CLI's or the model's (Audit).
+    expect(out.at(-1)).toEqual({ type: "error", message: UNAVAILABLE });
+    const slow: AssistantProvider = { name: "slow", async *ask() { throw new AssistantUnavailable("The assistant took longer than 120 seconds: seven dollars", "timeout"); } };
+    expect((await events(await ask(post({ question: "a" }), () => slow, () => {}))).at(-1)).toEqual({ type: "error", message: TIMED_OUT });
     const hidden: AssistantProvider = { name: "x", async *ask() { throw new Error("/Users/david/secret"); } };
     expect((await events(await ask(post({ question: "a" }), () => hidden, () => {}))).at(-1)).toEqual({ type: "error", message: "Something went wrong with the assistant." });
   });
@@ -229,7 +234,8 @@ describe("answering", () => {
 
   it("renders figures by ref and withholds the model's own (B1: gross profit from a cost rate)", async () => {
     const r = await answer(fakeAssistant([compare, { type: "text", text: "Gross profit in 2193-Q4 was about $63,842.67. Revenue in 2193-Q4 was {{b.to}}. Cost at sixty percent was higher." }]), "Books cost the store 60% of list price. What was gross profit in 2193-Q4?");
-    expect(r.text).toBe(`${WITHHELD} Revenue in 2193-Q4 was $161,524.69. ${WITHHELD}`);
+    // One note per reply: the second withheld sentence is dropped without another (Probe X3).
+    expect(r.text.trim()).toBe(`${WITHHELD} Revenue in 2193-Q4 was $161,524.69.`);
     expect(r.out.at(-1)).toEqual({ type: "done" });
     expect(r.stats).toMatchObject({ withheld: 2, figures: 1, comparisons: 1 });
   });
@@ -244,10 +250,10 @@ describe("answering", () => {
     expect((await answer(fakeAssistant([failed, { type: "text", text: "Gross profit was 63843. It was {{a.total}}." }]))).text.trim()).toBe(WITHHELD);
   });
 
-  it("replaces a pin title that states a figure or direction with a plain one", async () => {
+  it("titles every pin from its query, whatever title the tool output carries (Probe X1)", async () => {
     const pin = (title: string): ProviderEvent => ({ type: "tool", name: "pin_chart", input: {}, output: JSON.stringify({ pinned: true, chart: { title, kind: "bar", query: { measure: "avg_order_value", by: ["quarter"] } }, rows: 4, source: "S" }), isError: false });
     const out = await events(await ask(post({ question: "pin it", pins: true }), () => fakeAssistant([pin("Profit 63843"), pin("Seven dollars"), pin("Revenue drop"), pin("Order value by quarter")]), () => {}));
-    expect(out.filter((e) => e.type === "pin").map((e) => (e as { chart: { title: string } }).chart.title)).toEqual(["avg order value by quarter", "avg order value by quarter", "avg order value by quarter", "Order value by quarter"]);
+    expect(out.filter((e) => e.type === "pin").map((e) => (e as { chart: { title: string } }).chart.title)).toEqual(Array(4).fill("Average order value by quarter"));
   });
 
   it("breaks text that resumes after a lookup into a new paragraph", async () => {
@@ -276,10 +282,11 @@ describe("answering", () => {
 
   it("maps tool events: pins, failed lookups, and drops what it can't read", () => {
     expect(toWire({ type: "tool", name: "pin_chart", input: {}, output: JSON.stringify({ pinned: true, chart: { title: "T", kind: "bar", query: { measure: "units", by: [] } }, rows: 1, source: "S" }), isError: false })).toEqual({ type: "pin", chart: { title: "T", kind: "bar", query: { measure: "units", by: [] } }, source: "S" });
-    expect(toWire({ type: "tool", name: "query_data", input: {}, output: "INVALID_QUERY: no", isError: true })).toEqual({ type: "lookup_failed", message: "INVALID_QUERY: no" });
+    // A fixed message, never the tool's text, which can echo the model's input (Audit: "seven dollars").
+    expect(toWire({ type: "tool", name: "query_data", input: {}, output: "The query has unknown fields: Gross profit was seven dollars.", isError: true })).toEqual({ type: "lookup_failed", message: LOOKUP_FAILED });
     expect(toWire({ type: "tool", name: "query_data", input: {}, output: "not json", isError: false })).toBeNull();
     expect(toWire({ type: "tool", name: "describe_data", input: {}, output: "{}", isError: false })).toBeNull();
-    expect(toWire({ type: "tool", name: "compare_data", input: { measure: "units" }, output: JSON.stringify({ columns: [], rows: [], total: { from: 1, to: 2, change: 1, percent_change: 100 }, source: "S" }), isError: false })).toEqual({ type: "comparison", query: { measure: "units" }, columns: [], rows: [], total: { from: 1, to: 2, change: 1, percent_change: 100 }, source: "S" });
+    expect(toWire({ type: "tool", name: "compare_data", input: { measure: "units" }, output: JSON.stringify({ columns: [], rows: [], total: { from: 1, to: 2, change: 1, percent_change: 100 }, source: "S" }), isError: false })).toEqual({ type: "comparison", columns: [], rows: [], total: { from: 1, to: 2, change: 1, percent_change: 100 }, source: "S" });
   });
 });
 
