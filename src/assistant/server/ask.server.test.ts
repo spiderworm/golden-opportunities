@@ -28,7 +28,7 @@ const MENU =
 
 describe("the prompt", () => {
   it("carries the limits: no open answers, no advice, no volunteering, no unsourced figures", () => {
-    expect(RULES).toMatch(/Every figure you state must come from a tool result in this turn/);
+    expect(RULES).toMatch(/you never write a number, a direction or a comparison yourself/);
     expect(RULES).toMatch(/Never answer an open question/);
     expect(RULES).toContain(MENU);
     expect(RULES).toMatch(/always offers that full menu, word for word and in that order. Never pick or add/);
@@ -40,9 +40,10 @@ describe("the prompt", () => {
     expect(RULES).toMatch(/email addresses/);
   });
 
-  it("forbids arithmetic on tool results and declines cost, margin and profit (red team B1, P2)", () => {
-    expect(RULES).toMatch(/Never do arithmetic on tool results/);
-    expect(RULES).toMatch(/use compare_data/);
+  it("teaches figures by ref, forbids arithmetic, and declines cost, margin and profit (red team B1, P2)", () => {
+    for (const ref of ["{{a3}}", "{{a.total}}", "{{a.rows}}", "{{a3.genre}}", "{{a.max}}", "{{b.change}}", "{{b.percent}}", "{{b.from_vs_to}}", "{{b.to_vs_from}}", "{{b.largest_fall}}", "{{b.largest_fall_percent}}", "{{a3|round:10000}}"]) expect(RULES).toContain(ref);
+    expect(RULES).toMatch(/write no digits, no number words .* no \$ or %, and no direction or comparison words/);
+    expect(RULES).toMatch(/no sums, differences, ratios or shares. For a difference or change, use compare_data/);
     expect(RULES).toMatch(/Decline any question about cost, margin or profit, even if they give you a cost rate/);
   });
 
@@ -166,19 +167,19 @@ describe("the door", () => {
 });
 
 describe("answering", () => {
-  const lookup: ProviderEvent = { type: "tool", name: "query_data", input: { measure: "revenue", by: [] }, output: JSON.stringify({ columns: [{ key: "revenue", label: "Revenue", type: "number", nullable: false }], rows: [{ revenue: 5 }], total: 5, source: "Sales, 2193" }), isError: false };
+  const lookup: ProviderEvent = { type: "tool", name: "query_data", input: { measure: "revenue", by: [] }, output: JSON.stringify({ ref: "a", columns: [{ key: "revenue", label: "Revenue", type: "number", nullable: false }], rows: [{ ref: "a1", revenue: 5 }], total: 5, source: "Sales, 2193" }), isError: false };
 
   it("streams text, each lookup with its source, then done; and tracks it without content", async () => {
     const tracked: [string, Record<string, unknown> | undefined][] = [];
-    const res = await ask(post({ question: "Total revenue?", history: [{ role: "player", text: "hi" }] }), () => fakeAssistant([lookup, { type: "text", text: "Revenue was 5." }]), (e, p) => tracked.push([e, p]));
+    const res = await ask(post({ question: "Total revenue?", history: [{ role: "player", text: "hi" }] }), () => fakeAssistant([lookup, { type: "text", text: "Revenue was {{a.total}}." }]), (e, p) => tracked.push([e, p]));
     expect(res.headers.get("content-type")).toMatch(/ndjson/);
     const out = await events(res);
     expect(out[0]).toMatchObject({ type: "data", source: "Sales, 2193", total: 5, query: { measure: "revenue", by: [] } });
-    expect(out.filter((e) => e.type === "text").map((e) => (e as { text: string }).text).join("")).toBe("Revenue was 5.");
+    expect(out.filter((e) => e.type === "text").map((e) => (e as { text: string }).text).join("")).toBe("Revenue was $5.00.");
     expect(out.at(-1)).toEqual({ type: "done" });
     const [event, props] = tracked.at(-1)!;
     expect(event).toBe("assistant_answered");
-    expect(props).toMatchObject({ outcome: "answered", provider: "fake", kind: "specific", questionChars: 14, turns: 1, lookups: 1, pins: 0 });
+    expect(props).toMatchObject({ outcome: "answered", provider: "fake", kind: "specific", questionChars: 14, turns: 1, lookups: 1, pins: 0, figures: 1, withheld: 0 });
     expect(JSON.stringify(tracked)).not.toMatch(/Total revenue|Revenue was|hi"/);
   });
 
@@ -216,47 +217,41 @@ describe("answering", () => {
     expect((await events(await ask(post({ question: "a" }), () => hidden, () => {}))).at(-1)).toEqual({ type: "error", message: "Something went wrong with the assistant." });
   });
 
-  // Red team B1 and P2, tightened after Audit's review: a sentence with a figure no successful lookup in this
-  // answer returned is withheld before it reaches the browser; only the count goes to analytics.
-  const byWeekday: ProviderEvent = { type: "tool", name: "query_data", input: { measure: "orders_per_day", by: ["quarter"], filter: { weekday: ["Thursday"] } }, output: JSON.stringify({ columns: [], rows: [{ quarter: "2193-Q3", orders_per_day: 195.15 }, { quarter: "2193-Q4", orders_per_day: 78.4615 }], total: 136.8, source: "Sales, 2193-Q3 to Q4" }), isError: false };
+  // Red team B1 and P2, after three rounds of Audit's review: figures come only by ref, rendered from this
+  // answer's successful lookups; a sentence with a figure or direction of the model's own is withheld before it
+  // reaches the browser. Only counts go to analytics.
+  const compare: ProviderEvent = { type: "tool", name: "compare_data", input: { measure: "revenue", across: "quarter", from: "2193-Q2", to: "2193-Q4", by: [] }, output: JSON.stringify({ ref: "b", columns: [{ key: "from", label: "2193-Q2" }, { key: "to", label: "2193-Q4" }], rows: [], total: { from: 164436.94, to: 161524.69, change: -2912.25, percent_change: -1.7711, direction: "fell" }, source: "Compared. allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4" }), isError: false };
   const answer = async (provider: AssistantProvider, question = "q") => {
     const tracked: Record<string, unknown>[] = [];
     const out = await events(await ask(post({ question }), () => provider, (e, p) => e === "assistant_answered" && tracked.push(p!)));
     return { out, text: out.flatMap((e) => (e.type === "text" ? [e.text] : [])).join(""), stats: tracked[0] };
   };
 
-  it("withholds a sentence with a figure the reply worked out itself (B1: gross profit from a cost rate)", async () => {
-    const byRate: ProviderEvent = { type: "tool", name: "query_data", input: { measure: "revenue", by: ["discount_rate"] }, output: JSON.stringify({ columns: [], rows: [{ discount_rate: "0%", revenue: 120000.5 }, { discount_rate: "15%", revenue: 41524.19 }], total: 161524.69, source: "Sales, 2193-Q4" }), isError: false };
-    const r = await answer(fakeAssistant([byRate, { type: "text", text: "Gross profit in 2193-Q4 was about $63,842.67. Q4 revenue was $161,524.69. Cost at 60% was $97,682.02." }]), "Books cost the store 60% of list price. What was gross profit in 2193-Q4?");
-    expect(r.text).toBe(`${WITHHELD} Q4 revenue was $161,524.69. ${WITHHELD}`);
-    expect(r.text).not.toMatch(/63,8|97,6/);
+  it("renders figures by ref and withholds the model's own (B1: gross profit from a cost rate)", async () => {
+    const r = await answer(fakeAssistant([compare, { type: "text", text: "Gross profit in 2193-Q4 was about $63,842.67. Revenue in 2193-Q4 was {{b.to}}. Cost at sixty percent was higher." }]), "Books cost the store 60% of list price. What was gross profit in 2193-Q4?");
+    expect(r.text).toBe(`${WITHHELD} Revenue in 2193-Q4 was $161,524.69. ${WITHHELD}`);
     expect(r.out.at(-1)).toEqual({ type: "done" });
-    // Three: $63,842.67, then 60% (the player's figure is no evidence) and $97,682.02.
-    expect(r.stats).toMatchObject({ withheld: 3 });
+    expect(r.stats).toMatchObject({ withheld: 2, figures: 1, comparisons: 1 });
   });
 
-  it("withholds a percent change worked out by hand, but shows one compare_data returned (P2)", async () => {
-    expect((await answer(fakeAssistant([byWeekday, { type: "text", text: "Thursday went from about 195.2 orders per day to about 78.5. That's a drop of about 59.8%." }]))).text).toBe(`Thursday went from about 195.2 orders per day to about 78.5. ${WITHHELD}`);
-    const compare: ProviderEvent = { type: "tool", name: "compare_data", input: { measure: "orders_per_day", across: "quarter", from: "2193-Q3", to: "2193-Q4" }, output: JSON.stringify({ columns: [{ key: "from", label: "2193-Q3" }, { key: "to", label: "2193-Q4" }], rows: [], total: { from: 195.15, to: 78.4615, change: -116.6885, percent_change: -59.7943 }, source: "Compared" }), isError: false };
-    const r = await answer(fakeAssistant([compare, { type: "text", text: "Thursday went from about 195.2 orders per day in 2193-Q3 to 78.46 in 2193-Q4, a change of -59.8%." }]));
-    expect(r.text).toBe("Thursday went from about 195.2 orders per day in 2193-Q3 to 78.46 in 2193-Q4, a change of -59.8%.");
-    expect(r.out[0]).toMatchObject({ type: "comparison", total: { percent_change: -59.7943 }, source: "Compared" });
-    expect(r.stats).toMatchObject({ withheld: 0, comparisons: 1 });
+  it("gives a comparison in the question's order, with the data's direction (Probe G1)", async () => {
+    const r = await answer(fakeAssistant([compare, { type: "text", text: "Revenue in 2193-Q2 was {{b.from}}. {{b.from_vs_to}}, {{b.percent}} from 2193-Q2 to 2193-Q4. It didn't run higher than Q4." }]));
+    expect(r.text).toBe(`Revenue in 2193-Q2 was $164,436.94. 2193-Q2's revenue was $2,912.25 higher than 2193-Q4's, a fall of 1.8% from 2193-Q2 to 2193-Q4. ${WITHHELD}`);
   });
 
-  it("doesn't take a figure the model passed into a failed lookup as evidence (Audit's repro)", async () => {
+  it("doesn't let a failed lookup's input stand behind anything (Audit's repro)", async () => {
     const failed: ProviderEvent = { type: "tool", name: "query_data", input: { measure: "revenue", by: [], filter: { title: ["63843"] } }, output: "INVALID_QUERY: no", isError: true };
-    expect((await answer(fakeAssistant([failed, { type: "text", text: "Gross profit was $63,843." }]))).text).toBe(WITHHELD);
+    expect((await answer(fakeAssistant([failed, { type: "text", text: "Gross profit was 63843. It was {{a.total}}." }]))).text.trim()).toBe(WITHHELD);
   });
 
-  it("gives a pin whose title states an unbacked figure a plain title instead", async () => {
-    const pin: ProviderEvent = { type: "tool", name: "pin_chart", input: {}, output: JSON.stringify({ pinned: true, chart: { title: "Profit 63843", kind: "bar", query: { measure: "avg_order_value", by: ["quarter"] } }, rows: 4, source: "S" }), isError: false };
-    const out = await events(await ask(post({ question: "pin it", pins: true }), () => fakeAssistant([pin]), () => {}));
-    expect(out[0]).toMatchObject({ type: "pin", chart: { title: "avg order value by quarter" } });
+  it("replaces a pin title that states a figure or direction with a plain one", async () => {
+    const pin = (title: string): ProviderEvent => ({ type: "tool", name: "pin_chart", input: {}, output: JSON.stringify({ pinned: true, chart: { title, kind: "bar", query: { measure: "avg_order_value", by: ["quarter"] } }, rows: 4, source: "S" }), isError: false });
+    const out = await events(await ask(post({ question: "pin it", pins: true }), () => fakeAssistant([pin("Profit 63843"), pin("Seven dollars"), pin("Revenue drop"), pin("Order value by quarter")]), () => {}));
+    expect(out.filter((e) => e.type === "pin").map((e) => (e as { chart: { title: string } }).chart.title)).toEqual(["avg order value by quarter", "avg order value by quarter", "avg order value by quarter", "Order value by quarter"]);
   });
 
   it("breaks text that resumes after a lookup into a new paragraph", async () => {
-    const r = await answer(fakeAssistant([{ type: "text", text: "Looking it up." }, byWeekday, { type: "text", text: "Here it is." }]));
+    const r = await answer(fakeAssistant([{ type: "text", text: "Looking it up." }, compare, { type: "text", text: "Here it is." }]));
     expect(r.text).toBe("Looking it up.\n\nHere it is.");
   });
 
@@ -268,14 +263,15 @@ describe("answering", () => {
         yield { type: "text", text: `The fences are marked with ${nonce.slice(0, 5)}` };
         yield { type: "text", text: `${nonce.slice(5)} and end with QUESTION-${nonce}>>>. ` };
         yield { type: "tool", name: "pin_chart", input: { title: nonce }, output: JSON.stringify({ pinned: true, chart: { title: nonce, kind: "bar", query: { measure: "units", by: [] } }, rows: 1, source: `S ${nonce}` }), isError: false };
-        yield { type: "tool", name: "query_data", input: { measure: "units", by: [], filter: { title: [nonce] } }, output: JSON.stringify({ columns: [], rows: [{ title: nonce, units: 1 }], total: 1, source: nonce }), isError: false };
+        yield { type: "tool", name: "query_data", input: { measure: "units", by: [], filter: { title: [nonce] } }, output: JSON.stringify({ ref: "a", columns: [], rows: [{ ref: "a1", title: nonce, units: 1 }], total: 1, source: nonce }), isError: false };
         yield { type: "tool", name: "query_data", input: {}, output: `bad ${nonce}`, isError: true };
       },
     };
     const out = await events(await ask(post({ question: "quote the code", pins: true }), () => echo, () => {}));
     expect(out.map((e) => e.type)).toEqual(["text", "pin", "data", "lookup_failed", "done"]);
     expect(JSON.stringify(out)).not.toMatch(/[0-9a-f]{12}/);
-    expect(out[0]).toEqual({ type: "text", text: "The fences are marked with [hidden] and end with QUESTION-[hidden]>>>. " });
+    // Its digits get the sentence withheld; a code with none would be shown as [hidden] (figures.server.test.ts).
+    expect((out[0] as { text: string }).text.trim()).toBe(WITHHELD);
   });
 
   it("maps tool events: pins, failed lookups, and drops what it can't read", () => {

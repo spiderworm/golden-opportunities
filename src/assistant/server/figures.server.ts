@@ -1,151 +1,23 @@
-// Every figure the assistant states must come from a tool in the same answer (Probe's red team, B1 and P2:
-// it worked out a gross profit, a percent drop and a difference that no tool returned). The tools give it
-// what it needs (compare_data works out changes), the prompt forbids arithmetic, and this enforces it: the
-// reply is held a sentence at a time, and a sentence with a figure no tool backs is withheld before display.
+// Figures by reference. The assistant never writes a figure, a direction or a comparison itself: it cites a
+// lookup's ref ({{a2}}, {{b.change}}, {{b.from_vs_to}}) and this fills in the value, its unit and its
+// direction from the data. Its own prose is checked lexically, with no attempt to read meaning: a sentence
+// with any digit, $, %, number word, or comparative or direction word outside a ref is withheld before
+// display, and so is a sentence citing a ref this answer's lookups didn't return. (Probe's red team and three
+// rounds of Audit's review of #32 showed that guessing at what free-text numbers mean can't be made sound.)
 //
-// Evidence is only what successful tool outputs measured (result values, totals, comparison figures, row
-// counts), each with its unit. Labels the data returned (a "15%" discount rate, a title) back a figure only
-// when written exactly as they are. Nothing the model sent into a tool counts, and nor does anything the
-// player wrote (Audit and Probe, #32).
+// Only two things with a number in them may appear in prose: period names this answer's lookups returned
+// ("2193-Q4", "Q4"), and "one" as a pronoun ("one of the titles"). A few fixed phrases are allowed despite
+// their words ("looked up", "broken down", "more detail").
 //
-// A written figure is backed when a measured value rounds to it at the precision it's written in, with the
-// same unit ($ for money, % for percents) and, if the figure has an explicit sign, the same sign. A figure
-// written without a unit may be any measured value (revenue is often written without the $); an unsigned one
-// is a magnitude, unless a direction word in its clause (or, failing that, its sentence) gives it a sign:
-// "a rise of 1.8%" needs a positive change behind it, "fell by 2,912" a negative one (Goldy, #32). Direction
-// words only constrain changes; levels ("rose to 164,437") are checked as levels. Ratios ("1.7x", "two-thirds", "twice as many") are never backed: no tool returns one.
-// Years and periods ("2193", "2193-Q4") are names, not figures. Number words one to ten on their own aren't
-// read as figures ("two lookups"); every digit is. This can't tell whether a backed number describes the
-// right measure; it stops invented ones.
+// Fallback, if refs prove brittle with the model: no figures in prose at all, only "the table is under this
+// message", with the same lexical ban.
 
 import type { Measure } from "../../query/types.ts";
 
-export type Unit = "currency" | "percent" | "plain" | "ratio";
+export const WITHHELD = "I'd rather not give a number I didn't look up.";
 
-export interface Figure {
-  text: string;
-  /** The magnitude written, with any K/thousand/M/million applied. */
-  value: number;
-  /** An explicit sign: -1, 1, or 0 for none. */
-  sign: -1 | 0 | 1;
-  unit: Unit;
-  /** The place it's rounded to: 0.01 for "1.25", 1000 for "95,000", "63K" or "sixty-three thousand". */
-  place: number;
-  /** The figure as a label would be written: digits and "%" only. */
-  label: string;
-  /** Where it starts in the text. */
-  at: number;
-}
-
-const PERIOD = /\b(?:\d{4}-Q[1-4]|Q[1-4](?:\s+|-)\d{4})\b/gi;
-const SCALES: Record<string, number> = { k: 1e3, thousand: 1e3, m: 1e6, mn: 1e6, million: 1e6, b: 1e9, bn: 1e9, billion: 1e9 };
-const NUMBER = /(?<![\w.,$+\-−])([+\-−]\s?)?(\$\s?)?(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?((?:k|m|mn|b|bn)\b|\s(?:thousand|million|billion)\b)?(\s?%|\s(?:percent|per cent)\b)?(?![\w%]|\.\d)/gi;
-const COUNT_WORDS = "one|two|three|four|five|six|seven|eight|nine|ten";
-const MULTIPLIER = new RegExp(`(?<![\\w.])\\d+(?:\\.\\d+)?\\s?(?:x|×|times)(?!\\w)|\\b(?:${COUNT_WORDS})\\s+times\\b|\\b(?:twice|thrice|double|triple|quadruple|half)\\s+(?:as|the)\\b`, "gi");
-const FRACTION_WORDS = "halves|half|thirds?|quarters?|fifths?|sixths?|sevenths?|eighths?|ninths?|tenths?";
-// "two-thirds", "a third of", "1/3", "1 in 5", "one in every five"; not "a quarter" alone, which is a period.
-const FRACTION = new RegExp(
-  `(?<![\\w.])\\d+\\s?/\\s?\\d+(?![\\w.]\\d)|(?<![\\w.])(?:\\d+|${COUNT_WORDS}|a)\\s+in\\s+(?:every\\s+)?(?!(?:19|2[0-2])\\d\\d\\b)(?:\\d+|${COUNT_WORDS})\\b|\\b(?:${COUNT_WORDS})-(?:${FRACTION_WORDS})\\b|\\b(?:a|${COUNT_WORDS})\\s+(?:${FRACTION_WORDS})\\s+of\\b|\\bhalf\\s+of\\b`,
-  "gi",
-);
-const SMALL = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
-const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
-const WORD = `(?:${[...SMALL, ...TENS.filter(Boolean), "hundred", "thousand", "million", "billion"].join("|")})`;
-// Not a scale after digits ("1.2 million"): NUMBER reads that.
-const WORDS = new RegExp(`(?<!\\d\\s?)\\b${WORD}(?:(?:[\\s-]+|\\s+and\\s+)${WORD})*\\b(\\s+(?:percent|per cent)\\b)?`, "gi");
-
-/** "sixty-three thousand five hundred" as 63500, rounded to the hundred. */
-function wordsValue(text: string): { value: number; place: number; words: number } {
-  let total = 0;
-  let group = 0;
-  let place = 1;
-  const words = text.toLowerCase().split(/[\s-]+/).filter((w) => w && w !== "and");
-  for (const w of words) {
-    if (SMALL.includes(w)) {
-      group += SMALL.indexOf(w);
-      place = 1;
-    } else if (TENS.includes(w)) {
-      group += TENS.indexOf(w) * 10;
-      place = 1;
-    } else if (w === "hundred") {
-      group = (group || 1) * 100;
-      place = 100;
-    } else {
-      total += (group || 1) * SCALES[w];
-      group = 0;
-      place = SCALES[w];
-    }
-  }
-  return { value: total + group, place, words: words.length };
-}
-
-/** The figures written in some text. Digits inside words ("Q4", "3rd"), years and periods aren't figures. */
-export function figuresIn(text: string): Figure[] {
-  const figures: Figure[] = [];
-  // Each kind blanks out what it read, so a later, plainer reading doesn't see it again.
-  let rest = text.replace(PERIOD, (m) => " ".repeat(m.length));
-  const take = (pattern: RegExp, read: (m: RegExpMatchArray) => Omit<Figure, "at"> | null) => {
-    rest = rest.replace(pattern, (...args) => {
-      const m = Object.assign([...args.slice(0, -2)], { index: args.at(-2) as number }) as unknown as RegExpMatchArray;
-      const f = read(m);
-      if (!f) return m[0];
-      figures.push({ ...f, at: m.index! });
-      return " ".repeat(m[0].length);
-    });
-  };
-  const ratio = (m: RegExpMatchArray): Omit<Figure, "at"> => ({ text: m[0], value: NaN, sign: 0, unit: "ratio", place: 1, label: m[0] });
-  take(MULTIPLIER, ratio);
-  take(FRACTION, ratio);
-  take(WORDS, (m) => {
-    const { value, place, words } = wordsValue(m[0].replace(/\s+(percent|per cent)$/i, ""));
-    if (words === 1 && value <= 10 && !m[1]) return null;
-    return { text: m[0], value, sign: 0, unit: m[1] ? "percent" : "plain", place, label: String(value) + (m[1] ? "%" : "") };
-  });
-  take(NUMBER, (m) => {
-    const [, signText, dollar, whole, fraction, scaleText, percent] = m;
-    const digits = whole.replace(/,/g, "");
-    // A bare four-digit number in the game's centuries is a year: a name, like a period.
-    if (!signText && !dollar && !fraction && !scaleText && !percent && /^(19|2[0-2])\d\d$/.test(whole)) return null;
-    const scale = scaleText ? SCALES[scaleText.trim().toLowerCase()] : 1;
-    const decimals = fraction ? fraction.length - 1 : 0;
-    // "95,000" is rounded to the thousand; "100" is exact.
-    const zeros = decimals || scale > 1 ? 0 : digits.length - digits.replace(/0+$/, "").length;
-    const significant = digits.replace(/^0+/, "").length - zeros;
-    const place = (decimals ? 10 ** -decimals : significant >= 2 ? 10 ** zeros : 1) * scale;
-    return {
-      text: m[0],
-      value: Number(digits + (fraction ?? "")) * scale,
-      sign: !signText ? 0 : signText.trim() === "+" ? 1 : -1,
-      unit: dollar ? "currency" : percent ? "percent" : "plain",
-      place,
-      label: digits + (fraction ?? "") + (percent ? "%" : ""),
-    };
-  });
-  return figures.sort((a, b) => a.at - b.at);
-}
-
-export interface Measured {
-  value: number;
-  unit: Unit | "count";
-  /** A change (to minus from, or its percent): its sign is a direction, which direction words must agree with. */
-  change?: boolean;
-}
-
-// "Up" and "down" after verbs like "looked" or "broken" are no direction ("I looked up", "broken down").
-const PHRASAL = "(?<!\\b(?:look|looks|looked|looking|break|breaks|broke|broken|breaking|narrow|narrowed|set|pick|picked|sum|summed|show|showed|turn|turned|write|wrote|written|look it|break it|narrow it)\\s)";
-const RISE = new RegExp(`\\b(?:ris(?:e|es|en|ing)|rose|${PHRASAL}up|increas(?:e|es|ed|ing)|gr(?:ew|ow|ows|own|owing)|higher|gains?|gained|more|climb(?:s|ed)?|jump(?:s|ed)?)\\b`, "i");
-const FALL = new RegExp(`\\b(?:fall(?:s|en|ing)?|fell|${PHRASAL}down|decreas(?:e|es|ed|ing)|drops?|dropped|declin(?:e|es|ed|ing)|lower|loss|lost|fewer|less|shr(?:ank|unk|inks?)|slid|dips?|dipped)\\b`, "i");
-// Commas between thousands ("2,912") don't end a clause; a comma and a space does.
-const CLAUSE = /[^;:()]*?(?:[;:()]|,\s|\s(?:and|but|while|whereas|which)\s|$)/gi;
-
-/** The direction a stretch of text gives: 1 for a rise, -1 for a fall, 0 for none or both. */
-function direction(text: string): -1 | 0 | 1 {
-  const up = RISE.test(text);
-  const down = FALL.test(text);
-  return up === down ? 0 : up ? 1 : -1;
-}
-
-const MEASURE_UNITS: Record<Measure, Unit | "count" | "fraction"> = {
+type Kind = "currency" | "count" | "plain" | "fraction";
+const KINDS: Record<Measure, Kind> = {
   revenue: "currency",
   avg_order_value: "currency",
   units: "count",
@@ -155,116 +27,251 @@ const MEASURE_UNITS: Record<Measure, Unit | "count" | "fraction"> = {
   avg_rating: "plain",
   orders_per_day: "plain",
 };
+const NOUNS: Record<Measure, string> = {
+  revenue: "revenue",
+  avg_order_value: "average order value",
+  units: "units",
+  orders: "orders",
+  checkouts: "checkouts",
+  avg_discount: "average discount",
+  avg_rating: "average rating",
+  orders_per_day: "orders per day",
+};
 
-/** What a successful tool call backs: measured values with units, and the labels the data returned. */
-export class Evidence {
-  readonly measured: Measured[] = [];
-  readonly labels = new Set<string>();
+const ROUNDINGS = [10, 100, 1_000, 10_000, 100_000, 1_000_000];
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const twoPlaces = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+const onePlace = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
 
-  private measure(measure: unknown, value: unknown, change = false) {
-    if (typeof value !== "number" || !Number.isFinite(value) || typeof measure !== "string" || !(measure in MEASURE_UNITS)) return;
-    const unit = MEASURE_UNITS[measure as Measure];
-    if (unit === "fraction") {
-      this.measured.push({ value: value * 100, unit: "percent", change }, { value, unit: "plain", change });
-    } else this.measured.push({ value, unit, change });
+/** A magnitude in the measure's unit, optionally rounded to a power of ten ("about $160,000"). */
+function amount(kind: Kind, value: number, round?: number): string {
+  const v = Math.abs(value);
+  if (round) {
+    const r = Math.round((kind === "fraction" ? v * 100 : v) / round) * round;
+    return `about ${kind === "currency" ? `$${whole.format(r)}` : kind === "fraction" ? `${whole.format(r)}%` : whole.format(r)}`;
   }
+  if (kind === "currency") return money.format(v);
+  if (kind === "count") return whole.format(v);
+  if (kind === "fraction") return `${onePlace.format(v * 100)}%`;
+  return twoPlaces.format(v);
+}
+const signed = (kind: Kind, value: number, round?: number) => (value < 0 ? `minus ${amount(kind, value, round)}` : amount(kind, value, round));
 
-  private label(value: unknown) {
-    if (typeof value === "string") for (const f of figuresIn(value)) this.labels.add(f.label);
-  }
+type Row = Record<string, unknown>;
+interface Lookup {
+  name: "query_data" | "compare_data";
+  measure: Measure;
+  dims: string[];
+  rows: Map<string, Row>;
+  ordered: Row[];
+  total: unknown;
+  /** Filter values the data confirmed: a one-value filter on a lookup that found something. */
+  filtered: Map<string, string>;
+  /** compare_data: the compared values, where the data had something on that side (null otherwise). */
+  from: string | null;
+  to: string | null;
+}
+
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const label = (v: unknown) => (v === null || v === undefined ? "Unknown" : String(v));
+const join = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
+
+/** The refs this answer's successful lookups returned, and the period names they confirm. */
+export class Refs {
+  private readonly lookups = new Map<string, Lookup>();
+  readonly periods = new Set<string>();
 
   /** Adds a successful tool call. `input` is the model's (checked by the tool server); `output` is ours. */
   addTool(name: string, input: unknown, output: unknown) {
-    if (!output || typeof output !== "object") return;
-    const out = output as Record<string, unknown>;
-    const measure = input && typeof input === "object" ? (input as Record<string, unknown>).measure : undefined;
-    const rows = Array.isArray(out.rows) ? (out.rows as Record<string, unknown>[]) : [];
-    if (name === "query_data") {
-      this.measured.push({ value: rows.length, unit: "count" });
-      for (const row of rows) {
-        for (const [key, v] of Object.entries(row)) key === measure ? this.measure(measure, v) : this.label(v);
-      }
-      this.measure(measure, out.total);
-      // The model's filter values are labels only where the data had something there.
-      const filter = input && typeof input === "object" ? (input as Record<string, unknown>).filter : undefined;
-      if (typeof out.total === "number" && out.total !== 0 && filter && typeof filter === "object") {
-        for (const values of Object.values(filter)) if (Array.isArray(values)) values.forEach((v) => this.label(v));
-      }
-    } else if (name === "compare_data") {
-      this.measured.push({ value: rows.length, unit: "count" });
-      const add = (figures: Record<string, unknown>) => {
-        this.measure(measure, figures.from);
-        this.measure(measure, figures.to);
-        this.measure(measure, figures.change, true);
-        if (typeof figures.percent_change === "number") this.measured.push({ value: figures.percent_change, unit: "percent", change: true });
+    if ((name !== "query_data" && name !== "compare_data") || !output || typeof output !== "object" || !input || typeof input !== "object") return;
+    const out = output as Row;
+    const args = input as Row;
+    const measure = args.measure;
+    if (typeof out.ref !== "string" || typeof measure !== "string" || !(measure in KINDS) || !Array.isArray(out.rows)) return;
+    const rows = out.rows as Row[];
+    const dims = Array.isArray(args.by) ? (args.by as unknown[]).filter((d): d is string => typeof d === "string") : [];
+    let from: string | null = null;
+    let to: string | null = null;
+    if (name === "compare_data") {
+      const total = (out.total ?? {}) as Row;
+      const columns = Array.isArray(out.columns) ? (out.columns as Row[]) : [];
+      const side = (key: string) => {
+        const name = columns.find((c) => c.key === key)?.label;
+        return typeof name === "string" && isNum(total[key]) && total[key] !== 0 ? name : null;
       };
-      for (const row of rows) {
-        add(row);
-        for (const [key, v] of Object.entries(row)) if (!["from", "to", "change", "percent_change"].includes(key)) this.label(v);
-      }
-      const total = (out.total ?? {}) as Record<string, unknown>;
-      add(total);
-      // The compared values are the model's, so they count as labels only where the data had something there.
-      const columns = Array.isArray(out.columns) ? (out.columns as { key?: unknown; label?: unknown }[]) : [];
-      for (const side of ["from", "to"]) {
-        if (typeof total[side] === "number" && total[side] !== 0) this.label(columns.find((c) => c.key === side)?.label);
-      }
-    } else if (name === "pin_chart" && typeof out.rows === "number") {
-      this.measured.push({ value: out.rows, unit: "count" });
+      from = side("from");
+      to = side("to");
+      if (args.across === "quarter") for (const p of [from, to]) if (p) this.periods.add(p);
     }
-  }
-
-  /** Whether something backs `f`. `heading` is the direction its clause or sentence gives (0 for none). */
-  backs(f: Figure, heading: -1 | 0 | 1 = 0): boolean {
-    if (f.unit === "ratio") return false;
-    // "rose -5%": the written sign and the words disagree.
-    if (f.sign !== 0 && heading !== 0 && f.sign !== heading) return false;
-    // Labels are names ("the 15% rate"), so no direction applies to them.
-    if (f.sign === 0 && f.unit !== "currency" && this.labels.has(f.label)) return true;
-    return this.measured.some((m) => {
-      if (f.unit === "currency" ? m.unit !== "currency" : f.unit === "percent" ? m.unit !== "percent" : false) return false;
-      if (f.sign !== 0 && Math.sign(m.value) !== f.sign) return false;
-      if (heading !== 0 && m.change && Math.sign(m.value) !== heading) return false;
-      return Math.abs(Math.round(Math.abs(m.value) / f.place) - f.value / f.place) < 1e-6;
+    for (const row of rows) if (typeof row.quarter === "string") this.periods.add(row.quarter);
+    // A filter value is the model's, so it's a label only when it alone was asked for and the data had
+    // something there (with several values, any one could be the one that matched).
+    const filtered = new Map<string, string>();
+    const found = name === "query_data" ? isNum(out.total) && out.total !== 0 : rows.length > 0 || Object.values((out.total ?? {}) as Row).some((v) => isNum(v) && v !== 0);
+    if (found && args.filter && typeof args.filter === "object") {
+      for (const [dim, values] of Object.entries(args.filter as Row)) if (Array.isArray(values) && values.length === 1 && typeof values[0] === "string") filtered.set(dim, values[0]);
+    }
+    // The source is the query layer's own text; its "allowed periods" are the ones the player can see.
+    for (const m of String(out.source ?? "").matchAll(/\b\d{4}-Q[1-4]\b/g)) this.periods.add(m[0]);
+    this.lookups.set(out.ref, {
+      name,
+      measure: measure as Measure,
+      dims,
+      rows: new Map(rows.filter((r) => typeof r.ref === "string").map((r) => [r.ref as string, r])),
+      ordered: rows,
+      total: out.total,
+      filtered,
+      from,
+      to,
     });
   }
 
-  /** The figures in `text` (a sentence, or a pin title) that nothing backs, read with their direction words. */
-  unbacked(text: string): Figure[] {
-    const overall = direction(text);
-    const clauses = [...text.matchAll(CLAUSE)].filter((m) => m[0]).map((m) => ({ start: m.index!, end: m.index! + m[0].length, heading: direction(m[0]) }));
-    return figuresIn(text).filter((f) => {
-      const clause = clauses.find((c) => f.at >= c.start && f.at < c.end);
-      return !this.backs(f, clause?.heading || overall);
-    });
+  /** Renders one ref ("a2", "b.change", "a1.genre", "a.total|round:1000"), or null if this answer has no such ref. */
+  render(ref: string): string | null {
+    const m = /^([a-z]+)(\d*)(?:\.([a-z_]+))?(?:\|round:(\d+))?$/.exec(ref.replace(/^([a-z]+)\.total\.(?=[a-z])/, "$1.total_"));
+    if (!m) return null;
+    const [, id, rowNumber, rawField = "", roundText] = m;
+    // "b.total.change" is "b.change": the total is what a ref without a row means.
+    const field = rawField.replace(/^total_/, "");
+    const round = roundText === undefined ? undefined : Number(roundText);
+    if (round !== undefined && !ROUNDINGS.includes(round)) return null;
+    const lookup = this.lookups.get(id);
+    if (!lookup) return null;
+    const kind = KINDS[lookup.measure];
+    if (rowNumber) {
+      const row = lookup.rows.get(id + rowNumber);
+      if (!row) return null;
+      if (field && lookup.dims.includes(field)) return round ? null : label(row[field]);
+      if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
+      if (lookup.name === "query_data") return !field && isNum(row[lookup.measure]) ? signed(kind, row[lookup.measure] as number, round) : null;
+      return this.comparison(lookup, row, field, round, lookup.dims.map((d) => label(row[d])).join(", "));
+    }
+    if (field === "rows") return round ? null : whole.format(lookup.ordered.length);
+    if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
+    if (lookup.name === "query_data") {
+      if (field === "total") return isNum(lookup.total) ? signed(kind, lookup.total, round) : null;
+      if (field === "max" || field === "min") return this.extreme(lookup, field, round);
+      return null;
+    }
+    if (field === "largest_fall" || field === "largest_rise") return this.largest(lookup, field, round);
+    if (field === "largest_fall_percent" || field === "largest_rise_percent") return round ? null : this.largestPercent(lookup, field);
+    return this.comparison(lookup, (lookup.total ?? {}) as Row, field, round, "");
+  }
+
+  private comparison(lookup: Lookup, figures: Row, field: string, round: number | undefined, rowName: string): string | null {
+    const kind = KINDS[lookup.measure];
+    const noun = NOUNS[lookup.measure];
+    const { from, to, change, percent_change: percent } = figures;
+    if (field === "from" || field === "to") return isNum(figures[field]) ? signed(kind, figures[field] as number, round) : null;
+    if (!isNum(change)) return null;
+    if (field === "change") return change > 0 ? `rose by ${amount(kind, change, round)}` : change < 0 ? `fell by ${amount(kind, change, round)}` : "was unchanged";
+    if (field === "percent") {
+      if (!isNum(percent) || round) return null;
+      if (percent === 0) return "no change";
+      if (Math.abs(percent) < 0.05) return "a change of less than 0.1%";
+      return `a ${percent > 0 ? "rise" : "fall"} of ${onePlace.format(Math.abs(percent))}%`;
+    }
+    if (field === "from_vs_to" || field === "to_vs_from") {
+      if (!isNum(from) || !isNum(to) || !lookup.from || !lookup.to) return null;
+      const [first, second, difference] = field === "from_vs_to" ? [lookup.from, lookup.to, from - to] : [lookup.to, lookup.from, to - from];
+      const where = rowName ? `For ${rowName}, ` : "";
+      if (difference === 0) return `${where}${first} and ${second} had the same ${noun}`;
+      const x = amount(kind, difference, round);
+      if (kind === "count") return `${where}${first} had ${x} ${difference > 0 ? "more" : "fewer"} ${noun} than ${second}`;
+      return `${where}${first}'s ${noun} was ${x} ${difference > 0 ? "higher" : "lower"} than ${second}'s`;
+    }
+    return null;
+  }
+
+  private largest(lookup: Lookup, field: "largest_fall" | "largest_rise", round?: number): string | null {
+    if (!lookup.dims.length) return null;
+    const fall = field === "largest_fall";
+    const moved = lookup.ordered.filter((r) => isNum(r.change) && (fall ? (r.change as number) < 0 : (r.change as number) > 0));
+    if (!moved.length) return fall ? "none of them fell" : "none of them rose";
+    const most = Math.max(...moved.map((r) => Math.abs(r.change as number)));
+    const names = moved.filter((r) => Math.abs(r.change as number) === most).map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
+    return `${join(names)} ${fall ? "fell" : "rose"} the most, by ${amount(KINDS[lookup.measure], most, round)}`;
+  }
+
+  private largestPercent(lookup: Lookup, field: "largest_fall_percent" | "largest_rise_percent"): string | null {
+    if (!lookup.dims.length) return null;
+    const fall = field === "largest_fall_percent";
+    const moved = lookup.ordered.filter((r) => isNum(r.percent_change) && (fall ? (r.percent_change as number) < 0 : (r.percent_change as number) > 0));
+    if (!moved.length) return fall ? "none of them fell" : "none of them rose";
+    const most = Math.max(...moved.map((r) => Math.abs(r.percent_change as number)));
+    const names = moved.filter((r) => Math.abs(r.percent_change as number) === most).map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
+    return `${join(names)} ${fall ? "fell" : "rose"} the most in percent, ${fall ? "a fall" : "a rise"} of ${onePlace.format(most)}%`;
+  }
+
+  private extreme(lookup: Lookup, field: "max" | "min", round?: number): string | null {
+    const rows = lookup.ordered.filter((r) => isNum(r[lookup.measure]));
+    if (!lookup.dims.length || !rows.length) return null;
+    const values = rows.map((r) => r[lookup.measure] as number);
+    const target = field === "max" ? Math.max(...values) : Math.min(...values);
+    const names = rows.filter((r) => r[lookup.measure] === target).map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
+    const kind = KINDS[lookup.measure];
+    const word = kind === "count" ? (field === "max" ? "the most" : "the fewest") : field === "max" ? "the highest" : "the lowest";
+    return `${join(names)} had ${word} ${NOUNS[lookup.measure]}, ${signed(kind, target, round)}`;
   }
 }
 
-export const WITHHELD = "I'd rather not give a number I didn't look up.";
+const NUMBER_WORDS =
+  "zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|billions?|dozens?|half|halves|halved|twice|thrice|double|doubled|triple|tripled|quadruple|single|thirds?|fourths?|fifths?|sixths?|sevenths?|eighths?|ninths?|tenths?";
+const DIRECTION_WORDS =
+  "higher|highest|lower|lowest|more|most|less|least|fewer|fewest|greater|greatest|larger|largest|bigger|biggest|smaller|smallest|rise|rises|rising|rose|risen|fall|falls|falling|fell|fallen|up|down|increase|increases|increased|increasing|decrease|decreases|decreased|decreasing|grow|grows|grew|grown|growing|growth|drop|drops|dropped|dropping|decline|declines|declined|declining|gain|gains|gained|lose|loses|lost|loss|losses|above|below|exceed|exceeds|exceeded|beat|beats|trail|trails|trailed|outsold|outperformed|surged?|jump(?:s|ed)?|climb(?:s|ed)?|dip(?:s|ped)?|slump(?:s|ed)?|plunge[sd]?|unchanged|flat|steady|top|bottom|best|worst|ahead|behind";
+const BANNED = new RegExp(`\\d|[$%€£¥{}]|\\b(?:${NUMBER_WORDS}|${DIRECTION_WORDS})\\b`, "i");
+// Fixed phrases allowed despite their words. "One" only as a pronoun, never counting something.
+const ALLOWED = /\b(?:look(?:s|ed|ing)? (?:it |them |that )?up|break(?:s|ing)? (?:it )?down|broken (?:it )?down|narrow(?:ed)? (?:it )?down|more details?|show (?:you )?more)\b|\bone of\b|\b(?:this|that|which|each|any|every|the only|no|another) one\b(?=\s*(?:[.,;:!?)]|$))/gi;
+const REF = /\{\{([^{}]{1,40})\}\}/g;
+
+/** Renders a sentence's refs and checks its own prose; null if it must be withheld. */
+export function renderSentence(sentence: string, refs: Refs): { text: string; refs: number } | null {
+  let count = 0;
+  let bad = false;
+  const rendered = sentence.replace(REF, (_, ref: string) => {
+    count++;
+    const text = refs.render(ref.trim());
+    if (text === null) bad = true;
+    return text ?? "";
+  });
+  if (bad) return null;
+  const prose = sentence
+    .replace(REF, " ")
+    .replace(/\b\d{4}-Q[1-4]\b/g, (p) => (refs.periods.has(p) ? " " : p))
+    .replace(/\bQ([1-4])\b/g, (q, n: string) => ([...refs.periods].some((p) => p.endsWith(`-Q${n}`)) ? " " : q))
+    .replace(ALLOWED, " ");
+  return BANNED.test(prose) ? null : { text: rendered, refs: count };
+}
+
+/** A pin title is the model's text on the page: no refs, digits, number words or directions, or it's replaced. */
+export const titleIsClean = (title: string) => !BANNED.test(title);
 
 /**
- * Holds the reply a sentence at a time and withholds any sentence with a figure the evidence doesn't back,
- * replacing a run of them with one short note. The evidence is read when each sentence completes, so a
- * figure stated before its lookup came back is withheld too.
+ * Holds the reply a sentence at a time, renders its refs, and withholds any sentence whose prose has a figure
+ * or direction of its own or whose refs this answer doesn't have, replacing a run of them with one note. Refs
+ * are resolved when each sentence completes, so a ref cited before its lookup came back is withheld too.
  */
-export function sentenceGate(evidence: Evidence, clean: (s: string) => string = (s) => s) {
+export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s) {
   let held = "";
   let withheldLast = false;
   let withheld = 0;
+  let rendered = 0;
   const check = (sentences: string) => {
     let out = "";
     // Whitespace after a withheld run, kept until the run ends, so a run of withheld sentences is one note.
     let gap = "";
     for (const sentence of sentences.match(/[^]*?(?:[.!?]+(?:\s+|$)|\n+|$)/g) ?? []) {
       if (!sentence) continue;
-      const bad = evidence.unbacked(sentence).length;
-      if (!bad) {
-        out += gap + sentence;
+      const result = renderSentence(sentence, refs);
+      if (result) {
+        out += gap + result.text;
+        rendered += result.refs;
         gap = "";
         withheldLast = false;
         continue;
       }
-      withheld += bad;
+      withheld++;
       if (!withheldLast) out += gap + WITHHELD;
       gap = /\s*$/.exec(sentence)![0];
       withheldLast = true;
@@ -275,7 +282,7 @@ export function sentenceGate(evidence: Evidence, clean: (s: string) => string = 
     /** Returns the complete sentences that can be shown now. */
     push(chunk: string): string {
       held += chunk;
-      // A sentence ends at ., ! or ? followed by whitespace (not "161,524.69"), or at a line break.
+      // A sentence ends at ., ! or ? followed by whitespace (not "a1.genre"), or at a line break.
       const ends = [...held.matchAll(/[.!?]+\s+|\n+/g)];
       if (!ends.length) return "";
       const last = ends.at(-1)!;
@@ -289,8 +296,13 @@ export function sentenceGate(evidence: Evidence, clean: (s: string) => string = 
       held = "";
       return rest ? check(rest) : "";
     },
+    /** Sentences withheld so far. */
     get withheld() {
       return withheld;
+    },
+    /** Refs rendered so far. */
+    get rendered() {
+      return rendered;
     },
   };
 }

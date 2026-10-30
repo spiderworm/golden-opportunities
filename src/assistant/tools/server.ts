@@ -91,6 +91,25 @@ async function runComparison(c: Comparison, endpoint: { url: URL; token: string 
   return { columns, rows, total: figures(a.total, b.total), source };
 }
 
+// Every successful lookup gets a ref ("a", "b", ...) and each of its rows one more ("a1", "a2", ...). The model
+// cites figures by ref and the app fills them in (src/assistant/server/figures.server.ts), so it never writes
+// a number itself. One server runs per answer, so refs are unique within an answer.
+let lookups = 0;
+export const resetRefsForTests = () => void (lookups = 0);
+function nextRef(): string {
+  let n = lookups++;
+  let ref = "";
+  do {
+    ref = String.fromCharCode(97 + (n % 26)) + ref;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return ref;
+}
+function withRefs<T extends { rows: object[] }>(result: T): T & { ref: string } {
+  const ref = nextRef();
+  return { ref, ...result, rows: result.rows.map((row, i) => ({ ref: `${ref}${i + 1}`, ...row })) };
+}
+
 const ok = (value: unknown): Content => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 const fail = (message: string): Content => ({ content: [{ type: "text", text: message }], isError: true });
 
@@ -98,8 +117,8 @@ const fail = (message: string): Content => ({ content: [{ type: "text", text: me
 export async function callTool(name: unknown, args: unknown, env: NodeJS.ProcessEnv = process.env): Promise<Content> {
   try {
     if (name === "describe_data") return ok(describeData());
-    if (name === "query_data") return ok(await runQuery(checkQuery(args), queryEndpoint(env)));
-    if (name === "compare_data") return ok(await runComparison(checkComparison(args), queryEndpoint(env)));
+    if (name === "query_data") return ok(withRefs(await runQuery(checkQuery(args), queryEndpoint(env))));
+    if (name === "compare_data") return ok(withRefs(await runComparison(checkComparison(args), queryEndpoint(env))));
     if (name === "pin_chart" && env.ORBITAL_PINS !== "0") {
       const chart = checkChart(args);
       const { source, rows } = await runQuery(chart.query, queryEndpoint(env));

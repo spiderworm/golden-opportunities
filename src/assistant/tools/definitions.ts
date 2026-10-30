@@ -70,13 +70,13 @@ export const TOOLS = [
   },
   {
     name: "query_data",
-    description: "Runs one query on the store's data, exactly as the player's dashboard would, over the periods the player can see. Returns columns, rows, the total, and a source line describing where the figures come from. The player sees the result and its source under your reply.",
+    description: "Runs one query on the store's data, exactly as the player's dashboard would, over the periods the player can see. Returns a ref for the result and one for each row, columns, rows, the total, and a source line describing where the figures come from. The player sees the result and its source under your reply. Cite its figures by ref, as your rules say.",
     inputSchema: { type: "object", properties: queryProperties, required: ["measure", "by"], additionalProperties: false },
   },
   {
     name: "compare_data",
     description:
-      "Compares one measure between two values of one dimension (two quarters, two weekdays, two genres), optionally broken down by one other dimension. Returns each side's figure, the change (to minus from), the percent change and the direction (rose or fell, from 'from' to 'to'), computed by the data terminal, with a source line. Use it whenever the player asks for a difference, a change, a rise or fall, or a percent change: never work one out yourself. State each change from 'from' to 'to' with its direction word ('fell by 2,912 from 2193-Q2 to 2193-Q4'), never turned around ('Q2 was higher').",
+      "Compares one measure between two values of one dimension (two quarters, two weekdays, two genres), optionally broken down by one other dimension. Returns a ref for the result and one for each row, each side's figure, the change (to minus from), the percent change and the direction, computed by the data terminal, with a source line. Use it whenever the player asks for a difference, a change, a rise or fall, which is higher, or a percent change, in either order. Cite its figures and comparisons by ref, as your rules say; never state a direction yourself.",
     inputSchema: {
       type: "object",
       properties: {
