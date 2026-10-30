@@ -6,7 +6,8 @@ Status: **draft for David's approval.** Plot wrote it and Goldy coordinates it. 
 - **Decided:** the assumed numbers in section 4 stand.
 - **Decided:** the player sees the rules before deciding. Effects appear only after in-game time has passed. Projections, which may not hold true, may come later, once David has played the game.
 - **Decided:** the names Dewey and the Commerce Office. "Meridian Station" was approved on condition that it clears a check, and it didn't: it is a location in Microsoft's Halo. A replacement is proposed in section 1.
-- **Open:** scoring. David doesn't want gross profit to be the only score. Other measures, including ones that aren't about money, are under discussion.
+- **Decided:** we generate whatever data gameplay needs, including customers and demographics (see `arc.md`).
+- **Open:** scoring. David doesn't want gross profit to be the only score. Other measures, including ones that aren't about money, are under discussion. Customer measures such as satisfaction can now come from generated customers.
 - **Open:** an event director. David wants a separate LLM, behind the scenes, to watch play and drive events. That would add unpredictability to the seasonal baseline in section 4. Its design is to follow.
 
 M1 is the thinnest slice that can be played end to end: an alert, then the revenue chart, then one decision, then one simulated quarter, then the result.
@@ -46,7 +47,9 @@ There are three insights, and a player can reach any of them first. None of them
 
 **A. The whole store slowed, not one part of it.** From Q3 to Q4, every genre fell 38 to 53% except Nonfiction. Every format fell 35 to 45%. Average order value barely moved ($14.03 in Q3, $14.12 in Q4), and so did items per order (1.13, 1.14). The number of orders fell 41% (19,534 to 11,441): fewer visits, not smaller baskets. December rebounded to $74k, the year's third-best month, and Q4 as a whole was within 2% of Q2. So Q3 looks like the outlier. Monthly revenue climbs from February to an August peak, then falls. *Caveat the player should feel:* there's only one year of data, so "it's seasonal" is a well-supported reading, not a proof.
 
-**B. The weekdays emptied; the weekends held.** Weekend orders per day fell 28% (245 to 176) from Q3 to Q4. Weekday orders fell 46% (199 to 107). In Q1 2193, weekdays averaged only 62 orders a day. The summer surge was mostly weekday traffic.
+**B. The weekdays emptied; the weekends held.** Weekend orders per day fell 28% (245 to 176) from Q3 to Q4. Weekday orders fell 48% (199 to 104). In Q1 2193, weekdays averaged only 61 orders a day. The summer surge was mostly weekday traffic.
+
+*Orders per day divide by every calendar day in the period, including days with no sales, as the query contract defines it (`src/query/contract.md`).*
 
 **C. Nonfiction's "growth" is one promotion, and the promotion is a pattern.** Nonfiction rose from $5.3k to $5.6k entirely because of *Hashtag QuokkaSelfie*: 189 trade paperbacks in December, 177 of them at 15% off, against about 15 copies in a typical month. The other Q4 riser, *The Startling End of Mr. Hidhoo* (Fiction), shows the same pattern in October. Filtering to the 15% rate reveals one title per month, discounted all month, every month: the store's Book of the Month. After adjusting for the season, every one of the 12 picks sold more than expected. The extra copies were similar whatever the title: about 35 to 60 a month. One pick added 174 extra copies and one added only 19. For a bestseller, the discount mostly goes on copies that would have sold anyway. For a quiet title, nearly every discounted copy is an extra sale.
 
@@ -138,7 +141,7 @@ After the quarter plays out, the result screen shows:
 
 How it keeps its limits in character:
 
-- **A specific question gets a direct answer and a chart.** "Weekday orders per day: Q3, 199; Q4, 107. Pinned it if you want it."
+- **A specific question gets a direct answer and a chart.** "Weekday orders per day: Q3, 199; Q4, 104. Pinned it if you want it."
 - **An open question gets questions back.** Asked "Why is revenue down?", Dewey says: "I can't tell you why; that part's yours. I can break Q4 down by genre, weekday or format, or compare order counts with order sizes. Where would you like to start?"
 - **A request for advice gets a polite refusal.** Asked "Which option should I pick?", Dewey says: "Not my shelf. I can show you what last year's data says about anything an option touches."
 - **It doesn't volunteer.** If the player has filtered to the 15% rate, Dewey answers what was asked and doesn't point out that it's one title a month.
