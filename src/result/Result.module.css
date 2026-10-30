@@ -1,0 +1,253 @@
+/* The ledger speaks: plain and factual, no praise or blame. */
+.page {
+  display: grid;
+  gap: 20px;
+  max-width: 1180px;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.score {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.scoreHeading {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.scoreLine {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.scoreLine[data-tone="up"] {
+  color: var(--color-up);
+}
+
+.scoreLine[data-tone="down"] {
+  color: var(--color-down);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.tile {
+  display: grid;
+  gap: 10px;
+  padding: 20px 22px 22px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel);
+}
+
+.tileLabel {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.tileValue {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.badge {
+  justify-self: start;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.badge[data-tone="up"] {
+  background: var(--color-up-wash);
+  color: var(--color-up);
+}
+
+.badge[data-tone="down"] {
+  background: var(--color-down-wash);
+  color: var(--color-down);
+}
+
+.badge[data-tone="neutral"] {
+  background: var(--color-panel-raised);
+  color: var(--color-text);
+}
+
+.card {
+  padding: 22px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel);
+}
+
+.card[hidden] {
+  display: none;
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 12px;
+}
+
+.cardTitle {
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.cardHeader .cardTitle {
+  margin: 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  list-style: none;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legendLine {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.note {
+  margin: 12px 0 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.happened {
+  margin: 0 0 8px;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--color-panel-raised);
+}
+
+.intro {
+  margin: 0 0 16px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rules,
+.discoveries {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rule,
+.discovery {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* The rules the player's option relied on. */
+.rule[data-used] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+
+.rule:not([data-used]) {
+  color: var(--color-text-muted);
+}
+
+.tag,
+.marker {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--color-panel-raised);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.discovery:not([data-found]) {
+  color: var(--color-text-muted);
+}
+
+.discovery[data-found] .marker {
+  background: var(--color-up-wash);
+  color: var(--color-up);
+}
+
+@media (max-width: 1000px) {
+  .tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
