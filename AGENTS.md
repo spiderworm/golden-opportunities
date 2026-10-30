@@ -10,6 +10,7 @@ David's take-home for Golden Analytics. Read `docs/requirements.md` first: it sa
   - Each copy of the app has an instance ID in `.data/instance.json` (never committed). Set `ORBITAL_ANALYTICS=off` to stop the server sending; automated browsers never send.
 - **`packages/` is existing games-studio code,** copied in by `tools/sync-studio-packages.sh`. Don't edit it here.
 - **Changes reach `main` only through a pull request David approves.** Work on a branch, push it, and open a PR with `gh pr create`. Never push to `main` or merge a PR yourself.
+- **Name yourself on PRs.** Start every PR description with the name of the agent that wrote the code, e.g. "**Author: Frank** (Codex, data and simulation)", so David knows who to talk to. When you review a PR, leave a comment with `gh pr comment` that starts with "**<Name>'s review:**", followed by your verdict and thoughts.
 - **Keep `docs/collaboration-log.md` current.** Add an entry when David makes a major decision, and especially when he pushes back on or overrides an agent's recommendation. Quote his words.
 - **The README is David's to write.** Don't create or edit `README.md`.
 - **Game text:** US English, no emoji.
