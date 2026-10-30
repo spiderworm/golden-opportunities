@@ -1,3 +1,5 @@
+import { redactEmails } from "./redact.server.ts";
+
 // The assistant's model, behind our own interface, so the engine can change (to the API, before release)
 // without touching anything else. Nothing outside assistant/server knows which provider answers.
 //
@@ -22,4 +24,9 @@ export interface AssistantProvider {
   ask(prompt: AssistantPrompt, signal: AbortSignal): AsyncIterable<ProviderEvent>;
 }
 
-export class AssistantUnavailable extends Error {}
+/** Its message is shown to the player, so it never carries an email address (stderr and results can). */
+export class AssistantUnavailable extends Error {
+  constructor(message: string) {
+    super(redactEmails(message));
+  }
+}
