@@ -130,6 +130,7 @@ If revenue falls instead (that can only happen if the assumption is changed):
 | Tag: data | `From your data` |
 | Tag: assumed | `Assumed` |
 | Tag: setup | `Setup` |
+| Highlighted rule (a visible label, also read by screen readers) | `Your plan used this rule.` |
 
 | Tag | Line |
 | --- | --- |
