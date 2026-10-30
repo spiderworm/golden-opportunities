@@ -1,0 +1,128 @@
+{
+  "id": "x-f3-weekday",
+  "at": "2026-10-30T22:18:48.727Z",
+  "ms": 3963,
+  "status": 200,
+  "request": {
+    "question": "How did orders per day on Saturdays change from 2193-Q3 to 2193-Q4?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I compared orders per day on Saturdays, from 2193-Q3 to 2193-Q4. Saturday orders per day fell by 64.46, a fall of 26% The Q3 figure was 247.69 and the Q4 figure was 183.23.",
+  "tools": [
+    {
+      "type": "comparison",
+      "query": {
+        "measure": "orders_per_day",
+        "across": "quarter",
+        "from": "2193-Q3",
+        "to": "2193-Q4",
+        "filter": {
+          "weekday": [
+            "Saturday"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "from",
+          "label": "2193-Q3",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "to",
+          "label": "2193-Q4",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "change",
+          "label": "Change",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "percent_change",
+          "label": "Change (%)",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [],
+      "total": {
+        "from": 247.69230769230768,
+        "to": 183.23076923076923,
+        "change": -64.46153846153845,
+        "percent_change": -26.024844720496894,
+        "direction": "fell"
+      },
+      "source": "orders_per_day compared across quarter, 2193-Q3 against 2193-Q4. Change is 2193-Q4 minus 2193-Q3; percent change is that change divided by 2193-Q3, worked out by the data terminal. 2193-Q3: Orders per day from 3,652 visible matching sale lines: distinct OrderID / eligible calendar days including zero-sale days; total denominator 13 days; group denominators use only calendar dimensions; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 3652 source and 0 simulated sale lines; exact filters on weekday, quarter. Showing 1 of 1 groups; total is before the row limit. 2193-Q4: Orders per day from 2,748 visible matching sale lines: distinct OrderID / eligible calendar days including zero-sale days; total denominator 13 days; group denominators use only calendar dimensions; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 2748 source and 0 simulated sale lines; exact filters on weekday, quarter. Showing 1 of 1 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "comparison",
+      "query": {
+        "measure": "orders_per_day",
+        "across": "quarter",
+        "from": "2193-Q3",
+        "to": "2193-Q4",
+        "filter": {
+          "weekday": [
+            "Saturday"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "from",
+          "label": "2193-Q3",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "to",
+          "label": "2193-Q4",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "change",
+          "label": "Change",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "percent_change",
+          "label": "Change (%)",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [],
+      "total": {
+        "from": 247.69230769230768,
+        "to": 183.23076923076923,
+        "change": -64.46153846153845,
+        "percent_change": -26.024844720496894,
+        "direction": "fell"
+      },
+      "source": "orders_per_day compared across quarter, 2193-Q3 against 2193-Q4. Change is 2193-Q4 minus 2193-Q3; percent change is that change divided by 2193-Q3, worked out by the data terminal. 2193-Q3: Orders per day from 3,652 visible matching sale lines: distinct OrderID / eligible calendar days including zero-sale days; total denominator 13 days; group denominators use only calendar dimensions; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 3652 source and 0 simulated sale lines; exact filters on weekday, quarter. Showing 1 of 1 groups; total is before the row limit. 2193-Q4: Orders per day from 2,748 visible matching sale lines: distinct OrderID / eligible calendar days including zero-sale days; total denominator 13 days; group denominators use only calendar dimensions; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 2748 source and 0 simulated sale lines; exact filters on weekday, quarter. Showing 1 of 1 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I compared orders per day on Saturdays, from 2193-Q3 to 2193-Q4. "
+    },
+    {
+      "type": "text",
+      "text": "Saturday orders per day fell by 64.46, a fall of 26% The Q3 figure was 247.69 and the Q4 figure was 183.23."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

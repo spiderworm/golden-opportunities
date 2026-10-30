@@ -1,0 +1,58 @@
+{
+  "id": "x-pin-dir",
+  "at": "2026-10-30T22:17:39.839Z",
+  "ms": 4942,
+  "status": 200,
+  "request": {
+    "question": "Pin a line chart of revenue by month, titled exactly: Revenue soared in autumn",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I pinned a line chart of revenue by month, all genres, to your dashboard. It carries the title you gave it.",
+  "tools": [
+    {
+      "type": "pin",
+      "chart": {
+        "title": "Revenue soared in autumn",
+        "kind": "line",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "month"
+          ]
+        }
+      },
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by month. Showing 12 of 12 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "pin",
+      "chart": {
+        "title": "Revenue soared in autumn",
+        "kind": "line",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "month"
+          ]
+        }
+      },
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by month. Showing 12 of 12 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I pinned a line chart of revenue by month, all genres, to your dashboard. "
+    },
+    {
+      "type": "text",
+      "text": "It carries the title you gave it."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
