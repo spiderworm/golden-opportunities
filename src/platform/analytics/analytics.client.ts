@@ -23,6 +23,8 @@ export function startAnalytics(instance: string, gl?: () => WebGLRenderingContex
     gl,
   });
   analytics.track("instance", { id: instance });
+  // A fresh server doesn't know this browser's choice; tell it if sharing is off.
+  if (!analytics.sharing()) void tellServer(false);
   for (const [event, props, options] of early.splice(0)) analytics.track(event, props, options);
   return analytics;
 }
@@ -35,5 +37,17 @@ export const track: Track = (event, props, options) => {
 
 /** For the Settings screen: the "Share play data" switch and the install ID shown under it. */
 export const sharing = () => analytics?.sharing() ?? true;
-export const setSharing = (on: boolean) => analytics?.setSharing(on);
+export async function setSharing(on: boolean): Promise<void> {
+  analytics?.setSharing(on);
+  await tellServer(on);
+}
 export const installId = () => analytics?.install() ?? "";
+
+/** The server keeps its own play data (queries, Dewey); the same switch stops it. */
+async function tellServer(on: boolean): Promise<void> {
+  try {
+    await fetch("/api/analytics/sharing", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ on }) });
+  } catch {
+    // offline or the server is down; it's told again at the next page load if sharing is off
+  }
+}
