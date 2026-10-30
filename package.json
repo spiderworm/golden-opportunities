@@ -16,6 +16,7 @@
     "@react-router/serve": "8.5.1",
     "@tellim/analytics": "file:packages/analytics",
     "@tellim/music": "file:packages/music",
+    "echarts": "6.1.0",
     "isbot": "5.1.36",
     "react": "19.2.8",
     "react-dom": "19.2.8",
