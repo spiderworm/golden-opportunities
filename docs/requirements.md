@@ -25,7 +25,13 @@ Due **3 November 2026**. Golden Analytics will extend if asked; David will decid
 
 - **The player can talk to the data through an in-game agent.** It must be present. (David, 30 Oct)
 - **The agent must never give away the answers.** (David, 30 Oct)
-- **What exactly the agent can and can't do is still open.** (David, 30 Oct)
+- **The agent is Claude Code,** set up the way David's web UIs drive Claude Code sessions on his Mac. To be revisited before release. (David, 30 Oct)
+- **Its limits, as a starting point** (proposed by Goldy, accepted by David on 30 Oct: "We'll adjust if necessary"):
+  - The rules are enforced by what the agent can reach, not by instructions in its prompt. It queries data through the same layer as the dashboard and can't read files, run commands or reach the web.
+  - It never has access to the scenario's hidden cause, the simulation's model, future quarters or the scoring.
+  - **It can** answer specific questions about the data, draw charts the player asks for, explain terms, show how to use the tools, and pin its charts to the dashboard.
+  - **It can't** answer open questions ("what's wrong?", "why?", "what should I do?"); it turns them back into questions the player could ask. It doesn't volunteer patterns the player didn't ask about, recommend or rank decisions, or predict outcomes.
+  - Maybe later: a hint the player can request, at a cost to their score.
 
 ## Look, sound and feel
 
@@ -38,11 +44,18 @@ Due **3 November 2026**. Golden Analytics will extend if asked; David will decid
 
 - **The code lives in the golden-opportunities repo,** not in games-studio. It uses copies of the studio's shared packages (`packages/`, refreshed by `tools/sync-studio-packages.sh`). (David, 30 Oct)
 - **The app has a server.** React Router in framework mode (formerly Remix, and David still calls it Remix), with Vite for hot reloading. (David, 30 Oct)
+- **Hosting:** local only for now; to be decided later. (David, 30 Oct)
+- **Every copy of the app generates an instance ID** and sends it with its analytics, like a device ID. Local runs send everything too. How exposed this leaves David to abuse is still to be discussed. (David, 30 Oct)
 - **Analytics** use the studio's `@tellim/analytics` and **send to the studio's server.** (David, 30 Oct) That brings these requirements (Annie, 30 Oct):
   - a privacy page, modelled on Waddleberg's `privacy.html`;
   - an in-game switch to turn sharing off, with the install id shown;
   - `game: "orbital-books"`, plus `version`, `platform: "web"`, a build id and the WebGL context.
 - **How We Build applies** (`~/Documents/how-we-build.md`): vertical slices, code organised by feature, analytics in every feature from the start.
+
+## Process
+
+- **All work reaches `main` through pull requests David approves.** (David, 30 Oct)
+- **Major points of the collaboration go in `docs/collaboration-log.md`,** especially where David pushes back on the AI. (David, 30 Oct)
 
 ## Submission (from the brief)
 

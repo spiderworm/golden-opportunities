@@ -1,0 +1,28 @@
+# Collaboration log
+
+A record of the major points in David's work with the AI agents on this project: what David asked for, what the AI proposed, and where David pushed back, overrode a recommendation, or set the direction himself. Kept by Goldy (Claude Code); other agents add entries in the same form.
+
+Entries marked **Pushback** are where David rejected or changed what the AI recommended. Entries marked **David's direction** are decisions David made that didn't come from the AI. Quotes are David's own words.
+
+## 27 October 2026: choosing what to build
+
+- **Setup.** David asked Goldy to make a project folder and turn the brief into a requirements checklist.
+- **David's direction: the first idea came from David's previous role.** David proposed a chat-with-your-data app: pick a dataset or upload your own, chat with an LLM on the server, and have tools produce documents, visualisations and presentations to download. Goldy's response: the downloadable outputs were the distinctive part, but an open chat box is "the most obvious thing" the brief warns against, and a blank input box is hard for the brief's "no idea where to start" user. David: "What's sad is that I'm suggesting this because of what we built in my previous role. Not due to any AI prompting. I'd hate to put this out there and have it waved away because they assume that AI generated the idea." He set it aside to develop other ideas.
+- **Pushback: no AI ideas while exploring the data.** When asking Goldy to profile MovieLens, David said: "Don't give me any ideas for it." Goldy profiled MovieLens, the Olympics data, the Messy Employee data and the Bookshop data, reporting facts and data quality only.
+- **David's direction.** On the employee dataset, David read the intent himself: "If there's an intent with that data, I'm guessing some sort of normalizing processor would be the intent."
+
+## 30 October 2026: the concept and the stack
+
+- **David's direction: the concept.** David wrote the concept himself (`~/Documents/The Last Bookstore/concept.md`): you play the owner of a futuristic bookstore, and the game uses "analytics as gameplay" in a Discover, Investigate, Decide, Measure loop. Goldy's review: the data has no customers, locations, returns or inventory, so several of the concept's examples can't be answered from it, and "Measure" would need a simulation. For a 45-minute build, Goldy suggested scoring the player's reasoning and leaving simulated outcomes for later.
+- **Pushback: scoring.** David: "I think scoring really comes down to: how do your actions impact the bookstore over time." That commits the game to a simulation, which David approved.
+- **David's direction: the setting.** "What if we put the bookstore in orbit. Orbital Books, maybe?"
+- **Pushback: scope.** Goldy had repeatedly advised keeping to a thin slice for the brief's 45-minute guideline. David: "I plan on us spending however long it's going to take to make this a high quality experience, I don't plan on limiting myself to 45 minutes." He also directed that we generate the data the simulation needs, citing the brief's "data of your own choosing".
+- **David's direction: look and sound.** David chose a Dribbble dashboard as the UI reference, asked for beautiful animated 3D of the store inside and out (Tripo, Gemini), and will make the music himself with Suno.
+- **David's direction: reuse studio work.** David asked Goldy to consult Remy (games-studio) about using the studio's resources. Remy recommended moving the game into games-studio. David asked instead whether it could stay in this repo and still use the studio's resources; Goldy proposed copying the packages in with a sync script, and David agreed.
+- **Pushback: analytics.** Remy and Goldy both recommended device-only analytics, so no reviewer data would leave their machine. David: "Sending to the studio's server. They're an analytics company. What comes around, goes around."
+- **David's direction: deadline.** Goldy flagged the 3 November deadline and suggested asking for an extension early. David chose to see how far a few hours of work got first.
+- **Pushback: the stack.** Goldy proposed a front-end-only Vite + React app and argued against Remix because nothing needed a server. David: "DEFINITELY KEEP THE SERVER COMPONENT. Not sure how we missed this requirement. Can you imagine a futuristic bookstore where the user can't talk to the data?" The stack became React Router (Remix) in framework mode.
+- **David's direction: the in-game agent.** David added the requirement that the player can talk to the data through an in-game agent, and that it must never give away the answers. Goldy proposed the limits: the agent sees only what the player sees, answers specific questions and draws requested charts, but won't answer "why" or "what should I do", won't volunteer patterns, and won't recommend decisions or predict outcomes. David accepted these as a starting point: "We'll adjust if necessary."
+- **Pushback: the agent's model.** Goldy suggested the Claude API. David chose Claude Code instead, set up "similar to the way I'm interfacing with Claude Code instances via web uis in different projects on this Macbook", to be revisited before release.
+- **David's direction: analytics from local runs.** Goldy asked whether reviewers' local runs should send analytics. David: each copy should generate an instance ID and send it with its analytics, "every bit, to me", and he asked to discuss how much that opens him up to abuse.
+- **David's direction: process.** David asked for this log, noting that "the potential employer would like to know details about when I'm pushing back on you", and asked that from now on all work reaches `main` through pull requests he approves.
