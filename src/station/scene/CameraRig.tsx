@@ -47,6 +47,7 @@ export function CameraRig({
       windowCenter: new Vector3(),
       inside: new Vector3(),
       sway: new Vector3(),
+      right: new Vector3(),
     }),
     [],
   );
@@ -68,7 +69,7 @@ export function CameraRig({
 
     const u = easeInOutCubic(progress.current);
     const t = clock.elapsedTime;
-    const { points, curve, look, windowCenter, inside, sway } = work;
+    const { points, curve, look, windowCenter, inside, sway, right } = work;
     // Outside, the home point drifts a little so the view never freezes.
     points[0]!.copy(OUTSIDE_EYE).add(sway.set(Math.sin(t * 0.07) * 12, Math.sin(t * 0.05) * 6, Math.cos(t * 0.06) * 8));
     GLIDE_STATION_POINTS.forEach((local, i) => points[i + 1]!.copy(local).applyMatrix4(frame.matrixWorld));
@@ -78,9 +79,12 @@ export function CameraRig({
     windowCenter.copy(WINDOW_CENTER).applyMatrix4(frame.matrixWorld);
     inside.copy(INSIDE_LOOK).applyMatrix4(frame.matrixWorld);
     look.copy(OUTSIDE_LOOK).lerp(windowCenter, smoothstep(0.1, 0.45, u)).lerp(inside, smoothstep(0.5, 0.68, u));
-    // A little parallax from the pointer, more of it outside.
+    // A little parallax from the pointer, more of it outside. It shifts the
+    // look target along the screen's right, not the world's x, which faces
+    // away from the camera outside and turns with the station inside.
     const reach = u > 0.6 ? 0.9 : 14;
-    look.x += pointer.x * reach;
+    right.subVectors(look, camera.position).cross(camera.up).normalize();
+    look.addScaledVector(right, pointer.x * reach);
     look.y += pointer.y * reach * 0.5;
     camera.lookAt(look);
 
