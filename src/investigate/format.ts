@@ -54,6 +54,16 @@ export function periodLabel(quarters: readonly string[]): string {
   return parts.length < 2 ? (parts[0] ?? "") : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
 }
 
+/**
+ * The page title from the loader's data: "Ledgers: 2193", then "Ledgers: 2193
+ * and Q1 2194" once the played quarter is in them. Without data (an error
+ * boundary), the screen's name.
+ */
+export function ledgersTitle(data: unknown): string {
+  const quarters = (data as { options?: { quarter?: unknown } } | null | undefined)?.options?.quarter;
+  return Array.isArray(quarters) && quarters.length ? `Ledgers: ${periodLabel(quarters as string[])}` : "Investigate";
+}
+
 /** Measures whose values add up, so a part can be a share of the whole. */
 export const ADDITIVE: readonly Measure[] = ["revenue", "units", "orders"];
 
