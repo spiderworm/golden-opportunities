@@ -27,6 +27,5 @@ export function sceneLevels(busyness: number): SceneLevels {
   };
 }
 
-/** Seconds outside before the opening glide starts, and how long a glide takes. */
-export const OPENING_HOLD = 1.5;
+/** How long the camera takes to glide between outside and inside. */
 export const GLIDE_SECONDS = 9;

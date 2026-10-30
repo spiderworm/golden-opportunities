@@ -2,15 +2,17 @@ import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, ty
 import { useSearchParams } from "react-router";
 
 import { track } from "~/platform/analytics/analytics.client";
-import { OPENING_HOLD } from "./scene-params";
 import type { StationViewpoint } from "./scene/StationScene";
 import { StationPoster } from "./StationPoster";
+import { FIRST_VIEW, rememberedView, rememberView } from "./view-memory";
 import { canRenderWebGL2 } from "./webgl";
 import styles from "./StationView.module.css";
 
 // three.js and the scene load only here, after the page is up and the
 // browser has shown it can draw them. Without WebGL 2 (or if the scene
-// fails) the player sees a still picture instead.
+// fails) the player sees a still picture instead. The camera stays where it
+// is until the player moves it: inside on a first visit, then wherever they
+// left it last time.
 const StationScene = lazy(() => import("./scene/StationScene"));
 
 type Support = "checking" | "3d" | "static";
@@ -27,10 +29,9 @@ export interface StationViewProps {
 export function StationView({ busyness, featuredTitle, alert }: StationViewProps) {
   const [support, setSupport] = useState<Support>("checking");
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [view, setView] = useState<StationViewpoint>("outside");
+  const [view, setView] = useState<StationViewpoint>(FIRST_VIEW);
   const [ready, setReady] = useState(false);
   const moving = useRef<{ to: StationViewpoint; trigger: string; started: number } | null>(null);
-  const touched = useRef(false);
   const statsLine = useRef<HTMLParagraphElement>(null);
   const [params] = useSearchParams();
   const showStats = params.has("stats");
@@ -38,23 +39,19 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
   useEffect(() => {
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const mode = canRenderWebGL2() ? "3d" : "static";
+    // Set before the scene first renders, so the camera starts there rather than gliding.
+    const opening = rememberedView(localStorage);
     setReducedMotion(reduced);
-    if (reduced) setView("inside");
+    setView(opening);
     setSupport(mode);
-    track("station_viewed", { mode, reducedMotion: reduced });
+    track("station_viewed", { mode, reducedMotion: reduced, view: opening });
   }, []);
 
-  const move = useCallback((to: StationViewpoint, trigger: "opening" | "button") => {
-    moving.current = { to, trigger, started: performance.now() };
+  const move = useCallback((to: StationViewpoint) => {
+    moving.current = { to, trigger: "button", started: performance.now() };
     setView(to);
+    rememberView(localStorage, to);
   }, []);
-
-  // The opening: hold outside a moment, then glide into the shop.
-  useEffect(() => {
-    if (!ready || reducedMotion) return;
-    const timer = setTimeout(() => touched.current || move("inside", "opening"), OPENING_HOLD * 1000);
-    return () => clearTimeout(timer);
-  }, [ready, reducedMotion, move]);
 
   const onSettled = useCallback((settled: StationViewpoint) => {
     const m = moving.current;
@@ -94,10 +91,7 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
         <button
           type="button"
           className={styles.move}
-          onClick={() => {
-            touched.current = true;
-            move(next, "button");
-          }}
+          onClick={() => move(next)}
         >
           {next === "inside" ? "Go inside" : "Step outside"}
         </button>

@@ -3,24 +3,22 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   AdditiveBlending,
   CircleGeometry,
-  Color,
   ConeGeometry,
   CylinderGeometry,
   DoubleSide,
-  Matrix4,
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
-  Quaternion,
   SphereGeometry,
-  Vector3,
   type BufferGeometry,
   type Group,
-  type InstancedMesh,
 } from "three";
 
+import type { Bookshop } from "./bookshop";
+import { Books } from "./Books";
 import { box, merged } from "./geometry";
 import { ROOM, WINDOW } from "./layout";
+import { BOARDS, SHELF_DEPTH, SHELF_HEIGHT, SHELF_UNITS, type ShelfUnit } from "./shelves";
 import { coverTexture } from "./textures";
 
 // The shop, in the berth's frame: floor at y = 0, the window wall at +z.
@@ -31,26 +29,6 @@ import { coverTexture } from "./textures";
 const HALF_W = ROOM.width / 2;
 const HALF_D = ROOM.depth / 2;
 const INSET = 0.02;
-
-/** A shelf unit: its center on the floor, its width, and which way its front faces (radians about Y). */
-interface ShelfUnit {
-  x: number;
-  z: number;
-  width: number;
-  facing: number;
-}
-
-const SHELF_DEPTH = 0.62;
-const SHELF_HEIGHT = 4.2;
-const BOARDS = [0.12, 0.95, 1.78, 2.61, 3.44];
-
-export const SHELF_UNITS: ShelfUnit[] = [
-  { x: -4.9, z: -HALF_D + SHELF_DEPTH / 2 + INSET, width: 4.4, facing: 0 },
-  { x: -0.3, z: -HALF_D + SHELF_DEPTH / 2 + INSET, width: 4.4, facing: 0 },
-  { x: 4.3, z: -HALF_D + SHELF_DEPTH / 2 + INSET, width: 4.4, facing: 0 },
-  { x: -HALF_W + SHELF_DEPTH / 2 + INSET, z: -2.9, width: 4.4, facing: Math.PI / 2 },
-  { x: -HALF_W + SHELF_DEPTH / 2 + INSET, z: 1.6, width: 4.4, facing: Math.PI / 2 },
-];
 
 const placeUnit = (unit: ShelfUnit, piece: BufferGeometry) => piece.rotateY(unit.facing).translate(unit.x, 0, unit.z);
 
@@ -98,77 +76,6 @@ function shelvesGeometry() {
   // A light strip along the counter's front.
   strips.push(box(4.42, 0.92, 0, 0.03, 0.04, 3.1));
   return { wood: merged(wood), strips: merged(strips) };
-}
-
-const Z_AXIS = new Vector3(0, 0, 1);
-const BOOK_COLORS = ["#7a2e3b", "#2f4f7a", "#2e6b5a", "#c08a3e", "#5b3d7a", "#d9cfb8", "#3d3a52", "#a3462f", "#4f7d8f", "#8c7a4a"];
-
-/** Seeded, so the shelves look the same on every visit. */
-function seeded(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 2 ** 32;
-  };
-}
-
-function bookInstances(): { matrices: Matrix4[]; colors: Color[] } {
-  const random = seeded(2194);
-  const matrices: Matrix4[] = [];
-  const colors: Color[] = [];
-  const unitMatrix = new Matrix4();
-  const book = new Matrix4();
-  for (const unit of SHELF_UNITS) {
-    unitMatrix.makeRotationY(unit.facing).setPosition(unit.x, 0, unit.z);
-    for (const y of BOARDS.slice(0, 4)) {
-      let x = -unit.width / 2 + 0.12;
-      const end = unit.width / 2 - 0.12;
-      while (x < end) {
-        const width = 0.06 + random() * 0.08;
-        if (x + width > end) break;
-        if (random() < 0.05) {
-          x += 0.25; // a gap where something sold
-          continue;
-        }
-        const height = 0.46 + random() * 0.3;
-        const depth = 0.34 + random() * 0.14;
-        const lean = random() < 0.06 ? 0.18 : 0;
-        book.compose(
-          new Vector3(x + width / 2, y + height / 2, -SHELF_DEPTH / 2 + 0.06 + depth / 2),
-          new Quaternion().setFromAxisAngle(Z_AXIS, lean),
-          new Vector3(width, height, depth),
-        );
-        matrices.push(unitMatrix.clone().multiply(book));
-        const c = new Color(BOOK_COLORS[Math.floor(random() * BOOK_COLORS.length)]!);
-        colors.push(c.offsetHSL(0, 0, (random() - 0.5) * 0.12));
-        x += width + 0.004;
-      }
-    }
-  }
-  return { matrices, colors };
-}
-
-function Books() {
-  const ref = useRef<InstancedMesh>(null);
-  const { matrices, colors } = useMemo(bookInstances, []);
-  const material = useMemo(() => new MeshStandardMaterial({ roughness: 0.75, metalness: 0 }), []);
-  useEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    matrices.forEach((m, i) => {
-      mesh.setMatrixAt(i, m);
-      mesh.setColorAt(i, colors[i]!);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    mesh.computeBoundingSphere();
-  }, [matrices, colors]);
-  useEffect(() => () => material.dispose(), [material]);
-  return (
-    <instancedMesh ref={ref} args={[undefined, material, matrices.length]}>
-      <boxGeometry />
-    </instancedMesh>
-  );
 }
 
 function counterGeometry() {
@@ -269,7 +176,7 @@ function lampGeometry() {
   };
 }
 
-export function Interior({ title, glow, alert }: { title: string; glow: number; alert: boolean }) {
+export function Interior({ title, glow, alert, shop }: { title: string; glow: number; alert: boolean; shop: Bookshop }) {
   const lining = useMemo(liningGeometry, []);
   const shelves = useMemo(shelvesGeometry, []);
   const counter = useMemo(counterGeometry, []);
@@ -313,7 +220,7 @@ export function Interior({ title, glow, alert }: { title: string; glow: number; 
       <mesh geometry={lining.rug} material={materials.rug} />
       <mesh geometry={shelves.wood} material={materials.wood} />
       <mesh geometry={shelves.strips} material={materials.strips} />
-      <Books />
+      <Books shop={shop} />
       <mesh geometry={counter} material={materials.counter} />
       <mesh geometry={lamp.pole} material={materials.lampMetal} />
       <mesh geometry={lamp.shade} material={materials.lampMetal} />

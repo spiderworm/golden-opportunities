@@ -1,9 +1,10 @@
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Suspense, useEffect, useRef, type RefObject } from "react";
+import { Suspense, useEffect, useMemo, useRef, type RefObject } from "react";
 import type { DirectionalLight, Group } from "three";
 
 import { track } from "~/platform/analytics/analytics.client";
 import { sceneLevels } from "../scene-params";
+import { Bookshop } from "./bookshop";
 import { CameraRig, SUN_INTENSITY } from "./CameraRig";
 import { DustMotes } from "./DustMotes";
 import { Exterior, Shuttles } from "./Exterior";
@@ -11,6 +12,7 @@ import { summarizeFrames } from "./frame-stats";
 import { Interior } from "./Interior";
 import { BERTH_ORIGIN, OUTSIDE_EYE, STATION_SPIN, STATION_START_ANGLE, SUN_DIRECTION } from "./layout";
 import { Props } from "./Props";
+import { Robots } from "./Robots";
 import { Shoppers } from "./Shoppers";
 import { Sky } from "./Sky";
 
@@ -42,6 +44,13 @@ export default function StationScene(props: StationSceneProps) {
     if (settled.current !== props.view) settled.current = null;
   }, [props.view]);
   const levels = sceneLevels(props.busyness);
+  const shop = useMemo(() => {
+    const opening = new Bookshop();
+    // A couple of books already out of place, so the robots have work from the start.
+    opening.misplace(-6.6, 1.0);
+    opening.misplace(1.2, -4.3);
+    return opening;
+  }, []);
   return (
     <Canvas
       dpr={[1, 1.75]}
@@ -58,8 +67,9 @@ export default function StationScene(props: StationSceneProps) {
       <group ref={station} rotation={[0, STATION_START_ANGLE, 0]}>
         <Exterior glow={levels.glow} />
         <group position={BERTH_ORIGIN}>
-          <Interior title={props.featuredTitle} glow={levels.glow} alert={props.alert} />
-          <Shoppers count={levels.shoppers} />
+          <Interior title={props.featuredTitle} glow={levels.glow} alert={props.alert} shop={shop} />
+          <Shoppers count={levels.shoppers} shop={shop} />
+          <Robots shop={shop} />
           <DustMotes />
           <Suspense fallback={null}>
             <Props />
