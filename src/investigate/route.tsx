@@ -12,7 +12,7 @@ import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
 import { runQuery } from "~/query/run-query.server";
-import { resolveQueryView } from "~/query/view.server";
+import { getGameSession } from "~/game/session.server";
 import {
   DEFAULT_STATE,
   filtersExcept,
@@ -41,7 +41,7 @@ export function loader({ request }: Route.LoaderArgs) {
   const started = performance.now();
   const state = parseState(new URL(request.url).searchParams);
   // The server decides what the player can see; Frank's game state will resolve it per save.
-  const investigation = investigate(state, runQuery, resolveQueryView());
+  const investigation = investigate(state, runQuery, getGameSession(request).queryView);
   trackServer("investigate_loaded", {
     durationMs: Math.round(performance.now() - started),
     measure: state.measure,
