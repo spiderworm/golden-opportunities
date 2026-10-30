@@ -35,6 +35,15 @@ export function shouldRevalidate({ formMethod, defaultShouldRevalidate }: Should
 /** For analytics: the moves by name, a fixed vocabulary ("repick+events", "hold"). */
 const planLabel = (levers: readonly LeverId[]) => levers.join("+") || "hold";
 
+/** Whether the save holds a plan, asked again after a refusal; false if the save can't be read. */
+function hasPlan(request: Request): boolean {
+  try {
+    return getPlan(request) !== null;
+  } catch {
+    return false;
+  }
+}
+
 export async function action({ request }: Route.ActionArgs) {
   let plan: Plan;
   try {
@@ -47,9 +56,10 @@ export async function action({ request }: Route.ActionArgs) {
     if (getPlan(request)) return data({ ok: false as const, played: true }, { status: 409 });
     submitPlan(request, plan);
   } catch (error) {
-    // The game refuses with a Response: a lost race to play (409), no save, or storage
-    // trouble. The player goes back to choosing, or to the results if the quarter is played.
-    if (error instanceof Response) return data({ ok: false as const, played: error.status === 409 }, { status: error.status });
+    // The game refuses with a Response: a lost race to play, a busy or changed save, no
+    // save, or storage trouble. The player goes to the results only if a plan is
+    // really in (a 409 can also mean a busy save); otherwise back to choosing.
+    if (error instanceof Response) return data({ ok: false as const, played: hasPlan(request) }, { status: error.status });
     throw error;
   }
   trackServer("plan_submitted", { levers: planLabel(plan.levers), moves: plan.levers.length });
