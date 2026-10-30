@@ -4,11 +4,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { WireEvent } from "../events.ts";
+import { track as platformTrack } from "~/platform/analytics/analytics.client";
 import { ASSISTANT_NAME as NAME } from "../name.ts";
 import type { ChartSpec } from "../tools/definitions.ts";
 import { askAssistant, type SentTurn } from "./stream.ts";
 
-/** The platform's track(), injected (src/platform/analytics, PR #9). */
+/** The platform's track(); injectable for tests. */
 export type PanelTrack = (event: string, props?: Record<string, string | number | boolean>, options?: { hold?: "agent_text" }) => void;
 
 type Lookup = Extract<WireEvent, { type: "data" | "pin" | "lookup_failed" }>;
@@ -24,7 +25,7 @@ const QUESTION_MAX = 500;
 const ROWS_SHOWN = 8;
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
-export function AssistantPanel({ track = () => {}, onPin, fetcher }: { track?: PanelTrack; onPin?: (chart: ChartSpec) => void; fetcher?: typeof fetch }) {
+export function AssistantPanel({ track = platformTrack, onPin, fetcher }: { track?: PanelTrack; onPin?: (chart: ChartSpec) => void; fetcher?: typeof fetch }) {
   const [replies, setReplies] = useState<Reply[]>([]);
   const [question, setQuestion] = useState("");
   const abort = useRef<AbortController | null>(null);

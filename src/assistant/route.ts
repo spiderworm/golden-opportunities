@@ -1,5 +1,6 @@
 // POST /api/assistant. Wires the real pieces together; the work is in server/ask.server.ts.
 
+import { trackServer } from "~/platform/analytics/analytics.server";
 import { getAssistant } from "./server/assistant.server.ts";
 import { ask, type ServerTrack } from "./server/ask.server.ts";
 import { claudeCodeAssistant } from "./server/claudeCode.server.ts";
@@ -8,9 +9,8 @@ import type { AssistantProvider } from "./server/provider.server.ts";
 import { orbitalToolServer } from "./tools/toolServer.server.ts";
 import type { Route } from "./+types/route";
 
-/** Replaced by the platform's server track() when it lands (PR #9). Content-free events only. */
-let track: ServerTrack = () => {};
-export const setAssistantTrack = (t: ServerTrack) => void (track = t);
+// Content-free events only: what the player typed is recorded in the browser, held on the device.
+const track: ServerTrack = (event, props) => trackServer(event, props);
 
 const unavailable = (message: string): AssistantProvider => ({
   name: "unavailable",
