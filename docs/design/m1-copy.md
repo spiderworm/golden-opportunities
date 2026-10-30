@@ -101,10 +101,8 @@ Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events
 | Chart lines | `Your plan`, `If you had held course`, `Q4 2193 (for reference)` |
 | Tiles | `Gross profit`, `Revenue`, `Units sold` |
 | Tile badge | `{+/-}{amount} vs holding course` |
-| Tile badge (option A) | `Your plan was to hold course` |
+| Tile badge (no moves chosen) | `Your plan was to hold course` |
 | Season note | `Q1 revenue was {pct}% below Q4 2193. Last year, Q1 was also the quietest quarter: $95,246. To judge your plan, compare it with holding course, not with Q4.` |
-| Score heading | `Your plan vs holding course` |
-| Score line | `{+/-}${amount} gross profit` |
 | Buttons | `See the assumptions`, `Back to the ledgers` |
 
 ### Report card
@@ -122,10 +120,20 @@ Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events
 | Measures | `Profit`, `Readers served`, `Happiness`, `Culture` |
 | Award tag | `Exceeds Requirements` |
 | Certificates heading | `Certificates` |
+| Exceeds Requirements certificate | `Exceeds Requirements: {Measure} beat its goal. Certificates don't change your score.` |
 | Well-Rounded Shop | `Well-Rounded Shop: every measure scored 80 or more.` |
 | Note | `Each goal is Q1 2193 plus 5%. Matching last year scores 70 (C−). Meeting the goal scores 100 (A+).` |
 
-**Boss lines.** One line per measure, chosen by the result: at or past the goal, between last year and the goal, or below last year. Bosses speak in capitals. The numbers are the card's.
+**Screen order (simple first).** The card shows, top to bottom:
+1. The overall score, with the explainer "Your overall score is your lowest measure."
+2. The lowest-measure line, then at most one close-behind line (the closest).
+3. The table, with the binding row or rows highlighted and tagged "Sets your score".
+4. Certificates.
+5. A collapsed disclosure, `What the bosses said`, holding the per-measure boss lines and the Station Administrator's line.
+
+So no more than three capitalized lines show before the table.
+
+**Boss lines (inside the disclosure).** One line per measure, chosen by the result: at or past the goal, between last year and the goal, or below last year. Bosses speak in capitals. The numbers are the card's.
 
 | Boss (measure) | At or past the goal | Between last year and the goal | Below last year |
 | --- | --- | --- | --- |
@@ -137,7 +145,11 @@ Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events
 
 For the Station Administrator, `{fraction}` is the score in words: the nearest of THREE-FIFTHS, TWO-THIRDS, SEVEN-TENTHS, THREE-QUARTERS, FOUR-FIFTHS, FIVE-SIXTHS, NINE-TENTHS and NINETEEN-TWENTIETHS. It is prefixed with "ABOUT" when the fraction isn't exact: 75 is "THREE-QUARTERS", and 78 is "ABOUT THREE-QUARTERS".
 
-**Lowest-measure lines.** These are spoken by the binding measure's boss, after the per-measure lines. Show the first that applies, then any close-behind line:
+**Lowest-measure lines.** These are spoken by the binding measure's boss, under the overall score.
+- If all four measures are at 100, show only that line.
+- Otherwise, show the one-binder or tie line. Then, if a sacrifice backfired, the sacrifice line. Then at most one close-behind line, for the closest measure.
+
+`{MEASURE}` is the measure's name in capitals: PROFIT, READERS SERVED, HAPPINESS, CULTURE.
 
 | Moment | Line |
 | --- | --- |
@@ -146,7 +158,6 @@ For the Station Administrator, `{fraction}` is the score in words: the nearest o
 | A sacrifice backfired (one measure fell below last year while another rose past its goal) | `YOU RAISED ONE MEASURE BY LOWERING ANOTHER. WE ONLY COUNT THE LOWER ONE. THIS IS POLICY.` |
 | All four at 100 | `ALL MEASURES EXCEEDED REQUIREMENTS. YOUR SCORE IS 100. WE ARE RECALIBRATING OUR EXPECTATIONS UPWARD.` |
 | Close behind (each) | `{MEASURE} WAS {n} POINTS FROM SETTING YOUR SCORE. IT IS WATCHING.` |
-| A measure at 100 that isn't binding | `{MEASURE} EXCEEDED REQUIREMENTS. A CERTIFICATE HAS BEEN PRINTED. IT DOES NOT AFFECT YOUR SCORE.` |
 
 **Numbers in the lines:** goals are rounded up for display, and a result that falls short of its goal is rounded down. That way a result never appears to meet a goal it missed: culture up 4.6% against a 5% target reads "CULTURE INCREASED 4%".
 
