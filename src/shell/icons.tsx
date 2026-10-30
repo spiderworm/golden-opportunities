@@ -60,6 +60,35 @@ const paths = {
       <path d="M15.5 17.5h5v-5" />
     </>
   ),
+  coins: (
+    <>
+      <ellipse cx="12" cy="6.5" rx="7" ry="2.8" />
+      <path d="M5 6.5v5.5c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6.5M5 12v5.5c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V12" />
+    </>
+  ),
+  book: (
+    <>
+      <path d="M4 5.5c2.8-1 5.5-.8 8 1 2.5-1.8 5.2-2 8-1v13c-2.8-1-5.5-.8-8 1-2.5-1.8-5.2-2-8-1z" />
+      <path d="M12 6.5v13" />
+    </>
+  ),
+  bag: (
+    <>
+      <path d="M5 8h14l-1 12.5H6z" />
+      <path d="M9 10V7a3 3 0 0 1 6 0v3" />
+    </>
+  ),
+  tag: (
+    <>
+      <path d="M3.5 12.5v-8h8l9 9-8 8z" />
+      <circle cx="8" cy="9" r="1.4" />
+    </>
+  ),
+  arrowUp: <path d="M7 17 17 7M9 7h8v8" />,
+  arrowDown: <path d="M7 7l10 10M17 9v8H9" />,
+  filter: <path d="M4 6h16M7 12h10M10 18h4" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  close: <path d="M6 6l12 12M18 6 6 18" />,
 } as const;
 
 export type IconName = keyof typeof paths;
