@@ -92,8 +92,8 @@ function PinnedChart({ pin, quarters, onRemove, onError }: { pin: Pin; quarters:
 function PinBody({ pin, result, quarters }: { pin: Pin; result: QueryResult; quarters: readonly string[] }) {
   const [x, seriesBy = null] = pin.query.by;
   const model = useMemo(
-    () => (x ? categoryModel(result, x, seriesBy, x === "month" ? monthsInScope(quarters, pin.query.filter?.quarter) : []) : null),
-    [result, x, seriesBy, quarters, pin.query.filter?.quarter],
+    () => (x ? categoryModel(result, x, seriesBy, x === "month" ? pinMonths(pin, quarters) : [], { limit: pin.query.limit }) : null),
+    [result, x, seriesBy, quarters, pin],
   );
   const option = useMemo(
     () => (model && pin.kind !== "table" ? categoryOption(model, { kind: pin.kind, quarters, drill: false }) : null),
@@ -127,4 +127,11 @@ function PinBody({ pin, result, quarters }: { pin: Pin; result: QueryResult; qua
       <p className={styles.source}>Source: {result.source}</p>
     </>
   );
+}
+
+/** The months a pin's month axis covers: those in its quarters, narrowed by its own month filter. */
+export function pinMonths(pin: Pin, quarters: readonly string[]): string[] {
+  const months = monthsInScope(quarters, pin.query.filter?.quarter);
+  const only = pin.query.filter?.month;
+  return only ? months.filter((m) => only.includes(m)) : months;
 }

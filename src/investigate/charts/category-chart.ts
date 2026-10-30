@@ -1,7 +1,7 @@
 // One query result drawn over a category axis, as bars or lines: the main
 // chart, the title view, and charts pinned by the player or by Dewey all use it.
 import type { EChartsCoreOption } from "echarts/core";
-import type { Dimension, Measure, QueryResult } from "~/query/types";
+import { QUERY_LIMITS, type Dimension, type Measure, type QueryResult } from "~/query/types";
 import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
 import { isTotal } from "../state";
 import { chartTheme, seriesColor, tooltipStyle } from "./chart-theme";
@@ -42,16 +42,21 @@ function orderCategories(x: Dimension, categories: (string | null)[]): (string |
  * @param allCategories every category the axis should show whether anything
  *   sold or not (the months in scope), so a quiet month reads as zero.
  * @param top for ranked charts, keep only the largest this many, plus `keep`.
+ * @param limit the query's row limit. A result that reached it may be missing
+ *   rows, so absent pairs show as no bar rather than as a zero: a zero always
+ *   means "sold nothing", never "not shown".
  */
 export function categoryModel(
   result: QueryResult,
   x: Dimension,
   seriesBy: Dimension | null = null,
   allCategories: readonly string[] = [],
-  { top, keep = [] }: { top?: number; keep?: readonly string[] } = {},
+  { top, keep = [], limit = QUERY_LIMITS.rows }: { top?: number; keep?: readonly string[]; limit?: number } = {},
 ): CategoryModel {
   const measure = result.columns.at(-1)!.key as Measure;
-  let categories: (string | null)[] = [...allCategories];
+  const complete = result.rows.length < limit;
+  // Only a complete result can say a category sold nothing.
+  let categories: (string | null)[] = complete ? [...allCategories] : [];
   for (const row of result.rows) {
     const value = row[x] ?? null;
     if (!categories.includes(value)) categories.push(value);
@@ -59,7 +64,7 @@ export function categoryModel(
   const seriesKeys = seriesBy ? orderCategories(seriesBy, [...new Set(result.rows.map((r) => r[seriesBy] ?? null))]) : [null];
   const valueAt = (category: string | null, key: string | null) => {
     const row = result.rows.find((r) => (r[x] ?? null) === category && (!seriesBy || (r[seriesBy] ?? null) === key));
-    return row ? (row[measure] ?? null) : isTotal(measure) ? 0 : null;
+    return row ? (row[measure] ?? null) : complete && isTotal(measure) ? 0 : null;
   };
   const sum = (category: string | null) => seriesKeys.reduce((total, key) => total + (valueAt(category, key) ?? 0), 0);
 
