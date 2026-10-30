@@ -1,0 +1,127 @@
+{
+  "id": "x-f2-max",
+  "at": "2026-10-30T22:18:44.627Z",
+  "ms": 3968,
+  "status": 200,
+  "request": {
+    "question": "Which genre sold the most units in 2193-Q4, and how many?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up units sold in 2193-Q4, grouped by genre. SciFi/Fantasy had the most units, 4,710.",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "units",
+        "by": [
+          "genre"
+        ],
+        "filter": {
+          "quarter": [
+            "2193-Q4"
+          ]
+        },
+        "sort": {
+          "column": "units",
+          "direction": "desc"
+        }
+      },
+      "total": 13093,
+      "rows": 8,
+      "source": "Units from 13,093 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 13093 source and 0 simulated sale lines; grouped by genre; exact filters on quarter. Showing 8 of 8 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "units",
+        "by": [
+          "genre"
+        ],
+        "filter": {
+          "quarter": [
+            "2193-Q4"
+          ]
+        },
+        "sort": {
+          "column": "units",
+          "direction": "desc"
+        }
+      },
+      "columns": [
+        {
+          "key": "genre",
+          "label": "Genre",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "genre": "SciFi/Fantasy",
+          "units": 4710
+        },
+        {
+          "ref": "a2",
+          "genre": "Mystery",
+          "units": 2032
+        },
+        {
+          "ref": "a3",
+          "genre": "Childrens",
+          "units": 1863
+        },
+        {
+          "ref": "a4",
+          "genre": "Romance",
+          "units": 1737
+        },
+        {
+          "ref": "a5",
+          "genre": "Fiction",
+          "units": 1314
+        },
+        {
+          "ref": "a6",
+          "genre": "Young Adult",
+          "units": 1012
+        },
+        {
+          "ref": "a7",
+          "genre": "Nonfiction",
+          "units": 350
+        },
+        {
+          "ref": "a8",
+          "genre": "Memoir",
+          "units": 75
+        }
+      ],
+      "total": 13093,
+      "source": "Units from 13,093 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 13093 source and 0 simulated sale lines; grouped by genre; exact filters on quarter. Showing 8 of 8 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I looked up units sold in 2193-Q4, grouped by genre. "
+    },
+    {
+      "type": "text",
+      "text": "SciFi/Fantasy had the most units, 4,710."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "id": "x-year",
+  "at": "2026-10-30T22:17:31.984Z",
+  "ms": 4146,
+  "status": 200,
+  "request": {
+    "question": "What year does this data cover, and how many quarters of it are there? One short sentence.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up revenue by quarter. The data runs from 2193-Q1 to 2193-Q4, and it holds 4 quarters.",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "quarter"
+        ]
+      },
+      "total": 695243.6111997609,
+      "rows": 4,
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by quarter. Showing 4 of 4 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "quarter"
+        ]
+      },
+      "columns": [
+        {
+          "key": "quarter",
+          "label": "Quarter",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "quarter": "2193-Q1",
+          "revenue": 95245.8078000062
+        },
+        {
+          "ref": "a2",
+          "quarter": "2193-Q2",
+          "revenue": 164436.94379999922
+        },
+        {
+          "ref": "a3",
+          "quarter": "2193-Q3",
+          "revenue": 274036.1649999443
+        },
+        {
+          "ref": "a4",
+          "quarter": "2193-Q4",
+          "revenue": 161524.69460000037
+        }
+      ],
+      "total": 695243.6111997609,
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by quarter. Showing 4 of 4 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I looked up revenue by quarter. "
+    },
+    {
+      "type": "text",
+      "text": "The data runs from 2193-Q1 to 2193-Q4, and it holds 4 quarters."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
