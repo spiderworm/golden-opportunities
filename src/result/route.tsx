@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, redirect } from "react-router";
 
 import { getOutcome } from "~/game-stub/game.server";
-import type { Outcome } from "~/game-stub/types";
 import { runQuery } from "~/investigate/query-stub.server";
 import { track } from "~/platform/analytics/analytics.client";
 import { EChart } from "~/platform/charts/EChart";
 import type { QueryView } from "~/query/types";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
-import { badgeText, DISCOVERIES, foundFooter, moneyShort, RESULT_COPY as COPY, scoreLine, seasonNote } from "./copy";
+import { badgeText, foundFooter, moneyShort, RESULT_COPY as COPY, scoreLine, seasonNote } from "./copy";
+import { earnedDiscoveries, type EarnedDiscovery } from "./discoveries.server";
 import { OUTCOME_COLORS, outcomeOption } from "./outcome-chart";
 import styles from "./Result.module.css";
 
@@ -33,11 +33,11 @@ export function loader({ request }: Route.LoaderArgs) {
     month: r.month ?? "",
     revenue: r.revenue ?? 0,
   }));
-  return { outcome, lastQ1, lastQ4, reference };
+  return { outcome, lastQ1, lastQ4, reference, discoveries: earnedDiscoveries(outcome.discoveries) };
 }
 
 export default function Result({ loaderData }: Route.ComponentProps) {
-  const { outcome, lastQ1, lastQ4, reference } = loaderData;
+  const { outcome, lastQ1, lastQ4, reference, discoveries } = loaderData;
   const [assumptionsOpen, setAssumptionsOpen] = useState(false);
   const assumptionsRef = useRef<HTMLElement>(null);
   const holdingCourse = outcome.plan.option === "A";
@@ -113,7 +113,7 @@ export default function Result({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
-      <Discoveries found={outcome.discoveries} />
+      <Discoveries discoveries={discoveries} />
 
       <section id="assumptions" ref={assumptionsRef} className={styles.card} hidden={!assumptionsOpen} aria-labelledby="assumptions-heading">
         <h3 id="assumptions-heading" className={styles.cardTitle}>
@@ -164,24 +164,21 @@ function LegendItem({ color, label }: { color: string; label: string }) {
   );
 }
 
-function Discoveries({ found }: { found: Outcome["discoveries"] }) {
+function Discoveries({ discoveries }: { discoveries: EarnedDiscovery[] }) {
   return (
     <section className={styles.card} aria-labelledby="discoveries-heading">
       <h3 id="discoveries-heading" className={styles.cardTitle}>
         {COPY.discoveries.heading}
       </h3>
       <ul className={styles.discoveries}>
-        {DISCOVERIES.map((d) => {
-          const isFound = found.includes(d.id);
-          return (
-            <li key={d.id} className={styles.discovery} data-found={isFound || undefined}>
-              <span className={styles.marker}>{isFound ? COPY.discoveries.found : COPY.discoveries.notFound}</span>
-              <span>{isFound ? d.found : d.notFound}</span>
-            </li>
-          );
-        })}
+        {discoveries.map((d) => (
+          <li key={d.id} className={styles.discovery} data-found={d.found || undefined}>
+            <span className={styles.marker}>{d.found ? COPY.discoveries.found : COPY.discoveries.notFound}</span>
+            <span>{d.text}</span>
+          </li>
+        ))}
       </ul>
-      <p className={styles.note}>{foundFooter(found.length)}</p>
+      <p className={styles.note}>{foundFooter(discoveries.filter((d) => d.found).length)}</p>
     </section>
   );
 }
