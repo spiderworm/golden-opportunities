@@ -87,10 +87,12 @@ The previous manager has already scheduled the Q1 Books of the Month: *The Malle
 
 A, C and D are all defensible. C has the best footing in the data, D is a bet on a real pattern, and A is the honest "nothing is broken". B is the overreaction. It still "wins" on revenue, which is the lesson.
 
+**Decided (David, October 30): the plan combines up to two moves.** The player chooses up to two of B, C and D, or none, which is A. The best plan, C and D together, typically grades B+ (85 to 91) under the lowest-measure score. Holding course grades D (67 to 70), and any plan with the sale grades F. `scoring.md` has the details and the calibration.
+
 **Proposals:**
 - ~~Score on gross profit only.~~ **Open:** David asked for more than one measure (see the review at the top).
 - In M1, option C's three titles are preset. Letting the player choose the titles is M2 (see `arc.md`).
-- Options are exclusive in M1 (one decision).
+- ~~Options are exclusive in M1.~~ Superseded: up to two moves can be combined.
 - **Decided (David):** before choosing, the player sees the rules of the world: the goal, the 60% cost of goods and the price of an event. They see the effect sizes only after the quarter plays out, in the assumptions panel.
 
 ## 4. The simulation
