@@ -1,14 +1,18 @@
 // The simulation's output, which the game (src/game) stores and the Result
-// screen reads. The game imports these type-only. Plan, Metrics, MonthOutcome
-// and Assumption are unchanged from the interface agreed with Frank and Chart
-// (src/game-stub/types.ts); the report card replaces the stub's single score.
+// screen reads. The game imports these type-only. Metrics, MonthOutcome and
+// Assumption are unchanged from the interface agreed with Frank and Chart
+// (src/game-stub/types.ts).
 import type { DeepReadonly, SaleLine } from "~/bookshop/types";
 
-export type OptionId = "A" | "B" | "C" | "D";
+/** The plan's levers (docs/design/scoring.md, "The plan: up to two levers"), in the order they're shown and described. */
+export type LeverId = "repick" | "events" | "sale";
+export const LEVER_IDS: readonly LeverId[] = ["repick", "events", "sale"];
+export const MAX_LEVERS = 2;
 export type DiscoveryId = "A" | "B" | "C";
 
 export interface Plan {
-  option: OptionId;
+  /** 0 to 2 distinct levers, in LEVER_IDS order. None is holding course. */
+  levers: LeverId[];
 }
 
 export interface Metrics {
@@ -53,24 +57,53 @@ export interface MeasureScore {
   /** 0 to 100, an integer. */
   score: number;
   grade: Grade;
-  /** At or past the goal: the Exceeds Requirements award. */
+  /** At or above the goal, so the score is 100. */
+  met: boolean;
+  /** Strictly above the goal: the Exceeds Requirements certificate. */
   exceeds: boolean;
 }
 
-export interface ReportCard {
-  measures: MeasureScore[];
-  /** The plain average of the four scores, plus 3 for Well-Rounded Shop, capped at 100. */
-  combined: { score: number; grade: Grade };
-  /** All four measures at 80 or above. */
-  wellRounded: boolean;
+/** Certificates are honors; they never change the score. Comeback and Weathered the Storm can't happen in M1. */
+export type CertificateId = "exceeds" | "comeback" | "weathered" | "wellRounded";
+
+export interface Certificate {
+  id: CertificateId;
+  /** The measure it's for: Exceeds Requirements and Comeback. */
+  measure?: MeasureId;
 }
 
-/** The numbers behind each option's "What happened" sentences (docs/design/m1-copy.md, section 4). */
-export type HappenedFacts =
-  | { option: "A"; extra: number; baseCopies: number; discountCost: number; profit: number }
-  | { option: "B"; unitsPct: number; perBook: number; revPct: number; profitPct: number }
-  | { option: "C"; extra: number; baseCopies: number; discountCost: number; amount: number }
-  | { option: "D"; events: number; orders: number; perNight: number; gross: number; eventCosts: number; amount: number };
+export interface ReportCard {
+  /** In MEASURE_IDS order. */
+  measures: MeasureScore[];
+  /** The lowest of the four measures' scores. No averaging, no bonus. */
+  overall: {
+    score: number;
+    grade: Grade;
+    /** Every measure whose score equals the overall score, in MEASURE_IDS order. */
+    binding: MeasureId[];
+    /** The other measures within closeMargin points of it, inclusive: closest first, ties in MEASURE_IDS order. */
+    closeBehind: MeasureId[];
+    closeMargin: number;
+    /** Every measure at or above its goal: the "all met" line shows alone. */
+    allMet: boolean;
+    /** Not all met, some measure is below last year, and a different one is strictly past its goal. */
+    sacrifice: boolean;
+  };
+  /** In display order: Exceeds Requirements by measure, then Comeback, Weathered the Storm and Well-Rounded Shop. */
+  certificates: Certificate[];
+}
+
+/** The numbers behind the "What happened" sentences (docs/design/m1-copy.md, section 4), one entry per move. */
+export interface HappenedFacts {
+  /** Holding course only: the scheduled picks. */
+  holdCourse?: { extra: number; baseCopies: number; discountCost: number; profit: number };
+  repick?: { extra: number; baseCopies: number; discountCost: number };
+  events?: { nights: number; orders: number; perNight: number; gross: number; eventCosts: number };
+  /** Against holding course. */
+  sale?: { unitsPct: number; perBook: number; revPct: number; profitPct: number };
+  /** The plan's gross profit minus holding course's. */
+  amount: number;
+}
 
 /** The game's outcome: the simulation's, plus the discoveries the game records. */
 export interface Outcome {

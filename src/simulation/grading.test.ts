@@ -15,14 +15,13 @@ describe("goals", () => {
 });
 
 describe("scores, from scoring.md's edge cases", () => {
-  // The table's $344 is half its rounded $688 step; at the full-precision step it's 82.49, so this uses just over half the exact step.
   it.each([
-    [0, 0, 65, "D"],
-    [0, 344.15, 83, "B"],
-    [-100, -103, 65, "D"],
+    [0, 0, 70, "C-"],
+    [0, 344, 85, "B"],
+    [-100, -103, 70, "C-"],
     [-100, 600, 100, "A+"],
-    [37642, 37642, 65, "D"],
-    [37642, 28802, 33, "F"],
+    [37642, 37642, 70, "C-"],
+    [37642, 28802, 38, "F"],
   ])("last year %d, result %d scores %d (%s)", (lastYear, result, score, grade) => {
     expect(profit(lastYear, result)).toMatchObject({ score, grade });
   });
@@ -39,13 +38,13 @@ describe("scores, from scoring.md's edge cases", () => {
   });
 
   it("takes 2.5 points per 1% of scale below last year, down to 0", () => {
-    expect(rawScore(0.9 * 100_000, 100_000, 105_000, PROFIT_AVERAGE)).toBeCloseTo(40, 10);
+    expect(rawScore(0.9 * 100_000, 100_000, 105_000, PROFIT_AVERAGE)).toBeCloseTo(45, 10);
     expect(profit(100_000, 0).score).toBe(0);
   });
 
   it("rounds half up", () => {
-    // 65 + 35 x 0.5 = 82.5
-    expect(profit(0, goalFor(0, PROFIT_AVERAGE) / 2).score).toBe(83);
+    // 70 + 30 x 0.25 = 77.5
+    expect(profit(0, goalFor(0, PROFIT_AVERAGE) / 4).score).toBe(78);
   });
 });
 
@@ -56,26 +55,49 @@ describe("grades", () => {
   ])("%d is %s", (score, grade) => expect(gradeFor(score)).toBe(grade));
 });
 
-describe("the combined score", () => {
+describe("the overall score", () => {
   const input = (result: number) => ({ result, lastYear: 100, quarterlyAverage: 100 });
-  // 100 to 105: a result of 100 + 5x scores 65 + 35x.
-  const at = (score: number) => input(100 + (5 * (score - 65)) / 35);
+  // 100 to 105: a result of 100 + 5x/30 scores 70 + x.
+  const at = (score: number) => input(100 + (5 * (score - 70)) / 30);
+  const card = (profit: number, readers: number, happiness: number, culture: number) =>
+    reportCard({ profit: at(profit), readers: at(readers), happiness: at(happiness), culture: at(culture) });
 
-  it("is the plain average of the unrounded scores", () => {
-    const card = reportCard({ profit: at(70), readers: at(70.4), happiness: at(70.4), culture: at(70.4) });
-    expect(card.measures.map((m) => m.score)).toEqual([70, 70, 70, 70]);
-    expect(card.combined).toEqual({ score: 70, grade: "C-" });
-    expect(card.wellRounded).toBe(false);
+  it("is the lowest measure's score, with no averaging", () => {
+    const { overall, measures } = card(90, 75, 99, 80);
+    expect(measures.map((m) => m.score)).toEqual([90, 75, 99, 80]);
+    expect(overall).toMatchObject({ score: 75, grade: "C", binding: ["readers"], closeBehind: [], closeMargin: 3 });
   });
 
-  it("adds 3 for Well-Rounded Shop before rounding, capped at 100", () => {
-    const card = reportCard({ profit: at(80), readers: at(81), happiness: at(82), culture: at(83) });
-    expect(card.wellRounded).toBe(true);
-    expect(card.combined.score).toBe(85); // 81.5 + 3 = 84.5, rounded half up
-    expect(reportCard({ profit: input(200), readers: input(200), happiness: input(200), culture: input(200) }).combined).toEqual({ score: 100, grade: "A+" });
+  it("names every measure tied at the lowest", () => {
+    expect(card(72, 90, 72, 95).overall).toMatchObject({ score: 72, binding: ["profit", "happiness"], closeBehind: [] });
   });
 
-  it("isn't Well-Rounded when a measure shows 79", () => {
-    expect(reportCard({ profit: at(79.4), readers: at(99), happiness: at(99), culture: at(99) }).wellRounded).toBe(false);
+  it("warns about measures within 3 points, inclusive, closest first and then in card order", () => {
+    expect(card(70, 73, 74, 72).overall).toMatchObject({ score: 70, binding: ["profit"], closeBehind: ["culture", "readers"] });
+    expect(card(73, 70, 72, 72).overall).toMatchObject({ binding: ["readers"], closeBehind: ["happiness", "culture", "profit"] });
+  });
+
+  it("flags all met only when every measure reaches its goal", () => {
+    expect(reportCard({ profit: input(105), readers: input(105), happiness: input(105), culture: input(110) }).overall).toMatchObject({ score: 100, allMet: true, sacrifice: false });
+    expect(card(99, 100, 100, 100).overall.allMet).toBe(false);
+  });
+
+  it("flags a sacrifice: one measure below last year while a different one is past its goal", () => {
+    expect(reportCard({ profit: input(90), readers: input(110), happiness: at(80), culture: at(80) }).overall.sacrifice).toBe(true);
+    // Exactly at the goal isn't past it.
+    expect(reportCard({ profit: input(90), readers: input(105), happiness: at(80), culture: at(80) }).overall.sacrifice).toBe(false);
+    expect(card(70, 80, 90, 99).overall.sacrifice).toBe(false);
+  });
+
+  it("gives Well-Rounded Shop at 80 and above, as a certificate only", () => {
+    expect(card(80, 85, 90, 95)).toMatchObject({ overall: { score: 80 }, certificates: [{ id: "wellRounded" }] });
+    expect(card(79, 85, 90, 95).certificates).toEqual([]);
+  });
+
+  it("gives Exceeds Requirements only strictly past the goal, in measure order, before Well-Rounded", () => {
+    const c = reportCard({ profit: input(105), readers: input(200), happiness: at(85), culture: input(106) });
+    expect(c.measures.map((m) => [m.met, m.exceeds])).toEqual([[true, false], [true, true], [false, false], [true, true]]);
+    expect(c.certificates).toEqual([{ id: "exceeds", measure: "readers" }, { id: "exceeds", measure: "culture" }, { id: "wellRounded" }]);
+    expect(c.overall).toMatchObject({ score: 85, binding: ["happiness"] });
   });
 });
