@@ -8,7 +8,8 @@
 // Plot's copy (docs/design/m1-copy.md), filled with these placeholder numbers.
 import { runQuery } from "~/query/run-query.server";
 import { BASELINE_VIEW } from "~/query/view.server";
-import type { Assumption, Metrics, MonthOutcome, OptionId, Outcome, Plan } from "./types";
+import { LAST_YEAR, reportCard } from "./report-card";
+import type { Assumption, HappenedFacts, MeasureId, Metrics, MonthOutcome, OptionId, Outcome, Plan } from "./types";
 
 // 2193 is the history every playthrough replays.
 const VIEW = BASELINE_VIEW;
@@ -54,17 +55,22 @@ const money = (v: number) => `$${Math.round(Math.abs(v)).toLocaleString("en-US")
 const pct = (v: number) => `${Math.round(Math.abs(v) * 100)}`;
 const signedMoney = (v: number) => `${v < 0 ? "-" : "+"}${money(v)}`;
 
-/** The placeholder effect of each option on holding course, from the design's illustrative table. */
+/**
+ * The placeholder effect of each option on holding course, from the design's
+ * illustrative table. Readers, happiness and culture are invented to give each
+ * option the card's intended shape (docs/design/scoring.md, "What this means
+ * for M1"): the sale lifts readers, the quiet picks culture, the author nights both.
+ */
 function effect(option: OptionId, hold: Metrics) {
   switch (option) {
     case "A":
-      return { revenue: 1, units: 1, profit: 0, eventCosts: 0 };
+      return { revenue: 1, units: 1, profit: 0, eventCosts: 0, orders: 0, happiness: 0, culture: 1 };
     case "B":
-      return { revenue: 1.02, units: 1.2, profit: -0.22 * hold.grossProfit, eventCosts: 0 };
+      return { revenue: 1.02, units: 1.2, profit: -0.22 * hold.grossProfit, eventCosts: 0, orders: 1365, happiness: 1.6, culture: 1.03 };
     case "C":
-      return { revenue: 1 + 2600 / hold.revenue, units: 1 + 130 / hold.units, profit: 1500, eventCosts: 0 };
+      return { revenue: 1 + 2600 / hold.revenue, units: 1 + 130 / hold.units, profit: 1500, eventCosts: 0, orders: 120, happiness: 0.4, culture: 1.07 };
     case "D":
-      return { revenue: 1 + 8300 / hold.revenue, units: 1 + 680 / hold.units, profit: 900, eventCosts: EVENTS * EVENT_COST };
+      return { revenue: 1 + 8300 / hold.revenue, units: 1 + 680 / hold.units, profit: 900, eventCosts: EVENTS * EVENT_COST, orders: 600, happiness: 0.3, culture: 1.09 };
   }
 }
 
@@ -95,7 +101,12 @@ export function getOutcome(request: Request): Outcome | null {
 
   const base = holdCourse();
   const holdRevenue = sum(base.monthly, "revenue");
-  const hold: Metrics = { revenue: holdRevenue, units: sum(base.monthly, "units"), grossProfit: grossProfit(holdRevenue, base.avgDiscount) };
+  const hold: Metrics = {
+    revenue: holdRevenue,
+    units: sum(base.monthly, "units"),
+    grossProfit: grossProfit(holdRevenue, base.avgDiscount),
+    orders: runQuery({ measure: "orders", by: [], filter: { quarter: ["2193-Q1"] } }, VIEW).total ?? 0,
+  };
   const e = effect(plan.option, hold);
   const monthly: MonthOutcome[] = base.monthly.map((m, i) => ({
     month: `2194-0${i + 1}`,
@@ -106,7 +117,20 @@ export function getOutcome(request: Request): Outcome | null {
     revenue: sum(monthly.map((m) => m.plan), "revenue"),
     units: sum(monthly.map((m) => m.plan), "units"),
     grossProfit: hold.grossProfit + e.profit,
+    orders: hold.orders! + e.orders,
     eventCosts: e.eventCosts,
+  };
+  const holdResults: Record<MeasureId, number> = {
+    profit: hold.grossProfit,
+    readers: hold.orders!,
+    happiness: LAST_YEAR.happiness,
+    culture: LAST_YEAR.culture,
+  };
+  const planResults: Record<MeasureId, number> = {
+    profit: planTotals.grossProfit,
+    readers: planTotals.orders!,
+    happiness: holdResults.happiness + e.happiness,
+    culture: holdResults.culture * e.culture,
   };
 
   // The sale's gross profit at other responses: (1 + response) x (85% of revenue - 60% of list).
@@ -120,47 +144,71 @@ export function getOutcome(request: Request): Outcome | null {
     usedByPlan: usedBy.includes(plan.option),
   }));
 
+  const facts = happenedFacts(plan.option, planTotals, hold);
   return {
     plan,
     quarter: "2194-Q1",
     monthly,
     totals: { plan: planTotals, holdCourse: hold },
-    score: { value: planTotals.grossProfit - hold.grossProfit, label: "gross profit" },
+    reportCard: { plan: reportCard(planResults), holdCourse: reportCard(holdResults) },
     assumptions,
-    happened: happened(plan.option, planTotals, hold),
+    happened: happened(facts),
+    facts,
     discoveries: [],
   };
 }
 
-/** Plot's "What happened" sentences, filled with the stub's numbers. */
-function happened(option: OptionId, plan: Metrics, hold: Metrics): string[] {
-  const diff = plan.grossProfit - hold.grossProfit;
+/** The numbers behind Plot's "What happened" sentences, from the stub's totals. */
+function happenedFacts(option: OptionId, plan: Metrics, hold: Metrics): HappenedFacts {
+  const amount = plan.grossProfit - hold.grossProfit;
   switch (option) {
+    case "A":
+      return { option, extra: 150, baseCopies: 1200, discountCost: 1450, profit: plan.grossProfit };
+    case "B":
+      return {
+        option,
+        unitsPct: plan.units / hold.units - 1,
+        perBook: hold.grossProfit / hold.units - plan.grossProfit / plan.units,
+        revPct: plan.revenue / hold.revenue - 1,
+        profitPct: plan.grossProfit / hold.grossProfit - 1,
+      };
+    case "C":
+      return { option, extra: 130, baseCopies: 140, discountCost: 210, amount };
+    case "D": {
+      const eventCosts = EVENTS * EVENT_COST;
+      return { option, events: EVENTS, orders: 600, perNight: 50, gross: amount + eventCosts, eventCosts, amount };
+    }
+  }
+}
+
+/** Plot's "What happened" sentences (docs/design/m1-copy.md, section 4), filled from the facts. */
+function happened(f: HappenedFacts): string[] {
+  switch (f.option) {
     case "A":
       return [
         "You kept the schedule.",
-        "The three Books of the Month sold about 150 extra copies between them.",
-        `Because they were already bestsellers, the 15% discount also went on 1,200 copies that would have sold anyway, and that cost $1,450. Gross profit for the quarter was ${money(plan.grossProfit)}.`,
+        `The three Books of the Month sold about ${f.extra} extra copies between them.`,
+        `Because they were already bestsellers, the 15% discount also went on ${f.baseCopies.toLocaleString("en-US")} copies that would have sold anyway, and that cost ${money(f.discountCost)}. Gross profit for the quarter was ${money(f.profit)}.`,
       ];
     case "B":
       return [
-        `The sale sold about ${pct(plan.units / hold.units - 1)}% more books than holding course would have.`,
-        `Each one earned about $${((hold.grossProfit / hold.units) - (plan.grossProfit / plan.units)).toFixed(2)} less.`,
-        `Revenue rose ${pct(plan.revenue / hold.revenue - 1)}% and gross profit fell ${pct(plan.grossProfit / hold.grossProfit - 1)}%.`,
+        `The sale sold about ${pct(f.unitsPct)}% more books than holding course would have.`,
+        `Each one earned about $${f.perBook.toFixed(2)} less.`,
+        `Revenue rose ${pct(f.revPct)}% and gross profit fell ${pct(f.profitPct)}%.`,
       ];
     case "C":
       return [
-        "The three new picks sold about 130 extra copies between them.",
-        "Few copies would have sold anyway, so the discount cost only $210.",
-        `Gross profit was ${signedMoney(diff)} compared with holding course.`,
+        `The three new picks sold about ${f.extra} extra copies between them.`,
+        `Few copies would have sold anyway, so the discount cost only ${money(f.discountCost)}.`,
+        `Gross profit was ${signedMoney(f.amount)} compared with holding course.`,
       ];
     case "D":
       return [
-        "The 12 author nights brought in about 600 extra orders, roughly 50 a night.",
-        diff >= 0
-          ? `They earned ${money(diff + EVENTS * EVENT_COST)} in gross profit against $2,400 in costs.`
-          : `That earned ${money(diff + EVENTS * EVENT_COST)} in gross profit, short of the $2,400 they cost.`,
-        `Gross profit was ${money(diff)} ${diff >= 0 ? "higher" : "lower"} than holding course.`,
+        `The ${f.events} author nights brought in about ${f.orders} extra orders, roughly ${f.perNight} a night.`,
+        f.amount >= 0
+          ? `They earned ${money(f.gross)} in gross profit against ${money(f.eventCosts)} in costs.`
+          : `That earned ${money(f.gross)} in gross profit, short of the ${money(f.eventCosts)} they cost.`,
+        `Gross profit was ${money(f.amount)} ${f.amount >= 0 ? "higher" : "lower"} than holding course.`,
       ];
   }
 }
