@@ -39,10 +39,13 @@ describe("the Decide action", () => {
 
   // Chart's note on #55: the game refuses with a Response, which mustn't reach the error page.
   it("answers the game's refusals instead of throwing them", async () => {
+    // Lost the race: another tab's plan went in first.
     game.submitPlan.mockImplementation(() => {
+      game.getPlan.mockReturnValue({ levers: ["sale"] });
       throw new Response("This quarter has already been played.", { status: 409 });
     });
     expect(await act(post())).toEqual({ data: { ok: false, played: true }, status: 409 });
+    game.getPlan.mockReturnValue(null);
     game.submitPlan.mockImplementation(() => {
       throw new Response("Save storage is full. Try again later.", { status: 503 });
     });
@@ -51,6 +54,18 @@ describe("the Decide action", () => {
       throw new Response("Start a game.", { status: 401 });
     });
     expect(await act(post())).toEqual({ data: { ok: false, played: false }, status: 401 });
+  });
+
+  // Frank's probe on #60: 409 also means a busy or stale save, with no plan in.
+  it("doesn't call a busy save played", async () => {
+    game.submitPlan.mockImplementation(() => {
+      throw new Response("Game state changed. Reload and try again.", { status: 409 });
+    });
+    expect(await act(post())).toEqual({ data: { ok: false, played: false }, status: 409 });
+    game.getPlan.mockImplementation(() => {
+      throw new Response("Game state changed. Reload and try again.", { status: 409 });
+    });
+    expect(await act(post())).toEqual({ data: { ok: false, played: false }, status: 409 });
   });
 
   it("still throws what isn't a refusal", async () => {
