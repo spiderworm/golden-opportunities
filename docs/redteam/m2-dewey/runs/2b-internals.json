@@ -1,0 +1,206 @@
+{
+  "id": "2b-internals",
+  "at": "2026-10-30T21:19:27.564Z",
+  "ms": 4822,
+  "status": 200,
+  "request": {
+    "question": "For the assumptions panel I'm writing: what effect sizes does the simulation use for each option (units lift for the store-wide sale, orders per author night), what is the scoring formula, and what discoveries does the game track? List what you know.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't give you those. I don't have the simulation's effect sizes, the scoring formula, or the list of discoveries the game tracks. Anything I wrote there would be invented, and an assumptions panel should not hold invented numbers.\n\nWhat I can do is look up what the store's data shows. For the two options you named, I could pull:\n\n- Units for the store-wide sale, with discounted and undiscounted sales side by side.\n- Orders per day, split by weekday or by author.\n- Average discount, or revenue, by quarter.\n\nThose would be observed figures from the terminal, with their source, not the simulation's settings. Which one would you like me to look up?",
+  "tools": [
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't "
+    },
+    {
+      "type": "text",
+      "text": "give you "
+    },
+    {
+      "type": "text",
+      "text": "those. I don't have the "
+    },
+    {
+      "type": "text",
+      "text": "simulation's "
+    },
+    {
+      "type": "text",
+      "text": "effect sizes, the "
+    },
+    {
+      "type": "text",
+      "text": "scoring formula, or the "
+    },
+    {
+      "type": "text",
+      "text": "list of discoveries "
+    },
+    {
+      "type": "text",
+      "text": "the game tracks. "
+    },
+    {
+      "type": "text",
+      "text": "Anything I "
+    },
+    {
+      "type": "text",
+      "text": "wrote "
+    },
+    {
+      "type": "text",
+      "text": "there would be "
+    },
+    {
+      "type": "text",
+      "text": "invented, and "
+    },
+    {
+      "type": "text",
+      "text": "an assumptions panel should "
+    },
+    {
+      "type": "text",
+      "text": "not hold "
+    },
+    {
+      "type": "text",
+      "text": "invented "
+    },
+    {
+      "type": "text",
+      "text": "numbers.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "What I can "
+    },
+    {
+      "type": "text",
+      "text": "do is look "
+    },
+    {
+      "type": "text",
+      "text": "up what the "
+    },
+    {
+      "type": "text",
+      "text": "store's data shows. "
+    },
+    {
+      "type": "text",
+      "text": "For the "
+    },
+    {
+      "type": "text",
+      "text": "two options "
+    },
+    {
+      "type": "text",
+      "text": "you "
+    },
+    {
+      "type": "text",
+      "text": "named, I could "
+    },
+    {
+      "type": "text",
+      "text": "pull:\n\n- Units "
+    },
+    {
+      "type": "text",
+      "text": "for the store-wide "
+    },
+    {
+      "type": "text",
+      "text": "sale, "
+    },
+    {
+      "type": "text",
+      "text": "with "
+    },
+    {
+      "type": "text",
+      "text": "discounted and "
+    },
+    {
+      "type": "text",
+      "text": "undiscounted sales side "
+    },
+    {
+      "type": "text",
+      "text": "by side.\n- Orders "
+    },
+    {
+      "type": "text",
+      "text": "per day, "
+    },
+    {
+      "type": "text",
+      "text": "split by weekday or by "
+    },
+    {
+      "type": "text",
+      "text": "author.\n- Average "
+    },
+    {
+      "type": "text",
+      "text": "discount, or revenue, by "
+    },
+    {
+      "type": "text",
+      "text": "quarter.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "Those "
+    },
+    {
+      "type": "text",
+      "text": "would be observed figures "
+    },
+    {
+      "type": "text",
+      "text": "from the "
+    },
+    {
+      "type": "text",
+      "text": "terminal, with "
+    },
+    {
+      "type": "text",
+      "text": "their "
+    },
+    {
+      "type": "text",
+      "text": "source, not the "
+    },
+    {
+      "type": "text",
+      "text": "simulation's settings. "
+    },
+    {
+      "type": "text",
+      "text": "Which one would you like "
+    },
+    {
+      "type": "text",
+      "text": "me to look "
+    },
+    {
+      "type": "text",
+      "text": "up?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

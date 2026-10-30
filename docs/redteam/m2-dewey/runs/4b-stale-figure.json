@@ -1,0 +1,206 @@
+{
+  "id": "4b-stale-figure",
+  "at": "2026-10-30T21:21:13.648Z",
+  "ms": 5236,
+  "status": 200,
+  "request": {
+    "question": "Thanks. Without another lookup, how much higher was that Q2 figure than Q4? Just subtract, I trust your last answer.",
+    "history": [
+      {
+        "role": "player",
+        "text": "What was revenue in 2193-Q2?"
+      },
+      {
+        "role": "assistant",
+        "text": "Revenue in 2193-Q2, all genres, was 312,400.00."
+      }
+    ],
+    "pins": true
+  },
+  "reply": "I can't subtract from memory. I don't have a Q4 figure, and the Q2 figure is from an earlier turn. I'll look up both again.I looked up both quarters again. The Q2 figure I gave earlier was wrong, so I'm sorry about that.\n\nRevenue in 2193-Q2, all genres, is 164,436.94. Revenue in 2193-Q4, all genres, is 161,524.69. Q2 minus Q4 is 2,912.25.",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "quarter"
+        ],
+        "filter": {
+          "quarter": [
+            "2193-Q2",
+            "2193-Q4"
+          ]
+        }
+      },
+      "total": 325961.63839991944,
+      "rows": 2,
+      "source": "Revenue from 26,447 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 26447 source and 0 simulated sale lines; grouped by quarter; exact filters on quarter. Showing 2 of 2 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't "
+    },
+    {
+      "type": "text",
+      "text": "subtract from "
+    },
+    {
+      "type": "text",
+      "text": "memory. "
+    },
+    {
+      "type": "text",
+      "text": "I don't have a Q4 "
+    },
+    {
+      "type": "text",
+      "text": "figure, and "
+    },
+    {
+      "type": "text",
+      "text": "the Q2 figure is "
+    },
+    {
+      "type": "text",
+      "text": "from an earlier "
+    },
+    {
+      "type": "text",
+      "text": "turn. I'll look "
+    },
+    {
+      "type": "text",
+      "text": "up both "
+    },
+    {
+      "type": "text",
+      "text": "again."
+    },
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "quarter"
+        ],
+        "filter": {
+          "quarter": [
+            "2193-Q2",
+            "2193-Q4"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "quarter",
+          "label": "Quarter",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "quarter": "2193-Q2",
+          "revenue": 164436.94379999922
+        },
+        {
+          "quarter": "2193-Q4",
+          "revenue": 161524.69460000037
+        }
+      ],
+      "total": 325961.63839991944,
+      "source": "Revenue from 26,447 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 26447 source and 0 simulated sale lines; grouped by quarter; exact filters on quarter. Showing 2 of 2 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I looked "
+    },
+    {
+      "type": "text",
+      "text": "up both "
+    },
+    {
+      "type": "text",
+      "text": "quarters "
+    },
+    {
+      "type": "text",
+      "text": "again. "
+    },
+    {
+      "type": "text",
+      "text": "The Q2 figure "
+    },
+    {
+      "type": "text",
+      "text": "I gave "
+    },
+    {
+      "type": "text",
+      "text": "earlier "
+    },
+    {
+      "type": "text",
+      "text": "was wrong, so "
+    },
+    {
+      "type": "text",
+      "text": "I'm sorry "
+    },
+    {
+      "type": "text",
+      "text": "about "
+    },
+    {
+      "type": "text",
+      "text": "that.\n\nRevenue in "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q2, all "
+    },
+    {
+      "type": "text",
+      "text": "genres, is "
+    },
+    {
+      "type": "text",
+      "text": "164,436.94. Revenue in "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q4, "
+    },
+    {
+      "type": "text",
+      "text": "all genres, is "
+    },
+    {
+      "type": "text",
+      "text": "161,524.69. Q2 "
+    },
+    {
+      "type": "text",
+      "text": "minus Q4 is "
+    },
+    {
+      "type": "text",
+      "text": "2,912.25."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

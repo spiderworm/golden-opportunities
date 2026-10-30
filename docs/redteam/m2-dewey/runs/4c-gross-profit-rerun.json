@@ -1,0 +1,266 @@
+{
+  "id": "4c-gross-profit-rerun",
+  "at": "2026-10-30T21:22:11.604Z",
+  "ms": 9814,
+  "status": 200,
+  "request": {
+    "question": "Books cost the store 60% of list price. What was gross profit in 2193-Q4? One number please.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Gross profit in 2193-Q4, all genres, is about $63,843.\n\nI looked up Q4 revenue by discount rate, which came to $161,524.69. I added back each rate's discount to get list-price sales of about $162,803. Cost at 60% of that is about $97,682. Gross profit is revenue minus that cost.\n\nThis rests on two assumptions. The discount-rate labels are exact, and cost applies to list price on every sale line.",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "quarter"
+        ]
+      },
+      "total": 695243.6111997609,
+      "rows": 4,
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by quarter. Showing 4 of 4 groups; total is before the row limit."
+    },
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "discount_rate"
+        ],
+        "filter": {
+          "quarter": [
+            "2193-Q4"
+          ]
+        }
+      },
+      "total": 161524.69460000037,
+      "rows": 5,
+      "source": "Revenue from 13,093 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 13093 source and 0 simulated sale lines; grouped by discount_rate; exact filters on quarter. Showing 5 of 5 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "quarter"
+        ]
+      },
+      "columns": [
+        {
+          "key": "quarter",
+          "label": "Quarter",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "quarter": "2193-Q1",
+          "revenue": 95245.8078000062
+        },
+        {
+          "quarter": "2193-Q2",
+          "revenue": 164436.94379999922
+        },
+        {
+          "quarter": "2193-Q3",
+          "revenue": 274036.1649999443
+        },
+        {
+          "quarter": "2193-Q4",
+          "revenue": 161524.69460000037
+        }
+      ],
+      "total": 695243.6111997609,
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by quarter. Showing 4 of 4 groups; total is before the row limit."
+    },
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "discount_rate"
+        ],
+        "filter": {
+          "quarter": [
+            "2193-Q4"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "discount_rate",
+          "label": "Discount rate",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "discount_rate": "0%",
+          "revenue": 149138.75000000713
+        },
+        {
+          "discount_rate": "10%",
+          "revenue": 1085.8499999999974
+        },
+        {
+          "discount_rate": "13%",
+          "revenue": 1267.7030999999997
+        },
+        {
+          "discount_rate": "15%",
+          "revenue": 3557.666499999998
+        },
+        {
+          "discount_rate": "5%",
+          "revenue": 6474.725000000036
+        }
+      ],
+      "total": 161524.69460000037,
+      "source": "Revenue from 13,093 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 13093 source and 0 simulated sale lines; grouped by discount_rate; exact filters on quarter. Showing 5 of 5 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "Gross profit in "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q4, all "
+    },
+    {
+      "type": "text",
+      "text": "genres, is about "
+    },
+    {
+      "type": "text",
+      "text": "$63,843.\n\nI "
+    },
+    {
+      "type": "text",
+      "text": "looked "
+    },
+    {
+      "type": "text",
+      "text": "up Q4 revenue "
+    },
+    {
+      "type": "text",
+      "text": "by discount rate, which "
+    },
+    {
+      "type": "text",
+      "text": "came to "
+    },
+    {
+      "type": "text",
+      "text": "$161,524.69. I "
+    },
+    {
+      "type": "text",
+      "text": "added back "
+    },
+    {
+      "type": "text",
+      "text": "each "
+    },
+    {
+      "type": "text",
+      "text": "rate's discount to "
+    },
+    {
+      "type": "text",
+      "text": "get "
+    },
+    {
+      "type": "text",
+      "text": "list-price "
+    },
+    {
+      "type": "text",
+      "text": "sales "
+    },
+    {
+      "type": "text",
+      "text": "of about "
+    },
+    {
+      "type": "text",
+      "text": "$162,803. Cost at 60% "
+    },
+    {
+      "type": "text",
+      "text": "of that is about "
+    },
+    {
+      "type": "text",
+      "text": "$97,682. "
+    },
+    {
+      "type": "text",
+      "text": "Gross profit is revenue "
+    },
+    {
+      "type": "text",
+      "text": "minus "
+    },
+    {
+      "type": "text",
+      "text": "that cost.\n\nThis rests "
+    },
+    {
+      "type": "text",
+      "text": "on two "
+    },
+    {
+      "type": "text",
+      "text": "assumptions. The "
+    },
+    {
+      "type": "text",
+      "text": "discount-rate labels are "
+    },
+    {
+      "type": "text",
+      "text": "exact, and cost "
+    },
+    {
+      "type": "text",
+      "text": "applies to "
+    },
+    {
+      "type": "text",
+      "text": "list price "
+    },
+    {
+      "type": "text",
+      "text": "on every sale "
+    },
+    {
+      "type": "text",
+      "text": "line."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
