@@ -40,7 +40,7 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const mode = canRenderWebGL2() ? "3d" : "static";
     // Set before the scene first renders, so the camera starts there rather than gliding.
-    const opening = rememberedView(localStorage);
+    const opening = rememberedView(() => localStorage);
     setReducedMotion(reduced);
     setView(opening);
     setSupport(mode);
@@ -50,7 +50,7 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
   const move = useCallback((to: StationViewpoint) => {
     moving.current = { to, trigger: "button", started: performance.now() };
     setView(to);
-    rememberView(localStorage, to);
+    rememberView(() => localStorage, to);
   }, []);
 
   const onSettled = useCallback((settled: StationViewpoint) => {
