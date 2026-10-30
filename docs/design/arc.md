@@ -6,7 +6,7 @@ Status: **draft for David's approval.** It is a sketch to show where M1 leads, n
 
 - **One investigation per simulated quarter, for two years** (2194 and 2195). M1 is the first.
 - **The player's results become data.** Each simulated quarter is added to the ledger, so later investigations chart 2194 beside 2193. Some later alerts arise from the player's own earlier decisions.
-- **Discoveries are the main reward.** Each investigation has a few insights to find, as in M1. Finding them unlocks tools: new chart types, a basket view and a comparison mode. Gross profit compared with holding course adds up into a **business-health** score, which the Commerce Office reviews at the end of each year.
+- **Discoveries are the main reward.** Each investigation has a few insights to find, as in M1. Finding them unlocks tools: new chart types, a basket view and a comparison mode. Each quarter is graded on a report card of four measures, and the bosses review the year at an annual review (see `scoring.md`).
 - **Decisions get richer over time.** In M1 the player picks one preset option. Later, they choose parameters (which titles, which days, which series), and from Year 2 they combine two levers in a quarter.
 - **Not every alert is a problem.** Some are opportunities, and some are red herrings where the right move is to hold course.
 
