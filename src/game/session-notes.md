@@ -7,16 +7,25 @@ The seed, discoveries and sale facts stay on the server. The station opens 1 Jan
 Investigation uses this save's QueryView. Each browser profile gets an independent save.
 
 Files live in ORBITAL_DATA_DIR/saves (default .data/saves), with private directory/file
-permissions. Transactions acquire an exclusive lock, check a revision, and publish by
+permissions. All reads, creates and updates acquire a directory-wide exclusive lock, check revisions on writes, and publish by
 atomic rename. Failed writes leave the old save visible. Readers never see half a file.
-This supports one local app, not a distributed deployment. A process crash while holding
-an update lock fails closed: an operator must remove that save's .lock after confirming
-no writer is running. Atomic rename is not a guarantee against power loss before disk sync.
+This supports one local app, not a distributed deployment. The lock directory records its owner PID and timestamp in a uniquely named marker.
+After a crash, a contender removes the marker only if the owner PID is dead (ESRCH)
+or its 30-second lease expired. Only the contender that removes that unique marker
+may remove the directory; acquisition still requires an atomic mkdir. Expired owners
+check their lease before mutations and cannot release a successor's marker. Old empty
+lock files and abandoned initialization directories recover after the same bound. Atomic rename is not a guarantee against power loss before disk sync.
 Save IDs are validated before filesystem access; malformed/unknown API sessions fail.
 An unknown page cookie starts a new save on GET only. Corrupt saves fail rather than reset.
 Bootstrap is limited to 30 new saves per process per minute. Saves are bounded to 16 MiB,
-100,000 M1 sale facts and one played quarter. Local saves persist until explicitly removed;
-the browser cookie lasts 30 days. No player content or save identifiers enter analytics.
+100,000 M1 sale facts and one played quarter. The browser cookie lasts 30 days. Storage holds at most 200 saves and 256 MiB.
+Reads refresh a durable last-used timestamp (file mtime); saves untouched for 30 days
+expire on the next store operation, including direct reads. Admission evicts the least
+recently used other saves first, never the requester or a save with a legacy update lock.
+Budgets are checked under the directory lock across processes and survive restarts.
+Updates reserve their full temporary-file size as well as the old file, bounding peak
+bytes. If the protected/locked saves prevent admission, SAVE_CAPACITY fails the write
+without deleting them. Orphaned atomic-write temporary files are removed under the lock. No player content or save identifiers enter analytics.
 
 Sale facts persist in normalized Sale form and rejoin the unchanged workbook catalog
 when serving a view; generated labels cannot replace catalog facts. Counterfactual lines
