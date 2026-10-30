@@ -69,8 +69,11 @@ boundary, documented rather than chased.
   early ref withholds its sentence.
 - Rankings (`max`, `min`, `largest_*`) are rendered only over complete results. A limit or the row cap means the
   ref fails closed.
-- Labels come only from result rows, or from a single-value filter on a lookup that found something. A
-  comparison's headings show the compared values only where the data had something there.
+- Labels come only from result rows, or from a single-value filter on a lookup that found something. Period
+  names allowed in prose come from the same places, never from a source caption.
+- `compare_data` takes the compared values from the rows each side returns. Its headings and source name them
+  only as the data returned them, and otherwise in fixed words ("the first value", "No sales matched the first
+  value."). The model's from/to text never reaches the browser (Audit's final review of #32).
 - Everything sent to the browser other than the reply's prose is data or fixed text: tables and sources from
   the query layer, fixed lookup-failure and error messages, and pin titles built from the chart's query. The
   model's tool input is never sent, and the fence code is cut from every string.

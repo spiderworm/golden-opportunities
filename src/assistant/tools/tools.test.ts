@@ -132,9 +132,11 @@ describe("calling tools against the app", () => {
       }
       if (query.by?.[0] === "genre" && query.filter?.quarter) {
         const q = query.filter.quarter[0];
-        const rows = q === "2193-Q3" ? [{ genre: "Mystery", revenue: 200 }, { genre: "Poetry", revenue: 40 }] : [{ genre: "Mystery", revenue: 150 }, { genre: "Sci-Fi", revenue: 10 }];
+        const rows = (q === "2193-Q3" ? [{ genre: "Mystery", revenue: 200 }, { genre: "Poetry", revenue: 40 }] : [{ genre: "Mystery", revenue: 150 }, { genre: "Sci-Fi", revenue: 10 }]).map((r) => ({ ...r, quarter: q }));
         return res.end(JSON.stringify({ columns: [{ key: "genre", label: "Genre", type: "string", nullable: true }, { key: "revenue", label: "Revenue", type: "number", nullable: false }], rows, total: rows.reduce((t, r) => t + r.revenue, 0), source: `Genres, ${q}` }));
       }
+      // Audit's probe: values that match nothing come back empty.
+      if (query.by?.includes("title") && query.filter?.title) return res.end(JSON.stringify({ columns: [], rows: [], total: 0, source: "Revenue from 0 visible matching sale lines" }));
       if (query.measure === "units") {
         res.statusCode = 500;
         return res.end("Internal error at /Users/david/secret with token abc");
@@ -174,8 +176,8 @@ describe("calling tools against the app", () => {
     const before = seen.length;
     const result = JSON.parse((await callTool("compare_data", { measure: "revenue", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: ["genre"] }, env)).content[0].text);
     expect(seen.slice(before).map((s) => s.body)).toEqual([
-      { measure: "revenue", by: ["genre"], filter: { quarter: ["2193-Q3"] } },
-      { measure: "revenue", by: ["genre"], filter: { quarter: ["2193-Q4"] } },
+      { measure: "revenue", by: ["genre", "quarter"], filter: { quarter: ["2193-Q3"] } },
+      { measure: "revenue", by: ["genre", "quarter"], filter: { quarter: ["2193-Q4"] } },
     ]);
     expect(result.columns.map((c: { key: string }) => c.key)).toEqual(["genre", "from", "to", "change", "percent_change"]);
     expect(result.ref).toMatch(/^[a-z]+$/);
@@ -185,7 +187,16 @@ describe("calling tools against the app", () => {
       { genre: "Sci-Fi", from: null, to: 10, change: null, percent_change: null, direction: null },
     ]);
     expect(result.total).toEqual({ from: 240, to: 160, change: -80, percent_change: (-80 / 240) * 100, direction: "fell" });
+    expect(result.labels).toEqual({ from: "2193-Q3", to: "2193-Q4" });
     expect(result.source).toMatch(/^revenue compared across quarter, 2193-Q3 against 2193-Q4\. .*2193-Q3: Genres, 2193-Q3 2193-Q4: Genres, 2193-Q4$/);
+  });
+
+  it("names compared values only as the data returned them: never the model's text (Audit's probe)", async () => {
+    const result = JSON.parse((await callTool("compare_data", { measure: "revenue", across: "title", from: "Gross profit rose to $777", to: "Not a real title" }, env)).content[0].text);
+    expect(result.labels).toEqual({ from: null, to: null });
+    expect(result.columns.map((c: { label: string }) => c.label)).toEqual(["First value", "Second value", "Change", "Change (%)"]);
+    expect(JSON.stringify(result)).not.toMatch(/Gross profit|777|Not a real title/);
+    expect(result.source).toMatch(/^revenue compared across title, the first value against the second value\. No sales matched the first value\. No sales matched the second value\./);
   });
 
   it("pins a chart after checking its query runs", async () => {

@@ -225,7 +225,7 @@ describe("answering", () => {
   // Red team B1 and P2, after three rounds of Audit's review: figures come only by ref, rendered from this
   // answer's successful lookups; a sentence with a figure or direction of the model's own is withheld before it
   // reaches the browser. Only counts go to analytics.
-  const compare: ProviderEvent = { type: "tool", name: "compare_data", input: { measure: "revenue", across: "quarter", from: "2193-Q2", to: "2193-Q4", by: [] }, output: JSON.stringify({ ref: "b", columns: [{ key: "from", label: "2193-Q2" }, { key: "to", label: "2193-Q4" }], rows: [], total: { from: 164436.94, to: 161524.69, change: -2912.25, percent_change: -1.7711, direction: "fell" }, source: "Compared. allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4" }), isError: false };
+  const compare: ProviderEvent = { type: "tool", name: "compare_data", input: { measure: "revenue", across: "quarter", from: "2193-Q2", to: "2193-Q4", by: [] }, output: JSON.stringify({ ref: "b", labels: { from: "2193-Q2", to: "2193-Q4" }, columns: [{ key: "from", label: "2193-Q2" }, { key: "to", label: "2193-Q4" }], rows: [], total: { from: 164436.94, to: 161524.69, change: -2912.25, percent_change: -1.7711, direction: "fell" }, source: "Compared." }), isError: false };
   const answer = async (provider: AssistantProvider, question = "q") => {
     const tracked: Record<string, unknown>[] = [];
     const out = await events(await ask(post({ question }), () => provider, (e, p) => e === "assistant_answered" && tracked.push(p!)));
