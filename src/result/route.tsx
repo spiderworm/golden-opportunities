@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, redirect } from "react-router";
 
-import { getOutcome } from "~/game-stub/game.server";
+import { getOutcome } from "~/game/game.server";
 import { runQuery } from "~/query/run-query.server";
-import { resolveQueryView } from "~/query/view.server";
+import { getGameSession } from "~/game/session.server";
 import { track } from "~/platform/analytics/analytics.client";
 import { EChart } from "~/platform/charts/EChart";
 import type { ShellHandle } from "~/shell/Shell";
@@ -40,7 +40,7 @@ export function loader({ request }: Route.LoaderArgs) {
   const outcome = getOutcome(request);
   if (!outcome) throw redirect("/decide");
   // Last year, for the season note and the faint reference line.
-  const view = resolveQueryView();
+  const view = getGameSession(request).queryView;
   const byQuarter = runQuery({ measure: "revenue", by: ["quarter"] }, view).rows;
   const lastQ1 = byQuarter.find((r) => r.quarter === "2193-Q1")?.revenue ?? 0;
   const lastQ4 = byQuarter.find((r) => r.quarter === "2193-Q4")?.revenue ?? 0;

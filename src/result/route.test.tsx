@@ -1,16 +1,30 @@
 import { renderToString } from "react-dom/server";
 import { createRoutesStub } from "react-router";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
-import { getOutcome, resetStub, submitPlan } from "~/game-stub/game.server";
+import { getOutcome, submitPlan } from "~/game/game.server";
 import type { LeverId } from "~/simulation/types";
 import { earnedDiscoveries } from "./discoveries.server";
 import type { Route } from "./+types/route";
 import Result from "./route";
 
-const request = new Request("http://localhost/result");
+const directory = await vi.hoisted(async () => {
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  return mkdtempSync(tmpdir() + '/orbital-result-');
+});
+vi.mock('~/platform/analytics/instance.server', () => ({ DATA_DIR: directory }));
+vi.mock('~/platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }));
+import { rmSync } from 'node:fs';
+import { saves } from '~/game/session.server';
+afterAll(() => rmSync(directory, { recursive: true, force: true }));
 
 function render(...levers: LeverId[]) {
+  const save = saves.create();
+  saves.update(save.id, save.revision, draft => { draft.seed = 1; });
+  const request = new Request('http://localhost/result', { method: 'POST', headers: {
+    origin: 'http://localhost', cookie: 'orbital_save=' + save.id,
+  } });
   submitPlan(request, { levers });
   const outcome = getOutcome(request)!;
   const loaderData = { outcome, lastQ1: 95245.8, lastQ4: 161524.7, reference: [], discoveries: earnedDiscoveries(outcome.discoveries) };
@@ -20,7 +34,6 @@ function render(...levers: LeverId[]) {
 }
 
 describe("the result screen", () => {
-  afterEach(resetStub);
 
   it("labels every rule the plan used, in words as well as color", () => {
     const { html, outcome } = render("events");
