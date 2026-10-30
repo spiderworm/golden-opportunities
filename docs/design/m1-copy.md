@@ -164,6 +164,8 @@ Certificates are separate from these lines and use their own conditions. Exceeds
 
 `{MEASURE}` is the measure's name in capitals: PROFIT, READERS SERVED, HAPPINESS, CULTURE.
 
+Each lowest-measure line carries a small caption naming the speaker: the binding measure's boss; for a tie, the tied measures' bosses ("The Commerce Office and the Ministry of Culture"); or the Station Administrator when all goals are met. In the close-behind line, write "1 POINT" when n is 1 and "{n} POINTS" otherwise.
+
 | Moment | Line |
 | --- | --- |
 | One measure sets the score | `{MEASURE} HAS SET YOUR SCORE: {score}. THE OTHER MEASURES WERE IRRELEVANT. WE ADMIRED THEM BRIEFLY.` |
