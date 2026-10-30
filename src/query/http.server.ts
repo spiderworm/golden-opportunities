@@ -1,8 +1,7 @@
-import { authorizeQuery } from './access.server';
+import { authorizeQuery, viewForAccess, type QueryAccess } from './access.server';
 import { QueryError } from './errors';
 import { runQuery } from './run-query.server';
 import { emit, trackQuery } from './telemetry.server';
-import { resolveQueryView } from './view.server';
 import { serializeResult } from './result';
 import { QUERY_LIMITS } from './types';
 import type { QueryErrorCode, QueryErrorResponse, QueryTrack, QueryView } from './types';
@@ -10,7 +9,7 @@ import type { QueryErrorCode, QueryErrorResponse, QueryTrack, QueryView } from '
 const headers = { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin', Vary: 'Origin, Authorization' };
 const status: Record<QueryErrorCode, number> = {
   INVALID_QUERY: 400, INCOMPATIBLE_DIMENSION: 400, UNAVAILABLE_FACTS: 403, INVALID_VIEW: 500,
-  UNAUTHORIZED: 401, METHOD_NOT_ALLOWED: 405, UNSUPPORTED_MEDIA_TYPE: 415, PAYLOAD_TOO_LARGE: 413, RATE_LIMITED: 429, INTERNAL_ERROR: 500, RESULT_TOO_LARGE: 422,
+  UNAUTHORIZED: 401, SESSION_ENDED: 401, METHOD_NOT_ALLOWED: 405, UNSUPPORTED_MEDIA_TYPE: 415, PAYLOAD_TOO_LARGE: 413, RATE_LIMITED: 429, INTERNAL_ERROR: 500, RESULT_TOO_LARGE: 422,
 };
 
 async function readJson(request: Request): Promise<unknown> {
@@ -51,18 +50,17 @@ async function readJson(request: Request): Promise<unknown> {
 
 interface Options {
   run?: typeof runQuery;
-  resolveView?: () => QueryView;
+  resolveView?: (access: QueryAccess) => QueryView;
   track?: QueryTrack;
   now?: () => number;
 }
 /** Local-only access model. No IPs, client IDs, tokens or request content retained. */
 export function createQueryHandler(options: Options = {}): (request: Request) => Promise<Response> {
   const run = options.run ?? runQuery;
-  const resolveView = options.resolveView ?? resolveQueryView;
+  const resolveView = options.resolveView ?? viewForAccess;
   const track = options.track ?? trackQuery;
   const now = options.now ?? Date.now;
-  // The two authenticated principals share no user state today: browser and MCP.
-  // A future session layer should replace these with its authenticated principals.
+  // Keep both per-client-kind and global admission bounded, independent of save count.
   let windowStart = now();
   let counts = { browser: 0, agent: 0, total: 0 };
   let active = 0;
@@ -71,14 +69,15 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
     const started = performance.now();
     try {
       if (request.method !== 'POST') throw new QueryError('METHOD_NOT_ALLOWED', 'Only POST is supported.');
-      const caller = authorizeQuery(request);
+      const caller = authorizeQuery(request).kind;
       if (new URL(request.url).search) throw new QueryError('INVALID_QUERY', 'Query parameters are not supported; send the query as JSON.');
       if (now() - windowStart >= 60_000) { windowStart = now(); counts = { browser: 0, agent: 0, total: 0 }; }
       if (counts[caller] >= 60 || counts.total >= 100 || active >= 8) throw new QueryError('RATE_LIMITED', 'Query capacity reached; retry later.');
       counts[caller]++; counts.total++; active++; admitted = true;
       const query = await readJson(request);
-      // No client-controlled view, even for the agent capability.
-      const result = run(query, resolveView(), track);
+      // Body arrival is asynchronous: recheck expiry, revocation and revision after that wait.
+      const access = authorizeQuery(request);
+      const result = run(query, resolveView(access), track);
       const body = serializeResult(result);
       emit(track, 'query_request_completed', { rowCount: result.rows.length, durationMs: performance.now() - started });
       return new Response(body, { status: 200, headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8' } });
@@ -89,7 +88,7 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
       const response: QueryErrorResponse = { error: { code: known.code, message: known.code === 'INVALID_VIEW' ? 'The server data view is unavailable.' : known.message } };
       return Response.json(response, { status: status[known.code], headers: { ...headers,
         ...(known.code === 'METHOD_NOT_ALLOWED' ? { Allow: 'POST' } : {}),
-        ...(known.code === 'UNAUTHORIZED' ? { 'WWW-Authenticate': 'Bearer' } : {}),
+        ...(['UNAUTHORIZED', 'SESSION_ENDED'].includes(known.code) ? { 'WWW-Authenticate': 'Bearer' } : {}),
         ...(known.code === 'RATE_LIMITED' ? { 'Retry-After': '60' } : {}),
       } });
     } finally { if (admitted) active--; }

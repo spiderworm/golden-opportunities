@@ -42,7 +42,27 @@ when serving a view; generated labels cannot replace catalog facts. Counterfactu
 never belong in played[]. The simulation integration will atomically store the selected
 plan, outcome and actual facts together. The store is server-only, not a mutation API.
 
-This first PR deliberately leaves Decide/Result's existing stub in place. The engine
-integration replaces it and wires the query endpoint and assistant's save-bound
-capabilities together. Until then /api/query continues its fixed 2193 baseline and cannot
-see simulated quarters. No endpoint accepts a save ID, seed, revision or view in its body.
+## Query access
+
+Browser queries require a same-origin local request and an existing save cookie. API calls
+never bootstrap a save. `issueGameQueryToken(saveId)` in query-token.server.ts is server-only:
+the admitted assistant provider resolves the cookie and issues one capability per answer.
+The child receives it only through ORBITAL_QUERY_TOKEN; request Host and bodies never choose
+a token destination or save. The configured endpoint stays loopback-only in the tool server.
+
+Capabilities expire after three minutes, are revoked after provider cleanup, and bind the
+save revision at issuance. A changed revision ends the capability, so compare_data cannot
+combine successful calls across a quarter transition. Invalidated tokens return
+SESSION_ENDED/401 with fixed content-free text. Issuance is capped at four per save and
+64 globally. No capability can fall back to baseline history or choose another save.
+No token, save identifier or query content enters telemetry. The startup global bearer
+has been removed. isLocalBrowserRequest is exported by query/access.server.ts for reuse.
+
+Decide/Result retain their stub until the simulation integration atomically stores actual
+facts and the outcome. Browser and agent query access is ready for those committed facts.
+
+The capability boundary is between local HTTP callers and server-owned save state. It
+is not isolation from code running as the same OS user, which can inspect private
+application files/processes. No public token-minting endpoint exists. Authorization
+is repeated after body arrival, immediately before synchronous query execution, so
+revocation, expiry or revision changes during a slow body cannot produce a response.

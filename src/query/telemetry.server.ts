@@ -1,7 +1,8 @@
+import { trackServer } from '../platform/analytics/analytics.server';
 import type { QueryTrack } from './types';
 
-/** Local, content-free sink; replace/inject the platform's server adapter when available. */
-export const trackQuery: QueryTrack = (event, props) => console.info(JSON.stringify({ event, ...props }));
+/** Content-free server analytics; query values and save identity never enter events. */
+export const trackQuery: QueryTrack = (event, props) => trackServer(event, props);
 
 export function emit(track: QueryTrack, event: string, props: Record<string, string | number | boolean>): void {
   // Observability failures must not change query results or their visibility boundary.
