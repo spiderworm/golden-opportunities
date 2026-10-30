@@ -7,6 +7,8 @@ let analytics: Analytics | undefined;
 // it answers; false (and remembered across reloads) until it confirms.
 const UNCONFIRMED_KEY = `${GAME}.sharingUnconfirmed`;
 let serverConfirmed: Promise<boolean> = Promise.resolve(true);
+// The game's WebGL context, once a scene has made one (setAnalyticsGl).
+let glSource: (() => WebGLRenderingContext | null) | undefined;
 // Events tracked before startAnalytics() runs, sent once it does.
 const early: [string, Props | undefined, TrackOptions | undefined][] = [];
 
@@ -24,7 +26,7 @@ export function startAnalytics(instance: string, gl?: () => WebGLRenderingContex
     build: BUILD,
     version: VERSION,
     platform: import.meta.env.DEV ? "webdev" : "web",
-    gl,
+    gl: gl ?? (() => glSource?.() ?? null),
   });
   analytics.track("instance", { id: instance });
   // A fresh server doesn't know this browser's choice; tell it if sharing is off.
@@ -32,6 +34,16 @@ export function startAnalytics(instance: string, gl?: () => WebGLRenderingContex
   else if (remembered()) serverConfirmed = tellServer(true);
   for (const [event, props, options] of early.splice(0)) analytics.track(event, props, options);
   return analytics;
+}
+
+/**
+ * For a 3D scene: hands over its renderer's WebGL context so the device
+ * event records the GPU. The studio package reads it once, shortly after
+ * analytics start, so the GPU is recorded only when a scene is up by then
+ * (e.g. arriving on the Station screen).
+ */
+export function setAnalyticsGl(get: () => WebGLRenderingContext | null) {
+  glSource = get;
 }
 
 /** track() for browser code. */
