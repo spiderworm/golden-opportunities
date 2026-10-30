@@ -15,11 +15,18 @@ Due **3 November 2026**. Golden Analytics will extend if asked; David will decid
   4. **Measure:** you see what happened.
 - **Investigations should have more than one valid approach.** (David's concept)
 - **Scoring comes from how your actions affect the bookstore over time,** not from matching a single right answer. Points aren't the main reward; discovering something interesting in the data is. (David, 30 Oct)
+- **The score is a report card, not gross profit alone.** Four measures out of 100: Profit, Readers served, Happiness and Culture, with letter grades against goals set from last year. "Scoring on gross profit SOLELY feels icky to me." Details in `docs/design/scoring.md`. (David with Plot, 30 Oct)
+- **M1 uses a reduced card:** Profit, Readers served, Culture from real ratings and awards, and Happiness from Quality and Value only; goals are Q1 2193 plus 5%. (Plot's proposal, scoped by Goldy, 30 Oct)
+- **Names:** the agent is Dewey and the landlord is the Commerce Office. "Meridian Station" is out (it's a location in Halo); Larkspur Station is proposed. (David, 30 Oct)
 
 ## Simulation
 
 - **A simulation plays out the consequences of the player's decisions** over future quarters. (David, 30 Oct)
 - **We fill in the data the simulation needs** that the Bookshop dataset lacks. The brief allows "data of your own choosing"; generated data is shipped with the submission as supporting files. (David, 30 Oct)
+- **Generated data may include customers and demographics.** It fits the real 2193 sales exactly and explains the real patterns rather than adding new ones. Dewey stays "blind, absolutely" to it, and it isn't labelled as generated in the game. (David with Plot, 30 Oct)
+- **Alma, an event director:** a separate behind-the-scenes LLM, blind to Dewey, picks events from set types within limits, and plays every seller and rival buyer. Its events are logged, so a game replays exactly. (David with Plot, 30 Oct)
+- **A book market** (M2 and later): Exchange auctions and Orbitplace sales, with Dewey buying on a visible autopilot rule. (David with Plot, 30 Oct)
+- **Rules are shown before a decision; effects only after in-game time passes.** Projections may come later, once David has played the game. (David with Plot, 30 Oct)
 
 ## In-game agent
 
@@ -32,6 +39,9 @@ Due **3 November 2026**. Golden Analytics will extend if asked; David will decid
   - **It can** answer specific questions about the data, draw charts the player asks for, explain terms, show how to use the tools, and pin its charts to the dashboard.
   - **It can't** answer open questions ("what's wrong?", "why?", "what should I do?"); it turns them back into questions the player could ask. It doesn't volunteer patterns the player didn't ask about, recommend or rank decisions, or predict outcomes.
   - Maybe later: a hint the player can request, at a cost to their score.
+- **When Dewey declines a "why" or "what should I do" question, it offers the full menu of what it can show, in a fixed order, never a subset chosen for the question.** Steering would only ever be an explicit, paid hint. (David, choosing Plot's option 1, 30 Oct)
+- **Dewey never states a figure or a direction of its own.** It cites tool results by reference and the server renders the exact value, unit and direction; any number or comparative word in its own prose is withheld. (Probe's red-team and Audit's reviews, designed by Sage, approved by Goldy, 30 Oct)
+- **Dewey's conversation is restored on page reload.** (David, 30 Oct)
   - **The one exception: buying stock.** Dewey can suggest bids and run buying on autopilot, but only with a fixed rule that it shows every time ("the weakest of algorithms ever"). The rule looks at last year's sales and nothing else. The game starts with buying handed to Dewey, and the player can take it over. (David, 30 Oct)
 
 ## Look, sound and feel
@@ -57,6 +67,9 @@ Due **3 November 2026**. Golden Analytics will extend if asked; David will decid
 ## Process
 
 - **All work reaches `main` through pull requests David approves.** (David, 30 Oct)
+- **Every PR description names the agent that wrote the code; reviews are PR comments signed with the reviewer's name.** (David, 30 Oct)
+- **Conflicts are resolved in the commits that cause them:** PR branches are rebased onto `main`, with no merge commits. (David, 30 Oct)
+- **The live workspace runs on a local `live` branch** that integrates everyone's work ahead of the PRs; agents' workspaces merge into it automatically. (David, 30 Oct)
 - **Major points of the collaboration go in `docs/collaboration-log.md`,** especially where David pushes back on the AI. (David, 30 Oct)
 
 ## Submission (from the brief)
