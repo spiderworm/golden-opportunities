@@ -1,5 +1,6 @@
 import { useLocation, useNavigation, useSearchParams } from "react-router";
 
+import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
 import type { QueryView } from "~/query/types";
 import type { ShellHandle } from "~/shell/Shell";
 import { track } from "~/platform/analytics/analytics.client";
@@ -59,75 +60,81 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <div className={styles.page} data-refreshing={refreshing || undefined} aria-busy={refreshing}>
-      <FilterBar
-        filters={state.filters}
-        options={options}
-        onChange={(dimension, values) => {
-          track("investigate_filter_changed", { dimension, values: values.length });
-          update(setFilter(state, dimension, values));
-        }}
-        onDiscount={(choice) => {
-          // Rates are labels like "15%", not content; "all", "full" and "any" are fixed choices.
-          track("investigate_discount_filtered", { choice });
-          update(setDiscount(state, choice));
-        }}
-        onClear={() => {
-          track("investigate_filters_cleared");
-          update({ ...state, filters: DEFAULT_STATE.filters });
-        }}
-      />
-      <MetricTiles tiles={tiles} />
-      <MeasureChart
-        state={state}
-        result={chart}
-        quarters={options.quarter}
-        onMeasure={(measure) => {
-          track("investigate_measure_changed", { measure });
-          update({ ...state, measure });
-        }}
-        onGroup={(by) => {
-          track("investigate_regrouped", { by });
-          update({ ...state, by });
-        }}
-        onCompare={(compare) => {
-          track("investigate_compare_toggled", { compare });
-          update({ ...state, compare });
-        }}
-        onDrill={(value) => {
-          const next = toggleFilterValue(state, state.by, value);
-          track("investigate_drilldown", { source: "chart", dimension: state.by, selected: next.filters[state.by]?.length ?? 0 });
-          update(next);
-        }}
-        onTable={(shown) => track("investigate_table_toggled", { shown })}
-      />
-      {titleView && (
-        <TitleView
-          state={state}
-          title={titleView.title}
-          result={titleView.result}
-          quarters={options.quarter}
-          onMonth={(month) => {
-            const next = toggleFilterValue(state, "month", month);
-            track("investigate_drilldown", { source: "title_view", dimension: "month", selected: next.filters.month?.length ?? 0 });
-            update(next);
+    <div className={styles.layout}>
+      <div className={styles.page} data-refreshing={refreshing || undefined} aria-busy={refreshing}>
+        <FilterBar
+          filters={state.filters}
+          options={options}
+          onChange={(dimension, values) => {
+            track("investigate_filter_changed", { dimension, values: values.length });
+            update(setFilter(state, dimension, values));
           }}
-          onClose={() => {
-            track("investigate_title_closed");
-            update(setFilter(state, "title", []));
+          onDiscount={(choice) => {
+            // Rates are labels like "15%", not content; "all", "full" and "any" are fixed choices.
+            track("investigate_discount_filtered", { choice });
+            update(setDiscount(state, choice));
+          }}
+          onClear={() => {
+            track("investigate_filters_cleared");
+            update({ ...state, filters: DEFAULT_STATE.filters });
           }}
         />
-      )}
-      <Heatmap
-        state={state}
-        result={heatmap}
-        quarters={options.quarter}
-        onCell={(weekday, month) => {
-          const next = toggleCell(state, weekday, month);
-          track("investigate_drilldown", { source: "heatmap", dimension: "weekday_month", selected: next.filters.month ? 1 : 0 });
-          update(next);
-        }}
-      />
+        <MetricTiles tiles={tiles} />
+        <MeasureChart
+          state={state}
+          result={chart}
+          quarters={options.quarter}
+          onMeasure={(measure) => {
+            track("investigate_measure_changed", { measure });
+            update({ ...state, measure });
+          }}
+          onGroup={(by) => {
+            track("investigate_regrouped", { by });
+            update({ ...state, by });
+          }}
+          onCompare={(compare) => {
+            track("investigate_compare_toggled", { compare });
+            update({ ...state, compare });
+          }}
+          onDrill={(value) => {
+            const next = toggleFilterValue(state, state.by, value);
+            track("investigate_drilldown", { source: "chart", dimension: state.by, selected: next.filters[state.by]?.length ?? 0 });
+            update(next);
+          }}
+          onTable={(shown) => track("investigate_table_toggled", { shown })}
+        />
+        {titleView && (
+          <TitleView
+            state={state}
+            title={titleView.title}
+            result={titleView.result}
+            quarters={options.quarter}
+            onMonth={(month) => {
+              const next = toggleFilterValue(state, "month", month);
+              track("investigate_drilldown", { source: "title_view", dimension: "month", selected: next.filters.month?.length ?? 0 });
+              update(next);
+            }}
+            onClose={() => {
+              track("investigate_title_closed");
+              update(setFilter(state, "title", []));
+            }}
+          />
+        )}
+        <Heatmap
+          state={state}
+          result={heatmap}
+          quarters={options.quarter}
+          onCell={(weekday, month) => {
+            const next = toggleCell(state, weekday, month);
+            track("investigate_drilldown", { source: "heatmap", dimension: "weekday_month", selected: next.filters.month ? 1 : 0 });
+            update(next);
+          }}
+        />
+      </div>
+      {/* Dewey: a column beside the dashboard on wide screens, after it below that. */}
+      <aside className={styles.assistant} aria-label="Dewey">
+        <AssistantPanel />
+      </aside>
     </div>
   );
 }
