@@ -61,6 +61,10 @@ describe("the init line", () => {
     expect(lockViolation(init({ skills: ["docs"] }), "orbital")).toMatch(/skills/);
     expect(lockViolation(init({ slash_commands: ["mcp"] }), "orbital")).toMatch(/commands/);
     expect(lockViolation({ type: "system", subtype: "init" }, "orbital")).toMatch(/didn't list/);
+    const { skills: _s, ...noSkills } = init();
+    const { slash_commands: _c, ...noCommands } = init();
+    expect(lockViolation(noSkills, "orbital")).toMatch(/didn't list its skills/);
+    expect(lockViolation(noCommands, "orbital")).toMatch(/didn't list its skills/);
   });
 });
 
@@ -121,10 +125,10 @@ describe("the process", () => {
   const fake = fileURLToPath(new URL("./fixtures/fake-claude.mjs", import.meta.url));
   const dir = mkdtempSync(path.join(tmpdir(), "orbital-assistant-test-"));
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
-  const run = (mode: string, over: { timeoutMs?: number } = {}) => {
+  const run = (mode: string, over: { timeoutMs?: number; graceMs?: number } = {}) => {
     const report = path.join(dir, `${mode}.json`);
     const provider = claudeCodeAssistant({ command: fake, model: "haiku", ...over, server: { ...server, env: { ORBITAL_QUERY_TOKEN: "secret-token", FAKE_CLAUDE_MODE: mode, FAKE_CLAUDE_REPORT: report } } });
-    return { provider, report: () => JSON.parse(readFileSync(report, "utf8")) as { pid: number; cwd: string; args: string[]; env: Record<string, string>; stdin: string } };
+    return { provider, report: () => JSON.parse(readFileSync(report, "utf8")) as { pid: number; grandchild?: number; cwd: string; args: string[]; env: Record<string, string>; stdin: string } };
   };
   const alive = (pid: number) => {
     try {
@@ -177,6 +181,32 @@ describe("the process", () => {
     const { pid } = report();
     await until(() => !alive(pid));
     expect(alive(pid)).toBe(false);
+  });
+
+  it("cuts email addresses from tool inputs, tool outputs and errors", async () => {
+    const { provider } = run("tool-email");
+    const events: ProviderEvent[] = [];
+    const error = await (async () => {
+      try {
+        for await (const e of provider.ask(prompt, new AbortController().signal)) events.push(e);
+      } catch (e) {
+        return e as Error;
+      }
+    })();
+    expect(events).toEqual([{ type: "tool", name: "query", input: { filter: { title: [REDACTED] } }, output: `No rows for ${REDACTED}`, isError: false }]);
+    expect(error).toBeInstanceOf(AssistantUnavailable);
+    expect(error?.message).toBe(`The assistant failed: failed for ${REDACTED}`);
+  });
+
+  it("escalates to SIGKILL for a process that ignores SIGTERM, takes what it started with it, and only then removes its folder", async () => {
+    const { provider, report } = run("stubborn", { timeoutMs: 300, graceMs: 300 });
+    await expect(collect(provider.ask(prompt, new AbortController().signal))).rejects.toThrow(/longer than/);
+    const { pid, grandchild, cwd } = report();
+    expect(grandchild).toBeTypeOf("number");
+    expect(alive(pid)).toBe(false);
+    await until(() => !alive(grandchild!));
+    expect(alive(grandchild!)).toBe(false);
+    expect(existsSync(cwd)).toBe(false);
   });
 
   it("is killed when the consumer stops reading early", async () => {
