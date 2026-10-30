@@ -2,7 +2,8 @@ import { useLocation, useNavigation, useSearchParams } from "react-router";
 
 import type { QueryView } from "~/query/types";
 import type { ShellHandle } from "~/shell/Shell";
-import { noopTrack } from "~/shell/track";
+import { track } from "~/platform/analytics/analytics.client";
+import { trackServer } from "~/platform/analytics/analytics.server";
 import type { Route } from "./+types/route";
 import { FilterBar } from "./FilterBar";
 import { DIMENSION_LABELS, MEASURE_LABELS } from "./format";
@@ -39,8 +40,16 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export function loader({ request }: Route.LoaderArgs) {
+  const started = performance.now();
   const state = parseState(new URL(request.url).searchParams);
-  return { state, ...investigate(state, runQuery, VIEW) };
+  const investigation = investigate(state, runQuery, VIEW);
+  trackServer("investigate_loaded", {
+    durationMs: Math.round(performance.now() - started),
+    measure: state.measure,
+    by: state.by,
+    filters: Object.keys(state.filters).length,
+  });
+  return { state, ...investigation };
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {
@@ -48,8 +57,6 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   const [, setSearchParams] = useSearchParams();
   const navigation = useNavigation();
   const location = useLocation();
-  // TODO(analytics): switch to track from ~/platform/analytics/analytics.client when it merges.
-  const track = noopTrack;
   const refreshing = navigation.state === "loading" && navigation.location?.pathname === location.pathname;
 
   const pins = usePins(track);
