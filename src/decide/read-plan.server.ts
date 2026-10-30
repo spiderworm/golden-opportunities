@@ -1,12 +1,12 @@
 // Reads the Decide form at the door, as /api/query and /api/assistant read
 // theirs: same origin, a small capped body, a deadline, and nothing but the
 // one field the form sends.
-import type { OptionId } from "~/game-stub/types";
+import { planOf } from "~/simulation/plan";
+import type { Plan } from "~/simulation/types";
 
-/** `option=A` is 8 bytes; this leaves room for encoding, nothing more. */
+/** `levers=repick%2Cevents` is 23 bytes; this leaves room for encoding, nothing more. */
 export const MAX_PLAN_BODY = 256;
 const DEADLINE_MS = 3_000;
-const OPTIONS: readonly OptionId[] = ["A", "B", "C", "D"];
 
 export class PlanRefused extends Error {
   readonly status: number;
@@ -16,7 +16,8 @@ export class PlanRefused extends Error {
   }
 }
 
-export async function readPlan(request: Request, deadlineMs = DEADLINE_MS): Promise<OptionId> {
+/** The plan in one field: `levers=repick,events`, or `levers=` to hold course. */
+export async function readPlan(request: Request, deadlineMs = DEADLINE_MS): Promise<Plan> {
   const url = new URL(request.url);
   const site = request.headers.get("sec-fetch-site");
   if (request.headers.get("origin") !== url.origin || (site !== null && site !== "same-origin")) {
@@ -26,7 +27,7 @@ export async function readPlan(request: Request, deadlineMs = DEADLINE_MS): Prom
   if (type !== "application/x-www-form-urlencoded") throw new PlanRefused(415, "Send the plan form.");
   const length = request.headers.get("content-length");
   if (length !== null && (!/^\d+$/.test(length) || Number(length) > MAX_PLAN_BODY)) throw new PlanRefused(413, "Too large.");
-  if (!request.body) throw new PlanRefused(400, "Choose one option.");
+  if (!request.body) throw new PlanRefused(400, "Send the plan.");
 
   const reader = request.body.getReader();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -66,8 +67,10 @@ export async function readPlan(request: Request, deadlineMs = DEADLINE_MS): Prom
 
   const form = new URLSearchParams(raw);
   const keys = [...form.keys()];
-  if (keys.length !== 1 || keys[0] !== "option") throw new PlanRefused(400, "Send only the chosen option.");
-  const option = form.get("option");
-  if (!OPTIONS.includes(option as OptionId)) throw new PlanRefused(400, "Choose one of the four options.");
-  return option as OptionId;
+  if (keys.length !== 1 || keys[0] !== "levers") throw new PlanRefused(400, "Send only the chosen moves.");
+  const value = form.get("levers")!;
+  // Sim's planOf refuses unknown, repeated or more than two levers.
+  const plan = planOf(value === "" ? [] : value.split(","));
+  if (!plan) throw new PlanRefused(400, "Choose up to two of the three moves.");
+  return plan;
 }

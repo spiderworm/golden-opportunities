@@ -2,7 +2,7 @@
 // (docs/design/m1-copy.md, sections 4 to 6). Change them there first.
 // The discoveries' own text is server-only: see discoveries.server.ts.
 // {braces} are filled by the functions below.
-import type { Assumption, Grade, MeasureId, MeasureScore } from "~/game-stub/types";
+import type { Assumption, Certificate, Grade, MeasureId, MeasureScore, ReportCard } from "~/simulation/types";
 
 export const RESULT_COPY = {
   title: "Q1 2194: the results",
@@ -17,26 +17,30 @@ export const RESULT_COPY = {
     intro:
       'The simulation is small on purpose. Each line below is one rule it follows. "From your data" means it was measured from 2193. "Assumed" means the data can\'t show it, so we chose a value.',
     tags: { data: "From your data", assumed: "Assumed", setup: "Setup" } satisfies Record<Assumption["source"], string>,
-    /** Shown on each rule the player's option used, so the highlight isn't color alone. */
+    /** Shown on each rule the player's plan used, so the highlight isn't color alone. */
     used: "Your plan used this rule.",
   },
   /** Section 4, "Report card". */
   reportCard: {
     heading: "Report card",
-    combined: "Combined score",
+    overall: "Overall score",
+    overallExplainer: "Your overall score is your lowest measure.",
     holdCourse: "If you had held course",
+    binding: "Sets your score",
+    closeBehind: "Close behind",
     columns: { measure: "Measure", result: "This quarter", lastYear: "Q1 2193", goal: "Goal", score: "Score", holdCourse: "If you had held course" },
     measures: { profit: "Profit", readers: "Readers served", happiness: "Happiness", culture: "Culture" } satisfies Record<MeasureId, string>,
     exceeds: "Exceeds Requirements",
-    wellRounded: "Well-Rounded Shop: every measure scored 80 or more, which adds 3 to the combined score.",
-    goalsNote: "Each goal is Q1 2193 plus 5%. Matching last year scores 65, a D. Meeting the goal scores 100, an A+.",
+    certificatesHeading: "Certificates",
+    goalsNote: "Each goal is Q1 2193 plus 5%. Matching last year scores 70 (C\u2212). Meeting the goal scores 100 (A+).",
+    bossesDisclosure: "What the bosses said",
     bosses: {
       profit: "The Commerce Office",
       readers: "The Throughput Subcommittee",
       happiness: "The Readers' Guild survey drone",
       culture: "The Ministry of Culture",
-      combined: "The Station Administrator",
-    } satisfies Record<MeasureId | "combined", string>,
+      overall: "The Station Administrator",
+    } satisfies Record<MeasureId | "overall", string>,
   },
   discoveries: {
     heading: "What you found",
@@ -110,8 +114,8 @@ export function measureTexts(m: MeasureScore): { result: string; goal: string; l
   };
 }
 
-/** The engine's own verdict: only a result at or past the goal scores 100. */
-const metGoal = (m: MeasureScore) => m.score >= 100;
+/** The engine's own verdict, never worked out from rounded numbers. */
+const metGoal = (m: MeasureScore) => m.met;
 
 /** "A-" set with a true minus sign. */
 export function gradeText(grade: Grade): string {
@@ -181,11 +185,65 @@ export function fractionWords(score: number): string {
   return Math.abs(value * 100 - score) < 1e-9 ? words : `ABOUT ${words}`;
 }
 
-/** The Station Administrator on the combined score. */
+/** The Station Administrator on the overall score. */
 export function administratorLine(score: number): string {
-  if (score >= 100) return `COMBINED SCORE: ${score}. THIS IS A WHOLE SHOP.`;
-  if (score >= 60) return `COMBINED SCORE: ${score}. THIS IS ${fractionWords(score)} OF A SHOP. PLEASE ACQUIRE THE REMAINDER.`;
-  return `COMBINED SCORE: ${score}. THE ADMINISTRATOR WILL NEED TO SIT DOWN.`;
+  if (score >= 100) return `OVERALL SCORE: ${score}. THIS IS A WHOLE SHOP.`;
+  if (score >= 60) return `OVERALL SCORE: ${score}. THIS IS ${fractionWords(score)} OF A SHOP. PLEASE ACQUIRE THE REMAINDER.`;
+  return `OVERALL SCORE: ${score}. THE ADMINISTRATOR WILL NEED TO SIT DOWN.`;
+}
+
+/** `{MEASURE}`: the measure's name in capitals. */
+const MEASURE_CAPS: Record<MeasureId, string> = { profit: "PROFIT", readers: "READERS SERVED", happiness: "HAPPINESS", culture: "CULTURE" };
+
+/** "A AND B", "A, B AND C". */
+function names(list: string[]): string {
+  return list.length < 2 ? (list[0] ?? "") : `${list.slice(0, -1).join(", ")} AND ${list.at(-1)}`;
+}
+
+/**
+ * The lowest-measure lines under the overall score (section 4, "Lowest-measure
+ * lines"). The engine decides every condition: allMet, binding, sacrifice and
+ * closeBehind (closest first). These only pick the words.
+ */
+export function lowestMeasureLines(card: ReportCard): string[] {
+  const { overall } = card;
+  if (overall.allMet) return ["ALL MEASURES MET REQUIREMENTS. YOUR SCORE IS 100. WE ARE RECALIBRATING OUR EXPECTATIONS UPWARD."];
+  const binders = overall.binding.map((id) => MEASURE_CAPS[id]);
+  const lines = [
+    binders.length === 1
+      ? `${binders[0]} HAS SET YOUR SCORE: ${overall.score}. THE OTHER MEASURES WERE IRRELEVANT. WE ADMIRED THEM BRIEFLY.`
+      : `${names(binders)} HAVE JOINTLY SET YOUR SCORE: ${overall.score}. WE ARE SUSPICIOUS OF TIES.`,
+  ];
+  if (overall.sacrifice) lines.push("YOU RAISED ONE MEASURE BY LOWERING ANOTHER. WE ONLY COUNT THE LOWER ONE. THIS IS POLICY.");
+  const close = overall.closeBehind[0];
+  if (close) {
+    const n = card.measures.find((m) => m.id === close)!.score - overall.score;
+    lines.push(`${MEASURE_CAPS[close]} WAS ${n} ${n === 1 ? "POINT" : "POINTS"} FROM SETTING YOUR SCORE. IT IS WATCHING.`);
+  }
+  return lines;
+}
+
+/** Who speaks the lowest-measure lines: the binding measure's boss, or bosses on a tie. */
+export function lowestMeasureSpeakers(card: ReportCard): string {
+  const c = RESULT_COPY.reportCard;
+  if (card.overall.allMet) return c.bosses.overall;
+  // "The Commerce Office and the Ministry of Culture": only the first name opens with a capital.
+  const bosses = card.overall.binding.map((id, i) => (i === 0 ? c.bosses[id] : c.bosses[id].replace(/^The /, "the ")));
+  return bosses.length < 2 ? bosses[0]! : `${bosses.slice(0, -1).join(", ")} and ${bosses.at(-1)}`;
+}
+
+/** A certificate's words. */
+export function certificateText(certificate: Certificate): string {
+  switch (certificate.id) {
+    case "exceeds":
+      return `Exceeds Requirements: ${RESULT_COPY.reportCard.measures[certificate.measure!]} beat its goal. Certificates don't change your score.`;
+    case "wellRounded":
+      return "Well-Rounded Shop: every measure scored 80 or more.";
+    // Neither can happen in M1 (one quarter, no Alma), so Plot hasn't written them yet.
+    case "comeback":
+    case "weathered":
+      return "";
+  }
 }
 
 /** The season note. */
