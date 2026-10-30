@@ -131,9 +131,26 @@ After the quarter plays out, the result screen shows:
 - **Tiles with change badges:** gross profit, revenue and units, each compared with holding course. Q1 revenue is far below Q4 in every option (holding course gives about $95k, 41% down again). The screen says plainly that this is the season, and that the comparison that counts is the do-nothing line.
 - **What happened:** three plain sentences generated from the model. For example: "The sale sold about 20% more books, but each one earned about $1.85 less. Revenue rose 3%; gross profit fell 21%."
 - **Assumptions:** every lever from section 4, each tagged "from your data" or "assumed", with its value.
-- **Discoveries:** insights A, B and C, each marked found if the player opened a view that shows it. For example, C counts as found once the player has looked at a title by month with the 15% filter applied. Points aren't the main reward; this is.
+- **Discoveries:** insights A, B and C, each marked found if the player opened a view that shows it (exact rules below). For example, C counts as found once the player has looked at a title by month with the 15% filter applied. Points aren't the main reward; this is.
 
 **Score:** superseded by `scoring.md`. M1 shows a reduced report card: the four measures, graded against last year's Q1 plus 5%, with the do-nothing line still shown for comparison.
+
+### When a discovery counts
+
+Agreed with Frank, who implements it on the server. The client never claims a discovery.
+
+**What counts as evidence**
+- Only successful, nonempty views of 2193 data, seen before the plan is committed. Views after the commit and 2194 rows don't count.
+- A view counts only if the player produced it: by changing a control, drilling, pinning, or asking Dewey. Dewey's answers with data count; its refusals don't. The Investigate screen's default state on load (tiles, chart, heatmap) never counts. Tiles and the heatmap do count once the player's own filters or grouping make them show the evidence.
+- The evidence must be in the rows actually returned. A truncated view (the query engine marks truncation) doesn't count.
+- Evidence can build up across views in a session. A Q3-filtered view plus a Q4-filtered view equal one view comparing Q3 with Q4.
+- Accepted measures are revenue, units, orders and orders_per_day, unless a rule says otherwise.
+
+| Discovery | Found when | Recorded as partial (analytics only, never shown) |
+| --- | --- | --- |
+| **A. The whole store slowed** | Both parts are seen. **A1:** one accepted measure broken down by genre, format or publisher, with Q3 and Q4 both visible, in the same measure and breakdown. The rows must cover at least 6 of 8 genres, 5 of 6 formats, or all 4 publishers. **A2:** avg_order_value for Q3 and for Q4: from a chart by quarter, from a chart by month covering all of July to December, from the average-order-value tile under player-set Q3 and Q4 filters, or from Dewey. | A1 alone, or A2 alone |
+| **B. Weekdays emptied, weekends held** | One accepted measure by weekday, with all 7 weekdays in the rows, covering Q3 and Q4. That can be weekday plus quarter, weekday plus month covering at least one Q3 month and one Q4 month, or weekday views filtered to Q3 and to Q4. | |
+| **C. Book of the Month** | Units or revenue at a discount rate of exactly 15% (filter or breakdown), by title, with month visible, showing at least 3 distinct months, each with its title. That can be title plus month, title views under month filters, or single-title views by month that together add up to 3 months. | 15% sales for one or two months, e.g. Hashtag QuokkaSelfie in December |
 
 ## 6. The in-game agent: Dewey
 
