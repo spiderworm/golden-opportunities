@@ -5,7 +5,7 @@ import { createInterface } from "node:readline";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DIMENSIONS, MEASURES } from "../../query/types.ts";
 import { checkChart, checkComparison, checkQuery, describeData, ToolInputError, TOOLS } from "./definitions.ts";
-import { callTool, handle, queryEndpoint } from "./server.ts";
+import { callTool, handle, queryEndpoint, resetRefsForTests } from "./server.ts";
 import { defaultQueryUrl, orbitalToolServer } from "./toolServer.server.ts";
 
 describe("the tool list", () => {
@@ -146,11 +146,13 @@ describe("calling tools against the app", () => {
   });
   afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
-  it("sends only the checked query, with the token, and returns the result with its source", async () => {
+  it("sends only the checked query, with the token, and returns the result with its source and refs", async () => {
+    resetRefsForTests();
     const result = await callTool("query_data", { measure: "revenue", by: ["quarter"] }, env);
     expect(result.isError).toBeUndefined();
-    expect(JSON.parse(result.content[0].text)).toEqual({ columns: [{ key: "quarter", label: "Quarter", type: "string", nullable: false }], rows: [{ quarter: "2193-Q1", revenue: 10 }], total: 10, source: "Sales, 2193-Q1 to Q4" });
+    expect(JSON.parse(result.content[0].text)).toEqual({ ref: "a", columns: [{ key: "quarter", label: "Quarter", type: "string", nullable: false }], rows: [{ ref: "a1", quarter: "2193-Q1", revenue: 10 }], total: 10, source: "Sales, 2193-Q1 to Q4" });
     expect(seen.at(-1)).toEqual({ auth: "Bearer tok", body: { measure: "revenue", by: ["quarter"] } });
+    expect(JSON.parse((await callTool("query_data", { measure: "revenue", by: [] }, env)).content[0].text)).toMatchObject({ ref: "b", rows: [{ ref: "b1" }] });
   });
 
   it("never reaches the app with a bad query", async () => {
@@ -174,7 +176,8 @@ describe("calling tools against the app", () => {
       { measure: "revenue", by: ["genre"], filter: { quarter: ["2193-Q4"] } },
     ]);
     expect(result.columns.map((c: { key: string }) => c.key)).toEqual(["genre", "from", "to", "change", "percent_change"]);
-    expect(result.rows).toEqual([
+    expect(result.ref).toMatch(/^[a-z]+$/);
+    expect(result.rows.map(({ ref, ...row }: { ref: string }) => (expect(ref).toBe(`${result.ref}${result.rows.findIndex((r: { ref: string }) => r.ref === ref) + 1}`), row))).toEqual([
       { genre: "Mystery", from: 200, to: 150, change: -50, percent_change: -25, direction: "fell" },
       { genre: "Poetry", from: 40, to: null, change: null, percent_change: null, direction: null },
       { genre: "Sci-Fi", from: null, to: 10, change: null, percent_change: null, direction: null },

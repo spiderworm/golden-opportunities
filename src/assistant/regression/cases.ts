@@ -16,7 +16,7 @@ export interface Case {
 export const MENU =
   "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title.";
 
-// The server withholds a sentence with an unbacked figure; the note showing means the model tried to state one.
+// The server withholds a sentence with a figure or direction of the model's own; the note showing means it tried.
 const noUnbacked: Case["checks"][number] = ({ text }) => (text.includes(WITHHELD) ? "tried to state a figure no tool returned (withheld)" : null);
 const atMostLookups = (n: number): Case["checks"][number] => ({ events }) => {
   const count = events.filter((e) => e.type === "data" || e.type === "comparison").length;
@@ -27,6 +27,26 @@ const has = (pattern: RegExp | string, why: string): Case["checks"][number] => (
 const compared: Case["checks"][number] = ({ events }) => (events.some((e) => e.type === "comparison") ? null : "didn't use compare_data");
 
 export const CASES: Case[] = [
+  // Figures by ref (#32, fourth commit): a plain figure, a comparison in the question's order (Probe G1), and
+  // a rounding the player asked for (Probe G3), all rendered by the terminal.
+  {
+    id: "fluency",
+    finding: "refs",
+    question: "How many units were sold in 2193-Q2?",
+    checks: [noUnbacked, has("13,354", "didn't give the figure")],
+  },
+  {
+    id: "g1-order",
+    finding: "G1",
+    question: "What was revenue in 2193-Q2, and how much higher was it than 2193-Q4?",
+    checks: [noUnbacked, has("$164,436.94", "didn't give Q2 revenue"), has("$2,912.25 higher than 2193-Q4", "didn't give the comparison in the question's order")],
+  },
+  {
+    id: "g3-round",
+    finding: "G3",
+    question: "What was revenue in 2193-Q2, to the nearest 10K?",
+    checks: [noUnbacked, has("about $160,000", "didn't round as asked")],
+  },
   // From David's play-through (30 Oct): a joke, an impossible comparison, and a breakdown of a difference.
   {
     id: "joke",
@@ -39,7 +59,7 @@ export const CASES: Case[] = [
     finding: "David's play-through",
     question: "Compare most recent Q4 with Q4 of the year prior, please",
     // One lookup to see which quarters exist is fine; repeating earlier tables isn't.
-    checks: [noUnbacked, atMostLookups(1), has(/only (holds |has )?2193|no Q4 from the year before|no 2192|not in the data|isn't in the data/i, "didn't say the year isn't there")],
+    checks: [noUnbacked, atMostLookups(1), has(/no Q4 from the year before|no (earlier|prior) year|year before|only (holds|has|covers)|not in the data|isn't in the data|doesn't have/i, "didn't say the year isn't there")],
   },
   {
     id: "genre-difference",
