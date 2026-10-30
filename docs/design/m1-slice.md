@@ -6,7 +6,8 @@ Status: **draft for David's approval.** Plot wrote it and Goldy coordinates it. 
 - **Decided:** the assumed numbers in section 4 stand.
 - **Decided:** the player sees the rules before deciding. Effects appear only after in-game time has passed. Projections, which may not hold true, may come later, once David has played the game.
 - **Decided:** the names Dewey and the Commerce Office. "Meridian Station" was approved on condition that it clears a check, and it didn't: it is a location in Microsoft's Halo. A replacement is proposed in section 1.
-- **Open:** scoring. David doesn't want gross profit to be the only score. Other measures, including ones that aren't about money, are under discussion.
+- **Decided:** we generate whatever data gameplay needs, including customers and demographics (see `arc.md`).
+- **Open:** scoring. David doesn't want gross profit to be the only score. Other measures, including ones that aren't about money, are under discussion. Customer measures such as satisfaction can now come from generated customers.
 - **Open:** an event director. David wants a separate LLM, behind the scenes, to watch play and drive events. That would add unpredictability to the seasonal baseline in section 4. Its design is to follow.
 
 M1 is the thinnest slice that can be played end to end: an alert, then the revenue chart, then one decision, then one simulated quarter, then the result.

@@ -23,6 +23,23 @@ Status: **draft for David's approval.** It is a sketch to show where M1 leads, n
 | 7 | **The critics and the crowd.** A reviewer says the shop "stocks what wins prizes, not what people read". | Ratings (50k) against sales: *the life and times of an utterly inconsequential person* rates 3.20 but sells strongly, while some 4.3+ titles barely sell. 18 awards, one of them a 2193 Hugo (*Rystwyth*). | A "staff picks" shelf by rating, by awards, or by neither. | **Generated:** shelf-placement lift (reuse #5). |
 | 8 | **The libraries next door.** The station libraries propose a partnership. | Library checkouts barely change across the months (1,281 in January, 927 in December), with no summer peak. Reading demand is steady and the shop's traffic isn't. Seven libraries have catalogs and staffing. | Partner with the libraries (author nights, a returns-to-shop table), or with which library. | **Generated:** partnership effect on off-season weekday traffic. Checkouts have no year, so they can't be lined up against sales directly. |
 
-## What the data can't support (so the game doesn't pretend)
+## Generated data: customers, demographics and more
 
-The data has no customers, demographics, locations, returns, inventory or costs. The concept's examples about customer segments, locations, returning customers and return rates would therefore need wholly invented data. **Proposal:** leave those out, rather than build investigations whose "evidence" we made up. Costs are the exception. The simulation must assume them (M1's 60% cost of goods), and the assumptions panel always says so.
+The 2193 data has no customers, demographics, locations, returns, inventory or costs. My earlier draft proposed leaving out investigations that would need them. David overruled that (October 30, 2026): we generate whatever data gameplay needs, including customers and demographics. The concept's examples about segments, locations, returning customers and returns are therefore back in scope.
+
+**Proposals for how to generate it:**
+- **Generated data fits the real data exactly.** Each real 2193 order is assigned to a generated customer, so every sales chart still matches the source workbook. Only the new columns (who bought, where, whether it came back) are generated.
+- **The generated customers explain the real patterns,** not new ones. For example, shuttle visitors produce the summer weekday surge, and station residents produce the steady weekends. The player's insights from M1 then deepen instead of being contradicted.
+- **Each generated pattern is written down** as the scenario's hidden truth, which is how discoveries get scored. Dewey can't see it, as its limits already require.
+- **Generated data is labeled** as generated, both in the game and in the supporting files shipped with the submission.
+
+**Investigations this opens** (they fit into the arc above):
+
+| Alert | What the generated data would show | Decision |
+| --- | --- | --- |
+| **Who to court.** "The Commerce Office offers a marketing slot on the shuttle feeds." | Segments (residents, crew rotations, shuttle visitors, families) differ in genre, format and spend. | Which segment to target, and with what. |
+| **The regulars are thinning.** "Fewer familiar faces this quarter." | Repeat-customer cohorts, and the titles and series that bring people back. | Loyalty card, series subscriptions, or neither. |
+| **A second berth.** "A kiosk on Ring A is up for lease." | Sales by ring or berth, and the foot traffic past each. | Where to open, or whether to open at all. |
+| **Back on the shelf.** "Returns are up." | Return rates by title and format. | Change the returns policy, or drop a title. |
+
+Costs remain assumptions (M1's 60% cost of goods), and the assumptions panel always says so.
