@@ -23,8 +23,9 @@ export async function* readLines(body: ReadableStream<Uint8Array>): AsyncGenerat
   if (buffer.trim()) yield JSON.parse(buffer) as WireEvent;
 }
 
-export async function* askAssistant(question: string, history: SentTurn[], signal: AbortSignal, fetcher: typeof fetch = fetch): AsyncGenerator<WireEvent> {
-  const res = await fetcher("/api/assistant", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question, history }), signal });
+/** `pins`: whether the page can take pins; without it the assistant isn't offered the pin tool. */
+export async function* askAssistant(question: string, history: SentTurn[], pins: boolean, signal: AbortSignal, fetcher: typeof fetch = fetch): AsyncGenerator<WireEvent> {
+  const res = await fetcher("/api/assistant", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question, history, pins }), signal });
   if (!res.ok || !res.body) {
     const message = await res
       .json()

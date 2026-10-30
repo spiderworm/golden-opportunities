@@ -4,14 +4,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { WireEvent } from "../events.ts";
+import { track as platformTrack } from "~/platform/analytics/analytics.client";
 import { ASSISTANT_NAME as NAME } from "../name.ts";
 import type { ChartSpec } from "../tools/definitions.ts";
 import { askAssistant, type SentTurn } from "./stream.ts";
 
-/** The platform's track(), injected (src/platform/analytics, PR #9). */
+/** The platform's track(); injectable for tests. */
 export type PanelTrack = (event: string, props?: Record<string, string | number | boolean>, options?: { hold?: "agent_text" }) => void;
 
-type Lookup = Extract<WireEvent, { type: "data" | "pin" | "lookup_failed" }>;
+/** A pin also records whether the page took it (the dashboard can refuse a spec, or there may be none). */
+type Lookup = Extract<WireEvent, { type: "data" | "lookup_failed" }> | (Extract<WireEvent, { type: "pin" }> & { placed: boolean });
 interface Reply {
   question: string;
   text: string;
@@ -24,11 +26,13 @@ const QUESTION_MAX = 500;
 const ROWS_SHOWN = 8;
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
-export function AssistantPanel({ track = () => {}, onPin, fetcher }: { track?: PanelTrack; onPin?: (chart: ChartSpec) => void; fetcher?: typeof fetch }) {
+export function AssistantPanel({ track = platformTrack, onPin, fetcher }: { track?: PanelTrack; onPin?: (chart: ChartSpec) => boolean | void; fetcher?: typeof fetch }) {
   const [replies, setReplies] = useState<Reply[]>([]);
   const [question, setQuestion] = useState("");
   const abort = useRef<AbortController | null>(null);
   const log = useRef<HTMLDivElement>(null);
+  // Closing the panel stops the answer, and with it the process on the server.
+  useEffect(() => () => abort.current?.abort(), []);
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight });
   }, [replies]);
@@ -53,12 +57,14 @@ export function AssistantPanel({ track = () => {}, onPin, fetcher }: { track?: P
     const started = performance.now();
     let outcome = "done";
     try {
-      for await (const event of askAssistant(text, history.slice(-6), controller.signal, fetcher)) {
+      for await (const event of askAssistant(text, history.slice(-6), onPin !== undefined, controller.signal, fetcher)) {
         if (event.type === "text") update((r) => ({ ...r, text: r.text + event.text }));
         else if (event.type === "data" || event.type === "lookup_failed") update((r) => ({ ...r, lookups: [...r.lookups, event] }));
-        else if (event.type === "pin") {
-          update((r) => ({ ...r, lookups: [...r.lookups, event] }));
-          onPin?.(event.chart);
+        else if (event.type === "pin" && onPin) {
+          // Pins are only offered when onPin is wired; the page can still refuse one (Chart's pins.add).
+          const placed = onPin(event.chart) !== false;
+          track("assistant_pin_placed", { placed, kind: event.chart.kind });
+          update((r) => ({ ...r, lookups: [...r.lookups, { ...event, placed }] }));
         } else if (event.type === "error") {
           outcome = "failed";
           update((r) => ({ ...r, error: event.message }));
@@ -129,7 +135,7 @@ function LookupView({ lookup }: { lookup: Lookup }) {
   if (lookup.type === "pin") {
     return (
       <figure style={styles.lookup}>
-        <figcaption>Pinned to your dashboard: {lookup.chart.title}</figcaption>
+        <figcaption>{lookup.placed ? `Pinned to Investigate, below: ${lookup.chart.title}` : `Couldn't pin that chart: ${lookup.chart.title}`}</figcaption>
         <p style={styles.source}>Source: {lookup.source}</p>
       </figure>
     );
