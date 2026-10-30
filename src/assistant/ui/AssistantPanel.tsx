@@ -29,6 +29,8 @@ export function AssistantPanel({ track = () => {}, onPin, fetcher }: { track?: P
   const [question, setQuestion] = useState("");
   const abort = useRef<AbortController | null>(null);
   const log = useRef<HTMLDivElement>(null);
+  // Closing the panel stops the answer, and with it the process on the server.
+  useEffect(() => () => abort.current?.abort(), []);
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight });
   }, [replies]);
@@ -53,10 +55,10 @@ export function AssistantPanel({ track = () => {}, onPin, fetcher }: { track?: P
     const started = performance.now();
     let outcome = "done";
     try {
-      for await (const event of askAssistant(text, history.slice(-6), controller.signal, fetcher)) {
+      for await (const event of askAssistant(text, history.slice(-6), onPin !== undefined, controller.signal, fetcher)) {
         if (event.type === "text") update((r) => ({ ...r, text: r.text + event.text }));
         else if (event.type === "data" || event.type === "lookup_failed") update((r) => ({ ...r, lookups: [...r.lookups, event] }));
-        else if (event.type === "pin") {
+        else if (event.type === "pin" && onPin) {
           update((r) => ({ ...r, lookups: [...r.lookups, event] }));
           onPin?.(event.chart);
         } else if (event.type === "error") {

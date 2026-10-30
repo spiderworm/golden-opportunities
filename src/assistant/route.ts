@@ -19,16 +19,16 @@ const unavailable = (message: string): AssistantProvider => ({
   },
 });
 
-function provider(): AssistantProvider {
+function provider({ pins }: { pins: boolean }): AssistantProvider {
   return getAssistant(() => {
     try {
-      return claudeCodeAssistant({ server: orbitalToolServer(queryToken()) });
+      return claudeCodeAssistant({ server: orbitalToolServer(queryToken(), { pins }) });
     } catch (e) {
       return unavailable(e instanceof Error ? e.message : "The assistant is unavailable.");
     }
   });
 }
 
-export const action = ({ request }: Route.ActionArgs) => ask(request, provider(), track);
+export const action = ({ request }: Route.ActionArgs) => ask(request, provider, track);
 
 export const loader = () => Response.json({ error: "Use POST." }, { status: 405, headers: { allow: "POST", "cache-control": "no-store" } });

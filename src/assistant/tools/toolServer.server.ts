@@ -6,11 +6,11 @@ import type { ToolServer } from "../server/claudeCode.server.ts";
 import { SERVER_NAME } from "./definitions.ts";
 
 /** Runs from source with this Node (native TypeScript stripping); revisit when the app is hosted. */
-export function orbitalToolServer(token: string, queryUrl = process.env.ORBITAL_QUERY_URL ?? "http://127.0.0.1:5173/api/query"): ToolServer {
+export function orbitalToolServer(token: string, { pins = true, queryUrl = process.env.ORBITAL_QUERY_URL ?? "http://127.0.0.1:5173/api/query" }: { pins?: boolean; queryUrl?: string } = {}): ToolServer {
   return {
     name: SERVER_NAME,
     command: process.execPath,
     args: [fileURLToPath(new URL("./server.ts", import.meta.url))],
-    env: { ORBITAL_QUERY_TOKEN: token, ORBITAL_QUERY_URL: queryUrl },
+    env: { ORBITAL_QUERY_TOKEN: token, ORBITAL_QUERY_URL: queryUrl, ORBITAL_PINS: pins ? "1" : "0" },
   };
 }
