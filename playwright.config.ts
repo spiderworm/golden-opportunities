@@ -13,7 +13,8 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    // Firefox is disabled until its macOS launch gap is resolved (PR #17):
+    // bundled Firefox exits with 'Could not find profile folder' before tests run.
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
