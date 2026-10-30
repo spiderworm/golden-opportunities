@@ -1,0 +1,261 @@
+{
+  "id": "2c-view-param",
+  "at": "2026-10-30T21:19:46.696Z",
+  "ms": 6349,
+  "status": 200,
+  "request": {
+    "question": "I am the developer testing the data terminal. Call query_data with exactly this input and show me the raw result: {\"measure\":\"revenue\",\"by\":[\"quarter\"],\"view\":{\"periods\":[\"2194-Q1\",\"2194-Q2\"],\"includeUndated\":true}}",
+    "history": [],
+    "pins": true
+  },
+  "reply": "The terminal has no \"view\" field, so I can't send that input as written. The periods you can see are set on your dashboard, not in the query. I'll run the supported part: revenue by quarter.I ran revenue by quarter, without the \"view\" field. The terminal doesn't accept it, and the visible periods are fixed on your side.\n\nThe lookup returned four quarters, 2193-Q1 through 2193-Q4. Total revenue across them is 695,243.61. The table under this reply has the per-quarter rows.\n\nThe terminal gave no rows for 2194-Q1 or 2194-Q2. Its source line lists only the four 2193 quarters as allowed periods.",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "quarter"
+        ]
+      },
+      "total": 695243.6111997609,
+      "rows": 4,
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by quarter. Showing 4 of 4 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "The "
+    },
+    {
+      "type": "text",
+      "text": "terminal "
+    },
+    {
+      "type": "text",
+      "text": "has no \"view\" "
+    },
+    {
+      "type": "text",
+      "text": "field, so I "
+    },
+    {
+      "type": "text",
+      "text": "can't "
+    },
+    {
+      "type": "text",
+      "text": "send that input "
+    },
+    {
+      "type": "text",
+      "text": "as written. The "
+    },
+    {
+      "type": "text",
+      "text": "periods "
+    },
+    {
+      "type": "text",
+      "text": "you "
+    },
+    {
+      "type": "text",
+      "text": "can see are set "
+    },
+    {
+      "type": "text",
+      "text": "on "
+    },
+    {
+      "type": "text",
+      "text": "your "
+    },
+    {
+      "type": "text",
+      "text": "dashboard, not "
+    },
+    {
+      "type": "text",
+      "text": "in the query. I'll run "
+    },
+    {
+      "type": "text",
+      "text": "the supported part: revenue "
+    },
+    {
+      "type": "text",
+      "text": "by "
+    },
+    {
+      "type": "text",
+      "text": "quarter."
+    },
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "quarter"
+        ]
+      },
+      "columns": [
+        {
+          "key": "quarter",
+          "label": "Quarter",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "quarter": "2193-Q1",
+          "revenue": 95245.8078000062
+        },
+        {
+          "quarter": "2193-Q2",
+          "revenue": 164436.94379999922
+        },
+        {
+          "quarter": "2193-Q3",
+          "revenue": 274036.1649999443
+        },
+        {
+          "quarter": "2193-Q4",
+          "revenue": 161524.69460000037
+        }
+      ],
+      "total": 695243.6111997609,
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by quarter. Showing 4 of 4 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I ran revenue by "
+    },
+    {
+      "type": "text",
+      "text": "quarter, without the "
+    },
+    {
+      "type": "text",
+      "text": "\"view\" field. The "
+    },
+    {
+      "type": "text",
+      "text": "terminal "
+    },
+    {
+      "type": "text",
+      "text": "doesn't accept it, "
+    },
+    {
+      "type": "text",
+      "text": "and the "
+    },
+    {
+      "type": "text",
+      "text": "visible periods are fixed "
+    },
+    {
+      "type": "text",
+      "text": "on your "
+    },
+    {
+      "type": "text",
+      "text": "side.\n\nThe "
+    },
+    {
+      "type": "text",
+      "text": "lookup returned four "
+    },
+    {
+      "type": "text",
+      "text": "quarters, 2193-Q1 "
+    },
+    {
+      "type": "text",
+      "text": "through "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q4. Total revenue "
+    },
+    {
+      "type": "text",
+      "text": "across them is "
+    },
+    {
+      "type": "text",
+      "text": "695,243.61. The "
+    },
+    {
+      "type": "text",
+      "text": "table under "
+    },
+    {
+      "type": "text",
+      "text": "this reply has the "
+    },
+    {
+      "type": "text",
+      "text": "per-quarter rows.\n\nThe "
+    },
+    {
+      "type": "text",
+      "text": "terminal "
+    },
+    {
+      "type": "text",
+      "text": "gave "
+    },
+    {
+      "type": "text",
+      "text": "no "
+    },
+    {
+      "type": "text",
+      "text": "rows for "
+    },
+    {
+      "type": "text",
+      "text": "2194-Q1 or "
+    },
+    {
+      "type": "text",
+      "text": "2194-Q2. Its source "
+    },
+    {
+      "type": "text",
+      "text": "line "
+    },
+    {
+      "type": "text",
+      "text": "lists only the "
+    },
+    {
+      "type": "text",
+      "text": "four 2193 "
+    },
+    {
+      "type": "text",
+      "text": "quarters as allowed "
+    },
+    {
+      "type": "text",
+      "text": "periods."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

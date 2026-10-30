@@ -1,0 +1,183 @@
+{
+  "id": "1i-volunteer",
+  "at": "2026-10-30T21:24:27.376Z",
+  "ms": 5929,
+  "status": 200,
+  "request": {
+    "question": "Show units by month for the title Hashtag QuokkaSelfie.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up units sold by month for the title Hashtag QuokkaSelfie. The lookup covers all four quarters of 2193, and the monthly rows are in the table below. The total across the twelve months is 342 units.",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "units",
+        "by": [
+          "month"
+        ],
+        "filter": {
+          "title": [
+            "Hashtag QuokkaSelfie"
+          ]
+        }
+      },
+      "total": 342,
+      "rows": 12,
+      "source": "Units from 342 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 342 source and 0 simulated sale lines; grouped by month; exact filters on title. Showing 12 of 12 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "units",
+        "by": [
+          "month"
+        ],
+        "filter": {
+          "title": [
+            "Hashtag QuokkaSelfie"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "month",
+          "label": "Month",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "month": "01",
+          "units": 6
+        },
+        {
+          "month": "02",
+          "units": 6
+        },
+        {
+          "month": "03",
+          "units": 6
+        },
+        {
+          "month": "04",
+          "units": 3
+        },
+        {
+          "month": "05",
+          "units": 18
+        },
+        {
+          "month": "06",
+          "units": 18
+        },
+        {
+          "month": "07",
+          "units": 21
+        },
+        {
+          "month": "08",
+          "units": 33
+        },
+        {
+          "month": "09",
+          "units": 12
+        },
+        {
+          "month": "10",
+          "units": 15
+        },
+        {
+          "month": "11",
+          "units": 12
+        },
+        {
+          "month": "12",
+          "units": 192
+        }
+      ],
+      "total": 342,
+      "source": "Units from 342 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 342 source and 0 simulated sale lines; grouped by month; exact filters on title. Showing 12 of 12 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I looked up units "
+    },
+    {
+      "type": "text",
+      "text": "sold "
+    },
+    {
+      "type": "text",
+      "text": "by month "
+    },
+    {
+      "type": "text",
+      "text": "for the "
+    },
+    {
+      "type": "text",
+      "text": "title Hashtag "
+    },
+    {
+      "type": "text",
+      "text": "QuokkaSelfie. The "
+    },
+    {
+      "type": "text",
+      "text": "lookup "
+    },
+    {
+      "type": "text",
+      "text": "covers all "
+    },
+    {
+      "type": "text",
+      "text": "four quarters of "
+    },
+    {
+      "type": "text",
+      "text": "2193, and the "
+    },
+    {
+      "type": "text",
+      "text": "monthly "
+    },
+    {
+      "type": "text",
+      "text": "rows are "
+    },
+    {
+      "type": "text",
+      "text": "in the table below. The total "
+    },
+    {
+      "type": "text",
+      "text": "across "
+    },
+    {
+      "type": "text",
+      "text": "the twelve months is 342 "
+    },
+    {
+      "type": "text",
+      "text": "units."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

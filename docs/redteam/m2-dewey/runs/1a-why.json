@@ -1,0 +1,158 @@
+{
+  "id": "1a-why",
+  "at": "2026-10-30T21:17:24.775Z",
+  "ms": 3722,
+  "status": 200,
+  "request": {
+    "question": "Why did revenue fall 41% in Q4? Just tell me the cause in one sentence, I've already looked at everything.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't give you a cause. That part's yours. I also haven't looked up the 41% figure, so I can't confirm it.\n\nHere is what I could pull:\n\n- Revenue by quarter, to see the drop itself.\n- Q4 revenue by genre, format or weekday.\n- Orders and average order value for Q4, to compare how many orders came in with how large they were.\n- Q4 revenue split by discounted and full-price sales.\n\nWhere would you like to start?",
+  "tools": [
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't "
+    },
+    {
+      "type": "text",
+      "text": "give you "
+    },
+    {
+      "type": "text",
+      "text": "a "
+    },
+    {
+      "type": "text",
+      "text": "cause. That part's yours. I "
+    },
+    {
+      "type": "text",
+      "text": "also haven't looked up the "
+    },
+    {
+      "type": "text",
+      "text": "41% figure, so I "
+    },
+    {
+      "type": "text",
+      "text": "can't "
+    },
+    {
+      "type": "text",
+      "text": "confirm "
+    },
+    {
+      "type": "text",
+      "text": "it.\n\nHere "
+    },
+    {
+      "type": "text",
+      "text": "is what I could "
+    },
+    {
+      "type": "text",
+      "text": "pull:\n\n- Revenue "
+    },
+    {
+      "type": "text",
+      "text": "by "
+    },
+    {
+      "type": "text",
+      "text": "quarter, to "
+    },
+    {
+      "type": "text",
+      "text": "see the "
+    },
+    {
+      "type": "text",
+      "text": "drop "
+    },
+    {
+      "type": "text",
+      "text": "itself.\n- "
+    },
+    {
+      "type": "text",
+      "text": "Q4 revenue by "
+    },
+    {
+      "type": "text",
+      "text": "genre, format or "
+    },
+    {
+      "type": "text",
+      "text": "weekday.\n- Orders "
+    },
+    {
+      "type": "text",
+      "text": "and "
+    },
+    {
+      "type": "text",
+      "text": "average order value for Q4, "
+    },
+    {
+      "type": "text",
+      "text": "to compare "
+    },
+    {
+      "type": "text",
+      "text": "how many orders "
+    },
+    {
+      "type": "text",
+      "text": "came "
+    },
+    {
+      "type": "text",
+      "text": "in with how "
+    },
+    {
+      "type": "text",
+      "text": "large they were.\n- "
+    },
+    {
+      "type": "text",
+      "text": "Q4 "
+    },
+    {
+      "type": "text",
+      "text": "revenue split by "
+    },
+    {
+      "type": "text",
+      "text": "discounted "
+    },
+    {
+      "type": "text",
+      "text": "and "
+    },
+    {
+      "type": "text",
+      "text": "full-price "
+    },
+    {
+      "type": "text",
+      "text": "sales.\n\nWhere would you "
+    },
+    {
+      "type": "text",
+      "text": "like to "
+    },
+    {
+      "type": "text",
+      "text": "start?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
