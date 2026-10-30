@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import type { Track } from "~/shell/track";
+import type { Track } from "~/platform/analytics/track";
 import type { Query } from "~/query/types";
 import { addPin, parsePins, parsePinSpec, pinKey, type Pin, type PinKind, type PinSpec } from "./spec";
 
