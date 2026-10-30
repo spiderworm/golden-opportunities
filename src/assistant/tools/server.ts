@@ -55,7 +55,8 @@ const figures = (from: number | null | undefined, to: number | null | undefined)
   const a = typeof from === "number" ? from : null;
   const b = typeof to === "number" ? to : null;
   const change = a === null || b === null ? null : b - a;
-  return { from: a, to: b, change, percent_change: change === null || !a ? null : (change / Math.abs(a)) * 100 };
+  const direction = change === null ? null : change > 0 ? "rose" : change < 0 ? "fell" : "unchanged";
+  return { from: a, to: b, change, percent_change: change === null || !a ? null : (change / Math.abs(a)) * 100, direction };
 };
 
 /**

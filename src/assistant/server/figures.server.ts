@@ -11,7 +11,9 @@
 // A written figure is backed when a measured value rounds to it at the precision it's written in, with the
 // same unit ($ for money, % for percents) and, if the figure has an explicit sign, the same sign. A figure
 // written without a unit may be any measured value (revenue is often written without the $); an unsigned one
-// is a magnitude. Ratios ("1.7x", "two-thirds", "twice as many") are never backed: no tool returns one.
+// is a magnitude, unless a direction word in its clause (or, failing that, its sentence) gives it a sign:
+// "a rise of 1.8%" needs a positive change behind it, "fell by 2,912" a negative one (Goldy, #32). Direction
+// words only constrain changes; levels ("rose to 164,437") are checked as levels. Ratios ("1.7x", "two-thirds", "twice as many") are never backed: no tool returns one.
 // Years and periods ("2193", "2193-Q4") are names, not figures. Number words one to ten on their own aren't
 // read as figures ("two lookups"); every digit is. This can't tell whether a backed number describes the
 // right measure; it stops invented ones.
@@ -31,6 +33,8 @@ export interface Figure {
   place: number;
   /** The figure as a label would be written: digits and "%" only. */
   label: string;
+  /** Where it starts in the text. */
+  at: number;
 }
 
 const PERIOD = /\b(?:\d{4}-Q[1-4]|Q[1-4](?:\s+|-)\d{4})\b/gi;
@@ -77,10 +81,10 @@ function wordsValue(text: string): { value: number; place: number; words: number
 
 /** The figures written in some text. Digits inside words ("Q4", "3rd"), years and periods aren't figures. */
 export function figuresIn(text: string): Figure[] {
-  const figures: (Figure & { at: number })[] = [];
+  const figures: Figure[] = [];
   // Each kind blanks out what it read, so a later, plainer reading doesn't see it again.
   let rest = text.replace(PERIOD, (m) => " ".repeat(m.length));
-  const take = (pattern: RegExp, read: (m: RegExpMatchArray) => Figure | null) => {
+  const take = (pattern: RegExp, read: (m: RegExpMatchArray) => Omit<Figure, "at"> | null) => {
     rest = rest.replace(pattern, (...args) => {
       const m = Object.assign([...args.slice(0, -2)], { index: args.at(-2) as number }) as unknown as RegExpMatchArray;
       const f = read(m);
@@ -89,7 +93,7 @@ export function figuresIn(text: string): Figure[] {
       return " ".repeat(m[0].length);
     });
   };
-  const ratio = (m: RegExpMatchArray): Figure => ({ text: m[0], value: NaN, sign: 0, unit: "ratio", place: 1, label: m[0] });
+  const ratio = (m: RegExpMatchArray): Omit<Figure, "at"> => ({ text: m[0], value: NaN, sign: 0, unit: "ratio", place: 1, label: m[0] });
   take(MULTIPLIER, ratio);
   take(FRACTION, ratio);
   take(WORDS, (m) => {
@@ -117,12 +121,28 @@ export function figuresIn(text: string): Figure[] {
       label: digits + (fraction ?? "") + (percent ? "%" : ""),
     };
   });
-  return figures.sort((a, b) => a.at - b.at).map(({ at: _, ...f }) => f);
+  return figures.sort((a, b) => a.at - b.at);
 }
 
 export interface Measured {
   value: number;
   unit: Unit | "count";
+  /** A change (to minus from, or its percent): its sign is a direction, which direction words must agree with. */
+  change?: boolean;
+}
+
+// "Up" and "down" after verbs like "looked" or "broken" are no direction ("I looked up", "broken down").
+const PHRASAL = "(?<!\\b(?:look|looks|looked|looking|break|breaks|broke|broken|breaking|narrow|narrowed|set|pick|picked|sum|summed|show|showed|turn|turned|write|wrote|written|look it|break it|narrow it)\\s)";
+const RISE = new RegExp(`\\b(?:ris(?:e|es|en|ing)|rose|${PHRASAL}up|increas(?:e|es|ed|ing)|gr(?:ew|ow|ows|own|owing)|higher|gains?|gained|more|climb(?:s|ed)?|jump(?:s|ed)?)\\b`, "i");
+const FALL = new RegExp(`\\b(?:fall(?:s|en|ing)?|fell|${PHRASAL}down|decreas(?:e|es|ed|ing)|drops?|dropped|declin(?:e|es|ed|ing)|lower|loss|lost|fewer|less|shr(?:ank|unk|inks?)|slid|dips?|dipped)\\b`, "i");
+// Commas between thousands ("2,912") don't end a clause; a comma and a space does.
+const CLAUSE = /[^;:()]*?(?:[;:()]|,\s|\s(?:and|but|while|whereas|which)\s|$)/gi;
+
+/** The direction a stretch of text gives: 1 for a rise, -1 for a fall, 0 for none or both. */
+function direction(text: string): -1 | 0 | 1 {
+  const up = RISE.test(text);
+  const down = FALL.test(text);
+  return up === down ? 0 : up ? 1 : -1;
 }
 
 const MEASURE_UNITS: Record<Measure, Unit | "count" | "fraction"> = {
@@ -141,12 +161,12 @@ export class Evidence {
   readonly measured: Measured[] = [];
   readonly labels = new Set<string>();
 
-  private measure(measure: unknown, value: unknown) {
+  private measure(measure: unknown, value: unknown, change = false) {
     if (typeof value !== "number" || !Number.isFinite(value) || typeof measure !== "string" || !(measure in MEASURE_UNITS)) return;
     const unit = MEASURE_UNITS[measure as Measure];
     if (unit === "fraction") {
-      this.measured.push({ value: value * 100, unit: "percent" }, { value, unit: "plain" });
-    } else this.measured.push({ value, unit });
+      this.measured.push({ value: value * 100, unit: "percent", change }, { value, unit: "plain", change });
+    } else this.measured.push({ value, unit, change });
   }
 
   private label(value: unknown) {
@@ -175,8 +195,8 @@ export class Evidence {
       const add = (figures: Record<string, unknown>) => {
         this.measure(measure, figures.from);
         this.measure(measure, figures.to);
-        this.measure(measure, figures.change);
-        if (typeof figures.percent_change === "number") this.measured.push({ value: figures.percent_change, unit: "percent" });
+        this.measure(measure, figures.change, true);
+        if (typeof figures.percent_change === "number") this.measured.push({ value: figures.percent_change, unit: "percent", change: true });
       };
       for (const row of rows) {
         add(row);
@@ -194,19 +214,29 @@ export class Evidence {
     }
   }
 
-  backs(f: Figure): boolean {
+  /** Whether something backs `f`. `heading` is the direction its clause or sentence gives (0 for none). */
+  backs(f: Figure, heading: -1 | 0 | 1 = 0): boolean {
     if (f.unit === "ratio") return false;
+    // "rose -5%": the written sign and the words disagree.
+    if (f.sign !== 0 && heading !== 0 && f.sign !== heading) return false;
+    // Labels are names ("the 15% rate"), so no direction applies to them.
     if (f.sign === 0 && f.unit !== "currency" && this.labels.has(f.label)) return true;
     return this.measured.some((m) => {
       if (f.unit === "currency" ? m.unit !== "currency" : f.unit === "percent" ? m.unit !== "percent" : false) return false;
       if (f.sign !== 0 && Math.sign(m.value) !== f.sign) return false;
+      if (heading !== 0 && m.change && Math.sign(m.value) !== heading) return false;
       return Math.abs(Math.round(Math.abs(m.value) / f.place) - f.value / f.place) < 1e-6;
     });
   }
 
-  /** The figures in `text` that nothing backs. */
+  /** The figures in `text` (a sentence, or a pin title) that nothing backs, read with their direction words. */
   unbacked(text: string): Figure[] {
-    return figuresIn(text).filter((f) => !this.backs(f));
+    const overall = direction(text);
+    const clauses = [...text.matchAll(CLAUSE)].filter((m) => m[0]).map((m) => ({ start: m.index!, end: m.index! + m[0].length, heading: direction(m[0]) }));
+    return figuresIn(text).filter((f) => {
+      const clause = clauses.find((c) => f.at >= c.start && f.at < c.end);
+      return !this.backs(f, clause?.heading || overall);
+    });
   }
 }
 
