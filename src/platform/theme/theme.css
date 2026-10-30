@@ -1,0 +1,27 @@
+/* Design tokens, after the Dribbble dashboard David chose: dark navy with violet accents. */
+:root {
+  --color-space: #0f1424;
+  --color-panel: #161c30;
+  --color-panel-raised: #1d2440;
+  --color-border: #2a3254;
+  --color-text: #f2f4ff;
+  --color-text-muted: #9aa3c7;
+  --color-accent: #6b5cff;
+  --color-accent-soft: #8f84ff;
+  --color-up: #5ee6a0;
+  --color-down: #ff7a90;
+
+  --radius-panel: 20px;
+  --radius-control: 12px;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--color-space);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
