@@ -27,26 +27,30 @@ Button: `Open the ledgers`
 
 ## 2. Investigation screen
 
+Matched to the screen as built (Chart, after the first build).
+
 | Element | String |
 | --- | --- |
-| Screen title | `Ledgers: 2193` |
+| Screen title | `Ledgers: 2193` before the quarter is played; `Ledgers: 2193 and Q1 2194` after |
+| Sidebar item | `Investigate` |
 | Metric control label | `Show` |
 | Metrics | `Revenue`, `Units sold`, `Orders`, `Average order value` |
-| Time control | `By month`, `By quarter` |
 | Breakdown control label | `Break down by` |
-| Breakdowns | `Nothing`, `Genre`, `Format`, `Publisher`, `Weekday`, `Discount`, `Title` |
-| Filter control label | `Only show` |
-| Quarter filter | `All quarters`, `Q1`, `Q2`, `Q3`, `Q4` |
+| Breakdowns | `Quarter`, `Month`, `Weekday`, `Genre`, `Format`, `Publisher`, `Discount`, `Title`. There's no "Nothing" option, because the tiles already show the totals. |
+| Filter bar label | `Only show` |
+| Quarter filter | `All quarters`, then `Q1 2193` and so on. The year is always shown, because Q1 2194 appears after play. |
 | Genre filter | `All genres`, then the genre names exactly as they appear in the data |
-| Discount filter | `Any price`, `Full price`, `{rate}% off` |
+| Discount filter | `Any price`, `Full price`, `Any discount`, then `{rate}% off` for each rate |
 | Discount breakdown labels | `Full price`, `{rate}% off` |
-| Drilldown hint (tooltip) | `Click to look closer` |
+| Drilldown hint (under the chart) | `Click to look closer` |
 | Breadcrumb back | `Back to {previous view}` |
 | Clear filters | `Clear filters` |
 | Empty view | `No sales match these filters.` |
-| Tooltip | `{segment}: {value}` then, on a second line, `{share}% of {period}` |
+| Tooltip (bar charts) | `{segment}: {value}` then, on a second line, `{share}% of {period}`. In "Compare quarters" mode, `{period}` is that bar's quarter. |
 | Unknown book group | `Unknown title` |
-| Go to decision | `Write the plan` |
+| Go to decision | `Write the plan` before the plan is in; `See the results` after |
+
+"Any discount" stays because it is neutral: it lists every discounted sale together, without singling out a rate.
 
 ## 3. Decision screen
 
