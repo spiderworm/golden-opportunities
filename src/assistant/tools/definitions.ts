@@ -17,6 +17,33 @@ export interface ChartSpec {
 }
 export const TITLE_MAX = 80;
 
+/** Two values of one dimension compared on one measure: the comparison the assistant would otherwise work out itself. */
+export interface Comparison {
+  measure: Measure;
+  /** The dimension whose two values are compared, e.g. quarter. */
+  across: Dimension;
+  from: string;
+  to: string;
+  /** At most one dimension to break the comparison down by. */
+  by: readonly Dimension[];
+  filter?: Partial<Record<Dimension, readonly string[]>>;
+}
+export interface ComparisonFigures {
+  from: number | null;
+  to: number | null;
+  change: number | null;
+  percent_change: number | null;
+  /** The change's direction in words, from `from` to `to`, so the assistant can't state it backwards. */
+  direction: "rose" | "fell" | "unchanged" | null;
+}
+export interface ComparisonResult {
+  columns: { key: string; label: string; type: "string" | "number"; nullable: boolean }[];
+  rows: Record<string, string | number | null>[];
+  total: ComparisonFigures;
+  source: string;
+}
+
+
 const queryProperties = {
   measure: { type: "string", enum: MEASURES, description: "What to measure." },
   by: { type: "array", items: { type: "string", enum: DIMENSIONS }, maxItems: QUERY_LIMITS.dimensions, uniqueItems: true, description: "Up to two dimensions to group by; empty for one total." },
@@ -43,8 +70,26 @@ export const TOOLS = [
   },
   {
     name: "query_data",
-    description: "Runs one query on the store's data, exactly as the player's dashboard would, over the periods the player can see. Returns columns, rows, the total, and a source line describing where the figures come from. The player sees the result and its source under your reply.",
+    description: "Runs one query on the store's data, exactly as the player's dashboard would, over the periods the player can see. Returns a ref for the result and one for each row, columns, rows, the total, and a source line describing where the figures come from. The player sees the result and its source under your reply. Cite its figures by ref, as your rules say.",
     inputSchema: { type: "object", properties: queryProperties, required: ["measure", "by"], additionalProperties: false },
+  },
+  {
+    name: "compare_data",
+    description:
+      "Compares one measure between two values of one dimension (two quarters, two weekdays, two genres), optionally broken down by one other dimension. Returns a ref for the result and one for each row, each side's figure, the change (to minus from), the percent change and the direction, computed by the data terminal, with a source line. Use it whenever the player asks for a difference, a change, a rise or fall, which is higher, or a percent change, in either order. Cite its figures and comparisons by ref, as your rules say; never state a direction yourself.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        measure: queryProperties.measure,
+        across: { type: "string", enum: DIMENSIONS, description: "The dimension whose two values are compared." },
+        from: { type: "string", minLength: 1, maxLength: QUERY_LIMITS.filterValueLength, description: "The earlier or baseline value, exactly as the terminal labels it (e.g. 2193-Q3)." },
+        to: { type: "string", minLength: 1, maxLength: QUERY_LIMITS.filterValueLength, description: "The value compared with it (e.g. 2193-Q4)." },
+        by: { type: "array", items: { type: "string", enum: DIMENSIONS }, maxItems: 1, description: "Optionally, one dimension to break the comparison down by; empty for the overall figures." },
+        filter: queryProperties.filter,
+      },
+      required: ["measure", "across", "from", "to"],
+      additionalProperties: false,
+    },
   },
   {
     name: "pin_chart",
@@ -111,6 +156,24 @@ export function checkQuery(input: unknown): Query {
   return query;
 }
 
+/** Checks a comparison from the model and rebuilds it from known parts only. Throws ToolInputError. */
+export function checkComparison(input: unknown): Comparison {
+  if (!isObject(input)) throw new ToolInputError("The comparison must be an object.");
+  onlyKeys(input, ["measure", "across", "from", "to", "by", "filter"], "The comparison");
+  const { measure, across, from, to, by = [], filter } = input;
+  if (!has(DIMENSIONS, across)) throw new ToolInputError(`"across" must be one of: ${DIMENSIONS.join(", ")}.`);
+  for (const [name, v] of [["from", from], ["to", to]] as const) {
+    if (typeof v !== "string" || !v || v.length > QUERY_LIMITS.filterValueLength) throw new ToolInputError(`"${name}" must be 1 to ${QUERY_LIMITS.filterValueLength} characters.`);
+  }
+  if (from === to) throw new ToolInputError('"from" and "to" must differ.');
+  if (!Array.isArray(by) || by.length > 1) throw new ToolInputError('"by" may name at most one dimension.');
+  if (by.includes(across)) throw new ToolInputError(`"by" can't be ${across}, the dimension being compared.`);
+  if (isObject(filter) && across in filter) throw new ToolInputError(`Don't filter on ${across}; "from" and "to" choose its values.`);
+  // checkQuery checks the measure, dimensions and filter as one query would.
+  const query = checkQuery({ measure, by: [...by, across], ...(filter === undefined ? {} : { filter }) });
+  return { measure: query.measure, across, from: from as string, to: to as string, by: query.by.slice(0, -1), ...(query.filter ? { filter: query.filter } : {}) };
+}
+
 /** Checks a chart to pin. Throws ToolInputError. */
 export function checkChart(input: unknown): ChartSpec {
   if (!isObject(input)) throw new ToolInputError("The chart must be an object.");
@@ -130,6 +193,7 @@ export function describeData() {
       `Group by up to ${QUERY_LIMITS.dimensions} dimensions. Filters are exact, case-sensitive matches; group by a dimension first to see its values.`,
       `At most ${QUERY_LIMITS.rows} rows per query. The total covers every matching fact, before grouping or the row limit.`,
       "Only the periods the player can see are included; asking for others returns nothing.",
+      "Labels: quarter like 2193-Q4; month 01 to 12; weekday Monday to Sunday; discounted yes or no; discount_rate a percent like 0% or 15%. Filter with these exactly; no need to look them up first.",
     ],
   };
 }

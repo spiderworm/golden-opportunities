@@ -32,6 +32,7 @@ Due **3 November 2026**. Golden Analytics will extend if asked; David will decid
   - **It can** answer specific questions about the data, draw charts the player asks for, explain terms, show how to use the tools, and pin its charts to the dashboard.
   - **It can't** answer open questions ("what's wrong?", "why?", "what should I do?"); it turns them back into questions the player could ask. It doesn't volunteer patterns the player didn't ask about, recommend or rank decisions, or predict outcomes.
   - Maybe later: a hint the player can request, at a cost to their score.
+  - **The one exception: buying stock.** Dewey can suggest bids and run buying on autopilot, but only with a fixed rule that it shows every time ("the weakest of algorithms ever"). The rule looks at last year's sales and nothing else. The game starts with buying handed to Dewey, and the player can take it over. (David, 30 Oct)
 
 ## Look, sound and feel
 

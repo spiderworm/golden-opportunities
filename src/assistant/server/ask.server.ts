@@ -1,10 +1,12 @@
 // POST /api/assistant: one question in, the answer out as newline-delimited JSON. Every request is checked at
 // the door (method, origin, type, size, shape) before anything is spawned; one answer runs at a time.
 
+import { randomBytes } from "node:crypto";
 import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
 import type { ChartSpec } from "../tools/definitions.ts";
-import { acquire, ndjson } from "./assistant.server.ts";
+import { acquire, arrive, ndjson } from "./assistant.server.ts";
+import { Refs, scrubDeep, sentenceGate, titleIsClean } from "./figures.server.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
 
@@ -120,11 +122,17 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
   if (event.name === "query_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.source === "string") {
     return { type: "data", query: event.input, columns: output.columns, rows: output.rows, total: output.total as number | null, source: output.source } as WireEvent;
   }
+  if (event.name === "compare_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.total === "object" && typeof output.source === "string") {
+    return { type: "comparison", query: event.input, columns: output.columns, rows: output.rows, total: output.total, source: output.source } as WireEvent;
+  }
   if (pins && event.name === "pin_chart" && output.pinned === true && typeof output.source === "string") {
     return { type: "pin", chart: output.chart as ChartSpec, source: output.source };
   }
   return null;
 }
+
+/** A plain title for a pin whose own title stated a figure or direction. */
+const pinTitle = (chart: ChartSpec) => `${chart.query.measure.replace(/_/g, " ")}${chart.query.by.length ? ` by ${chart.query.by.join(" and ").replace(/_/g, " ")}` : ""}`;
 
 /** Builds the provider for one answer; `pins` says whether it may have the pin tool. */
 export type ProviderFor = (options: { pins: boolean }) => AssistantProvider;
@@ -136,52 +144,101 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
       track("assistant_refused", { status: e.status });
       return refuse(e.status, e.message);
     };
+    // Every request counts toward the minute cap, before any other check, so floods stay bounded.
+    if (!arrive(now())) {
+      track("assistant_limited", { reason: "flood" });
+      return refuse(429, "Too many requests. Try again in a minute.");
+    }
     try {
       checkDoor(request);
     } catch (e) {
       return refused(e);
     }
-    // Admit before reading the body, so a slow or oversized body can't hold the server up uncounted.
-    const release = acquire(now());
-    if (release === "busy" || release === "limit") {
-      track("assistant_limited", { reason: release });
-      return refuse(429, release === "busy" ? `${ASSISTANT_NAME} is answering another question.` : "That's enough questions for this hour.");
+    // Admit before reading the body, so a slow or oversized body can't hold the server up uncounted. Only a
+    // question that passes every check counts toward the hour.
+    const slot = acquire(now());
+    if (typeof slot === "string") {
+      track("assistant_limited", { reason: slot });
+      return refuse(429, slot === "busy" ? `${ASSISTANT_NAME} is answering another question.` : "That's enough questions for this hour.");
     }
     let input: AskInput;
     try {
       input = await readAsk(request, deadlineMs);
     } catch (e) {
-      release();
+      slot.release();
       return refused(e);
     }
+    slot.charge();
     const provider = providerFor({ pins: input.pins });
     const started = now();
-    const stats = { lookups: 0, failedLookups: 0, pins: 0, chars: 0 };
+    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, pins: 0, chars: 0, withheld: 0, figures: 0, pinTitlesReplaced: 0 };
     let outcome = "aborted";
-    const prompt = buildPrompt(input.question, input.history, { pins: input.pins });
+    const nonce = randomBytes(6).toString("hex");
+    const prompt = buildPrompt(input.question, input.history, { pins: input.pins }, nonce);
+    // The fence code is no secret worth keeping (it's new for every answer), but nothing has a reason to show
+    // it (P4): it's cut from every string sent to the browser.
+    const hide = <T,>(value: T) => scrubDeep(value, nonce);
+    // Figures come only by ref from this answer's successful lookups; a sentence with a figure or direction of
+    // the model's own is withheld (figures.server.ts).
+    const refs = new Refs();
+    const gate = sentenceGate(refs, hide);
+    let last = "";
+    let afterTool = false;
     return ndjson<WireEvent>(
       async function* (signal) {
         try {
           for await (const event of provider.ask(prompt, signal)) {
+            if (event.type === "tool") {
+              afterTool = true;
+              if (!event.isError) {
+                try {
+                  refs.addTool(event.name, event.input, JSON.parse(event.output));
+                } catch {
+                  // Not JSON: nothing measured.
+                }
+              }
+            }
             const wire = toWire(event, input.pins);
             if (!wire) continue;
-            if (wire.type === "text") stats.chars += wire.text.length;
+            if (wire.type === "text") {
+              // Text before and after a tool call arrives as one run ("...by quarter.I didn't..."): break it.
+              const resumed = afterTool && last && !/\s$/.test(last) && !/^\s/.test(wire.text) ? "\n\n" : "";
+              afterTool = false;
+              last = wire.text || last;
+              stats.chars += wire.text.length;
+              const text = gate.push(resumed + wire.text);
+              if (text) yield { type: "text", text };
+              continue;
+            }
+            if (wire.type === "pin") {
+              // A pin's title is the model's text, shown on the page: no figures or directions of its own.
+              stats.pins++;
+              const clean = titleIsClean(wire.chart.title);
+              if (!clean) stats.pinTitlesReplaced++;
+              const chart = clean ? wire.chart : { ...wire.chart, title: pinTitle(wire.chart) };
+              yield hide({ ...wire, chart });
+              continue;
+            }
             if (wire.type === "data") stats.lookups++;
+            if (wire.type === "comparison") stats.comparisons++;
             if (wire.type === "lookup_failed") stats.failedLookups++;
-            if (wire.type === "pin") stats.pins++;
-            yield wire;
+            yield hide(wire);
           }
+          const rest = gate.flush();
+          if (rest) yield { type: "text", text: rest };
           outcome = signal.aborted ? "aborted" : "answered";
           if (!signal.aborted) yield { type: "done" };
         } catch (e) {
           outcome = e instanceof AssistantUnavailable ? "unavailable" : "failed";
           throw e;
         } finally {
-          release();
+          slot.release();
+          stats.withheld = gate.withheld;
+          stats.figures = gate.rendered;
           track("assistant_answered", { outcome, provider: provider.name, kind: questionKind(input.question), questionChars: input.question.length, turns: input.history.length, durationMs: now() - started, ...stats });
         }
       },
-      (e) => ({ type: "error", message: e instanceof AssistantUnavailable ? e.message : "Something went wrong with the assistant." }),
+      (e) => hide({ type: "error", message: e instanceof AssistantUnavailable ? e.message : "Something went wrong with the assistant." }),
       request,
     );
   })();

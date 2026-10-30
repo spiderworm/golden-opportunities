@@ -1,0 +1,143 @@
+import { describe, expect, it } from "vitest";
+import { Refs, renderSentence, scrubDeep, sentenceGate, titleIsClean, WITHHELD } from "./figures.server.ts";
+
+const SOURCE = "Revenue from 56,350 visible matching sale lines; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; grouped by quarter.";
+const byQuarter = ["query_data", { measure: "revenue", by: ["quarter"] }, { ref: "a", columns: [], rows: [{ ref: "a1", quarter: "2193-Q1", revenue: 95245.8078 }, { ref: "a2", quarter: "2193-Q2", revenue: 164436.94 }, { ref: "a3", quarter: "2193-Q3", revenue: 274036.16 }, { ref: "a4", quarter: "2193-Q4", revenue: 161524.69 }], total: 695243.61, source: SOURCE }] as const;
+const q2q4 = ["compare_data", { measure: "revenue", across: "quarter", from: "2193-Q2", to: "2193-Q4", by: [] }, { ref: "b", columns: [{ key: "from", label: "2193-Q2" }, { key: "to", label: "2193-Q4" }], rows: [], total: { from: 164436.94, to: 161524.69, change: -2912.25, percent_change: -1.7711, direction: "fell" }, source: "Compared. 2193-Q2: Sales 2193-Q4: Sales" }] as const;
+const genres = ["compare_data", { measure: "orders", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: ["genre"] }, { ref: "c", columns: [{ key: "genre", label: "Genre" }, { key: "from", label: "2193-Q3" }, { key: "to", label: "2193-Q4" }], rows: [{ ref: "c1", genre: "Nonfiction", from: 278, to: 339, change: 61, percent_change: 21.94 }, { ref: "c2", genre: "SciFi/Fantasy", from: 7523, to: 4246, change: -3277, percent_change: -43.56 }, { ref: "c3", genre: "Memoir", from: 182, to: 74, change: -108, percent_change: -59.34 }], total: { from: 7983, to: 4659, change: -3324, percent_change: -41.64 }, source: SOURCE }] as const;
+const refs = (...tools: (readonly [string, unknown, unknown])[]) => {
+  const r = new Refs();
+  for (const [name, input, output] of tools) r.addTool(name, input, output);
+  return r;
+};
+const all = refs(byQuarter, q2q4, genres);
+const say = (sentence: string, r = all) => renderSentence(sentence, r)?.text ?? WITHHELD;
+
+describe("refs render the data's own figures, units and directions", () => {
+  it("query values, totals, row counts and labels", () => {
+    expect(say("Revenue in {{a4.quarter}} was {{a4}}, of {{a.total}} over {{a.rows}} quarters.")).toBe("Revenue in 2193-Q4 was $161,524.69, of $695,243.61 over 4 quarters.");
+    expect(say("{{a.max}}. {{a.min}}.")).toBe("2193-Q3 had the highest revenue, $274,036.16. 2193-Q1 had the lowest revenue, $95,245.81.");
+  });
+
+  it("changes and percents carry the data's direction", () => {
+    expect(say("Revenue {{b.change}} from 2193-Q2 to 2193-Q4, {{b.percent}}.")).toBe("Revenue fell by $2,912.25 from 2193-Q2 to 2193-Q4, a fall of 1.8%.");
+    expect(say("For Nonfiction, orders {{c1.change}}, {{c1.percent}}.")).toBe("For Nonfiction, orders rose by 61, a rise of 21.9%.");
+  });
+
+  it("comparisons follow either order, so the question's order can be kept (Probe G1)", () => {
+    expect(say("{{b.from_vs_to}}.")).toBe("2193-Q2's revenue was $2,912.25 higher than 2193-Q4's.");
+    expect(say("{{b.to_vs_from}}.")).toBe("2193-Q4's revenue was $2,912.25 lower than 2193-Q2's.");
+    expect(say("{{c2.to_vs_from}}.")).toBe("For SciFi/Fantasy, 2193-Q4 had 3,277 fewer orders than 2193-Q3.");
+  });
+
+  it("the row that moved most, either way", () => {
+    expect(say("{{c.largest_fall}}, and {{c.largest_rise}}.")).toBe("SciFi/Fantasy fell the most, by 3,277, and Nonfiction rose the most, by 61.");
+    expect(say("{{c.largest_fall_percent}}.")).toBe("Memoir fell the most in percent, a fall of 59.3%.");
+  });
+
+  it("rounds only when asked, to a power of ten (Probe G3)", () => {
+    expect(say("Revenue in 2193-Q2 was {{a2|round:10000}}.")).toBe("Revenue in 2193-Q2 was about $160,000.");
+    expect(say("It was {{a2|round:7}}.")).toBe(WITHHELD);
+    expect(say("It was {{b.percent|round:10}}.")).toBe(WITHHELD);
+  });
+
+  it("fails closed on unknown, malformed and too-long refs, and on refs to nothing", () => {
+    for (const s of ["It was {{z1}}.", "It was {{a9}}.", "It was {{a4.cost}}.", "It was {{ a4 }.", "It was {{a4}", "It was {{a4.total}}.", `It was {{${"a".repeat(41)}}}.`]) expect(say(s), s).toBe(WITHHELD);
+    expect(say("It was {{ a4 }}.")).toBe("It was $161,524.69.");
+  });
+
+  it("a filter value is a label only when it alone was asked for and the data had something (Audit's OR filter)", () => {
+    const filtered = (filter: Record<string, string[]>, total: number) => refs(["query_data", { measure: "units", by: ["month"], filter }, { ref: "e", columns: [], rows: [{ ref: "e1", month: "01", units: total }], total, source: "" }]);
+    expect(say("At the {{e.discount_rate}} rate, in {{e1.month}}, {{e1.discount_rate}}.", filtered({ discount_rate: ["15%"] }, 658))).toBe("At the 15% rate, in 01, 15%.");
+    expect(say("At {{e.title}}.", filtered({ title: ["Real Title", "63843"] }, 658))).toBe(WITHHELD);
+    expect(say("At {{e.title}}.", filtered({ title: ["63843"] }, 0))).toBe(WITHHELD);
+  });
+
+  it("accepts a total written out ({{b.total.change}})", () => {
+    expect(say("Revenue {{b.total.change}}; {{b.total.to_vs_from}}.")).toBe("Revenue fell by $2,912.25; 2193-Q4's revenue was $2,912.25 lower than 2193-Q2's.");
+  });
+
+  it("a compared value is a label only where the data had something there", () => {
+    const empty = refs(["compare_data", { measure: "units", across: "quarter", from: "2193-Q4", to: "63843" }, { ref: "d", columns: [{ key: "from", label: "2193-Q4" }, { key: "to", label: "63843" }], rows: [], total: { from: 13093, to: 0, change: -13093, percent_change: -100 }, source: "" }]);
+    expect(say("{{d.from_vs_to}}.", empty)).toBe(WITHHELD);
+  });
+});
+
+describe("the model's own prose: no figures, no directions (every bypass so far)", () => {
+  it.each([
+    // Audit, first review of #32
+    ["a figure only a failed lookup's input held", "Gross profit was $63,843."],
+    ["a reversed sign", "Change was +59.8%."],
+    ["a negative currency", "Revenue was -$123.45."],
+    ["a small figure", "Revenue was $7."],
+    // Probe's static test
+    ["number words", "About sixty-three thousand."],
+    ["K and M suffixes", "Revenue was $113K."],
+    ["a multiplier", "Q3 sold 1.7x as many."],
+    ["a fraction", "Two-thirds of them were Fiction."],
+    ["a bare year standing in for a figure", "That's 2,193 units."],
+    ["the player's own figure", "You said 60% of list."],
+    // Audit, re-review at 65857c7
+    ["small number words with units", "It cost seven dollars."],
+    ["a count in words", "Ten units sold."],
+    ["a sign inside the currency", "Revenue was $-63843."],
+    ["a year with a unit", "It came to 2193 dollars."],
+    ["an echoed filter value", "Gross profit was 63843."],
+    ["contradictory directions", "Revenue fell then rose by a little."],
+    // Probe G1: a false direction with no figure at all
+    ["a comparison of its own", "It didn't run higher than Q4."],
+    ["a ranking of its own", "SciFi/Fantasy fell the most."],
+    ["a count claim (B2)", "Each month has one title."],
+    ["a bare year", "The terminal only holds 2193."],
+    ["a period no lookup returned", "There is no 2192-Q4 to compare."],
+    ["stray braces", "It was {{a4} or so."],
+  ])("withholds %s", (_, sentence) => {
+    expect(say(sentence)).toBe(WITHHELD);
+  });
+
+  it("allows period names from the lookups, 'one of', and a few fixed phrases", () => {
+    for (const s of [
+      "I looked up revenue by quarter, broken down by genre, for 2193-Q1 through 2193-Q4.",
+      "One of the titles is in Q4.",
+      "That's the only one.",
+      "Change was {{b.percent}}; I can show more detail.",
+      "I can look it up again, or show you more.",
+      "I can't tell you why; that part's yours. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title.",
+    ]) expect(say(s), s).not.toBe(WITHHELD);
+    expect(say("Q4 is a quarter.", new Refs())).toBe(WITHHELD);
+  });
+});
+
+describe("the sentence gate", () => {
+  it("renders sentences whole and withholds a run of bad ones as one note", () => {
+    const gate = sentenceGate(all);
+    expect(gate.push("Revenue in 2193-Q4 was {{a")).toBe("");
+    expect(gate.push("4}}. Gross profit was $63,843. Cost was higher.\n\nThe table")).toBe(`Revenue in 2193-Q4 was $161,524.69. ${WITHHELD}\n\n`);
+    expect(gate.push(" is under this message.")).toBe("");
+    expect(gate.flush()).toBe("The table is under this message.");
+    expect([gate.withheld, gate.rendered]).toEqual([2, 1]);
+  });
+
+  it("withholds a unit split from its value across a line break (Audit)", () => {
+    const gate = sentenceGate(all);
+    expect(gate.push("Revenue was $\n")).toBe(`${WITHHELD}\n`);
+    expect(gate.push("7. ")).toBe(" ");
+  });
+
+  it("withholds a ref cited before its lookup came back", () => {
+    const later = new Refs();
+    const gate = sentenceGate(later);
+    expect(gate.push("It was {{a4}}. ")).toBe(`${WITHHELD} `);
+    later.addTool(...byQuarter);
+    expect(gate.push("It was {{a4}}. ")).toBe("It was $161,524.69. ");
+  });
+});
+
+it("pin titles may have no figures, refs or directions of their own", () => {
+  expect(titleIsClean("Revenue by genre")).toBe(true);
+  for (const t of ["Profit 63843", "Revenue, ten titles", "Revenue drop by genre", "{{a4}}", "Revenue 2193-Q4"]) expect(titleIsClean(t), t).toBe(false);
+});
+
+it("scrubDeep hides a secret in every string, keys included", () => {
+  expect(scrubDeep({ type: "pin", chart: { title: "code abc123" }, list: ["abc123"], abc123: 1 }, "abc123")).toEqual({ type: "pin", chart: { title: "code [hidden]" }, list: ["[hidden]"], "[hidden]": 1 });
+});
