@@ -3,7 +3,6 @@ import { createRoutesStub } from "react-router";
 import { describe, expect, it } from "vitest";
 
 import { Shell } from "./Shell";
-import { noopTrack } from "./track";
 
 function renderAt(path: string) {
   const notifications = [
@@ -13,7 +12,7 @@ function renderAt(path: string) {
     {
       path: "/",
       Component: () => (
-        <Shell stationDate="2194-01-04" notifications={notifications} track={noopTrack}>
+        <Shell stationDate="2194-01-04" notifications={notifications} track={() => {}}>
           <p>page</p>
         </Shell>
       ),
