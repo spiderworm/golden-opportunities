@@ -2,8 +2,8 @@ import type { EChartsCoreOption } from "echarts/core";
 import type { QueryResult } from "~/query/types";
 import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
 import { isTotal, type ChartMeasure, type Grouping } from "../state";
-import { chartTheme, quarterColor, tooltipStyle } from "./chart-theme";
-import { escapeHtml } from "./escape";
+import { chartTheme, quarterColor, tooltipStyle } from "~/platform/charts/chart-theme";
+import { escapeHtml } from "~/platform/charts/escape";
 
 export interface BarModel {
   /** Category values along the category axis, in drawing order. */

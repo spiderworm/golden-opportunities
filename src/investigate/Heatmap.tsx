@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import type { QueryResult } from "~/query/types";
-import { chartTheme, heatColor } from "./charts/chart-theme";
+import { chartTheme, heatColor } from "~/platform/charts/chart-theme";
 import { cellSelected, heatModel, WEEKDAYS } from "./charts/heat-model";
 import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "./format";
 import { monthsInScope, type InvestigateState } from "./state";

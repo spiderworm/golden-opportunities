@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 
 import type { QueryResult } from "~/query/types";
 import { barHeight, barModel, barOption, TOP_RANKED } from "./charts/bar-option";
-import { quarterColor } from "./charts/chart-theme";
-import { EChart } from "./charts/EChart";
+import { quarterColor } from "~/platform/charts/chart-theme";
+import { EChart } from "~/platform/charts/EChart";
 import { DIMENSION_LABELS, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "./format";
 import { canCompare, monthsInScope, CHART_MEASURES, GROUPINGS, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
 import styles from "./Investigate.module.css";
