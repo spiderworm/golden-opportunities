@@ -101,10 +101,10 @@ export async function readAsk(request: Request, deadlineMs = 5_000): Promise<Ask
   if (!Array.isArray(history) || history.length > 20) throw new Refused(400, "Bad history.");
   const turns: Turn[] = [];
   for (const t of history) {
-    if (typeof t !== "object" || t === null || Object.keys(t).some((k) => k !== "role" && k !== "text" && k !== "stored")) throw new Refused(400, "Bad history.");
-    const { role, text, stored } = t as Record<string, unknown>;
-    if ((role !== "player" && role !== "assistant") || typeof text !== "string" || text.length > 10_000 || (stored !== undefined && stored !== true)) throw new Refused(400, "Bad history.");
-    turns.push(stored ? { role, text, stored } : { role, text });
+    if (typeof t !== "object" || t === null || Object.keys(t).some((k) => k !== "role" && k !== "text")) throw new Refused(400, "Bad history.");
+    const { role, text } = t as Record<string, unknown>;
+    if ((role !== "player" && role !== "assistant") || typeof text !== "string" || text.length > 10_000) throw new Refused(400, "Bad history.");
+    turns.push({ role, text });
   }
   return { question: question.trim(), history: turns, pins };
 }

@@ -22,8 +22,6 @@ interface Reply {
   lookups: Lookup[];
   error?: string;
   state: "streaming" | "done" | "stopped" | "failed" | typeof INTERRUPTED;
-  /** Came back from storage: shown as plain text, and sent to the model as the player's data. */
-  restored?: boolean;
 }
 
 /** While an answer streams, the conversation is saved at most this often. */

@@ -49,7 +49,7 @@ describe("keeping the conversation in the browser", () => {
     const storage = new MemoryStorage();
     const replies = [reply(1), reply(2, { state: "stopped" }), reply(3, { state: "failed", error: "The assistant is unavailable right now. Try again in a moment." })];
     expect(saveConversation(storage, "inst", replies)).toBe(3);
-    expect(loadConversation(storage, "inst")).toEqual(replies.map((r) => ({ ...r, restored: true })));
+    expect(loadConversation(storage, "inst")).toEqual(replies);
     // Each copy's own, by instance ID.
     expect(loadConversation(storage, "other")).toEqual([]);
   });
@@ -70,16 +70,11 @@ describe("keeping the conversation in the browser", () => {
     const restored = loadConversation(storage, "inst");
     expect(restored.map((r) => r.state)).toEqual(["done", INTERRUPTED]);
     expect(restored[1].text).toBe("Revenue in 2193-Q4 was");
-    // Restored turns go to the model marked stored: the player's data, not the assistant's words (Audit, #41).
     expect(historyFor(restored)).toEqual([
-      { role: "player", text: "Question 1", stored: true },
-      { role: "assistant", text: reply(1).text, stored: true },
-      { role: "player", text: "Question 2", stored: true },
-      { role: "assistant", text: "(This answer was interrupted before it finished.)", stored: true },
-    ]);
-    expect(historyFor([reply(3)])).toEqual([
-      { role: "player", text: "Question 3" },
-      { role: "assistant", text: reply(3).text },
+      { role: "player", text: "Question 1" },
+      { role: "assistant", text: reply(1).text },
+      { role: "player", text: "Question 2" },
+      { role: "assistant", text: "(This answer was interrupted before it finished.)" },
     ]);
   });
 
@@ -133,7 +128,7 @@ describe("keeping the conversation in the browser", () => {
       "turn",
     ];
     storage.setItem(storageKey("inst"), JSON.stringify([...junk, good]));
-    expect(loadConversation(storage, "inst")).toEqual([{ ...good, restored: true }]);
+    expect(loadConversation(storage, "inst")).toEqual([good]);
   });
 
   it("keeps the tables as shown but never the model's own query", () => {
@@ -143,7 +138,7 @@ describe("keeping the conversation in the browser", () => {
     expect(storage.getItem(storageKey("inst"))).not.toMatch(/63843|"query"/);
     // Stored by an earlier version with the query: restored, without it.
     storage.setItem(storageKey("inst"), JSON.stringify([withQuery]));
-    expect(loadConversation(storage, "inst")).toEqual([{ ...reply(1, { lookups: [reply(1).lookups[0]] }), restored: true }]);
+    expect(loadConversation(storage, "inst")).toEqual([reply(1, { lookups: [reply(1).lookups[0]] })]);
   });
 
   it("keeps stored refs as literal text: nothing restored is rendered or resolved", () => {

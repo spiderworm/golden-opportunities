@@ -7,9 +7,9 @@
 //
 // What's stored is the player's to edit, so it's trusted only as far as that matters (Audit, #41): every turn
 // is checked against the shape the panel wrote, and one that doesn't fit is dropped; restored text is shown
-// as plain text (a stored "{{a1}}" stays literally that); and restored turns go to the model as the player's
-// data, never as the assistant's own words. Editing it changes only what this player sees on their own
-// screen. Keeping the conversation in the server-side save is the cleaner end state, once saves exist.
+// as plain text (a stored "{{a1}}" stays literally that); and the server treats all history from the browser,
+// restored or not, as the player's data, never as the assistant's own words. Editing it changes only what this
+// player sees on their own screen. Keeping the conversation in the server-side save is the cleaner end state, once saves exist.
 
 import type { SentTurn } from "./stream.ts";
 
@@ -20,8 +20,6 @@ export interface StoredReply {
   lookups: unknown[];
   error?: string;
   state: string;
-  /** Came back from storage, so the model is told it's the player's data. */
-  restored?: boolean;
 }
 
 /** How many turns are kept: the oldest go first. */
@@ -71,15 +69,14 @@ const withoutQuery = <R extends StoredReply>(r: R): R => ({ ...r, lookups: r.loo
 function isReply(r: unknown): r is StoredReply {
   return (
     isObj(r) &&
-    only(r, ["question", "text", "lookups", "error", "state", "restored"]) &&
+    only(r, ["question", "text", "lookups", "error", "state"]) &&
     isStr(r.question, 1_000) &&
     isStr(r.text) &&
     Array.isArray(r.lookups) &&
     r.lookups.length <= 20 &&
     r.lookups.every(isLookup) &&
     (r.error === undefined || isStr(r.error, 500)) &&
-    STATES.includes(r.state as string) &&
-    (r.restored === undefined || typeof r.restored === "boolean")
+    STATES.includes(r.state as string)
   );
 }
 
@@ -93,11 +90,11 @@ export function loadConversation<R extends StoredReply>(storage: Storage | undef
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // Turns that don't fit are dropped; the rest come back marked as restored.
+    // Turns that don't fit are dropped.
     return parsed
       .filter(isReply)
       .slice(-MAX_TURNS)
-      .map((r) => withoutQuery({ ...r, state: r.state === "streaming" ? INTERRUPTED : r.state, restored: true })) as R[];
+      .map((r) => withoutQuery({ ...r, state: r.state === "streaming" ? INTERRUPTED : r.state })) as R[];
   } catch {
     return [];
   }
@@ -132,15 +129,12 @@ export function clearConversation(storage: Storage | undefined, instance: string
 
 /**
  * What the model is told of earlier turns: the questions and the replies as they were shown (rendered text;
- * lookups never), as before. Restored turns are marked stored, so the server presents them as the player's
- * data rather than as the assistant's words. An interrupted answer is described, not quoted half-way.
+ * lookups never), as before. The server treats all of it as the player's data. An interrupted answer is
+ * described, not quoted half-way.
  */
 export function historyFor(replies: readonly StoredReply[]): SentTurn[] {
-  return replies.flatMap((r) => {
-    const stored = r.restored ? { stored: true as const } : {};
-    return [
-      { role: "player" as const, text: r.question, ...stored },
-      { role: "assistant" as const, text: r.state === INTERRUPTED ? "(This answer was interrupted before it finished.)" : r.text, ...stored },
-    ];
-  });
+  return replies.flatMap((r) => [
+    { role: "player" as const, text: r.question },
+    { role: "assistant" as const, text: r.state === INTERRUPTED ? "(This answer was interrupted before it finished.)" : r.text },
+  ]);
 }

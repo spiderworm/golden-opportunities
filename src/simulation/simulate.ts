@@ -1,0 +1,137 @@
+// The M1 simulation: one plan, one seeded quarter, and the same quarter had the
+// player held course. Pure and deterministic: no I/O, no clock, no Math.random.
+import type { BookshopData, DeepReadonly } from "~/bookshop/types";
+import { assumptions, happened } from "./copy";
+import { reportCard } from "./grading";
+import { ledger, measures, ratingsOf, type Ledger, type Ratings } from "./measures";
+import { baseline, historyOf, leversFor, MONTHS, PICK_DISCOUNT, run, YEAR, type History, type Run } from "./model";
+import { linesOf, ordersOf, type Order } from "./orders";
+import type { HappenedFacts, MeasureId, Metrics, Plan, ReportCard, SimulationResult } from "./types";
+import { MEASURE_IDS } from "./types";
+
+interface Prepared {
+  history: History;
+  ratings: Ratings;
+  /** Q1 2193, measured as it was sold. */
+  lastYear: Record<MeasureId, number>;
+  quarterlyAverage: Record<MeasureId, number>;
+  averageOrderValue: number;
+}
+
+// The history never changes for a loaded dataset, so its derived values are worked out once.
+const prepared = new WeakMap<DeepReadonly<BookshopData>, Prepared>();
+
+function prepare(data: DeepReadonly<BookshopData>): Prepared {
+  const cached = prepared.get(data);
+  if (cached) return cached;
+  const history = historyOf(data);
+  const ratings = ratingsOf(data);
+  const quarters = [1, 2, 3, 4].map((q) => measures(ordersOf(data.saleLines.filter((l) => l.quarter === q)), ratings));
+  const quarterlyAverage = Object.fromEntries(
+    MEASURE_IDS.map((id) => [id, quarters.reduce((t, q) => t + q[id], 0) / quarters.length]),
+  ) as Record<MeasureId, number>;
+  const lastYearOrders = ordersOf(history.lastYear);
+  const result: Prepared = {
+    history,
+    ratings,
+    lastYear: measures(lastYearOrders, ratings),
+    quarterlyAverage,
+    averageOrderValue: ledger(lastYearOrders).revenue / lastYearOrders.length,
+  };
+  prepared.set(data, result);
+  return result;
+}
+
+const metricsOf = (l: Ledger): Metrics => ({ ...l });
+
+function cardFor(p: Prepared, r: Run): ReportCard {
+  const results = measures(r.orders, p.ratings, r.nights.length, r.nights.reduce((t, n) => t + n.orders, 0));
+  return reportCard(
+    Object.fromEntries(
+      MEASURE_IDS.map((id) => [id, { result: results[id], lastYear: p.lastYear[id], quarterlyAverage: p.quarterlyAverage[id] }]),
+    ) as Record<MeasureId, { result: number; lastYear: number; quarterlyAverage: number }>,
+  );
+}
+
+/** The featured editions' copies that would have sold without the promotion, and what their discount cost. */
+function pickedCopies(r: Run) {
+  let baseCopies = 0;
+  let discountCost = 0;
+  for (const order of r.orders) {
+    if (order.kind === "pick-extra") continue;
+    const isbn = r.picks[MONTHS.indexOf(order.day.slice(5, 7) as (typeof MONTHS)[number])];
+    for (const item of order.items)
+      if (item.isbn === isbn) {
+        baseCopies += 1;
+        discountCost += PICK_DISCOUNT * item.listPrice;
+      }
+  }
+  const extra = r.orders.filter((o) => o.kind === "pick-extra").length;
+  return { extra, baseCopies, discountCost };
+}
+
+function factsFor(plan: Plan, r: Run, mine: Ledger, hold: Ledger): HappenedFacts {
+  switch (plan.option) {
+    case "A":
+      return { option: "A", ...pickedCopies(r), profit: mine.grossProfit };
+    case "B":
+      return {
+        option: "B",
+        unitsPct: mine.units / hold.units - 1,
+        perBook: hold.grossProfit / hold.units - mine.grossProfit / mine.units,
+        revPct: mine.revenue / hold.revenue - 1,
+        profitPct: mine.grossProfit / hold.grossProfit - 1,
+      };
+    case "C":
+      return { option: "C", ...pickedCopies(r), amount: mine.grossProfit - hold.grossProfit };
+    case "D": {
+      const nights = ledger(r.orders.filter((o: Order) => o.kind === "event"));
+      const orders = r.nights.reduce((t, n) => t + n.orders, 0);
+      return {
+        option: "D",
+        events: r.nights.length,
+        orders,
+        perNight: orders / r.nights.length,
+        gross: nights.grossProfit,
+        eventCosts: mine.eventCosts,
+        amount: mine.grossProfit - hold.grossProfit,
+      };
+    }
+  }
+}
+
+/** Plays Q1 2194 under the plan, and under holding course from the same seed (a 32-bit unsigned integer). */
+export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<BookshopData>): SimulationResult {
+  const p = prepare(data);
+  const base = baseline(p.history, seed);
+  const holdRun = run(p.history, base, seed, leversFor("A"));
+  const planRun = plan.option === "A" ? holdRun : run(p.history, base, seed, leversFor(plan.option));
+  const hold = ledger(holdRun.orders);
+  const mine = ledger(planRun.orders, planRun.nights.length);
+
+  const saleChange = (response: number) => ledger(run(p.history, base, seed, leversFor("B", response)).orders).grossProfit - hold.grossProfit;
+  const facts = factsFor(plan, planRun, mine, hold);
+  const monthOf = (orders: readonly Order[], month: string) => {
+    const l = ledger(orders.filter((o) => o.day.slice(5, 7) === month));
+    return { revenue: l.revenue, units: l.units };
+  };
+
+  return {
+    lines: linesOf(planRun.orders, YEAR),
+    doNothingLines: linesOf(holdRun.orders, YEAR),
+    outcome: {
+      plan: { option: plan.option },
+      quarter: `${YEAR}-Q1`,
+      monthly: MONTHS.map((month) => ({
+        month: `${YEAR}-${month}`,
+        plan: monthOf(planRun.orders, month),
+        holdCourse: monthOf(holdRun.orders, month),
+      })),
+      totals: { plan: metricsOf(mine), holdCourse: metricsOf(hold) },
+      reportCard: { plan: cardFor(p, planRun), holdCourse: cardFor(p, holdRun) },
+      assumptions: assumptions(plan.option, { averageOrderValue: p.averageOrderValue, saleAt10: saleChange(0.1), saleAt30: saleChange(0.3) }),
+      happened: happened(facts),
+      facts,
+    },
+  };
+}

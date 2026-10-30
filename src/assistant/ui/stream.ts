@@ -5,8 +5,6 @@ import type { WireEvent } from "../events.ts";
 export interface SentTurn {
   role: "player" | "assistant";
   text: string;
-  /** Restored from this device's storage: the server presents it to the model as the player's data. */
-  stored?: true;
 }
 
 /** Splits a byte stream into parsed lines; a line may arrive in pieces. */
