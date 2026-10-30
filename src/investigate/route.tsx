@@ -5,6 +5,7 @@ import type { ShellHandle } from "~/shell/Shell";
 import { noopTrack } from "~/shell/track";
 import type { Route } from "./+types/route";
 import { FilterBar } from "./FilterBar";
+import { DIMENSION_LABELS, MEASURE_LABELS } from "./format";
 import { Heatmap } from "./Heatmap";
 import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
@@ -12,6 +13,7 @@ import { MetricTiles } from "./MetricTiles";
 import { runQuery } from "./query-stub.server";
 import {
   DEFAULT_STATE,
+  filtersExcept,
   parseState,
   setDiscount,
   setFilter,
@@ -20,6 +22,9 @@ import {
   toSearchParams,
   type InvestigateState,
 } from "./state";
+import { PinnedCharts } from "./pins/PinnedCharts";
+import type { PinSpec } from "./pins/spec";
+import { usePins } from "./pins/usePins";
 import { TitleView } from "./TitleView";
 import styles from "./Investigate.module.css";
 
@@ -46,6 +51,10 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   // TODO(analytics): switch to track from ~/platform/analytics/analytics.client when it merges.
   const track = noopTrack;
   const refreshing = navigation.state === "loading" && navigation.location?.pathname === location.pathname;
+
+  const pins = usePins(track);
+  // TODO(assistant): when Sage's panel (#19) is on this page, give it onPin={(chart) => pins.add(chart, "dewey")}.
+  const chartPin = pinSpecFor(state);
 
   function update(next: InvestigateState) {
     setSearchParams(toSearchParams(next), { preventScrollReset: true });
@@ -93,6 +102,8 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           update(next);
         }}
         onTable={(shown) => track("investigate_table_toggled", { shown })}
+        onPin={() => pins.add(chartPin, "player")}
+        pinned={pins.has(chartPin.kind, chartPin.query)}
       />
       {titleView && (
         <TitleView
@@ -121,6 +132,27 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           update(next);
         }}
       />
+      <PinnedCharts
+        pins={pins.pins}
+        quarters={options.quarter}
+        onRemove={pins.remove}
+        onError={(code) => track("investigate_pin_failed", { code })}
+      />
     </div>
   );
+}
+
+/** The main chart as a pin: the same query it runs, so the pin shows what the player saw. */
+function pinSpecFor(state: InvestigateState): PinSpec {
+  const filter = filtersExcept(state.filters, [state.by]);
+  const title = `${MEASURE_LABELS[state.measure]} by ${DIMENSION_LABELS[state.by].toLowerCase()}${state.compare ? " and quarter" : ""}`;
+  return {
+    title,
+    kind: "bar",
+    query: {
+      measure: state.measure,
+      by: state.compare ? [state.by, "quarter"] : [state.by],
+      ...(Object.keys(filter).length ? { filter } : {}),
+    },
+  };
 }
