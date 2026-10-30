@@ -37,6 +37,8 @@ export interface ComparisonFigures {
   direction: "rose" | "fell" | "unchanged" | null;
 }
 export interface ComparisonResult {
+  /** The compared values as the data returned them; null where a side matched nothing. */
+  labels: { from: string | null; to: string | null };
   columns: { key: string; label: string; type: "string" | "number"; nullable: boolean }[];
   rows: Record<string, string | number | null>[];
   total: ComparisonFigures;

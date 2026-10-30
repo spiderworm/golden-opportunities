@@ -3,8 +3,8 @@ import { Refs, renderSentence, scrubDeep, sentenceGate, WITHHELD } from "./figur
 
 const SOURCE = "Revenue from 56,350 visible matching sale lines; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; grouped by quarter.";
 const byQuarter = ["query_data", { measure: "revenue", by: ["quarter"] }, { ref: "a", complete: true, columns: [], rows: [{ ref: "a1", quarter: "2193-Q1", revenue: 95245.8078 }, { ref: "a2", quarter: "2193-Q2", revenue: 164436.94 }, { ref: "a3", quarter: "2193-Q3", revenue: 274036.16 }, { ref: "a4", quarter: "2193-Q4", revenue: 161524.69 }], total: 695243.61, source: SOURCE }] as const;
-const q2q4 = ["compare_data", { measure: "revenue", across: "quarter", from: "2193-Q2", to: "2193-Q4", by: [] }, { ref: "b", columns: [{ key: "from", label: "2193-Q2" }, { key: "to", label: "2193-Q4" }], rows: [], total: { from: 164436.94, to: 161524.69, change: -2912.25, percent_change: -1.7711, direction: "fell" }, source: "Compared. 2193-Q2: Sales 2193-Q4: Sales" }] as const;
-const genres = ["compare_data", { measure: "orders", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: ["genre"] }, { ref: "c", complete: true, columns: [{ key: "genre", label: "Genre" }, { key: "from", label: "2193-Q3" }, { key: "to", label: "2193-Q4" }], rows: [{ ref: "c1", genre: "Nonfiction", from: 278, to: 339, change: 61, percent_change: 21.94 }, { ref: "c2", genre: "SciFi/Fantasy", from: 7523, to: 4246, change: -3277, percent_change: -43.56 }, { ref: "c3", genre: "Memoir", from: 182, to: 74, change: -108, percent_change: -59.34 }], total: { from: 7983, to: 4659, change: -3324, percent_change: -41.64 }, source: SOURCE }] as const;
+const q2q4 = ["compare_data", { measure: "revenue", across: "quarter", from: "2193-Q2", to: "2193-Q4", by: [] }, { ref: "b", labels: { from: "2193-Q2", to: "2193-Q4" }, columns: [{ key: "from", label: "2193-Q2" }, { key: "to", label: "2193-Q4" }], rows: [], total: { from: 164436.94, to: 161524.69, change: -2912.25, percent_change: -1.7711, direction: "fell" }, source: "Compared. 2193-Q2: Sales 2193-Q4: Sales" }] as const;
+const genres = ["compare_data", { measure: "orders", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: ["genre"] }, { ref: "c", complete: true, labels: { from: "2193-Q3", to: "2193-Q4" }, columns: [{ key: "genre", label: "Genre" }, { key: "from", label: "2193-Q3" }, { key: "to", label: "2193-Q4" }], rows: [{ ref: "c1", genre: "Nonfiction", from: 278, to: 339, change: 61, percent_change: 21.94 }, { ref: "c2", genre: "SciFi/Fantasy", from: 7523, to: 4246, change: -3277, percent_change: -43.56 }, { ref: "c3", genre: "Memoir", from: 182, to: 74, change: -108, percent_change: -59.34 }], total: { from: 7983, to: 4659, change: -3324, percent_change: -41.64 }, source: SOURCE }] as const;
 const refs = (...tools: (readonly [string, unknown, unknown])[]) => {
   const r = new Refs();
   for (const [name, input, output] of tools) r.addTool(name, input, output);
@@ -64,6 +64,15 @@ describe("refs render the data's own figures, units and directions", () => {
 
   it("accepts a total written out ({{b.total.change}})", () => {
     expect(say("Revenue {{b.total.change}}; {{b.total.to_vs_from}}.")).toBe("Revenue fell by $2,912.25; 2193-Q4's revenue was $2,912.25 lower than 2193-Q2's.");
+  });
+
+  it("seeds period names only from returned rows and confirmed filters, never from captions (Audit)", () => {
+    const captions = refs(["compare_data", { measure: "units", across: "quarter", from: "2194-Q1", to: "2194-Q2" }, { ref: "h", complete: true, labels: { from: null, to: null }, columns: [{ key: "from", label: "2194-Q1" }, { key: "to", label: "2194-Q2" }], rows: [], total: { from: 0, to: 0, change: 0, percent_change: null }, source: "units compared across quarter, 2194-Q1 against 2194-Q2; allowed periods: 2194-Q1" }]);
+    expect(say("In 2194-Q1, nothing.", captions)).toBe(WITHHELD);
+    expect(say("{{h.from_vs_to}}.", captions)).toBe(WITHHELD);
+    const filtered = refs(["query_data", { measure: "units", by: [], filter: { quarter: ["2193-Q2"] } }, { ref: "i", complete: true, columns: [], rows: [{ ref: "i1", units: 13354 }], total: 13354, source: "allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4" }]);
+    expect(say("Units in 2193-Q2 came to {{i.total}}.", filtered)).toBe("Units in 2193-Q2 came to 13,354.");
+    expect(say("Units in 2193-Q3, too.", filtered)).toBe(WITHHELD);
   });
 
   it("a compared value is a label only where the data had something there", () => {

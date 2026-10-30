@@ -69,8 +69,11 @@ boundary, documented rather than chased.
   early ref withholds its sentence.
 - Rankings (`max`, `min`, `largest_*`) are rendered only over complete results. A limit or the row cap means the
   ref fails closed.
-- Labels come only from result rows, or from a single-value filter on a lookup that found something. A
-  comparison's headings show the compared values only where the data had something there.
+- Labels come only from result rows, or from a single-value filter on a lookup that found something. Period
+  names allowed in prose come from the same places, never from a source caption.
+- `compare_data` takes the compared values from the rows each side returns. Its headings and source name them
+  only as the data returned them, and otherwise in fixed words ("the first value", "No sales matched the first
+  value."). The model's from/to text never reaches the browser (Audit's final review of #32).
 - Everything sent to the browser other than the reply's prose is data or fixed text: tables and sources from
   the query layer, fixed lookup-failure and error messages, and pin titles built from the chart's query. The
   model's tool input is never sent, and the fence code is cut from every string.
@@ -112,3 +115,19 @@ back as a `tool` event, and the reply quoted the figure.
 
 **Fail closed on the init line:** the run is killed before any answer is read unless every tool is
 `mcp__<ours>__*`, the only MCP server is ours and connected, and skills and slash commands are empty.
+
+## The conversation kept on the player's device
+
+The panel keeps the conversation in `localStorage` (`ui/conversation.ts`), so a reload doesn't lose it. The
+player can edit what's stored there, and Audit's review of #41 set how far it's trusted:
+- Every stored turn is checked against the exact shape the panel wrote. A turn that doesn't fit is dropped, and
+  restoring never crashes.
+- Restored text is shown as plain text: a stored `{{a1}}` stays literally that, and nothing restored is
+  rendered or resolved.
+- Restored turns go to the model in their own fence, as "an earlier conversation, as stored on the player's
+  device". They are the player's data, never the assistant's own words, and their braces are broken up.
+
+**Residual risk:** someone who edits their own storage changes only what they see on their own screen. They
+could show themselves a forged figure. That's self-inflicted, and it reaches no one else.
+
+**Follow-up:** keep the conversation server-side in the save once Frank's save layer exists. Not built yet.
