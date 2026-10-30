@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, redirect } from "react-router";
 
 import { getOutcome } from "~/game-stub/game.server";
-import { runQuery } from "~/investigate/query-stub.server";
+import { runQuery } from "~/query/run-query.server";
+import { resolveQueryView } from "~/query/view.server";
 import { track } from "~/platform/analytics/analytics.client";
 import { EChart } from "~/platform/charts/EChart";
-import type { QueryView } from "~/query/types";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
 import { badgeText, foundFooter, moneyShort, RESULT_COPY as COPY, scoreLine, seasonNote } from "./copy";
@@ -15,8 +15,6 @@ import styles from "./Result.module.css";
 
 export const handle: ShellHandle = { title: "Results" };
 
-// TODO(game-state): Frank's game state supplies the visible periods.
-const VIEW: QueryView = { periods: ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"], includeUndated: true };
 
 export function meta({}: Route.MetaArgs) {
   return [{ title: "Q1 2194: the results | Orbital Books" }];
@@ -26,10 +24,11 @@ export function loader({ request }: Route.LoaderArgs) {
   const outcome = getOutcome(request);
   if (!outcome) throw redirect("/decide");
   // Last year, for the season note and the faint reference line.
-  const byQuarter = runQuery({ measure: "revenue", by: ["quarter"] }, VIEW).rows;
+  const view = resolveQueryView();
+  const byQuarter = runQuery({ measure: "revenue", by: ["quarter"] }, view).rows;
   const lastQ1 = byQuarter.find((r) => r.quarter === "2193-Q1")?.revenue ?? 0;
   const lastQ4 = byQuarter.find((r) => r.quarter === "2193-Q4")?.revenue ?? 0;
-  const reference = runQuery({ measure: "revenue", by: ["month"], filter: { quarter: ["2193-Q4"] } }, VIEW).rows.map((r) => ({
+  const reference = runQuery({ measure: "revenue", by: ["month"], filter: { quarter: ["2193-Q4"] } }, view).rows.map((r) => ({
     month: r.month ?? "",
     revenue: r.revenue ?? 0,
   }));
