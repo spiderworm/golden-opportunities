@@ -136,6 +136,16 @@ describe("keeping the conversation in the browser", () => {
     expect(loadConversation(storage, "inst")).toEqual([{ ...good, restored: true }]);
   });
 
+  it("keeps the tables as shown but never the model's own query", () => {
+    const storage = new MemoryStorage();
+    const withQuery = reply(1, { lookups: [{ ...(reply(1).lookups[0] as object), query: { measure: "revenue", by: [], filter: { title: ["63843"] } } }] });
+    saveConversation(storage, "inst", [withQuery]);
+    expect(storage.getItem(storageKey("inst"))).not.toMatch(/63843|"query"/);
+    // Stored by an earlier version with the query: restored, without it.
+    storage.setItem(storageKey("inst"), JSON.stringify([withQuery]));
+    expect(loadConversation(storage, "inst")).toEqual([{ ...reply(1, { lookups: [reply(1).lookups[0]] }), restored: true }]);
+  });
+
   it("keeps stored refs as literal text: nothing restored is rendered or resolved", () => {
     const storage = new MemoryStorage();
     saveConversation(storage, "inst", [reply(1, { text: "Revenue was {{a1}}." })]);

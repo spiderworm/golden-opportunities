@@ -57,12 +57,15 @@ const isChart = (c: unknown) => isObj(c) && only(c, ["title", "kind", "query"]) 
 /** One lookup as the panel stored it: a table with its source, a failed lookup, or a pin acknowledgement. */
 function isLookup(l: unknown): boolean {
   if (!isObj(l)) return false;
-  if (l.type === "data") return only(l, ["type", "columns", "rows", "total", "source"]) && isTable(l) && (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)));
+  if (l.type === "data") return only(l, ["type", "columns", "rows", "total", "source", "query"]) && (l.query === undefined || isObj(l.query)) && isTable(l) && (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)));
   if (l.type === "comparison") return only(l, ["type", "columns", "rows", "total", "labels", "source"]) && isTable(l) && isFigures(l.total);
   if (l.type === "lookup_failed") return only(l, ["type", "message"]) && isStr(l.message, 300);
   if (l.type === "pin") return only(l, ["type", "chart", "source", "placed"]) && isChart(l.chart) && isStr(l.source, 5_000) && typeof l.placed === "boolean";
   return false;
 }
+
+/** The model's own tool input, which some lookups carry, is never kept: only what was shown. */
+const withoutQuery = <R extends StoredReply>(r: R): R => ({ ...r, lookups: r.lookups.map((l) => (isObj(l) && "query" in l ? (({ query: _, ...rest }) => rest)(l) : l)) });
 
 /** A turn exactly as the panel stored it; anything else (null lookups, extra fields, wrong types) isn't. */
 function isReply(r: unknown): r is StoredReply {
@@ -94,7 +97,7 @@ export function loadConversation<R extends StoredReply>(storage: Storage | undef
     return parsed
       .filter(isReply)
       .slice(-MAX_TURNS)
-      .map((r) => ({ ...r, state: r.state === "streaming" ? INTERRUPTED : r.state, restored: true })) as R[];
+      .map((r) => withoutQuery({ ...r, state: r.state === "streaming" ? INTERRUPTED : r.state, restored: true })) as R[];
   } catch {
     return [];
   }
@@ -109,7 +112,7 @@ export function saveConversation(storage: Storage | undefined, instance: string,
   const key = storageKey(instance);
   for (let turns = Math.min(replies.length, MAX_TURNS); turns > 0; turns = Math.floor(turns / 2)) {
     try {
-      storage.setItem(key, JSON.stringify(replies.slice(-turns)));
+      storage.setItem(key, JSON.stringify(replies.slice(-turns).map(withoutQuery)));
       return turns;
     } catch {
       // Full, most likely: try fewer.
