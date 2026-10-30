@@ -46,6 +46,7 @@ Due **3 November 2026**. Golden Analytics will extend if asked; David will decid
 - **The app has a server.** React Router in framework mode (formerly Remix, and David still calls it Remix), with Vite for hot reloading. (David, 30 Oct)
 - **Hosting:** local only for now; to be decided later. (David, 30 Oct)
 - **Every copy of the app generates an instance ID** and sends it with its analytics, like a device ID. Local runs send everything too. How exposed this leaves David to abuse is still to be discussed. (David, 30 Oct)
+- **What players type to the agent is kept on the device, not sent,** so it can be delivered later if David decides to. The final decision is deferred. Every other event is sent. (David, 30 Oct)
 - **Analytics** use the studio's `@tellim/analytics` and **send to the studio's server.** (David, 30 Oct) That brings these requirements (Annie, 30 Oct):
   - a privacy page, modelled on Waddleberg's `privacy.html`;
   - an in-game switch to turn sharing off, with the install id shown;
