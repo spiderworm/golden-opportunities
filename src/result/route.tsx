@@ -9,7 +9,19 @@ import { EChart } from "~/platform/charts/EChart";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
 import type { ReportCard as Card } from "~/game-stub/types";
-import { badgeText, foundFooter, gradeText, measureText, moneyShort, RESULT_COPY as COPY, scoreText, seasonNote } from "./copy";
+import {
+  administratorLine,
+  badgeText,
+  bossLine,
+  foundFooter,
+  gradeText,
+  heldCourseText,
+  measureText,
+  moneyShort,
+  RESULT_COPY as COPY,
+  scoreText,
+  seasonNote,
+} from "./copy";
 import { earnedDiscoveries, type EarnedDiscovery } from "./discoveries.server";
 import { OUTCOME_COLORS, outcomeOption } from "./outcome-chart";
 import styles from "./Result.module.css";
@@ -76,7 +88,7 @@ export default function Result({ loaderData }: Route.ComponentProps) {
           </span>
           {!holdingCourse && (
             <span className={styles.scoreHeading}>
-              {COPY.reportCard.holdCourse}: {scoreText(outcome.reportCard.holdCourse.combined.score, outcome.reportCard.holdCourse.combined.grade)}
+              {heldCourseText(outcome.reportCard.holdCourse.combined.score, outcome.reportCard.holdCourse.combined.grade)}
             </span>
           )}
         </div>
@@ -213,6 +225,18 @@ function ReportCard({ plan, holdCourse, holdingCourse }: { plan: Card; holdCours
       </div>
       {plan.wellRounded && <p className={styles.award}>{c.wellRounded}</p>}
       <p className={styles.note}>{c.goalsNote}</p>
+      <ul className={styles.bosses}>
+        <li>
+          <span className={styles.boss}>{c.bosses.combined}</span>
+          <q className={styles.bossLine}>{administratorLine(plan.combined.score)}</q>
+        </li>
+        {plan.measures.map((m) => (
+          <li key={m.id}>
+            <span className={styles.boss}>{c.bosses[m.id]}</span>
+            <q className={styles.bossLine}>{bossLine(m)}</q>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

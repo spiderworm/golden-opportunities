@@ -98,6 +98,41 @@
   font-weight: 600;
 }
 
+/* The bosses speak in capitals; the copy is already in capitals. */
+.bosses {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--color-border);
+  list-style: none;
+}
+
+.bosses li {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.boss {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.bossLine {
+  quotes: none;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 760px) {
+  .bosses li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
 td .award {
   margin: 0 0 0 8px;
 }
