@@ -5,7 +5,7 @@ import { Icon } from "./icons";
 import { navItems } from "./nav";
 import { NotificationsBell, type StationNotification } from "./NotificationsBell";
 import { formatStationDate } from "./station-date";
-import type { Track } from "./track";
+import type { Track } from "~/platform/analytics/track";
 import styles from "./Shell.module.css";
 
 /** Routes name their page in the header with `handle = { title }`. */
