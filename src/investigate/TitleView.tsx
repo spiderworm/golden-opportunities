@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import type { QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
-import { barModel, barOption } from "./charts/bar-option";
+import { categoryModel, categoryOption } from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
 import { formatDimensionValue, MEASURE_LABELS } from "./format";
 import { monthsInScope, type InvestigateState } from "./state";
@@ -21,10 +21,10 @@ export interface TitleViewProps {
 export function TitleView({ state, title, result, quarters, onMonth, onClose }: TitleViewProps) {
   const selected = state.filters.month ?? [];
   const months = monthsInScope(quarters, state.filters.quarter);
-  const model = useMemo(() => barModel(result, "month", false, months), [result, months.join()]);
+  const model = useMemo(() => categoryModel(result, "month", null, months), [result, months.join()]);
   const option = useMemo(
-    () => barOption(model, { measure: state.measure, by: "month", selected, quarters }),
-    [model, state.measure, selected.join("\u0000"), quarters],
+    () => categoryOption(model, { selected, quarters }),
+    [model, selected.join("\u0000"), quarters],
   );
   const heading = `${MEASURE_LABELS[state.measure]} by month`;
 
