@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { data, Link, redirect, useFetcher, useNavigate, type ShouldRevalidateFunctionArgs } from "react-router";
 
-import { getPlan, submitPlan } from "~/game-stub/game.server";
+import { getPlan, submitPlan } from "~/game/game.server";
 import { planOf } from "~/simulation/plan";
 import { MAX_LEVERS, type LeverId, type Plan } from "~/simulation/types";
 import { track } from "~/platform/analytics/analytics.client";

@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync, unlinkSync, statSync, readdirSync, utimesSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { withSaveLock, SaveLockBusy } from './lock.server.ts';
+import { isOutcome } from './outcome.ts';
 import type { GameSave } from './types';
 
 const ID = /^[A-Za-z0-9_-]{43}$/;
@@ -19,6 +20,10 @@ function validate(save: GameSave, id: string): void {
     || new Set(save.discoveries).size !== save.discoveries.length
     || !save.discoveries.every(d => ['A', 'B', 'C'].includes(d))
     || !Array.isArray(save.played) || save.played.length > 1) throw new SaveError('INVALID_SAVE');
+  if (save.completion !== undefined && (!save.completion || typeof save.completion.outcomeId !== 'string'
+    || !/^[a-f0-9-]{36}$/.test(save.completion.outcomeId) || !isOutcome(save.completion.outcome)
+    || save.played.length !== 1 || !Array.isArray(save.played[0]?.sales)
+    || save.completion.outcome.totals.plan.units !== save.played[0].sales.length)) throw new SaveError('INVALID_SAVE');
   for (const quarter of save.played) {
     if (quarter.period !== '2194-Q1' || !Array.isArray(quarter.sales) || quarter.sales.length > 100_000) throw new SaveError('INVALID_SAVE');
     const ids = new Set<string>();
