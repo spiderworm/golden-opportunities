@@ -1,7 +1,6 @@
 import { useLocation, useNavigation, useSearchParams } from "react-router";
 
 import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
-import type { QueryView } from "~/query/types";
 import type { ShellHandle } from "~/shell/Shell";
 import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
@@ -11,7 +10,8 @@ import { Heatmap } from "./Heatmap";
 import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
-import { runQuery } from "./query-stub.server";
+import { runQuery } from "~/query/run-query.server";
+import { resolveQueryView } from "~/query/view.server";
 import {
   DEFAULT_STATE,
   parseState,
@@ -27,9 +27,6 @@ import styles from "./Investigate.module.css";
 
 export const handle: ShellHandle = { title: "Investigate" };
 
-// TODO(game-state): the visible periods come from Frank's game state once it
-// lands. Until then the player sees all of 2193, as the HTTP adapter does.
-const VIEW: QueryView = { periods: ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"], includeUndated: true };
 
 export function meta({}: Route.MetaArgs) {
   return [{ title: "Investigate | Orbital Books" }];
@@ -38,7 +35,8 @@ export function meta({}: Route.MetaArgs) {
 export function loader({ request }: Route.LoaderArgs) {
   const started = performance.now();
   const state = parseState(new URL(request.url).searchParams);
-  const investigation = investigate(state, runQuery, VIEW);
+  // The server decides what the player can see; Frank's game state will resolve it per save.
+  const investigation = investigate(state, runQuery, resolveQueryView());
   trackServer("investigate_loaded", {
     durationMs: Math.round(performance.now() - started),
     measure: state.measure,

@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
 import { barModel, barOption } from "./charts/bar-option";
-import { EChart } from "./charts/EChart";
+import { EChart } from "~/platform/charts/EChart";
 import { formatDimensionValue, MEASURE_LABELS } from "./format";
 import { monthsInScope, type InvestigateState } from "./state";
 import styles from "./Investigate.module.css";

@@ -37,8 +37,9 @@ describe("Shell", () => {
   it("marks features still to come instead of linking them", () => {
     const html = renderAt("/");
     expect(html).toContain('href="/investigate"');
-    expect(html).not.toContain('href="/decisions"');
+    expect(html).toContain('href="/decide"');
     expect(html).toContain('href="/settings"');
-    expect(html.match(/Soon/g)).toHaveLength(2);
+    expect(html).not.toContain('href="/reports"');
+    expect(html.match(/Soon/g)).toHaveLength(1);
   });
 });

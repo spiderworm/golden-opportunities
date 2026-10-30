@@ -10,7 +10,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { label: "Station", icon: "station", to: "/" },
   { label: "Investigate", icon: "investigate", to: "/investigate" },
-  { label: "Decisions", icon: "decisions" },
+  { label: "Decisions", icon: "decisions", to: "/decide" },
   { label: "Reports", icon: "reports" },
   { label: "Settings", icon: "settings", to: "/settings" },
 ];
