@@ -1,0 +1,87 @@
+/* The music player's look (popup.ts, panel.ts). A game sets the --music-*
+   variables to its own colors; these are Waddleberg's. In :where(), so they
+   weigh nothing: a game's own :root (or any rule) wins even when this sheet
+   loads after it, as it does imported from a module (Slice, 29 Oct 2026). */
+:where(:root) {
+  --music-bg: rgba(24, 50, 77, 0.92);
+  --music-border: rgba(58, 102, 144, 0.8);
+  --music-fg: #d8e8f6;
+  --music-muted: #8fb0cc;
+  --music-accent: #f0b54a;
+  --music-heart: #ff7a8a;
+  /* the switch's knob: its own, as text color on a light card makes it vanish */
+  --music-knob: #f4f8fc;
+  /* what the full player's --music-bg is laid over: solid, so the game's
+     screen never shows through its song list (Slice, 29 Oct 2026) */
+  --music-full-base: #0f2236;
+}
+
+/* The pop-up: the song's name between its controls, a quiet pill. Its
+   game sets top and left (PopupHost.place). */
+.music-popup { position: absolute; top: 0; left: 50%; z-index: 4; max-width: calc(100% - 16px);
+  display: flex; align-items: center; gap: 0; padding: 2px; box-sizing: border-box;
+  background: var(--music-bg); border: 1px solid var(--music-border); border-radius: 22px;
+  color: var(--music-fg); font-size: 13px; line-height: 18px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  opacity: 0; pointer-events: none; transform: translate(-50%, 6px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.music-popup.on { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.music-popup button, .music-full button, .music-panel button { min-height: 0; margin: 0; padding: 0; background: none; border: none; color: inherit; font: inherit; cursor: pointer; }
+.music-popup > [data-do] { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 19px; }
+.music-popup > [data-do]:active, .music-buttons button:active { background: rgba(255, 255, 255, 0.1); }
+.music-popup-name { display: flex; align-items: center; gap: 6px; padding: 0 6px; min-width: 0; height: 38px; border-radius: 19px; }
+.music-popup .music-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: underline dotted var(--music-muted); text-underline-offset: 3px; }
+.music-notes { color: var(--music-accent); display: flex; flex: none; }
+.music-notes svg { width: 16px; height: 16px; }
+.music-popup .on, .music-full .on, .music-panel .on { color: var(--music-heart); }
+@media (prefers-reduced-motion: reduce) {
+  .music-popup, .music-popup.on { transform: translate(-50%, 0); transition: opacity 0.3s linear; }
+}
+
+/* The full player, opened from the pop-up where it was (popup.ts sets its
+   place and height); its body scrolls. */
+.music-full { position: absolute; z-index: 7; display: flex; flex-direction: column; box-sizing: border-box;
+  background: linear-gradient(var(--music-bg), var(--music-bg)), var(--music-full-base); border: 1px solid var(--music-border); border-radius: 18px;
+  color: var(--music-fg); font-size: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
+.music-close { position: absolute; top: 4px; right: 4px; z-index: 1; width: 40px; height: 40px; display: grid; place-items: center; color: var(--music-muted) !important; }
+.music-full-body { overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 8px; display: flex; flex-direction: column; gap: 10px; }
+.music-full .music-volume { padding-right: 36px; }
+
+/* The panel in Settings, and the pieces both share */
+.music-panel { display: flex; flex-direction: column; gap: 10px; color: var(--music-fg); }
+.music-volume { display: flex; flex-direction: column; gap: 6px; }
+.music-volume > span { display: flex; justify-content: space-between; }
+.music-volume small { color: var(--music-muted); }
+.music-volume input { width: 100%; accent-color: var(--music-accent); }
+.music-now { display: flex; align-items: center; gap: 8px; }
+.music-now[hidden] { display: none; }
+.music-now .music-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.music-buttons { display: flex; gap: 0; }
+.music-buttons button { width: 40px; height: 44px; display: grid; place-items: center; border-radius: 20px; }
+.music-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; text-align: left; border-top: 1px solid var(--music-border) !important; }
+.music-row svg { color: var(--music-muted); }
+.music-song-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.music-song-title small { color: var(--music-muted); font-size: 12px; }
+.music-sub-head { display: flex; align-items: center; gap: 4px; }
+.music-back { width: 40px; height: 40px; display: grid; place-items: center; margin-left: -10px !important; }
+.music-none { margin: 0; color: var(--music-muted); font-size: 13px; }
+.music-none[hidden] { display: none; }
+.music-playlist { display: flex; flex-direction: column; }
+.music-songs { list-style: none; margin: 0; padding: 0; }
+.music-songs li { display: flex; align-items: center; gap: 4px; min-height: 48px; border-top: 1px solid var(--music-border);
+  position: relative; transition: transform 0.15s ease; }
+.music-songs li .music-song-title { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: 6px; }
+.music-songs li.dragging { z-index: 1; background: var(--music-bg); transition: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); }
+.music-songs li.playing .music-song-title { color: var(--music-accent); }
+.music-songs li.out .music-song-title { color: var(--music-muted); }
+.music-grip { width: 36px; height: 44px; display: grid; place-items: center; color: var(--music-muted) !important; touch-action: none; cursor: grab !important; }
+.music-tag { font-size: 11px; }
+.music-new { padding: 1px 6px; border-radius: 8px; background: var(--music-accent); color: #1a1206 !important; font-size: 11px !important; font-weight: 600; }
+.music-new[hidden] { display: none; }
+.music-heart { width: 44px; height: 44px; display: grid; place-items: center; color: var(--music-muted); }
+/* the switch: a checkbox drawn as a slide */
+.music-switch { position: relative; width: 40px; height: 24px; flex: none; }
+.music-switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.music-switch span { position: absolute; inset: 0; border-radius: 12px; background: var(--music-border); transition: background 0.2s; pointer-events: none; }
+.music-switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--music-knob); transition: transform 0.2s; }
+.music-switch input:checked + span { background: var(--music-accent); }
+.music-switch input:checked + span::after { transform: translateX(16px); }
+.music-switch input:focus-visible + span { outline: 2px solid var(--music-fg); outline-offset: 2px; }

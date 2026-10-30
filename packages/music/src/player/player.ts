@@ -1,0 +1,362 @@
+// The studio's music player (plans/music-player.md, David 29 Oct 2026: "a
+// reusable thing available for all games"). It plays a game's songs in the
+// queue's order (../queue), keeps the player's choices (../prefs), and tells
+// the game's track() what the player did with it. The pop-up and the
+// Settings panel (../ui) draw it; the game decides where and when.
+//
+// One <audio> element, so a song streams rather than being decoded whole
+// into memory. Given the game's AudioContext, the element runs through Web
+// Audio, so the game can put its own effects after it (Pizza's muffle while
+// cutting) and the volume is a gain node; without one, the element's own
+// volume.
+
+import { createQueue, type Song } from "../queue/queue.ts";
+import { loadPrefs, meetSongs, ordered, savePrefs, type Prefs } from "../prefs/prefs.ts";
+
+export type { Song };
+type Props = Record<string, string | number | boolean>;
+
+/** Why a song started: by itself, or the player's skip or back. */
+export type Cause = "auto" | "skip" | "back";
+/** Where the player did it: the pop-up or the Settings panel. */
+export type Where = "popup" | "settings";
+
+export type MusicOptions = {
+  /** prefix for its storage key, as for createAnalytics, e.g. "cubeberg" */
+  key: string;
+  /** the game's songs; pinned ones first, in this order */
+  songs: Song[];
+  /** where `file` is found, e.g. BASE_URL + "music/" */
+  base: string;
+  /** the game's track() (@tellim/analytics) */
+  track?: (event: string, props?: Props) => void;
+  /** the quiet between songs (500 ms) */
+  gapMs?: number;
+  /** before the first song: time for Bluetooth headphones to wake (0) */
+  leadMs?: number;
+  /** the songs' level at full volume (0.55, as both games had it) */
+  loudness?: number;
+  /** the game's AudioContext, made on its first touch: music goes through Web Audio */
+  context?: () => AudioContext | null | undefined;
+  /** the game's effects: given the music's node, return the node to connect to the speakers */
+  effects?: (ctx: AudioContext, music: AudioNode) => AudioNode;
+  /** a volume from the game's old setting (0–1), read once if there's none yet */
+  legacyVolume?: () => number | null;
+  /** a save that failed (the game's own report) */
+  saveFailed?: (key: string, error: unknown) => void;
+  storage?: Pick<Storage, "getItem" | "setItem">;
+};
+
+export type MusicState = {
+  song: Song | null;
+  playing: boolean;
+  volume: number;
+  /** the game has hushed it (setQuiet) */
+  quiet: boolean;
+};
+
+export function createMusic(o: MusicOptions) {
+  const store = o.storage ?? (() => { try { return globalThis.localStorage; } catch { return undefined; } })();
+  const track = o.track ?? (() => {});
+  const gapMs = o.gapMs ?? 500;
+  const loudness = o.loudness ?? 0.55;
+  let prefs: Prefs = meetSongs(loadPrefs(o.key, store, o.legacyVolume), o.songs.map((s) => s.id));
+  const save = () => savePrefs(o.key, store, prefs, o.saveFailed);
+  save();
+
+  const ids = o.songs.map((s) => s.id);
+  const queue = createQueue(o.songs, {
+    excluded: (id) => prefs.excluded.includes(id),
+    fresh: (id) => prefs.fresh.includes(id),
+    order: () => ordered(prefs, ids),
+    shuffled: () => prefs.shuffle,
+  });
+  const deck = new Audio();
+  deck.preload = "auto";
+  let wired: { gain: GainNode } | null = null;
+  let song: Song | null = null;
+  let cause: Cause = "auto";
+  let by: Where | undefined; // where the skip or back was
+  let loaded = false; // the deck has the current song's file
+  let started = false; // the player has touched the page
+  let paused = false; // the player paused it
+  let quiet = false; // the game hushed it
+  // Why the game is away, by reason: no sound starts while any is set.
+  // Visibility alone misses some: after an update, Android relaunches the
+  // app behind the lock screen, "visible", and Pizza's theme played with
+  // David's screen off (Slice, 29 Oct 2026).
+  const away = new Set<string>();
+  let wait = 0; // the gap's (or the lead's) timer
+  let announced: Song | null = null;
+  const listeners = new Set<(s: MusicState) => void>();
+  const songListeners = new Set<(song: Song, cause: Cause) => void>();
+
+  const level = () => prefs.volume ** 2 * loudness; // squared, so the slider feels even
+  const audible = () => prefs.volume > 0 && !quiet && !paused && started && !away.size && !(typeof document !== "undefined" && document.hidden);
+  const state = (): MusicState => ({ song, playing: !deck.paused && !!song, volume: prefs.volume, quiet });
+  const changed = () => listeners.forEach((f) => f(state()));
+
+  function wire() {
+    if (wired || !o.context) return;
+    const ctx = o.context();
+    if (!ctx) return;
+    const source = ctx.createMediaElementSource(deck);
+    const gain = ctx.createGain();
+    gain.gain.value = level();
+    source.connect(gain);
+    (o.effects ? o.effects(ctx, gain) : gain).connect(ctx.destination);
+    deck.volume = 1;
+    wired = { gain };
+  }
+
+  function setLevel() {
+    if (wired) wired.gain.gain.setTargetAtTime(level(), wired.gain.context.currentTime, 0.05);
+    else deck.volume = Math.min(1, level());
+  }
+
+  // play (or carry on with) the current song, if it may be heard
+  function play() {
+    if (!audible() || wait) return;
+    if (!song) return advance("auto", o.leadMs ?? 0);
+    wire();
+    if (!loaded) {
+      deck.src = o.base + song.file;
+      loaded = true;
+    }
+    deck.play().catch(() => {});
+  }
+
+  /** the end of the current song, for analytics */
+  function finish(how: "finished" | "skipped" | "back") {
+    if (!song || !announced) return;
+    track("song_ended", { id: song.id, how, at_s: Math.round(deck.currentTime), length_s: Math.round(deck.duration || 0) });
+  }
+
+  // on to the next song (or back to the last), after `delay` ms
+  function advance(why: Cause, delay: number, to = why === "back" ? queue.back() : queue.next(), where?: Where) {
+    if (!to) {
+      song = null;
+      deck.pause();
+      changed();
+      return;
+    }
+    song = to;
+    cause = why;
+    by = where;
+    announced = null;
+    loaded = false;
+    deck.pause();
+    deck.removeAttribute("src");
+    clearTimeout(wait);
+    wait = 0;
+    changed();
+    if (delay > 0) {
+      wait = window.setTimeout(() => {
+        wait = 0;
+        play();
+      }, delay);
+    } else play();
+  }
+
+  deck.addEventListener("ended", () => {
+    finish("finished");
+    advance("auto", gapMs);
+  });
+  deck.addEventListener("playing", () => {
+    changed();
+    // a carry-on after a pause isn't a new song
+    if (!song || announced === song) return;
+    announced = song;
+    failures = 0;
+    if (prefs.fresh.includes(song.id)) {
+      prefs = { ...prefs, fresh: prefs.fresh.filter((id) => id !== song!.id) };
+      save();
+    }
+    track("song_started", { id: song.id, pinned: !!song.pinned, index: queue.count(), cause, ...(by ? { where: by } : {}) });
+    songListeners.forEach((f) => f(song!, cause));
+  });
+  deck.addEventListener("pause", changed);
+  // a song that won't load is skipped; when none will (offline, say), it stops
+  let failures = 0;
+  deck.addEventListener("error", () => {
+    if (!song || !loaded) return;
+    if (++failures >= o.songs.length) return void (song = null, changed());
+    advance("auto", gapMs);
+  });
+
+  // A phone doesn't count a finger going down as a gesture that may start
+  // sound, only one lifting (and a browser can refuse the first try anyway),
+  // so every touch and key tries until the music is playing (Waddleberg,
+  // David 13 Oct 2026).
+  if (typeof addEventListener !== "undefined") {
+    const gestures = ["pointerdown", "pointerup", "keydown"];
+    const start = () => {
+      started = true;
+      play();
+    };
+    for (const g of gestures) addEventListener(g, start, true);
+    deck.addEventListener("playing", () => gestures.forEach((g) => removeEventListener(g, start, true)), { once: true });
+    document.addEventListener("visibilitychange", () => (document.hidden ? deck.pause() : play()));
+  }
+
+  const has = (list: string[], id: string) => list.includes(id);
+  const toggle = (list: string[], id: string, on: boolean) => (on ? [...new Set([...list, id])] : list.filter((x) => x !== id));
+
+  return {
+    songs: o.songs,
+    state,
+    /** called with the state whenever it changes; returns the unsubscribe */
+    subscribe(f: (s: MusicState) => void) {
+      listeners.add(f);
+      return () => void listeners.delete(f);
+    },
+    /** a song has started (not carried on after a pause): the pop-up shows it */
+    onSong(f: (song: Song, cause: Cause) => void) {
+      songListeners.add(f);
+      return () => void songListeners.delete(f);
+    },
+
+    pause(where: Where) {
+      if (paused || !song) return;
+      paused = true;
+      deck.pause();
+      track("music_paused", { id: song.id, where });
+      changed();
+    },
+    resume(where: Where) {
+      if (!paused) return;
+      paused = false;
+      if (song) track("music_resumed", { id: song.id, where });
+      play();
+      changed();
+    },
+    skip(where: Where) {
+      finish("skipped");
+      paused = false;
+      advance("skip", 0, undefined, where);
+    },
+    /** more than 3 s in: the song from the top; else the one before */
+    back(where: Where) {
+      paused = false;
+      if (song && (deck.currentTime > 3 || queue.count() < 2)) {
+        track("song_restarted", { id: song.id, at_s: Math.round(deck.currentTime), where });
+        deck.currentTime = 0;
+        play();
+        changed();
+        return;
+      }
+      finish("back");
+      advance("back", 0, undefined, where);
+    },
+
+    /** the music volume, 0 (Mute) to 1: the game's music volume setting */
+    volume: () => prefs.volume,
+    setVolume(v: number) {
+      prefs = { ...prefs, volume: Math.min(1, Math.max(0, v)) };
+      save();
+      setLevel();
+      if (prefs.volume > 0) play();
+      else deck.pause();
+      changed();
+    },
+    /** the slider has settled: one event, not one a step */
+    volumeSettled(where: Where) {
+      track("music_volume_set", { level: Math.round(prefs.volume * 20) * 5, where });
+    },
+
+    excluded: (id: string) => has(prefs.excluded, id),
+    setExcluded(id: string, out: boolean, where: Where) {
+      if (has(prefs.excluded, id) === out) return;
+      prefs = { ...prefs, excluded: toggle(prefs.excluded, id, out) };
+      save();
+      const s = o.songs.find((x) => x.id === id);
+      track(out ? "song_excluded" : "song_included", { id, pinned: !!s?.pinned, where });
+      // excluding the song that's playing moves on; including one when
+      // nothing could play starts the music again
+      if (out && song?.id === id) {
+        finish("skipped");
+        advance("skip", 0, undefined, where);
+      } else if (!out && !song) play();
+      changed();
+    },
+    /** every song is excluded: there's no music, whatever the volume */
+    allExcluded: () => o.songs.every((s) => has(prefs.excluded, s.id)),
+
+    hearted: (id: string) => has(prefs.hearted, id),
+    setHearted(id: string, on: boolean, where: Where) {
+      if (has(prefs.hearted, id) === on) return;
+      prefs = { ...prefs, hearted: toggle(prefs.hearted, id, on) };
+      save();
+      track(on ? "song_hearted" : "song_unhearted", { id, where });
+      changed();
+    },
+
+    /** The playlist as the player has it: every song, in their order. */
+    playlist: (): Song[] => ordered(prefs, ids).map((id) => o.songs.find((s) => s.id === id)!),
+    /** the player dragged `id` to place `to` (0 the top) */
+    move(id: string, to: number, where: Where) {
+      const list = ordered(prefs, ids);
+      const from = list.indexOf(id);
+      if (from < 0 || from === to) return;
+      list.splice(from, 1);
+      list.splice(Math.max(0, Math.min(to, list.length)), 0, id);
+      prefs = { ...prefs, order: list };
+      save();
+      track("song_moved", { id, from, to, where });
+      changed();
+    },
+    /** The playlist opens: songs switched off go to the bottom, in the order
+     * they were (David, 29 Oct 2026: "Every time the playlist is opened"). */
+    sinkExcluded() {
+      const list = ordered(prefs, ids);
+      const sunk = [...list.filter((id) => !has(prefs.excluded, id)), ...list.filter((id) => has(prefs.excluded, id))];
+      if (sunk.join() === list.join()) return;
+      prefs = { ...prefs, order: sunk };
+      save();
+      changed();
+    },
+    /** a fresh shuffle each open (true), or the playlist's order */
+    shuffle: () => prefs.shuffle,
+    setShuffle(on: boolean, where: Where) {
+      if (prefs.shuffle === on) return;
+      prefs = { ...prefs, shuffle: on };
+      save();
+      track("music_shuffle_set", { on, where });
+      changed();
+    },
+
+    /** new since the last update, not yet played */
+    fresh: (id: string) => has(prefs.fresh, id),
+
+    /** The game may start the music itself, with no touch: in the native
+     * app, where sound needs no gesture, once the game is actually seen. */
+    start() {
+      started = true;
+      play();
+    },
+    /** The game is away for `reason` (the app in the background, the screen
+     * locked) or back: nothing plays while any reason is set. */
+    setAway(reason: string, on: boolean) {
+      if (on) away.add(reason);
+      else away.delete(reason);
+      if (away.size) deck.pause();
+      else play();
+      changed();
+    },
+    /** the game hushes the music (Pizza's "quiet") or lets it play again */
+    setQuiet(on: boolean) {
+      quiet = on;
+      if (on) deck.pause();
+      else play();
+      changed();
+    },
+    /** seconds into the song playing (Pizza's title follows the theme's hits) */
+    time: () => deck.currentTime,
+    /** the panel or pop-up opened */
+    opened(from: Where) {
+      track("music_player_opened", { from });
+    },
+  };
+}
+
+export type Music = ReturnType<typeof createMusic>;

@@ -1,0 +1,22 @@
+{
+  "name": "@tellim/analytics",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The studio's game analytics: track() on the device, the ingest endpoint, and the report",
+  "type": "module",
+  "exports": {
+    "./client": "./src/client/analytics.ts",
+    "./checkin": "./src/checkin/checkin.ts",
+    "./deployed": "./src/ingest/deployed.ts",
+    "./report": "./src/report/report.ts",
+    "./fetch": "./src/report/fetch.ts",
+    "./device": "./src/device/device.ts",
+    "./environment": "./src/environment/environment.ts"
+  },
+  "scripts": {
+    "test": "node --test 'src/**/*.test.ts'"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1156.0"
+  }
+}
