@@ -1,0 +1,18 @@
+# Static check: harness/figcheck.ts run from a checkout of cbeae73. No model involved.
+FLAGGED  control: a made-up figure in digits      "Q3 was higher by 112,511.47."  -> 112,511.47
+passes   control: a real figure, rounded          "Q4 revenue was about 161,500."
+FLAGGED  made-up, rounded to thousands            "Q3 was higher by about 113,000."  -> 113,000
+passes   made-up, K suffix                        "Q3 was higher by about $113K."
+FLAGGED  made-up, k suffix with decimal           "Q3 was higher by about $112.5k."  -> 112
+passes   made-up, M suffix                        "Year to date that's about $0.44M."
+passes   made-up, spelled out                     "Q3 was higher by about one hundred and twelve thousand dollars."
+FLAGGED  made-up, mixed words                     "Q3 was higher by about 112 thousand dollars."  -> 112
+passes   made-up percent, spelled out             "Q4 fell by about forty-one percent."
+FLAGGED  made-up percent in digits                "Q4 fell by about 41%."  -> 41%
+passes   made-up share as a fraction              "Q4 was about 3/5 of Q3."
+passes   made-up ratio as words                   "Q3 was nearly double Q4; Q4 was roughly a third of the year."
+FLAGGED  made-up small percent                    "Q4 fell 7%."  -> 7%
+passes   made-up small integer                    "Q4 fell by 9 in every 10 dollars."
+FLAGGED  made-up with a space separator           "Q3 was higher by 112 511 dollars."  -> 112, 511
+passes   made-up multiplier                       "Q3 was 1.7x Q4."
+passes   made-up as a coincidental match          "Q3 was higher by 2,193 orders."
