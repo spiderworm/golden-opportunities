@@ -2,6 +2,7 @@
 // answer. It speaks just enough MCP for tools (initialize, tools/list, tools/call, ping), by hand, so there is
 // no SDK surface to audit. Queries go to the app's POST /api/query with the bearer token from the environment
 // (ORBITAL_QUERY_URL, ORBITAL_QUERY_TOKEN); the URL must be on this machine, so the token can't be sent away.
+// ORBITAL_PINS=0 removes pin_chart, for pages with nowhere to put a pin.
 
 import { createInterface } from "node:readline";
 import type { QueryResult } from "../../query/types.ts";
@@ -54,7 +55,7 @@ export async function callTool(name: unknown, args: unknown, env: NodeJS.Process
   try {
     if (name === "describe_data") return ok(describeData());
     if (name === "query_data") return ok(await runQuery(checkQuery(args), queryEndpoint(env)));
-    if (name === "pin_chart") {
+    if (name === "pin_chart" && env.ORBITAL_PINS !== "0") {
       const chart = checkChart(args);
       const { source, rows } = await runQuery(chart.query, queryEndpoint(env));
       return ok({ pinned: true, chart, rows: rows.length, source });
@@ -77,7 +78,7 @@ export async function handle(message: Rpc, env: NodeJS.ProcessEnv = process.env)
     case "ping":
       return reply({});
     case "tools/list":
-      return reply({ tools: TOOLS });
+      return reply({ tools: env.ORBITAL_PINS === "0" ? TOOLS.filter((t) => t.name !== "pin_chart") : TOOLS });
     case "tools/call":
       return reply(await callTool(params?.name, params?.arguments ?? {}, env));
     default:

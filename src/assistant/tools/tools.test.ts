@@ -123,6 +123,14 @@ describe("calling tools against the app", () => {
     expect(result).toEqual({ pinned: true, chart: { title: "Revenue", kind: "line", query: { measure: "revenue", by: ["quarter"] } }, rows: 1, source: "Sales, 2193-Q1 to Q4" });
   });
 
+  it("leaves out pin_chart for pages with nowhere to pin", async () => {
+    const noPins = { ...env, ORBITAL_PINS: "0" };
+    const list = (await handle({ jsonrpc: "2.0", id: 1, method: "tools/list" }, noPins)) as { result: { tools: { name: string }[] } };
+    expect(list.result.tools.map((t) => t.name)).toEqual(["describe_data", "query_data"]);
+    expect((await callTool("pin_chart", { title: "R", kind: "bar", query: { measure: "revenue", by: [] } }, noPins)).isError).toBe(true);
+    expect(orbitalToolServer("t", { pins: false }).env?.ORBITAL_PINS).toBe("0");
+  });
+
   it("refuses unknown tools", async () => {
     expect((await callTool("read_file", { path: "/etc/passwd" }, env)).isError).toBe(true);
     expect(await handle({ jsonrpc: "2.0", id: 1, method: "resources/list" }, env)).toMatchObject({ error: { code: -32601 } });
@@ -130,7 +138,7 @@ describe("calling tools against the app", () => {
   });
 
   it("speaks MCP over stdio as a process", async () => {
-    const launch = orbitalToolServer("tok", env.ORBITAL_QUERY_URL);
+    const launch = orbitalToolServer("tok", { queryUrl: env.ORBITAL_QUERY_URL });
     const child = spawn(launch.command, launch.args, { env: { PATH: process.env.PATH, ...launch.env }, stdio: ["pipe", "pipe", "inherit"] });
     const replies = createInterface({ input: child.stdout })[Symbol.asyncIterator]();
     const ask = async (m: object) => {

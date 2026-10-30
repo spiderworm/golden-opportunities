@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -8,7 +9,15 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
+import { startAnalytics } from "./platform/analytics/analytics.client";
+import { serverAnalytics } from "./platform/analytics/analytics.server";
+import { instanceId } from "./platform/analytics/instance.server";
 import "./platform/theme/theme.css";
+
+export function loader() {
+  serverAnalytics();
+  return { instance: instanceId() };
+}
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -41,7 +50,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
+export default function App({ loaderData }: Route.ComponentProps) {
+  useEffect(() => {
+    startAnalytics(loaderData.instance);
+  }, [loaderData.instance]);
   return <Outlet />;
 }
 
