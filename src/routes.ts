@@ -1,7 +1,9 @@
 import { type RouteConfig, layout } from "@react-router/dev/routes";
 
+import assistantRoutes from "./assistant/routes";
 import investigateRoutes from "./investigate/routes";
 import analyticsRoutes from "./platform/analytics/routes";
+import { queryRoutes } from "./query/routes";
 import settingsRoutes from "./settings/routes";
 import stationRoutes from "./station/routes";
 
@@ -9,5 +11,7 @@ import stationRoutes from "./station/routes";
 // Pages go inside the shell's layout; resource routes go outside it.
 export default [
   layout("shell/layout.tsx", [...stationRoutes, ...investigateRoutes, ...settingsRoutes]),
+  ...queryRoutes,
+  ...assistantRoutes,
   ...analyticsRoutes,
 ] satisfies RouteConfig;
