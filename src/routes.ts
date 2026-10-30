@@ -1,4 +1,12 @@
-import { type RouteConfig, index } from "@react-router/dev/routes";
-import { queryRoutes } from "./query/routes";
+import { type RouteConfig, layout } from "@react-router/dev/routes";
 
-export default [index("station/route.tsx"), ...queryRoutes] satisfies RouteConfig;
+import investigateRoutes from "./investigate/routes";
+import { queryRoutes } from "./query/routes";
+import stationRoutes from "./station/routes";
+
+// Each feature lists its own routes; this file only composes them.
+// Pages go inside the shell's layout; resource routes go outside it.
+export default [
+  layout("shell/layout.tsx", [...stationRoutes, ...investigateRoutes]),
+  ...queryRoutes,
+] satisfies RouteConfig;

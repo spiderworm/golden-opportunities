@@ -1,4 +1,7 @@
+import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
+
+export const handle: ShellHandle = { title: "Station" };
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -8,10 +11,5 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Station() {
-  return (
-    <main style={{ padding: 32 }}>
-      <h1>Orbital Books</h1>
-      <p style={{ color: "var(--color-text-muted)" }}>Station systems coming online.</p>
-    </main>
-  );
+  return <p style={{ margin: 0, color: "var(--color-text-muted)" }}>Station systems coming online.</p>;
 }
