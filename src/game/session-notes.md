@@ -1,0 +1,29 @@
+# Server-owned saves: first slice
+
+The shell middleware creates one save before parallel page loaders run. Its HttpOnly,
+SameSite=Strict cookie contains only a cryptographically random ID; HTTPS adds Secure.
+The seed, discoveries and sale facts stay on the server. The station opens 1 January
+2194. Only a committed played quarter opens 2194-Q1 and advances to 1 April.
+Investigation uses this save's QueryView. Each browser profile gets an independent save.
+
+Files live in ORBITAL_DATA_DIR/saves (default .data/saves), with private directory/file
+permissions. Transactions acquire an exclusive lock, check a revision, and publish by
+atomic rename. Failed writes leave the old save visible. Readers never see half a file.
+This supports one local app, not a distributed deployment. A process crash while holding
+an update lock fails closed: an operator must remove that save's .lock after confirming
+no writer is running. Atomic rename is not a guarantee against power loss before disk sync.
+Save IDs are validated before filesystem access; malformed/unknown API sessions fail.
+An unknown page cookie starts a new save on GET only. Corrupt saves fail rather than reset.
+Bootstrap is limited to 30 new saves per process per minute. Saves are bounded to 16 MiB,
+100,000 M1 sale facts and one played quarter. Local saves persist until explicitly removed;
+the browser cookie lasts 30 days. No player content or save identifiers enter analytics.
+
+Sale facts persist in normalized Sale form and rejoin the unchanged workbook catalog
+when serving a view; generated labels cannot replace catalog facts. Counterfactual lines
+never belong in played[]. The simulation integration will atomically store the selected
+plan, outcome and actual facts together. The store is server-only, not a mutation API.
+
+This first PR deliberately leaves Decide/Result's existing stub in place. The engine
+integration replaces it and wires the query endpoint and assistant's save-bound
+capabilities together. Until then /api/query continues its fixed 2193 baseline and cannot
+see simulated quarters. No endpoint accepts a save ID, seed, revision or view in its body.
