@@ -243,14 +243,17 @@ describe("the result copy", () => {
     const used = (p: Plan) => simulateQuarter(p, 1, data).outcome.assumptions.filter((a) => a.usedByPlan).map((a) => a.id);
     const always = ["replay", "botm-price", "botm-extra", "no-cannibalization", "cost-of-goods"];
     expect(used(HOLD)).toEqual(always);
-    expect(used(plan("events"))).toEqual([...always, "event-orders", "event-cost"]);
-    expect(used(plan("events", "sale"))).toEqual([...always, "sale-response", "event-orders", "event-cost"]);
+    expect(used(plan("events"))).toEqual([...always, "event-orders", "event-cost", "event-happiness"]);
+    expect(used(plan("events", "sale"))).toEqual([...always, "sale-response", "event-orders", "event-cost", "event-happiness"]);
+    expect(used(plan("repick", "sale"))).toEqual([...always, "sale-response"]);
+    expect(simulateQuarter(HOLD, 1, data).outcome.assumptions.find((a) => a.id === "event-happiness")).toMatchObject({ source: "assumed", usedByPlan: false });
   });
 
   it("fills the assumptions from the data", () => {
     const text = simulateQuarter(plan("sale"), 1, data).outcome.assumptions.map((a) => a.text).join("\n");
     expect(text).toContain("between 19 and 173 extra copies; the middle value was 50");
     expect(text).toContain("average order value of $13.96");
+    expect(text).toContain("Readers at an author night enjoy the night out: those visits get 20 extra happiness points.");
   });
 
   it("shows one move's sentences in full, and two moves' without their comparisons, then the total", () => {

@@ -1,6 +1,7 @@
 // Plot's result copy (docs/design/m1-copy.md, sections 4 and 5), filled from the model.
 import { has } from "./plan";
 import type { Assumption, HappenedFacts, LeverId, Plan } from "./types";
+import { EVENT_HAPPINESS } from "./measures";
 import { OBSERVED_EXTRAS } from "./model";
 
 const money = (v: number) => `$${Math.round(Math.abs(v)).toLocaleString("en-US")}`;
@@ -113,6 +114,12 @@ export function assumptions(plan: Plan, v: AssumptionValues): Assumption[] {
       text: `Each author night adds between 30 and 70 orders that day, at Q1's average order value of ${cents(v.averageOrderValue)}.`,
     },
     { id: "event-cost", source: "assumed", usedBy: "events", text: "Each author night costs $200." },
+    {
+      id: "event-happiness",
+      source: "assumed",
+      usedBy: "events",
+      text: `Readers at an author night enjoy the night out: those visits get ${EVENT_HAPPINESS} extra happiness points.`,
+    },
   ];
   return rules.map(({ usedBy, ...rule }) => ({ ...rule, usedByPlan: usedBy === null || has(plan, usedBy) }));
 }
