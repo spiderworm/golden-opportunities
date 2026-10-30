@@ -1,8 +1,8 @@
 import type { DeepReadonly, SaleLine } from '../bookshop/types';
 
-export const DIMENSIONS = ['quarter', 'month', 'weekday', 'genre', 'format', 'publisher', 'series', 'title', 'author', 'discounted'] as const;
+export const DIMENSIONS = ['quarter', 'month', 'weekday', 'genre', 'format', 'publisher', 'series', 'title', 'author', 'discounted', 'discount_rate'] as const;
 export type Dimension = typeof DIMENSIONS[number];
-export const MEASURES = ['revenue', 'units', 'orders', 'avg_discount', 'avg_rating', 'checkouts'] as const;
+export const MEASURES = ['revenue', 'units', 'orders', 'avg_discount', 'avg_rating', 'checkouts', 'avg_order_value', 'orders_per_day'] as const;
 export type Measure = typeof MEASURES[number];
 
 export interface Query {
@@ -44,7 +44,7 @@ export interface QueryResult {
   source: string;
 }
 
-export type QueryErrorCode = 'INVALID_QUERY' | 'INCOMPATIBLE_DIMENSION' | 'UNAVAILABLE_FACTS' | 'INVALID_VIEW' | 'UNAUTHORIZED' | 'METHOD_NOT_ALLOWED' | 'UNSUPPORTED_MEDIA_TYPE' | 'PAYLOAD_TOO_LARGE' | 'RATE_LIMITED' | 'INTERNAL_ERROR';
+export type QueryErrorCode = 'INVALID_QUERY' | 'INCOMPATIBLE_DIMENSION' | 'UNAVAILABLE_FACTS' | 'INVALID_VIEW' | 'UNAUTHORIZED' | 'METHOD_NOT_ALLOWED' | 'UNSUPPORTED_MEDIA_TYPE' | 'PAYLOAD_TOO_LARGE' | 'RATE_LIMITED' | 'INTERNAL_ERROR' | 'RESULT_TOO_LARGE';
 export interface QueryErrorResponse { error: { code: QueryErrorCode; message: string } }
 export type QueryTrack = (event: string, props?: Record<string, string | number | boolean>) => void;
 
@@ -54,12 +54,17 @@ export const QUERY_LIMITS = {
   filterValues: 50,
   filterValueLength: 200,
   requestBytes: 16_384,
+  responseBytes: 131_072,
+  labelLength: 200,
+  sourceLength: 4096,
+  errorMessageLength: 300,
 } as const;
 
 const BOOK_DIMENSIONS = ['genre', 'series', 'title', 'author'] as const;
 /** Applies equally to grouping and filtering; no fanout through editions/sales. */
 export const MEASURE_DIMENSIONS: Readonly<Record<Measure, readonly Dimension[]>> = {
   revenue: DIMENSIONS, units: DIMENSIONS, orders: DIMENSIONS, avg_discount: DIMENSIONS,
+  avg_order_value: DIMENSIONS, orders_per_day: DIMENSIONS,
   avg_rating: BOOK_DIMENSIONS,
   checkouts: [...BOOK_DIMENSIONS, 'month'],
 };
