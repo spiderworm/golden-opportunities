@@ -17,9 +17,9 @@ The Station Administrator owns the combined score, and misunderstands it.
 
 **The chart:** a line chart over time, with quarters along the bottom. Each measure has its own colored line, and the combined score has one too. Award markers sit on the quarters where awards were won.
 
-**Letter grades:**
+**Letter grades.** Scores are computed unrounded, then rounded half up to a whole number (82.5 becomes 83) for display and grading. A measure that hasn't reached its goal is capped at 99 after rounding, so only meeting the goal earns an A+. The ranges are inclusive:
 
-| Score | Grade |
+| Rounded score | Grade |
 | --- | --- |
 | 100 | A+ |
 | 93–99 | A |
@@ -31,22 +31,44 @@ The Station Administrator owns the combined score, and misunderstands it.
 | 73–76 | C |
 | 70–72 | C− |
 | 60–69 | D |
-| Below 60 | F |
+| 0–59 | F |
+
+**Order of operations for the combined score:**
+1. Compute each measure's unrounded score.
+2. Well-Rounded Shop is earned if every measure's **rounded** score is 80 or more.
+3. Combined = the mean of the four **unrounded** scores, plus 3 if Well-Rounded, capped at 100.
+4. Round the combined score half up, then grade it.
 
 ## Goals
 
 - **Base goal:** the same quarter last year, plus a stretch (*tune*: 5%). Basing goals on the same quarter means the season never punishes the player.
+- **Exactly:** goal = last + max(stretch × |last|, step).
+  - The **step** is 1% of the measure's 2193 quarterly average. The 2193 values are in the M1 section below.
+  - Taking the absolute value makes the goal an improvement even when last year was negative. The step keeps the goal above last year even when last year was zero.
+- **A goal is always above last year.** Every goal, including Alma's stretches and recovery goals, is raised to at least last + step if it would otherwise fall below that.
 - **Goals are announced at the start of each quarter, by the bosses.** The player always knows the target before deciding.
 - **Alma's extra stretch:** each quarter, Alma picks one measure for its boss to stretch much harder (*tune*: +20 to 25%), with a reason from the story. "THE COUNCIL HAS READ A STUDY ABOUT FOOT TRAFFIC."
 - **Recovery goals:** if a measure drops sharply, its next goal is to restore it. "HAPPINESS FELL 14%. RESTORE IT."
+  - The goal is the quarter's normal goal or the level before the drop, whichever is higher. The always-above-last-year rule still applies.
 
 ## From a result to a score
 
 Each measure is graded on progress from last year (the floor) toward the goal:
 
-- **At or above the goal:** 100, an A+. Going past the goal earns the Exceeds Requirements award; the score stays capped at 100.
-- **Between last year and the goal:** 65 + 35 × (result − last year) ÷ (goal − last year). Matching last year scores 65, a D.
-- **Below last year:** 65, minus 2.5 points for every 1% below last year (*tune*), down to 0.
+- **At or above the goal:** 100, an A+. A result strictly above the goal also earns the Exceeds Requirements award; the score stays capped at 100.
+- **Between last year and the goal:** 65 + 35 × (result − last) ÷ (goal − last). Matching last year scores 65, a D. The denominator is always positive, because every goal is above last year.
+- **Below last year:** 65 − 250 × (last − result) ÷ scale, down to 0, where scale = max(|last|, the measure's 2193 quarterly average). That's 2.5 points for every 1% of scale (*tune*). Using the scale keeps the score finite when last year is zero, and stops a worsening loss from being rewarded when last year was negative.
+
+**Edge cases.** These use Profit, whose 2193 quarterly average is $68,828, so its step is $688:
+
+| Last year | Goal | Result | Score |
+| --- | --- | --- | --- |
+| $0 | $688 | $0 | 65 |
+| $0 | $688 | $344 | 82.5, shown as 83 (B) |
+| −$100 | −$100 + max($5, $688) = $588 | −$103 | 65 − 250 × 3 ÷ 68,828 = 64.99, shown as 65 (D) |
+| −$100 | $588 | $600 | 100, plus Exceeds Requirements |
+| $37,642 | $39,524 | $37,642 | 65 |
+| $37,642 | $39,524 | $28,802 | 65 − 250 × 8,840 ÷ 68,828 = 32.9, shown as 33 (F) |
 
 **Why not result ÷ goal?** That ratio crowds every grade into the top of the scale. On Q1 profit, the best M1 option and doing nothing came out 4 points apart. Grading progress makes decisions visible on the card. Alma's stretches and events decide how hard each goal is. David's verdict: "Let's try your recommendation, see how well it works out."
 
@@ -115,12 +137,50 @@ Rules that keep it fair and explainable (**Proposal**, carried over from the ear
 - **Dewey can suggest bids and buy on autopilot,** using only a fixed rule it shows every time, based on last year's sales (David: "the weakest of algorithms ever"). The game starts with buying handed to Dewey, and the player can take over at any time. Dewey's autopilot is also the "held course" line for buying. This is the one exception to Dewey's limits, and it's recorded in `docs/requirements.md`.
 - **There's no shelf-capacity system.** Overflow piles up on top of shelves, then on the floor, and the 3D shop shows it. Clutter feeds into Comfort, and unsold stock ties up money.
 
-## What this means for M1 (Proposal, for Goldy to scope)
+## M1's reduced report card (exact recipes)
 
-M1 is still one decision and one quarter, with no market and no Alma. Its result screen would show the report card in a reduced form:
-- **Profit and Readers served:** as designed in `m1-slice.md`.
-- **Culture:** title culture and genre spread from the real ratings and awards, plus Events from option D.
-- **Happiness:** Quality and Value only. Comfort needs generated customers, and Found it needs stock; both arrive with the market in M2.
-- **Goals:** last year's Q1 plus 5% on every measure, with no extra stretch. Alma isn't there yet to set one.
+M1 is one decision and one quarter, with no market and no Alma. **Proposal** (Plot), written so that it can be coded directly. The same recipe runs on Q1 2193 (last year) and on every simulated Q1 2194, so the goals are comparable.
 
-This puts every M1 option on the card in a distinct shape. The sale lifts Readers served and sinks Profit. The quiet picks lift Profit and Culture. The author nights lift Readers served and Culture, but gamble on Profit.
+**Visits and readers.** In M1, one visit is one distinct order ID. There is no browsing without buying until M2 generates customers. **Readers served** is the number of distinct orders in the quarter: 6,825 in Q1 2193.
+
+**How each option creates orders** (this replaces the per-line wording given to Frank earlier; the totals don't change):
+- **The replay calendar:** each 2194 day replays the 2193 day 364 days earlier, so it falls on the same weekday. If that day lands outside the month, it steps back another week. Daily noise drops or clones whole orders, scaling each day's count by a factor drawn from 0.97 to 1.03. Days with no 2193 sales replay as days with no sales.
+- **Removing 2193's Book of the Month:** the table's extra copies (43, 55 and 58 for January to March) are removed at random from that pick's lines in that month. An order left empty disappears. The pick's remaining copies return to full price.
+- **Book of the Month extra copies:** each extra copy is a new one-line order. Its day is drawn from that month's open days, weighted by each day's baseline orders, from the run's seed.
+- **B, the station-wide sale:** each baseline order is cloned with probability 0.20, from the seed. Units, readers and the title mix all grow by about 20%. Every line is 15% off.
+- **D, author nights:** each night's extra orders (30 to 70, from the seed) are clones of orders drawn at random from that same day's baseline orders. That keeps the night's mix and average order value realistic.
+
+**Happiness.** Computed per order, then averaged over every order in the quarter. A quarter with no orders scores 50.
+- **Quality:** Q = 100 × clamp((r − 3.0) ÷ 1.7, 0, 1), where r is the mean, over the order's lines, of each line's title average rating (from every rating of that title).
+- **Value:** V = 50 + 50 × (1 − e^(−d ÷ 0.075)), where d is the mean discount over the order's lines. Full price gives 50; 15% off gives 93. The curve gives diminishing returns within an order. Diminishing returns across quarters ("a permanent sale stops registering") start in M2.
+- **Order happiness:** 0.6 × Q + 0.4 × V. Comfort and Found it join in M2.
+
+**Culture.**
+- **Title value:** v = 1 + 9 × clamp((r − 3.0) ÷ 1.7, 0, 1) + 3 × (number of awards for the title). Here r is the title's average rating, and awards join on the exact title. Values run from 1.0 (*Soft, Pliable Truth*) to 15.8 (*The Mallemaroking*).
+- **Daily title culture:** the sum of v over the distinct titles sold that day. Titles are de-duplicated across editions, so each title counts once a day however many copies or formats sold.
+- **Genre spread:** the number of distinct genres sold that day, divided by 8.
+- **Events:** each author night adds 1.2 × its extra orders. This assumes each extra order is one attendee who bought a book.
+- **Library ties:** 0 in M1.
+- **Quarter Culture:** the sum over days of (daily title culture × genre spread), plus Events. Events are not multiplied by genre spread.
+
+**Profit:** revenue − 60% of list on every unit sold − event costs ($200 per night).
+
+**2193 values, from `src/bookshop/data.json`, to check implementations against:**
+
+| Measure | Q1 | Q2 | Q3 | Q4 | Quarterly average | Step (1%) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Profit | $37,642 | $65,119 | $108,709 | $63,843 | $68,828 | $688 |
+| Readers served | 6,825 | 11,714 | 19,534 | 11,441 | 12,379 | 124 |
+| Happiness | 65.07 | 64.92 | 64.67 | 64.68 | 64.84 | 0.65 |
+| Culture | 17,368 | 22,331 | 27,326 | 21,590 | 22,154 | 222 |
+
+**M1 goals** (Q1 2193 plus 5%; no extra stretch, because Alma isn't in M1):
+
+| Measure | Goal |
+| --- | ---: |
+| Profit | $39,524 |
+| Readers served | 7,166 |
+| Happiness | 68.32 |
+| Culture | 18,236 |
+
+This gives every M1 option a distinct shape on the card. The sale lifts Readers served and Happiness, and sinks Profit. The quiet picks lift Profit and Culture. The author nights lift Readers served and Culture, but gamble on Profit.
