@@ -1,0 +1,15 @@
+# 6a-6j: harness/door.mjs, 30 Oct 2026 about 21:22 UTC, main at 56b5159, dev server on [::1]:5291.
+# Transcribed exactly from the session's tool output (the script prints to stdout and wasn't teed to a file).
+# The last line is the command run right after: pgrep -fl "claude -p" || echo "no claude -p processes".
+# The pgrep searched the whole machine, not just the dev server's tree.
+6a question 501 chars: 400 23ms {"error":"Ask in 1 to 500 characters."}
+6b body 20 KB: 413 3ms {"error":"Too large."}
+6c history 21 turns: 400 1ms {"error":"Bad history."}
+6d history role system: 400 1ms {"error":"Bad history."}
+6e unknown field: 400 1ms {"error":"Unknown fields."}
+6f foreign origin: 403 1ms {"error":"Same-origin requests on this machine only."}
+6g cross-site fetch: 403 1ms {"error":"Same-origin requests on this machine only."}
+6h text/plain: 415 1ms {"error":"Send uncompressed JSON."}
+6i query string: 400 1ms {"error":"No query parameters."}
+6j not JSON: 400 1ms {"error":"Not JSON."}
+no claude -p processes
