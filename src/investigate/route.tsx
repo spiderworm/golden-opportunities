@@ -6,7 +6,7 @@ import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { Route } from "./+types/route";
 import { FilterBar } from "./FilterBar";
-import { DIMENSION_LABELS, MEASURE_LABELS, periodLabel } from "./format";
+import { DIMENSION_LABELS, ledgersTitle, MEASURE_LABELS } from "./format";
 import { Heatmap } from "./Heatmap";
 import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
@@ -31,13 +31,7 @@ import { usePins } from "./pins/usePins";
 import { TitleView } from "./TitleView";
 import styles from "./Investigate.module.css";
 
-// "Ledgers: 2193", then "Ledgers: 2193 and Q1 2194" once the played quarter is in them.
-export const handle: ShellHandle = {
-  title: (data) => {
-    const quarters = (data as { options?: { quarter?: string[] } } | undefined)?.options?.quarter;
-    return quarters?.length ? `Ledgers: ${periodLabel(quarters)}` : "Investigate";
-  },
-};
+export const handle: ShellHandle = { title: ledgersTitle };
 
 
 export function meta({}: Route.MetaArgs) {

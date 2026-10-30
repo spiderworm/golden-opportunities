@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import type { QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
-import { categoryHeight, categoryModel, categoryOption, legendItems, TOP_RANKED } from "./charts/category-chart";
+import { categoryHeight, categoryModel, categoryOption, legendItems, TOP_RANKED, type CategoryModel } from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
 import { Legend } from "./charts/Legend";
 import { ResultTable } from "./charts/ResultTable";
@@ -24,6 +24,30 @@ export interface MeasureChartProps {
   pinned: boolean;
 }
 
+/**
+ * The tooltip's "{share}% of {period}", or undefined to leave it out. Only when
+ * the bars are a whole: an additive measure, no filter but the quarter (the
+ * chart ignores its own grouping's), and, comparing quarters, a measure whose
+ * groups add up to the quarter.
+ */
+export function chartShare(state: InvestigateState, model: CategoryModel, total: number | null, quarters: readonly string[]) {
+  const whole = ADDITIVE.includes(state.measure) && Object.entries(state.filters).every(([d, v]) => d === "quarter" || d === state.by || !v?.length);
+  if (!whole) return undefined;
+  if (model.seriesBy === "quarter") {
+    // Each bar against its own quarter, as the sum of its groups. That's the quarter's
+    // whole for revenue and units, where each sale is in one group, but not for orders:
+    // an order with books in two genres is in both.
+    if (state.measure === "orders") return undefined;
+    return {
+      total: (s: number) => model.series[s]?.values.reduce<number>((t, v) => t + (v ?? 0), 0) ?? null,
+      period: (s: number) => formatDimensionValue("quarter", model.series[s]?.key),
+    };
+  }
+  // The period the chart's query covers: grouped by quarter, it ignores the quarter filter too.
+  const scope = state.by !== "quarter" && state.filters.quarter?.length ? state.filters.quarter : quarters;
+  return { total: () => total, period: () => periodLabel(scope) };
+}
+
 export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCompare, onDrill, onTable, onPin, pinned }: MeasureChartProps) {
   const [table, setTable] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -34,27 +58,15 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
       categoryModel(result, state.by, state.compare ? "quarter" : null, months, { top: showAll ? undefined : TOP_RANKED, keep: selected }),
     [result, state.by, state.compare, months.join(), showAll, selected.join("\u0000")],
   );
-  // "{share}% of {period}" only when the bars are the whole period: an additive
-  // measure, and no filter but the quarter (the chart ignores its own grouping's).
-  const whole = ADDITIVE.includes(state.measure) && Object.entries(state.filters).every(([d, v]) => d === "quarter" || d === state.by || !v?.length);
-  const period = periodLabel(state.filters.quarter?.length ? state.filters.quarter : quarters);
   const option = useMemo(
     () =>
       categoryOption(model, {
         selected,
         quarters,
-        share: !whole
-          ? undefined
-          : model.seriesBy === "quarter"
-            ? {
-                // Comparing quarters: each bar against its own quarter.
-                total: (s) => model.series[s]?.values.reduce<number>((t, v) => t + (v ?? 0), 0) ?? null,
-                period: (s) => formatDimensionValue("quarter", model.series[s]?.key),
-              }
-            : { total: () => result.total, period: () => period },
+        share: chartShare(state, model, result.total, quarters),
       }),
     // selected is derived from state.filters, which changes identity with each navigation.
-    [model, selected.join("\u0000"), quarters, whole, period, result.total],
+    [model, selected.join("\u0000"), quarters, state, result.total],
   );
   const title = `${MEASURE_LABELS[state.measure]} by ${DIMENSION_LABELS[state.by].toLowerCase()}`;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDimensionValue, MEASURE_LABELS, periodLabel } from "./format";
+import { formatDimensionValue, ledgersTitle, MEASURE_LABELS, periodLabel } from "./format";
 
 describe("Plot's Investigate words (m1-copy section 2)", () => {
   it("names a span of quarters as the ledgers' title does", () => {
@@ -13,5 +13,14 @@ describe("Plot's Investigate words (m1-copy section 2)", () => {
     expect(MEASURE_LABELS.units).toBe("Units sold");
     expect(formatDimensionValue("title", null)).toBe("Unknown title");
     expect(formatDimensionValue("genre", null)).toBe("Unknown");
+  });
+});
+
+describe("the ledgers' title", () => {
+  it("names the visible span, and falls back without data (Audit's probe on #59)", () => {
+    expect(ledgersTitle({ options: { quarter: ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1"] } })).toBe("Ledgers: 2193 and Q1 2194");
+    expect(ledgersTitle(undefined)).toBe("Investigate");
+    expect(ledgersTitle(null)).toBe("Investigate");
+    expect(ledgersTitle({ options: { quarter: [] } })).toBe("Investigate");
   });
 });
