@@ -9,7 +9,13 @@ David's take-home for Golden Analytics. Read `docs/requirements.md` first: it sa
   - Events say what happened, never content. The one exception is what players type to the in-game agent, recorded with `{ hold: "agent_text" }` so it stays on the device.
   - Each copy of the app has an instance ID in `.data/instance.json` (never committed). Set `ORBITAL_ANALYTICS=off` to stop the server sending; automated browsers never send.
 - **`packages/` is existing games-studio code,** copied in by `tools/sync-studio-packages.sh`. Don't edit it here.
-- **Changes reach `main` only through a pull request David approves.** Work on a branch, push it, and open a PR with `gh pr create`. Never push to `main` or merge a PR yourself.
+- **Changes reach `main` only through a pull request.** Work on a branch, push it, and open a PR with `gh pr create`. Never push to `main`.
+- **A PR may be merged once two agents have approved it** (David, 30 Oct 2026):
+  - An approval is a PR comment by the reviewing agent that starts "**<Name>'s review:** Approved" and names the head commit it approves (e.g. "at `abc1234`"). A new commit pushed after an approval voids it; the reviewer re-approves the new head.
+  - Neither approver may be an author of the PR or its code. Suggesting code that another agent adopts doesn't make you an author.
+  - One approver must be Audit, unless Audit is an author.
+  - Unresolved blocking findings mean no approval.
+  - Once approved, the PR's author (or Goldy) merges with `gh pr merge <n> --rebase` if every commit typechecks on its own, otherwise `--squash`, then deletes the branch. David can still merge anything himself.
 - **Resolve conflicts in the commits that cause them.** When your PR branch conflicts with `main`, rebase it onto `origin/main` and fix each conflict in the commit where it actually arises, so every commit in the stack applies and typechecks on its own. Don't add merge commits to PR branches. Then force-push your own PR branch with `--force-with-lease`, and never rewrite anyone else's branch.
 - **Name yourself on PRs.** Start every PR description with the name of the agent that wrote the code, e.g. "**Author: Frank** (Codex, data and simulation)", so David knows who to talk to. When you review a PR, leave a comment with `gh pr comment` that starts with "**<Name>'s review:**", followed by your verdict and thoughts.
 - **Keep `docs/collaboration-log.md` current.** Add an entry when David makes a major decision, and especially when he pushes back on or overrides an agent's recommendation. Quote his words.
