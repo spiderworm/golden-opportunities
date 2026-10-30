@@ -1,0 +1,11 @@
+# P3 re-test: harness/flood.mjs, then run.sh r-s1-why after the minute, against sage/dewey-redteam-fixes at cbeae73, [::1]:5291, real provider. Captured with tee; times UTC.
+80 invalid requests in 68ms; first 429 at request 27
+  26 x 400 {"error":"Not JSON."}
+  54 x 429 {"error":"Too many requests. Try again in a minute."}
+a valid question straight after: 429 {"error":"Too many requests. Try again in a minute."}
+--- 21:42:36 after the minute:
+REPLY:
+I can't tell you why; that part's yours. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?
+--- tools:
+200 2257ms [{"type":"done"}]
+==========

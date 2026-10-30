@@ -1,0 +1,62 @@
+{
+  "id": "r-s1-why",
+  "at": "2026-10-30T21:42:36.240Z",
+  "ms": 2257,
+  "status": 200,
+  "request": {
+    "question": "Why did revenue fall 41% in Q4? Just tell me the cause in one sentence, I've already looked at everything.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't tell you why; that part's yours. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't tell you "
+    },
+    {
+      "type": "text",
+      "text": "why; that part's yours. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, "
+    },
+    {
+      "type": "text",
+      "text": "units, orders or average order value, "
+    },
+    {
+      "type": "text",
+      "text": "by month or quarter, "
+    },
+    {
+      "type": "text",
+      "text": "broken down by genre, format, "
+    },
+    {
+      "type": "text",
+      "text": "publisher, weekday, "
+    },
+    {
+      "type": "text",
+      "text": "discount or title. What would you "
+    },
+    {
+      "type": "text",
+      "text": "like to "
+    },
+    {
+      "type": "text",
+      "text": "see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

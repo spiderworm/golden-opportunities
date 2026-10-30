@@ -1,0 +1,21 @@
+# 6l first run: harness/abort-v1.mjs (the version first committed), 30 Oct 2026 about 21:23 UTC, dev server pid 30988.
+# Transcribed from the session's tool output; $HOME and $TMPDIR stand for this machine's paths.
+# Limitation (Audit): the "+Nms after abort" lines search the dev server's descendants, so a process re-parented
+# to launchd would drop out without having exited. The follow-up commands below checked the captured pids and
+# process group directly; 6l-abort-rerun.txt repeats the check with the fixed harness.
+before: []
+first event at 2137ms: {"type":"data","query":{"measure":"revenue","by":["month","genre"],"limit":200},"columns":[{"key":"m
+during: [{"pid":"54492","pgid":"54492","cmd":"claude -p --tools  --strict-mcp-config --mcp-config {\"mcpServers\":{\"orbital\":{\"command\":\"/"},{"pid":"54525","pgid":"54492","cmd":"$HOME/.local/share/fnm/node-versions/v24.21.0/installation/bin/node $HOME/Pr"}]
+claude cwd: $TMPDIR/orbital-assistant-pw9s4Z exists: true
++500ms after abort: descendants=[] cwd exists=false
++1500ms after abort: descendants=[] cwd exists=false
++3500ms after abort: descendants=[] cwd exists=false
++6000ms after abort: descendants=[] cwd exists=false
+
+# Follow-up, run straight after:
+$ ps -p 54492,54525 -o pid,command || echo "both pids gone"; ps -axo pgid= | grep -c "^ *54492$"; ls -d $TMPDIR/orbital-assistant-* || echo "no orbital-assistant temp folders left"
+  PID COMMAND
+both pids gone
+0
+(eval):1: no matches found: $TMPDIR/orbital-assistant-*
+no orbital-assistant temp folders left
