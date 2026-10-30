@@ -19,13 +19,10 @@ interface Reply {
   text: string;
   lookups: Lookup[];
   error?: string;
-  /** How many figures in the text no lookup returned (the server's check). */
-  unbacked?: number;
   state: "streaming" | "done" | "stopped" | "failed";
 }
 
 const QUESTION_MAX = 500;
-const ROWS_SHOWN = 8;
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 export function AssistantPanel({ track = platformTrack, onPin, fetcher }: { track?: PanelTrack; onPin?: (chart: ChartSpec) => boolean | void; fetcher?: typeof fetch }) {
@@ -67,9 +64,6 @@ export function AssistantPanel({ track = platformTrack, onPin, fetcher }: { trac
           const placed = onPin(event.chart) !== false;
           track("assistant_pin_placed", { placed, kind: event.chart.kind });
           update((r) => ({ ...r, lookups: [...r.lookups, { ...event, placed }] }));
-        } else if (event.type === "unbacked") {
-          track("assistant_unbacked_shown", { figures: event.figures });
-          update((r) => ({ ...r, unbacked: event.figures }));
         } else if (event.type === "error") {
           outcome = "failed";
           update((r) => ({ ...r, error: event.message }));
@@ -101,7 +95,6 @@ export function AssistantPanel({ track = platformTrack, onPin, fetcher }: { trac
             {r.lookups.map((l, j) => (
               <LookupView key={j} lookup={l} />
             ))}
-            {r.unbacked ? <p style={styles.error}>This reply gives a figure that none of the lookups below returned. Check it against the tables before you rely on it.</p> : null}
             {r.error && <p style={styles.error}>{r.error}</p>}
             {r.state === "stopped" && <p style={styles.muted}>Stopped.</p>}
           </article>
@@ -146,36 +139,38 @@ function LookupView({ lookup }: { lookup: Lookup }) {
       </figure>
     );
   }
-  const shown: Record<string, unknown>[] = lookup.rows.slice(0, ROWS_SHOWN);
+  // Every row, in a scrolling box: a reply's figures can come from any row, so none may be cut off.
+  const shown: Record<string, unknown>[] = lookup.rows;
   const cell = (v: unknown) => (v === null || v === undefined ? "Unknown" : typeof v === "number" ? number.format(v) : String(v));
   // A comparison's overall figures go in a last row; a breakdown's rows come first.
   const breakdown = lookup.type === "comparison" ? lookup.columns.find((c) => c.type === "string") : undefined;
   const totalRow: Record<string, unknown> | null = lookup.type === "comparison" ? { ...(breakdown ? { [breakdown.key]: "All" } : {}), ...lookup.total } : null;
   return (
     <figure style={styles.lookup}>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            {lookup.columns.map((c) => (
-              <th key={c.key} style={styles.th}>
-                {c.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {[...shown, ...(totalRow ? [totalRow] : [])].map((row, i) => (
-            <tr key={i}>
+      <div style={styles.rows}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
               {lookup.columns.map((c) => (
-                <td key={c.key} style={c.type === "number" ? styles.num : styles.td}>
-                  {cell(row[c.key])}
-                </td>
+                <th key={c.key} style={styles.th}>
+                  {c.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {lookup.rows.length > ROWS_SHOWN && <p style={styles.muted}>{lookup.rows.length - ROWS_SHOWN} more rows not shown.</p>}
+          </thead>
+          <tbody>
+            {[...shown, ...(totalRow ? [totalRow] : [])].map((row, i) => (
+              <tr key={i}>
+                {lookup.columns.map((c) => (
+                  <td key={c.key} style={c.type === "number" ? styles.num : styles.td}>
+                    {cell(row[c.key])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {lookup.type === "data" && lookup.total !== null && lookup.columns.length > 1 && <p style={styles.muted}>Total: {number.format(lookup.total)}</p>}
       <p style={styles.source}>Source: {lookup.source}</p>
     </figure>
@@ -193,7 +188,8 @@ const styles = {
   error: { margin: 0, color: "var(--color-down)" },
   lookup: { margin: 0, padding: 10, background: "var(--color-panel-raised)", borderRadius: "var(--radius-control)" },
   table: { borderCollapse: "collapse", width: "100%", fontSize: 13 },
-  th: { textAlign: "left", color: "var(--color-text-muted)", fontWeight: 500, padding: "2px 8px 4px 0" },
+  rows: { maxHeight: 240, overflowY: "auto" },
+  th: { textAlign: "left", color: "var(--color-text-muted)", fontWeight: 500, padding: "2px 8px 4px 0", position: "sticky", top: 0, background: "var(--color-panel-raised)" },
   td: { padding: "2px 8px 2px 0" },
   num: { padding: "2px 8px 2px 0", textAlign: "right", fontVariantNumeric: "tabular-nums" },
   source: { margin: "6px 0 0", color: "var(--color-text-muted)", fontSize: 12 },

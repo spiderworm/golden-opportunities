@@ -5,8 +5,8 @@ import { randomBytes } from "node:crypto";
 import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
 import type { ChartSpec } from "../tools/definitions.ts";
-import { acquire, ndjson } from "./assistant.server.ts";
-import { numbersIn, scrubber, unbackedFigures } from "./figures.server.ts";
+import { acquire, arrive, ndjson } from "./assistant.server.ts";
+import { Evidence, scrubDeep, sentenceGate } from "./figures.server.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
 
@@ -131,6 +131,9 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
   return null;
 }
 
+/** A plain title for a pin whose own title gave a figure no lookup returned. */
+const pinTitle = (chart: ChartSpec) => `${chart.query.measure.replace(/_/g, " ")}${chart.query.by.length ? ` by ${chart.query.by.join(" and ").replace(/_/g, " ")}` : ""}`;
+
 /** Builds the provider for one answer; `pins` says whether it may have the pin tool. */
 export type ProviderFor = (options: { pins: boolean }) => AssistantProvider;
 
@@ -141,6 +144,11 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
       track("assistant_refused", { status: e.status });
       return refuse(e.status, e.message);
     };
+    // Every request counts toward the minute cap, before any other check, so floods stay bounded.
+    if (!arrive(now())) {
+      track("assistant_limited", { reason: "flood" });
+      return refuse(429, "Too many requests. Try again in a minute.");
+    }
     try {
       checkDoor(request);
     } catch (e) {
@@ -151,7 +159,7 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     const slot = acquire(now());
     if (typeof slot === "string") {
       track("assistant_limited", { reason: slot });
-      return refuse(429, slot === "busy" ? `${ASSISTANT_NAME} is answering another question.` : slot === "flood" ? "Too many requests. Try again in a minute." : "That's enough questions for this hour.");
+      return refuse(429, slot === "busy" ? `${ASSISTANT_NAME} is answering another question.` : "That's enough questions for this hour.");
     }
     let input: AskInput;
     try {
@@ -163,62 +171,73 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     slot.charge();
     const provider = providerFor({ pins: input.pins });
     const started = now();
-    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, pins: 0, chars: 0, unbacked: 0 };
+    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, pins: 0, chars: 0, withheld: 0 };
     let outcome = "aborted";
     const nonce = randomBytes(6).toString("hex");
     const prompt = buildPrompt(input.question, input.history, { pins: input.pins }, nonce);
-    // The fence code is no secret worth keeping (it's new for every answer), but the reply has no reason to
-    // show it (P4).
-    const scrub = scrubber(nonce);
-    // What the reply's figures may come from: this answer's tool calls, and what the player wrote.
-    const known = numbersIn(input.question);
-    let reply = "";
+    // The fence code is no secret worth keeping (it's new for every answer), but nothing has a reason to show
+    // it (P4): it's cut from every string sent to the browser.
+    const hide = <T,>(value: T) => scrubDeep(value, nonce);
+    // Figures must come from this answer's successful lookups (not the player's text, not the model's tool
+    // inputs); sentences with any other figure are withheld.
+    const evidence = new Evidence();
+    const gate = sentenceGate(evidence, hide);
+    let last = "";
+    let afterTool = false;
     return ndjson<WireEvent>(
       async function* (signal) {
         try {
           for await (const event of provider.ask(prompt, signal)) {
             if (event.type === "tool") {
-              numbersIn(event.input, known);
+              afterTool = true;
               if (!event.isError) {
                 try {
-                  numbersIn(JSON.parse(event.output), known);
+                  evidence.addTool(event.name, event.input, JSON.parse(event.output));
                 } catch {
-                  numbersIn(event.output, known);
+                  // Not JSON: nothing measured.
                 }
               }
             }
             const wire = toWire(event, input.pins);
             if (!wire) continue;
             if (wire.type === "text") {
-              const text = scrub.push(wire.text);
-              reply += wire.text;
+              // Text before and after a tool call arrives as one run ("...by quarter.I didn't..."): break it.
+              const resumed = afterTool && last && !/\s$/.test(last) && !/^\s/.test(wire.text) ? "\n\n" : "";
+              afterTool = false;
+              last = wire.text || last;
               stats.chars += wire.text.length;
+              const text = gate.push(resumed + wire.text);
               if (text) yield { type: "text", text };
+              continue;
+            }
+            if (wire.type === "pin") {
+              // A pin's title is the model's text, shown on the page: it gets the same figure check.
+              stats.pins++;
+              const bad = evidence.unbacked(wire.chart.title).length;
+              stats.withheld += bad;
+              const chart = bad ? { ...wire.chart, title: pinTitle(wire.chart) } : wire.chart;
+              yield hide({ ...wire, chart });
               continue;
             }
             if (wire.type === "data") stats.lookups++;
             if (wire.type === "comparison") stats.comparisons++;
             if (wire.type === "lookup_failed") stats.failedLookups++;
-            if (wire.type === "pin") stats.pins++;
-            yield wire;
+            yield hide(wire);
           }
-          const rest = scrub.flush();
+          const rest = gate.flush();
           if (rest) yield { type: "text", text: rest };
           outcome = signal.aborted ? "aborted" : "answered";
-          if (!signal.aborted) {
-            stats.unbacked = unbackedFigures(reply, known).length;
-            if (stats.unbacked) yield { type: "unbacked", figures: stats.unbacked };
-            yield { type: "done" };
-          }
+          if (!signal.aborted) yield { type: "done" };
         } catch (e) {
           outcome = e instanceof AssistantUnavailable ? "unavailable" : "failed";
           throw e;
         } finally {
           slot.release();
+          stats.withheld += gate.withheld;
           track("assistant_answered", { outcome, provider: provider.name, kind: questionKind(input.question), questionChars: input.question.length, turns: input.history.length, durationMs: now() - started, ...stats });
         }
       },
-      (e) => ({ type: "error", message: e instanceof AssistantUnavailable ? e.message : "Something went wrong with the assistant." }),
+      (e) => hide({ type: "error", message: e instanceof AssistantUnavailable ? e.message : "Something went wrong with the assistant." }),
       request,
     );
   })();

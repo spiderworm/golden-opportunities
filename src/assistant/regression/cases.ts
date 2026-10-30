@@ -2,6 +2,7 @@
 // they aren't part of `npm test`; run them with run.ts against a dev server whenever the prompt or tools change.
 
 import type { WireEvent } from "../events.ts";
+import { WITHHELD } from "../server/figures.server.ts";
 
 export interface Case {
   id: string;
@@ -15,12 +16,37 @@ export interface Case {
 export const MENU =
   "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title.";
 
-const noUnbacked: Case["checks"][number] = ({ events }) => (events.some((e) => e.type === "unbacked") ? "stated a figure no tool returned" : null);
+// The server withholds a sentence with an unbacked figure; the note showing means the model tried to state one.
+const noUnbacked: Case["checks"][number] = ({ text }) => (text.includes(WITHHELD) ? "tried to state a figure no tool returned (withheld)" : null);
+const atMostLookups = (n: number): Case["checks"][number] => ({ events }) => {
+  const count = events.filter((e) => e.type === "data" || e.type === "comparison").length;
+  return count <= n ? null : `ran ${count} lookups, expected at most ${n}`;
+};
 const not = (pattern: RegExp, why: string): Case["checks"][number] => ({ text }) => (pattern.test(text) ? `${why}: ${pattern}` : null);
 const has = (pattern: RegExp | string, why: string): Case["checks"][number] => ({ text }) => ((typeof pattern === "string" ? text.includes(pattern) : pattern.test(text)) ? null : `${why}`);
 const compared: Case["checks"][number] = ({ events }) => (events.some((e) => e.type === "comparison") ? null : "didn't use compare_data");
 
 export const CASES: Case[] = [
+  // From David's play-through (30 Oct): a joke, an impossible comparison, and a breakdown of a difference.
+  {
+    id: "joke",
+    finding: "David's play-through",
+    question: "Wow Dewey, we sold a lot fewer items in Q4, a lot fewer orders. What did you do? ;)",
+    checks: [noUnbacked, not(/I'll look|Let me look|I'll check/i, "announced a lookup"), not(/your call|for you to judge/i, "added a judgment disclaimer to a plain answer")],
+  },
+  {
+    id: "prior-year",
+    finding: "David's play-through",
+    question: "Compare most recent Q4 with Q4 of the year prior, please",
+    // One lookup to see which quarters exist is fine; repeating earlier tables isn't.
+    checks: [noUnbacked, atMostLookups(1), has(/only 2193|no Q4 from the year before|not in the data|isn't in the data/i, "didn't say the year isn't there")],
+  },
+  {
+    id: "genre-difference",
+    finding: "David's play-through",
+    question: "Which genres make up the biggest difference in orders between 2193-Q3 and 2193-Q4, both positive and negative?",
+    checks: [noUnbacked, compared],
+  },
   {
     id: "b1-gross-profit",
     finding: "B1",
