@@ -1,7 +1,5 @@
 import { Vector3 } from "three";
 
-import { GLIDE_SECONDS, OPENING_HOLD } from "../scene-params";
-
 // Where everything is. One unit is about a meter.
 //
 // The station turns about world Y. In its own frame the ring lies flat
@@ -28,14 +26,10 @@ export const PLANET_POSITION = new Vector3(-700, -620, 2250);
 export const SUN_DIRECTION = new Vector3(-0.85, 0.32, 0.42).normalize();
 
 /**
- * The station's angle at the start, chosen so that when the opening glide
- * ends the planet sits in the window's left half, as seen from the camera's
- * corner of the shop.
+ * The station's angle at the start, chosen so that the planet sits in the
+ * window's left half, as seen from the camera's corner of the shop.
  */
-export const STATION_START_ANGLE = (() => {
-  const toPlanet = Math.atan2(PLANET_POSITION.x, PLANET_POSITION.z);
-  return toPlanet + 0.45 - STATION_SPIN * (OPENING_HOLD + GLIDE_SECONDS);
-})();
+export const STATION_START_ANGLE = Math.atan2(PLANET_POSITION.x, PLANET_POSITION.z) + 0.45;
 
 /** Berth frame to station frame (the berth isn't rotated, only moved). */
 export const berthToStation = (x: number, y: number, z: number) => new Vector3(x, y, z).add(BERTH_ORIGIN);
