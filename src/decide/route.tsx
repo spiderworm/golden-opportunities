@@ -71,6 +71,7 @@ type Step = "choose" | "confirm" | "playing";
 export default function Decide() {
   const [chosen, setChosen] = useState<LeverId[]>([]);
   const [tooMany, setTooMany] = useState(false);
+  const [refused, setRefused] = useState(false);
   const [step, setStep] = useState<Step>("choose");
   // In LEVER_IDS order, whatever order they were ticked in.
   const plan = planOf(chosen) ?? { levers: [] };
@@ -98,7 +99,10 @@ export default function Decide() {
   useEffect(() => {
     if (fetcher.state !== "idle" || fetcher.data?.ok !== false) return;
     if (fetcher.data.played) navigate("/result");
-    else setStep("choose");
+    else {
+      setStep("choose");
+      setRefused(true);
+    }
   }, [fetcher.state, fetcher.data, navigate]);
 
   return (
@@ -170,11 +174,17 @@ export default function Decide() {
             onClick={() => {
               setStep("confirm");
               setTooMany(false);
+              setRefused(false);
               track("plan_confirm_opened", { levers: planLabel(plan.levers), moves: plan.levers.length });
             }}
           >
             {COPY.submit}
           </button>
+          {refused && (
+            <p className={styles.refused} role="alert">
+              {COPY.notSubmitted}
+            </p>
+          )}
         </div>
       )}
 

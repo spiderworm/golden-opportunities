@@ -224,6 +224,13 @@
   background: var(--color-panel-raised);
 }
 
+.refused {
+  margin: 0;
+  color: var(--color-down);
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .confirmMoves {
   display: grid;
   gap: 4px;
