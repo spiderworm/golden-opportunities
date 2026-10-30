@@ -36,6 +36,13 @@
   line-height: 1.35;
 }
 
+/* The second intro line: the rule that matters most, said plainly. */
+.rule {
+  margin: 10px 0 0;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
 .briefing {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -72,10 +79,39 @@
   font-style: italic;
 }
 
-/* The four options: radio cards. */
+/* The three moves: checkbox cards, up to two ticked. */
+.moves {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.movesHeading {
+  margin-bottom: 12px;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.movesStatus {
+  min-height: 1.45em;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.movesStatus[data-warning] {
+  color: var(--color-down);
+  font-weight: 600;
+}
+
 .options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin: 0;
   padding: 0;
@@ -85,6 +121,7 @@
 .option {
   position: relative;
   display: grid;
+  align-content: start;
   gap: 6px;
   padding: 20px 22px 20px 52px;
   border: 1px solid var(--color-border);
@@ -112,11 +149,11 @@
   accent-color: var(--color-accent);
 }
 
-.options:disabled .option {
+.moves:disabled .option {
   cursor: default;
 }
 
-.options:disabled .option:not([data-selected]) {
+.moves:disabled .option:not([data-selected]) {
   opacity: 0.45;
 }
 
@@ -185,6 +222,15 @@
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-panel);
   background: var(--color-panel-raised);
+}
+
+.confirmMoves {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .confirmText {

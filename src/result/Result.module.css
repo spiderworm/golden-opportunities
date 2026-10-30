@@ -7,24 +7,54 @@
   max-width: 1180px;
 }
 
-.header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px 24px;
-}
-
 .title {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
 }
 
+/* The overall score and, beside it, the lowest measure's boss on it. */
+.overall {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 16px 32px;
+  margin-bottom: 18px;
+}
+
 .score {
   display: grid;
-  justify-items: end;
   gap: 2px;
+}
+
+.scoreExplainer {
+  margin: 4px 0 2px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.lowest {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 18px;
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  background: var(--color-accent-wash);
+}
+
+.lowestLines {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+
+.lowestLines p {
+  margin: 0;
 }
 
 .scoreHeading {
@@ -33,7 +63,7 @@
 }
 
 .scoreLine {
-  font-size: 26px;
+  font-size: 40px;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -79,6 +109,36 @@
   font-weight: 500;
 }
 
+/* The measure or measures that set the score: tinted, ruled and tagged, so it isn't color alone. */
+.reportCard tr[data-binding] {
+  background: var(--color-accent-wash);
+}
+
+.reportCard tr[data-binding] th {
+  box-shadow: inset 3px 0 0 var(--color-accent);
+  font-weight: 600;
+}
+
+.bindingTag,
+.closeTag {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bindingTag {
+  background: var(--color-accent);
+  color: var(--color-text);
+}
+
+.closeTag {
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
 .measureScore {
   font-weight: 600;
 }
@@ -98,13 +158,44 @@
   font-weight: 600;
 }
 
+.certificates {
+  margin-top: 18px;
+}
+
+.subheading {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.certificates ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.disclosure {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.disclosure summary {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* The bosses speak in capitals; the copy is already in capitals. */
 .bosses {
   display: grid;
   gap: 10px;
-  margin: 18px 0 0;
-  padding: 16px 0 0;
-  border-top: 1px solid var(--color-border);
+  margin: 14px 0 0;
+  padding: 0;
   list-style: none;
 }
 
@@ -127,6 +218,10 @@
 }
 
 @media (max-width: 760px) {
+  .overall {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .bosses li {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;

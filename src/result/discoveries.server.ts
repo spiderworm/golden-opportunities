@@ -2,7 +2,7 @@
 // found text is the answer, and the hint says where it is, so neither may ship
 // in the browser's code. The result loader sends each player only what they
 // have earned, and only after the quarter has played out.
-import type { DiscoveryId } from "~/game-stub/types";
+import type { DiscoveryId } from "~/simulation/types";
 
 const DISCOVERIES: { id: DiscoveryId; found: string; notFound: string }[] = [
   {
