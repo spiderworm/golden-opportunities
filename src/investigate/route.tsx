@@ -1,5 +1,6 @@
 import { useLocation, useNavigation, useSearchParams } from "react-router";
 
+import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
 import type { QueryView } from "~/query/types";
 import type { ShellHandle } from "~/shell/Shell";
 import { track } from "~/platform/analytics/analytics.client";
@@ -128,6 +129,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           update(next);
         }}
       />
+      <AssistantPanel />
     </div>
   );
 }

@@ -5,7 +5,9 @@
     "tools",
     "vite.config.ts",
     "react-router.config.ts",
-    ".react-router/types/**/*"
+    ".react-router/types/**/*",
+    "playwright.config.ts",
+    "e2e"
   ],
   "compilerOptions": {
     "lib": [
