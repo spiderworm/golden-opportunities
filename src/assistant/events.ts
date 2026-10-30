@@ -5,8 +5,8 @@ import type { ChartSpec, ComparisonResult } from "./tools/definitions.ts";
 
 export type WireEvent =
   | { type: "text"; text: string }
-  | ({ type: "data"; query: unknown } & QueryResult)
-  | ({ type: "comparison"; query: unknown } & ComparisonResult)
+  | ({ type: "data" } & QueryResult)
+  | ({ type: "comparison" } & ComparisonResult)
   | { type: "pin"; chart: ChartSpec; source: string }
   | { type: "lookup_failed"; message: string }
   | { type: "error"; message: string }

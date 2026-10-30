@@ -93,15 +93,14 @@ export const TOOLS = [
   },
   {
     name: "pin_chart",
-    description: "Pins a chart of one query to the player's dashboard. Only when the player asks you to pin or keep a chart.",
+    description: "Pins a chart of one query to the player's dashboard. Only when the player asks you to pin or keep a chart. The terminal titles it from its query.",
     inputSchema: {
       type: "object",
       properties: {
-        title: { type: "string", minLength: 1, maxLength: TITLE_MAX },
         kind: { type: "string", enum: CHART_KINDS },
         query: { type: "object", properties: queryProperties, required: ["measure", "by"], additionalProperties: false },
       },
-      required: ["title", "kind", "query"],
+      required: ["kind", "query"],
       additionalProperties: false,
     },
   },
@@ -174,14 +173,28 @@ export function checkComparison(input: unknown): Comparison {
   return { measure: query.measure, across, from: from as string, to: to as string, by: query.by.slice(0, -1), ...(query.filter ? { filter: query.filter } : {}) };
 }
 
-/** Checks a chart to pin. Throws ToolInputError. */
+const MEASURE_TITLES: Record<Measure, string> = {
+  revenue: "Revenue",
+  units: "Units",
+  orders: "Orders",
+  avg_discount: "Average discount",
+  avg_rating: "Average rating",
+  checkouts: "Checkouts",
+  avg_order_value: "Average order value",
+  orders_per_day: "Orders per day",
+};
+
+/** A chart's title, built from its query: the model doesn't title pins (Probe X1, #32). */
+export const chartTitle = (query: Query) => `${MEASURE_TITLES[query.measure]}${query.by.length ? ` by ${query.by.join(" and ").replace(/_/g, " ")}` : ""}${query.filter && Object.keys(query.filter).length ? ", filtered" : ""}`;
+
+/** Checks a chart to pin, and titles it from its query. A title from the model is ignored. Throws ToolInputError. */
 export function checkChart(input: unknown): ChartSpec {
   if (!isObject(input)) throw new ToolInputError("The chart must be an object.");
   onlyKeys(input, ["title", "kind", "query"], "The chart");
-  const { title, kind, query } = input;
-  if (typeof title !== "string" || !title.trim() || title.length > TITLE_MAX) throw new ToolInputError(`The title must be 1 to ${TITLE_MAX} characters.`);
+  const { kind, query } = input;
   if (!has(CHART_KINDS, kind)) throw new ToolInputError(`The kind must be one of: ${CHART_KINDS.join(", ")}.`);
-  return { title: title.replace(/[\u0000-\u001f\u007f]/g, " ").trim(), kind, query: checkQuery(query) };
+  const checked = checkQuery(query);
+  return { title: chartTitle(checked), kind, query: checked };
 }
 
 /** What describe_data returns: the contract's names, so new measures and dimensions appear without changes here. */

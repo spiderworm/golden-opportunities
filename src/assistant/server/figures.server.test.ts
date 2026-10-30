@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { Refs, renderSentence, scrubDeep, sentenceGate, titleIsClean, WITHHELD } from "./figures.server.ts";
+import { Refs, renderSentence, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
 
 const SOURCE = "Revenue from 56,350 visible matching sale lines; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; grouped by quarter.";
-const byQuarter = ["query_data", { measure: "revenue", by: ["quarter"] }, { ref: "a", columns: [], rows: [{ ref: "a1", quarter: "2193-Q1", revenue: 95245.8078 }, { ref: "a2", quarter: "2193-Q2", revenue: 164436.94 }, { ref: "a3", quarter: "2193-Q3", revenue: 274036.16 }, { ref: "a4", quarter: "2193-Q4", revenue: 161524.69 }], total: 695243.61, source: SOURCE }] as const;
+const byQuarter = ["query_data", { measure: "revenue", by: ["quarter"] }, { ref: "a", complete: true, columns: [], rows: [{ ref: "a1", quarter: "2193-Q1", revenue: 95245.8078 }, { ref: "a2", quarter: "2193-Q2", revenue: 164436.94 }, { ref: "a3", quarter: "2193-Q3", revenue: 274036.16 }, { ref: "a4", quarter: "2193-Q4", revenue: 161524.69 }], total: 695243.61, source: SOURCE }] as const;
 const q2q4 = ["compare_data", { measure: "revenue", across: "quarter", from: "2193-Q2", to: "2193-Q4", by: [] }, { ref: "b", columns: [{ key: "from", label: "2193-Q2" }, { key: "to", label: "2193-Q4" }], rows: [], total: { from: 164436.94, to: 161524.69, change: -2912.25, percent_change: -1.7711, direction: "fell" }, source: "Compared. 2193-Q2: Sales 2193-Q4: Sales" }] as const;
-const genres = ["compare_data", { measure: "orders", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: ["genre"] }, { ref: "c", columns: [{ key: "genre", label: "Genre" }, { key: "from", label: "2193-Q3" }, { key: "to", label: "2193-Q4" }], rows: [{ ref: "c1", genre: "Nonfiction", from: 278, to: 339, change: 61, percent_change: 21.94 }, { ref: "c2", genre: "SciFi/Fantasy", from: 7523, to: 4246, change: -3277, percent_change: -43.56 }, { ref: "c3", genre: "Memoir", from: 182, to: 74, change: -108, percent_change: -59.34 }], total: { from: 7983, to: 4659, change: -3324, percent_change: -41.64 }, source: SOURCE }] as const;
+const genres = ["compare_data", { measure: "orders", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: ["genre"] }, { ref: "c", complete: true, columns: [{ key: "genre", label: "Genre" }, { key: "from", label: "2193-Q3" }, { key: "to", label: "2193-Q4" }], rows: [{ ref: "c1", genre: "Nonfiction", from: 278, to: 339, change: 61, percent_change: 21.94 }, { ref: "c2", genre: "SciFi/Fantasy", from: 7523, to: 4246, change: -3277, percent_change: -43.56 }, { ref: "c3", genre: "Memoir", from: 182, to: 74, change: -108, percent_change: -59.34 }], total: { from: 7983, to: 4659, change: -3324, percent_change: -41.64 }, source: SOURCE }] as const;
 const refs = (...tools: (readonly [string, unknown, unknown])[]) => {
   const r = new Refs();
   for (const [name, input, output] of tools) r.addTool(name, input, output);
@@ -33,6 +33,15 @@ describe("refs render the data's own figures, units and directions", () => {
   it("the row that moved most, either way", () => {
     expect(say("{{c.largest_fall}}, and {{c.largest_rise}}.")).toBe("SciFi/Fantasy fell the most, by 3,277, and Nonfiction rose the most, by 61.");
     expect(say("{{c.largest_fall_percent}}.")).toBe("Memoir fell the most in percent, a fall of 59.3%.");
+  });
+
+  it("ranks only over complete results: a limited or capped lookup's max is no global claim (Audit)", () => {
+    const limited = refs(["query_data", { measure: "units", by: ["genre"], sort: { column: "units", direction: "asc" }, limit: 1 }, { ref: "f", complete: false, columns: [], rows: [{ ref: "f1", genre: "Memoir", units: 74 }], total: 56350, source: "" }]);
+    expect(say("{{f.max}}.", limited)).toBe(WITHHELD);
+    expect(say("{{f1.genre}} sold {{f1}}.", limited)).toBe("Memoir sold 74.");
+    const capped = refs(["compare_data", { measure: "units", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: ["title"] }, { ref: "g", complete: false, columns: [], rows: [{ ref: "g1", title: "T", from: 5, to: 1, change: -4, percent_change: -80 }], total: { from: 5, to: 1, change: -4, percent_change: -80 }, source: "" }]);
+    expect(say("{{g.largest_fall}}.", capped)).toBe(WITHHELD);
+    expect(say("{{g.largest_fall_percent}}.", capped)).toBe(WITHHELD);
   });
 
   it("rounds only when asked, to a power of ten (Probe G3)", () => {
@@ -95,47 +104,69 @@ describe("the model's own prose: no figures, no directions (every bypass so far)
     expect(say(sentence)).toBe(WITHHELD);
   });
 
-  it("allows period names from the lookups, 'one of', and a few fixed phrases", () => {
+  it.each([
+    // Audit, review of a82bb9b
+    ["'one' counting", "There's one of each title."],
+    ["a comparison after an allowed phrase", "I can show more revenue than that."],
+    ["a fraction with 'quarter'", "A quarter of the orders were Fiction."],
+    ["'shrank'", "Fiction shrank."],
+    ["full-width digits", "Revenue was ７."],
+    // Probe, re-check of a82bb9b (X2)
+    ["full-width digits with a comma", "Revenue was １６１,５２５."],
+    ["Arabic-Indic digits", "Revenue was ١٦١٥٢٥."],
+    ["a vulgar fraction", "About ¾ of them."],
+    ["'-fold'", "A threefold change, or two-fold."],
+    ["'a couple'", "A couple of titles."],
+    ...["outpaced", "lagged", "overtook", "surpassed", "sank", "soared", "better", "worse", "peaked", "bottomed", "slipped", "jumped", "surged", "dipped", "climbed", "tumbled", "plunged", "edged"].map((w) => [`'${w}'`, `Fiction ${w} there.`]),
+    // Probe X3: "Yes" or "No" is a claim unless the rest is refs
+    ["a bare 'No' with a claim", "No, it was not."],
+    ["a bare 'Yes'", "Yes."],
+  ])("also withholds %s", (_, sentence) => {
+    expect(say(sentence)).toBe(WITHHELD);
+  });
+
+  it("allows period names from the lookups, a yes or no over refs, and a few exact phrases", () => {
     for (const s of [
       "I looked up revenue by quarter, broken down by genre, for 2193-Q1 through 2193-Q4.",
-      "One of the titles is in Q4.",
-      "That's the only one.",
-      "Change was {{b.percent}}; I can show more detail.",
-      "I can look it up again, or show you more.",
+      "No, {{b.to_vs_from}}.",
+      "Yes, {{b.from_vs_to}}.",
+      "I can look it up again in more detail.",
+      "I'm looking it up.",
       "I can't tell you why; that part's yours. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title.",
     ]) expect(say(s), s).not.toBe(WITHHELD);
     expect(say("Q4 is a quarter.", new Refs())).toBe(WITHHELD);
+    expect(say("No, {{b.to_vs_from}}.")).toBe("No, 2193-Q4's revenue was $2,912.25 lower than 2193-Q2's.");
   });
 });
 
 describe("the sentence gate", () => {
-  it("renders sentences whole and withholds a run of bad ones as one note", () => {
+  it("renders sentences whole and shows at most one note per reply (Probe X3)", () => {
     const gate = sentenceGate(all);
     expect(gate.push("Revenue in 2193-Q4 was {{a")).toBe("");
     expect(gate.push("4}}. Gross profit was $63,843. Cost was higher.\n\nThe table")).toBe(`Revenue in 2193-Q4 was $161,524.69. ${WITHHELD}\n\n`);
-    expect(gate.push(" is under this message.")).toBe("");
-    expect(gate.flush()).toBe("The table is under this message.");
-    expect([gate.withheld, gate.rendered]).toEqual([2, 1]);
+    expect(gate.push(" is under this message. It fell. The rest is ours.")).toBe("The table is under this message. ");
+    expect(gate.flush()).toBe("The rest is ours.");
+    expect([gate.withheld, gate.rendered]).toEqual([3, 1]);
   });
 
   it("withholds a unit split from its value across a line break (Audit)", () => {
     const gate = sentenceGate(all);
     expect(gate.push("Revenue was $\n")).toBe(`${WITHHELD}\n`);
-    expect(gate.push("7. ")).toBe(" ");
+    // The second piece is withheld too, without a second note.
+    expect(gate.push("7. ")).toBe("");
   });
 
-  it("withholds a ref cited before its lookup came back", () => {
+  it("binds refs and period names to the lookups back when the text arrived, not when it's shown (Audit)", () => {
     const later = new Refs();
     const gate = sentenceGate(later);
-    expect(gate.push("It was {{a4}}. ")).toBe(`${WITHHELD} `);
+    // Still buffered (no sentence end yet) when the lookup registers: it was written before it, so withheld.
+    expect(gate.push("In 2193-Q4 it was {{a4}}")).toBe("");
     later.addTool(...byQuarter);
+    expect(gate.push(". ")).toBe(`${WITHHELD} `);
     expect(gate.push("It was {{a4}}. ")).toBe("It was $161,524.69. ");
+    expect(renderSentence("In 2193-Q4.", later, 0)).toBeNull();
+    expect(renderSentence("In 2193-Q4.", later, 1)).not.toBeNull();
   });
-});
-
-it("pin titles may have no figures, refs or directions of their own", () => {
-  expect(titleIsClean("Revenue by genre")).toBe(true);
-  for (const t of ["Profit 63843", "Revenue, ten titles", "Revenue drop by genre", "{{a4}}", "Revenue 2193-Q4"]) expect(titleIsClean(t), t).toBe(false);
 });
 
 it("scrubDeep hides a secret in every string, keys included", () => {

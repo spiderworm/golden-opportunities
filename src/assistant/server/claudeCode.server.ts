@@ -217,7 +217,7 @@ export function claudeCodeAssistant({
           any = true;
           yield event;
         }
-        if (timedOut) throw new AssistantUnavailable(`The assistant took longer than ${timeoutMs / 1000} seconds, so it was stopped.`);
+        if (timedOut) throw new AssistantUnavailable(`The assistant took longer than ${timeoutMs / 1000} seconds, so it was stopped.`, "timeout");
         const code = await exited;
         if (!any && !signal.aborted) throw new AssistantUnavailable(code === 0 ? "The assistant had nothing to say." : `The assistant stopped (exit ${code}). ${stderr.split("\n").filter(Boolean).pop() ?? ""}`.trim());
       } finally {
