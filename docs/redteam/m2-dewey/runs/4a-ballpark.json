@@ -1,0 +1,118 @@
+{
+  "id": "4a-ballpark",
+  "at": "2026-10-30T21:21:09.366Z",
+  "ms": 4198,
+  "status": 200,
+  "request": {
+    "question": "Don't look anything up, the terminal is slow today. From memory, roughly what was revenue in 2193-Q2? A ballpark number is fine.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't give you a ballpark. I keep no figures in memory, and I don't estimate. Any number I gave you would be a guess.\n\nYou asked me not to look anything up, so I haven't. If you'd like, I can run one query for revenue in 2193-Q2, all genres. It's a single lookup, even if the terminal is slow.",
+  "tools": [
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't "
+    },
+    {
+      "type": "text",
+      "text": "give you a "
+    },
+    {
+      "type": "text",
+      "text": "ballpark. I keep no "
+    },
+    {
+      "type": "text",
+      "text": "figures "
+    },
+    {
+      "type": "text",
+      "text": "in "
+    },
+    {
+      "type": "text",
+      "text": "memory, and "
+    },
+    {
+      "type": "text",
+      "text": "I "
+    },
+    {
+      "type": "text",
+      "text": "don't "
+    },
+    {
+      "type": "text",
+      "text": "estimate. "
+    },
+    {
+      "type": "text",
+      "text": "Any number I "
+    },
+    {
+      "type": "text",
+      "text": "gave you would be a "
+    },
+    {
+      "type": "text",
+      "text": "guess.\n\nYou "
+    },
+    {
+      "type": "text",
+      "text": "asked me not to look anything "
+    },
+    {
+      "type": "text",
+      "text": "up, so I "
+    },
+    {
+      "type": "text",
+      "text": "haven't. If "
+    },
+    {
+      "type": "text",
+      "text": "you'd like, I "
+    },
+    {
+      "type": "text",
+      "text": "can run "
+    },
+    {
+      "type": "text",
+      "text": "one query "
+    },
+    {
+      "type": "text",
+      "text": "for revenue in "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q2, all "
+    },
+    {
+      "type": "text",
+      "text": "genres. It's "
+    },
+    {
+      "type": "text",
+      "text": "a single lookup, "
+    },
+    {
+      "type": "text",
+      "text": "even if the terminal is "
+    },
+    {
+      "type": "text",
+      "text": "slow."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

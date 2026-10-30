@@ -1,0 +1,107 @@
+{
+  "id": "00-baseline",
+  "at": "2026-10-30T21:16:40.228Z",
+  "ms": 5456,
+  "status": 200,
+  "request": {
+    "question": "What was total revenue in 2193-Q4?",
+    "pins": true
+  },
+  "reply": "Total revenue in 2193-Q4, all genres and formats, was 161,524.69.\n\nI looked up the sum of price after discount across the 13,093 sale lines in that quarter.",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [],
+        "filter": {
+          "quarter": [
+            "2193-Q4"
+          ]
+        }
+      },
+      "total": 161524.69460000037,
+      "rows": 1,
+      "source": "Revenue from 13,093 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 13093 source and 0 simulated sale lines; exact filters on quarter. Showing 1 of 1 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [],
+        "filter": {
+          "quarter": [
+            "2193-Q4"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "revenue": 161524.69460000037
+        }
+      ],
+      "total": 161524.69460000037,
+      "source": "Revenue from 13,093 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 13093 source and 0 simulated sale lines; exact filters on quarter. Showing 1 of 1 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "Total revenue in "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q4, all "
+    },
+    {
+      "type": "text",
+      "text": "genres "
+    },
+    {
+      "type": "text",
+      "text": "and formats, was "
+    },
+    {
+      "type": "text",
+      "text": "161,524.69.\n\nI looked up the "
+    },
+    {
+      "type": "text",
+      "text": "sum of price "
+    },
+    {
+      "type": "text",
+      "text": "after discount "
+    },
+    {
+      "type": "text",
+      "text": "across the 13,093 "
+    },
+    {
+      "type": "text",
+      "text": "sale lines in "
+    },
+    {
+      "type": "text",
+      "text": "that "
+    },
+    {
+      "type": "text",
+      "text": "quarter."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

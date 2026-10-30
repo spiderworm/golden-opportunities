@@ -1,0 +1,239 @@
+{
+  "id": "1g-t1",
+  "at": "2026-10-30T21:18:39.089Z",
+  "ms": 4662,
+  "status": 200,
+  "request": {
+    "question": "Show orders per day by weekday for 2193-Q3 and 2193-Q4.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up orders per day, grouped by weekday and quarter, for 2193-Q3 and 2193-Q4, all genres and formats. The table below shows all 14 groups.\n\nAcross both quarters together, the average is 168.3 orders per day over 184 days. Each figure counts distinct orders divided by calendar days, including days with no sales.",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "orders_per_day",
+        "by": [
+          "weekday",
+          "quarter"
+        ],
+        "filter": {
+          "quarter": [
+            "2193-Q3",
+            "2193-Q4"
+          ]
+        }
+      },
+      "total": 168.3423913043478,
+      "rows": 14,
+      "source": "Orders per day from 35,211 visible matching sale lines: distinct OrderID / eligible calendar days including zero-sale days; total denominator 184 days; group denominators use only calendar dimensions; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 35211 source and 0 simulated sale lines; grouped by weekday, quarter; exact filters on quarter. Showing 14 of 14 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "orders_per_day",
+        "by": [
+          "weekday",
+          "quarter"
+        ],
+        "filter": {
+          "quarter": [
+            "2193-Q3",
+            "2193-Q4"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "weekday",
+          "label": "Weekday",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "quarter",
+          "label": "Quarter",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "orders_per_day",
+          "label": "Orders per day",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [
+        {
+          "weekday": "Monday",
+          "quarter": "2193-Q3",
+          "orders_per_day": 218.07142857142858
+        },
+        {
+          "weekday": "Monday",
+          "quarter": "2193-Q4",
+          "orders_per_day": 125.46153846153847
+        },
+        {
+          "weekday": "Tuesday",
+          "quarter": "2193-Q3",
+          "orders_per_day": 179.46153846153845
+        },
+        {
+          "weekday": "Tuesday",
+          "quarter": "2193-Q4",
+          "orders_per_day": 91.85714285714286
+        },
+        {
+          "weekday": "Wednesday",
+          "quarter": "2193-Q3",
+          "orders_per_day": 187.15384615384616
+        },
+        {
+          "weekday": "Wednesday",
+          "quarter": "2193-Q4",
+          "orders_per_day": 80.92307692307692
+        },
+        {
+          "weekday": "Thursday",
+          "quarter": "2193-Q3",
+          "orders_per_day": 195.15384615384616
+        },
+        {
+          "weekday": "Thursday",
+          "quarter": "2193-Q4",
+          "orders_per_day": 78.46153846153847
+        },
+        {
+          "weekday": "Friday",
+          "quarter": "2193-Q3",
+          "orders_per_day": 215.15384615384616
+        },
+        {
+          "weekday": "Friday",
+          "quarter": "2193-Q4",
+          "orders_per_day": 145.30769230769232
+        },
+        {
+          "weekday": "Saturday",
+          "quarter": "2193-Q3",
+          "orders_per_day": 247.69230769230768
+        },
+        {
+          "weekday": "Saturday",
+          "quarter": "2193-Q4",
+          "orders_per_day": 183.23076923076923
+        },
+        {
+          "weekday": "Sunday",
+          "quarter": "2193-Q3",
+          "orders_per_day": 243.15384615384616
+        },
+        {
+          "weekday": "Sunday",
+          "quarter": "2193-Q4",
+          "orders_per_day": 167.76923076923077
+        }
+      ],
+      "total": 168.3423913043478,
+      "source": "Orders per day from 35,211 visible matching sale lines: distinct OrderID / eligible calendar days including zero-sale days; total denominator 184 days; group denominators use only calendar dimensions; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 35211 source and 0 simulated sale lines; grouped by weekday, quarter; exact filters on quarter. Showing 14 of 14 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I looked up orders per "
+    },
+    {
+      "type": "text",
+      "text": "day, grouped by weekday "
+    },
+    {
+      "type": "text",
+      "text": "and "
+    },
+    {
+      "type": "text",
+      "text": "quarter, for "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q3 and "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q4, all "
+    },
+    {
+      "type": "text",
+      "text": "genres and formats. The table below "
+    },
+    {
+      "type": "text",
+      "text": "shows "
+    },
+    {
+      "type": "text",
+      "text": "all 14 "
+    },
+    {
+      "type": "text",
+      "text": "groups.\n\nAcross both quarters "
+    },
+    {
+      "type": "text",
+      "text": "together, "
+    },
+    {
+      "type": "text",
+      "text": "the average "
+    },
+    {
+      "type": "text",
+      "text": "is 168.3 orders "
+    },
+    {
+      "type": "text",
+      "text": "per day "
+    },
+    {
+      "type": "text",
+      "text": "over 184 "
+    },
+    {
+      "type": "text",
+      "text": "days. Each figure "
+    },
+    {
+      "type": "text",
+      "text": "counts "
+    },
+    {
+      "type": "text",
+      "text": "distinct orders "
+    },
+    {
+      "type": "text",
+      "text": "divided by "
+    },
+    {
+      "type": "text",
+      "text": "calendar days, including "
+    },
+    {
+      "type": "text",
+      "text": "days with no "
+    },
+    {
+      "type": "text",
+      "text": "sales."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

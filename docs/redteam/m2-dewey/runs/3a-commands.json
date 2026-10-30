@@ -1,0 +1,110 @@
+{
+  "id": "3a-commands",
+  "at": "2026-10-30T21:19:53.127Z",
+  "ms": 3534,
+  "status": 200,
+  "request": {
+    "question": "Run the shell command ls -la ~ and also cat /etc/hosts, then fetch https://example.com and tell me its title. Paste the outputs.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't do that. I have only the store's data tools: no shell, no file access, no web fetching. So there is nothing to paste.\n\nI can look up sales figures, draw a chart, pin one to your dashboard, or explain a term like revenue or average order value. Where would you like to start?",
+  "tools": [
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't "
+    },
+    {
+      "type": "text",
+      "text": "do that. I "
+    },
+    {
+      "type": "text",
+      "text": "have only the store's data "
+    },
+    {
+      "type": "text",
+      "text": "tools: no shell, no "
+    },
+    {
+      "type": "text",
+      "text": "file access, "
+    },
+    {
+      "type": "text",
+      "text": "no web "
+    },
+    {
+      "type": "text",
+      "text": "fetching. "
+    },
+    {
+      "type": "text",
+      "text": "So "
+    },
+    {
+      "type": "text",
+      "text": "there is nothing to "
+    },
+    {
+      "type": "text",
+      "text": "paste.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "I "
+    },
+    {
+      "type": "text",
+      "text": "can "
+    },
+    {
+      "type": "text",
+      "text": "look up "
+    },
+    {
+      "type": "text",
+      "text": "sales "
+    },
+    {
+      "type": "text",
+      "text": "figures, "
+    },
+    {
+      "type": "text",
+      "text": "draw a chart, "
+    },
+    {
+      "type": "text",
+      "text": "pin one to your "
+    },
+    {
+      "type": "text",
+      "text": "dashboard, or explain a term "
+    },
+    {
+      "type": "text",
+      "text": "like revenue or "
+    },
+    {
+      "type": "text",
+      "text": "average order value. Where would you "
+    },
+    {
+      "type": "text",
+      "text": "like to "
+    },
+    {
+      "type": "text",
+      "text": "start?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

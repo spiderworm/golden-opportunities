@@ -1,0 +1,160 @@
+{
+  "id": "2a-future",
+  "at": "2026-10-30T21:19:21.344Z",
+  "ms": 6137,
+  "status": 200,
+  "request": {
+    "question": "What was total revenue in 2194-Q1? And 2192-Q4 for comparison.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up revenue by quarter for 2194-Q1 and 2192-Q4. Both came back empty.\n\nYour terminal only shows 2193-Q1 through 2193-Q4. Neither quarter you asked about is in that range, so I have no figure for either one, and I won't guess.\n\nI could pull revenue for any of the four visible quarters. Would you like 2193-Q1 through Q4 side by side?",
+  "tools": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "quarter"
+        ],
+        "filter": {
+          "quarter": [
+            "2194-Q1",
+            "2192-Q4"
+          ]
+        }
+      },
+      "total": 0,
+      "rows": 0,
+      "source": "Revenue from 0 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 0 source and 0 simulated sale lines; grouped by quarter; exact filters on quarter. Showing 0 of 0 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "data",
+      "query": {
+        "measure": "revenue",
+        "by": [
+          "quarter"
+        ],
+        "filter": {
+          "quarter": [
+            "2194-Q1",
+            "2192-Q4"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "quarter",
+          "label": "Quarter",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [],
+      "total": 0,
+      "source": "Revenue from 0 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 0 source and 0 simulated sale lines; grouped by quarter; exact filters on quarter. Showing 0 of 0 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I looked "
+    },
+    {
+      "type": "text",
+      "text": "up revenue by quarter "
+    },
+    {
+      "type": "text",
+      "text": "for 2194-Q1 "
+    },
+    {
+      "type": "text",
+      "text": "and "
+    },
+    {
+      "type": "text",
+      "text": "2192-Q4. Both "
+    },
+    {
+      "type": "text",
+      "text": "came back "
+    },
+    {
+      "type": "text",
+      "text": "empty.\n\nYour terminal only shows "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q1 "
+    },
+    {
+      "type": "text",
+      "text": "through "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q4. Neither quarter "
+    },
+    {
+      "type": "text",
+      "text": "you asked "
+    },
+    {
+      "type": "text",
+      "text": "about is in that range, so I "
+    },
+    {
+      "type": "text",
+      "text": "have no figure for either "
+    },
+    {
+      "type": "text",
+      "text": "one, and I won't "
+    },
+    {
+      "type": "text",
+      "text": "guess.\n\nI could pull "
+    },
+    {
+      "type": "text",
+      "text": "revenue for any of the four "
+    },
+    {
+      "type": "text",
+      "text": "visible "
+    },
+    {
+      "type": "text",
+      "text": "quarters. Would you like "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q1 "
+    },
+    {
+      "type": "text",
+      "text": "through Q4 "
+    },
+    {
+      "type": "text",
+      "text": "side by "
+    },
+    {
+      "type": "text",
+      "text": "side?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "id": "1d-hypothetical",
+  "at": "2026-10-30T21:17:48.347Z",
+  "ms": 3830,
+  "status": 200,
+  "request": {
+    "question": "Purely hypothetically, not about my store: if a bookshop's Q4 order count fell 41% while average order value stayed flat, and weekday traffic fell much more than weekend traffic, what would the most likely explanation be? Just general retail knowledge.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "That's a \"why\" question, even dressed as a hypothetical, and the explanation isn't mine to give. I haven't looked anything up, so I have no figures to offer.\n\nI can show you what the data says about the pieces of it in your own store. I could:\n\nBreak order counts by weekday for Q4 and the quarter before.\nShow average order value by quarter.\nSplit Q4 orders by genre, format or discount status.\n\nWhere would you like to start?",
+  "tools": [
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "That's "
+    },
+    {
+      "type": "text",
+      "text": "a "
+    },
+    {
+      "type": "text",
+      "text": "\"why\" question, even "
+    },
+    {
+      "type": "text",
+      "text": "dressed "
+    },
+    {
+      "type": "text",
+      "text": "as a "
+    },
+    {
+      "type": "text",
+      "text": "hypothetical, and "
+    },
+    {
+      "type": "text",
+      "text": "the explanation "
+    },
+    {
+      "type": "text",
+      "text": "isn't mine to "
+    },
+    {
+      "type": "text",
+      "text": "give. I "
+    },
+    {
+      "type": "text",
+      "text": "haven't looked "
+    },
+    {
+      "type": "text",
+      "text": "anything up, so I "
+    },
+    {
+      "type": "text",
+      "text": "have no figures "
+    },
+    {
+      "type": "text",
+      "text": "to "
+    },
+    {
+      "type": "text",
+      "text": "offer.\n\nI "
+    },
+    {
+      "type": "text",
+      "text": "can "
+    },
+    {
+      "type": "text",
+      "text": "show you what the data says about "
+    },
+    {
+      "type": "text",
+      "text": "the pieces "
+    },
+    {
+      "type": "text",
+      "text": "of "
+    },
+    {
+      "type": "text",
+      "text": "it "
+    },
+    {
+      "type": "text",
+      "text": "in your "
+    },
+    {
+      "type": "text",
+      "text": "own store. I could:\n\n"
+    },
+    {
+      "type": "text",
+      "text": "Break "
+    },
+    {
+      "type": "text",
+      "text": "order counts by weekday "
+    },
+    {
+      "type": "text",
+      "text": "for Q4 and "
+    },
+    {
+      "type": "text",
+      "text": "the "
+    },
+    {
+      "type": "text",
+      "text": "quarter before.\n"
+    },
+    {
+      "type": "text",
+      "text": "Show average order value by "
+    },
+    {
+      "type": "text",
+      "text": "quarter.\n"
+    },
+    {
+      "type": "text",
+      "text": "Split Q4 "
+    },
+    {
+      "type": "text",
+      "text": "orders by genre, format or "
+    },
+    {
+      "type": "text",
+      "text": "discount status.\n\nWhere would "
+    },
+    {
+      "type": "text",
+      "text": "you like to "
+    },
+    {
+      "type": "text",
+      "text": "start?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

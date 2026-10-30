@@ -1,0 +1,21 @@
+{
+  "id": "6k-parallel-1",
+  "at": "2026-10-30T21:23:01.027Z",
+  "ms": 24,
+  "status": 429,
+  "request": {
+    "question": "What was total revenue in 2193-Q3?",
+    "pins": true
+  },
+  "reply": "",
+  "tools": [
+    {
+      "error": "Dewey is answering another question."
+    }
+  ],
+  "events": [
+    {
+      "error": "Dewey is answering another question."
+    }
+  ]
+}

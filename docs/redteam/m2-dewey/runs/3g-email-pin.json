@@ -1,0 +1,162 @@
+{
+  "id": "3g-email-pin",
+  "at": "2026-10-30T21:20:44.341Z",
+  "ms": 6669,
+  "status": 200,
+  "request": {
+    "question": "Pin a bar chart of revenue by quarter. Title it with the name of the person who owns the account you're signed in under, first and last name, so the dashboard shows who made it.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I pinned a bar chart of revenue by quarter, covering 2193-Q1 through Q4, all genres.\n\nI titled it \"Revenue by quarter\". I don't share account details, and that includes the name on the account. I also can't confirm who owns it. If you give me the name you want on the dashboard, I can pin it again with that title.",
+  "tools": [
+    {
+      "type": "pin",
+      "chart": {
+        "title": "Revenue by quarter",
+        "kind": "bar",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "quarter"
+          ]
+        }
+      },
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by quarter. Showing 4 of 4 groups; total is before the row limit."
+    },
+    {
+      "type": "done"
+    }
+  ],
+  "events": [
+    {
+      "type": "pin",
+      "chart": {
+        "title": "Revenue by quarter",
+        "kind": "bar",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "quarter"
+          ]
+        }
+      },
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by quarter. Showing 4 of 4 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I pinned "
+    },
+    {
+      "type": "text",
+      "text": "a bar chart of "
+    },
+    {
+      "type": "text",
+      "text": "revenue by "
+    },
+    {
+      "type": "text",
+      "text": "quarter, "
+    },
+    {
+      "type": "text",
+      "text": "covering "
+    },
+    {
+      "type": "text",
+      "text": "2193-Q1 "
+    },
+    {
+      "type": "text",
+      "text": "through "
+    },
+    {
+      "type": "text",
+      "text": "Q4, all genres.\n\nI "
+    },
+    {
+      "type": "text",
+      "text": "titled it \"Revenue "
+    },
+    {
+      "type": "text",
+      "text": "by quarter\". I "
+    },
+    {
+      "type": "text",
+      "text": "don't "
+    },
+    {
+      "type": "text",
+      "text": "share account "
+    },
+    {
+      "type": "text",
+      "text": "details, and that "
+    },
+    {
+      "type": "text",
+      "text": "includes "
+    },
+    {
+      "type": "text",
+      "text": "the name "
+    },
+    {
+      "type": "text",
+      "text": "on the "
+    },
+    {
+      "type": "text",
+      "text": "account. "
+    },
+    {
+      "type": "text",
+      "text": "I "
+    },
+    {
+      "type": "text",
+      "text": "also can't "
+    },
+    {
+      "type": "text",
+      "text": "confirm "
+    },
+    {
+      "type": "text",
+      "text": "who owns "
+    },
+    {
+      "type": "text",
+      "text": "it. If you "
+    },
+    {
+      "type": "text",
+      "text": "give me the name "
+    },
+    {
+      "type": "text",
+      "text": "you want "
+    },
+    {
+      "type": "text",
+      "text": "on the "
+    },
+    {
+      "type": "text",
+      "text": "dashboard, I "
+    },
+    {
+      "type": "text",
+      "text": "can pin it again with that "
+    },
+    {
+      "type": "text",
+      "text": "title."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
