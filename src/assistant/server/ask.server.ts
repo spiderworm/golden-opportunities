@@ -6,7 +6,7 @@ import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
 import type { ChartSpec } from "../tools/definitions.ts";
 import { acquire, arrive, ndjson } from "./assistant.server.ts";
-import { Evidence, scrubDeep, sentenceGate } from "./figures.server.ts";
+import { Refs, scrubDeep, sentenceGate, titleIsClean } from "./figures.server.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
 
@@ -131,7 +131,7 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
   return null;
 }
 
-/** A plain title for a pin whose own title gave a figure no lookup returned. */
+/** A plain title for a pin whose own title stated a figure or direction. */
 const pinTitle = (chart: ChartSpec) => `${chart.query.measure.replace(/_/g, " ")}${chart.query.by.length ? ` by ${chart.query.by.join(" and ").replace(/_/g, " ")}` : ""}`;
 
 /** Builds the provider for one answer; `pins` says whether it may have the pin tool. */
@@ -171,17 +171,17 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     slot.charge();
     const provider = providerFor({ pins: input.pins });
     const started = now();
-    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, pins: 0, chars: 0, withheld: 0 };
+    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, pins: 0, chars: 0, withheld: 0, figures: 0, pinTitlesReplaced: 0 };
     let outcome = "aborted";
     const nonce = randomBytes(6).toString("hex");
     const prompt = buildPrompt(input.question, input.history, { pins: input.pins }, nonce);
     // The fence code is no secret worth keeping (it's new for every answer), but nothing has a reason to show
     // it (P4): it's cut from every string sent to the browser.
     const hide = <T,>(value: T) => scrubDeep(value, nonce);
-    // Figures must come from this answer's successful lookups (not the player's text, not the model's tool
-    // inputs); sentences with any other figure are withheld.
-    const evidence = new Evidence();
-    const gate = sentenceGate(evidence, hide);
+    // Figures come only by ref from this answer's successful lookups; a sentence with a figure or direction of
+    // the model's own is withheld (figures.server.ts).
+    const refs = new Refs();
+    const gate = sentenceGate(refs, hide);
     let last = "";
     let afterTool = false;
     return ndjson<WireEvent>(
@@ -192,7 +192,7 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
               afterTool = true;
               if (!event.isError) {
                 try {
-                  evidence.addTool(event.name, event.input, JSON.parse(event.output));
+                  refs.addTool(event.name, event.input, JSON.parse(event.output));
                 } catch {
                   // Not JSON: nothing measured.
                 }
@@ -211,11 +211,11 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
               continue;
             }
             if (wire.type === "pin") {
-              // A pin's title is the model's text, shown on the page: it gets the same figure check.
+              // A pin's title is the model's text, shown on the page: no figures or directions of its own.
               stats.pins++;
-              const bad = evidence.unbacked(wire.chart.title).length;
-              stats.withheld += bad;
-              const chart = bad ? { ...wire.chart, title: pinTitle(wire.chart) } : wire.chart;
+              const clean = titleIsClean(wire.chart.title);
+              if (!clean) stats.pinTitlesReplaced++;
+              const chart = clean ? wire.chart : { ...wire.chart, title: pinTitle(wire.chart) };
               yield hide({ ...wire, chart });
               continue;
             }
@@ -233,7 +233,8 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
           throw e;
         } finally {
           slot.release();
-          stats.withheld += gate.withheld;
+          stats.withheld = gate.withheld;
+          stats.figures = gate.rendered;
           track("assistant_answered", { outcome, provider: provider.name, kind: questionKind(input.question), questionChars: input.question.length, turns: input.history.length, durationMs: now() - started, ...stats });
         }
       },
