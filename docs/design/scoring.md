@@ -64,7 +64,7 @@ Each measure is graded on progress from last year (the floor) toward the goal:
 | Last year | Goal | Result | Score |
 | --- | --- | --- | --- |
 | $0 | $688 | $0 | 65 |
-| $0 | $688 | $344 | 82.5, shown as 83 (B) |
+| $0 | $688 | $344 | 82.49 at the full-precision step ($688.28), shown as 82 (B−) |
 | −$100 | −$100 + max($5, $688) = $588 | −$103 | 65 − 250 × 3 ÷ 68,828 = 64.99, shown as 65 (D) |
 | −$100 | $588 | $600 | 100, plus Exceeds Requirements |
 | $37,642 | $39,524 | $37,642 | 65 |

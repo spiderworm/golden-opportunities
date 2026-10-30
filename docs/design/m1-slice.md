@@ -81,7 +81,7 @@ The previous manager has already scheduled the Q1 Books of the Month: *The Malle
 | | Option | Who might pick it | Illustrative effect on Q1 gross profit, compared with A |
 | --- | --- | --- | --- |
 | A | **Hold course.** Keep the schedule and ride out the season. | Reading A: it's seasonal, so don't panic. | $0 (about $37.1k) |
-| B | **Station-wide sale.** 15% off everything for the quarter. | Taking the alert at face value. | About −$8.3k: revenue rises about 2% while profit falls about 22% |
+| B | **Station-wide sale.** 15% off everything for the quarter. | Taking the alert at face value. | About −$7.8k: revenue rises about 3 to 4% while profit falls about 21% (from Sim's engine; holding course already gives away about 1.5% of list in other discounts) |
 | C | **Re-pick Book of the Month.** Feature three quiet, well-rated hardcovers instead: *Kalakalal Avenue*, *Can I Be Honest?*, *Who Did You Think You Were Kidding?* | Insight C | About +$1.5k |
 | D | **Weekday author nights.** 12 Tuesday-to-Thursday events, $200 each. | Insight B | About +$0.9k, with a range from −$0.4k to +$2.3k |
 
@@ -127,7 +127,7 @@ After the quarter plays out, the result screen shows:
 
 - **A chart of Q1 2194 by month, with two lines:** "your plan" and "if you'd held course". Q4 2193 sits faintly behind them for context.
 - **Tiles with change badges:** gross profit, revenue and units, each compared with holding course. Q1 revenue is far below Q4 in every option (holding course gives about $95k, 41% down again). The screen says plainly that this is the season, and that the comparison that counts is the do-nothing line.
-- **What happened:** three plain sentences generated from the model. For example: "The sale sold about 20% more books, but each one earned about $1.85 less. Revenue rose 2%; gross profit fell 22%."
+- **What happened:** three plain sentences generated from the model. For example: "The sale sold about 20% more books, but each one earned about $1.85 less. Revenue rose 3%; gross profit fell 21%."
 - **Assumptions:** every lever from section 4, each tagged "from your data" or "assumed", with its value.
 - **Discoveries:** insights A, B and C, each marked found if the player opened a view that shows it. For example, C counts as found once the player has looked at a title by month with the 15% filter applied. Points aren't the main reward; this is.
 
