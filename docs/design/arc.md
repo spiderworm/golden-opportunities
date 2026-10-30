@@ -27,11 +27,18 @@ Status: **draft for David's approval.** It is a sketch to show where M1 leads, n
 
 The 2193 data has no customers, demographics, locations, returns, inventory or costs. My earlier draft proposed leaving out investigations that would need them. David overruled that (October 30, 2026): we generate whatever data gameplay needs, including customers and demographics. The concept's examples about segments, locations, returning customers and returns are therefore back in scope.
 
-**Proposals for how to generate it:**
-- **Generated data fits the real data exactly.** Each real 2193 order is assigned to a generated customer, so every sales chart still matches the source workbook. Only the new columns (who bought, where, whether it came back) are generated.
-- **The generated customers explain the real patterns,** not new ones. For example, shuttle visitors produce the summer weekday surge, and station residents produce the steady weekends. The player's insights from M1 then deepen instead of being contradicted.
-- **Each generated pattern is written down** as the scenario's hidden truth, which is how discoveries get scored. Dewey can't see it, as its limits already require.
-- **Generated data is labeled** as generated, both in the game and in the supporting files shipped with the submission.
+**How to generate it:**
+- **Decided (David):** generated data fits the real data exactly. Each real 2193 order is assigned to a generated customer, so every sales chart still matches the source workbook. Only the new columns (who bought, where, whether it came back) are generated.
+- **Decided (David):** the generated customers explain the real patterns, not new ones. For example, shuttle visitors produce the summer weekday surge, and station residents produce the steady weekends. The player's insights from M1 then deepen instead of being contradicted.
+- **Decided (David):** Dewey stays blind to how the scenario was built. It sees the data the player sees and nothing else.
+- **Dropped:** labeling generated data. David: the starter data was generated too, so the label doesn't mean much.
+
+**Open: the scenario's intended story.** The generator builds a scenario around a story, for example "visitors drive the summer". A player may find a different reading that fits the data as well, or better. **Proposal:** the intended story is never used to grade the player's conclusion. It has three uses:
+1. **It drives the simulation.** Decisions play out according to how the station really works. A player whose different reading fits the data will usually make decisions that work too, because the data came from that mechanism. Where their reading misleads them, the outcome shows it, as in real life.
+2. **It is checked against the data.** Before a scenario ships, a test confirms the data shows the intended pattern. If players keep finding a better reading, that is either a flaw in the generator or a pattern nobody planned. Analytics should flag it so we can look.
+3. **It is revealed in the debrief.** After the quarter, the result screen can say "what was going on on the station", next to what the player found, without marking either right or wrong.
+
+Discoveries would then be credited for any pattern really present in the data, not only the intended ones. M1's three insights are checked against chart states. Crediting unplanned discoveries would need a judge that can see the data. The event director could do it, since it already knows the scenario and Dewey doesn't.
 
 **Investigations this opens** (they fit into the arc above):
 
