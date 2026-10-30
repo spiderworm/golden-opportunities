@@ -7,7 +7,7 @@ Status: **draft for David's approval.** Plot wrote it and Goldy coordinates it. 
 - **Decided:** the player sees the rules before deciding. Effects appear only after in-game time has passed. Projections, which may not hold true, may come later, once David has played the game.
 - **Decided:** the names Dewey and the Commerce Office. "Meridian Station" was approved on condition that it clears a check, and it didn't: it is a location in Microsoft's Halo. A replacement is proposed in section 1.
 - **Decided:** we generate whatever data gameplay needs, including customers and demographics (see `arc.md`).
-- **Decided:** scoring is a report card of four measures (Profit, Readers served, Happiness, Culture) plus a combined score. See `scoring.md`, which also proposes M1's reduced report card.
+- **Decided:** scoring is a report card of four measures (Profit, Readers served, Happiness, Culture) plus an overall score, which is the lowest of the four. See `scoring.md`, which also proposes M1's reduced report card.
 - **Decided:** the event director is Almanac ("Alma"). It sets up events, stretches goals and plays the book market. See `scoring.md`.
 
 M1 is the thinnest slice that can be played end to end: an alert, then the revenue chart, then one decision, then one simulated quarter, then the result.
@@ -87,10 +87,12 @@ The previous manager has already scheduled the Q1 Books of the Month: *The Malle
 
 A, C and D are all defensible. C has the best footing in the data, D is a bet on a real pattern, and A is the honest "nothing is broken". B is the overreaction. It still "wins" on revenue, which is the lesson.
 
+**Decided (David, October 30): the plan combines up to two moves.** The player chooses up to two of B, C and D, or none, which is A. The best plan, C and D together, typically grades B+ (85 to 91) under the lowest-measure score. Holding course grades D (67 to 70), and any plan with the sale grades F. `scoring.md` has the details and the calibration.
+
 **Proposals:**
 - ~~Score on gross profit only.~~ **Open:** David asked for more than one measure (see the review at the top).
 - In M1, option C's three titles are preset. Letting the player choose the titles is M2 (see `arc.md`).
-- Options are exclusive in M1 (one decision).
+- ~~Options are exclusive in M1.~~ Superseded: up to two moves can be combined.
 - **Decided (David):** before choosing, the player sees the rules of the world: the goal, the 60% cost of goods and the price of an event. They see the effect sizes only after the quarter plays out, in the assumptions panel.
 
 ## 4. The simulation

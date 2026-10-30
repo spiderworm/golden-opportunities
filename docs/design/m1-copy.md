@@ -53,13 +53,16 @@ Button: `Open the ledgers`
 ```
 PLAN FOR Q1 2194
 
-The Commerce Office will judge your plan on one figure: the store's gross profit for the quarter.
+Your bosses grade the quarter on four measures: Profit, Readers served, Happiness and Culture. Each goal is last year's first quarter plus 5%.
+
+Your score is your lowest measure. Raise one measure by sinking another, and your score sinks with it.
 
 What you need to know
-- Gross profit is revenue minus what the books cost you.
+- Profit is revenue minus what the books cost you.
 - Books cost the store 60% of their list price.
 - An author night costs $200: the author's shuttle fare and the room.
-- Your plan runs from January 1 to March 31. Choose one option.
+- Your plan runs from January 1 to March 31.
+- Choose up to two moves, or none to hold course.
 
 Already scheduled by the previous manager
 Book of the Month, 15% off for the whole month:
@@ -68,12 +71,17 @@ Book of the Month, 15% off for the whole month:
 - March: Portmeirion (mass market paperback)
 ```
 
-Options (title, then one line):
+Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events`, `sale`.
 
-- `A. Hold course`: `Keep the schedule as it is.`
-- `B. Station-wide sale`: `15% off every book, all quarter. The Book of the Month runs at the same 15%.`
-- `C. Re-pick Book of the Month`: `Feature Kalakalal Avenue (January), Can I Be Honest? (February) and Who Did You Think You Were Kidding? (March), all in hardcover.`
-- `D. Weekday author nights`: `Host 12 author nights, one each week on a Tuesday, Wednesday or Thursday, at $200 each.`
+- `Re-pick Book of the Month`: `Feature Kalakalal Avenue (January), Can I Be Honest? (February) and Who Did You Think You Were Kidding? (March), all in hardcover, instead of the scheduled picks.`
+- `Weekday author nights`: `Host 12 author nights, one each week on a Tuesday, Wednesday or Thursday, at $200 each.`
+- `Station-wide sale`: `15% off every book, all quarter. The Book of the Month runs at the same 15%.`
+
+| Element | String |
+| --- | --- |
+| Moves heading | `Your moves (choose up to two)` |
+| Nothing chosen | `Hold course: the schedule runs as it is.` |
+| Trying to choose a third | `You can choose up to two moves.` |
 
 | Element | String |
 | --- | --- |
@@ -93,10 +101,8 @@ Options (title, then one line):
 | Chart lines | `Your plan`, `If you had held course`, `Q4 2193 (for reference)` |
 | Tiles | `Gross profit`, `Revenue`, `Units sold` |
 | Tile badge | `{+/-}{amount} vs holding course` |
-| Tile badge (option A) | `Your plan was to hold course` |
+| Tile badge (no moves chosen) | `Your plan was to hold course` |
 | Season note | `Q1 revenue was {pct}% below Q4 2193. Last year, Q1 was also the quietest quarter: $95,246. To judge your plan, compare it with holding course, not with Q4.` |
-| Score heading | `Your plan vs holding course` |
-| Score line | `{+/-}${amount} gross profit` |
 | Buttons | `See the assumptions`, `Back to the ledgers` |
 
 ### Report card
@@ -104,16 +110,30 @@ Options (title, then one line):
 | Element | String |
 | --- | --- |
 | Heading | `Report card` |
-| Combined label | `Combined score` |
+| Overall label | `Overall score` |
+| Overall explainer | `Your overall score is your lowest measure.` |
+| Binding tag (on the lowest row or rows) | `Sets your score` |
+| Close-behind tag | `Close behind` |
 | Score with grade | `{score} ({grade})` |
 | Held-course comparison | `If you had held course: {score} ({grade})` |
 | Columns | `Measure`, `This quarter`, `Q1 2193`, `Goal`, `Score`, `If you had held course` |
 | Measures | `Profit`, `Readers served`, `Happiness`, `Culture` |
 | Award tag | `Exceeds Requirements` |
-| Well-Rounded Shop | `Well-Rounded Shop: every measure scored 80 or more, which adds 3 to the combined score.` |
-| Note | `Each goal is Q1 2193 plus 5%. Matching last year scores 65, a D. Meeting the goal scores 100, an A+.` |
+| Certificates heading | `Certificates` |
+| Exceeds Requirements certificate | `Exceeds Requirements: {Measure} beat its goal. Certificates don't change your score.` |
+| Well-Rounded Shop | `Well-Rounded Shop: every measure scored 80 or more.` |
+| Note | `Each goal is Q1 2193 plus 5%. Matching last year scores 70 (C−). Meeting the goal scores 100 (A+).` |
 
-**Boss lines.** One line per measure, chosen by the result: at or past the goal, between last year and the goal, or below last year. Bosses speak in capitals. The numbers are the card's.
+**Screen order (simple first).** The card shows, top to bottom:
+1. The overall score, with the explainer "Your overall score is your lowest measure."
+2. The lowest-measure line, then at most one close-behind line (the closest).
+3. The table, with the binding row or rows highlighted and tagged "Sets your score".
+4. Certificates.
+5. A collapsed disclosure, `What the bosses said`, holding the per-measure boss lines and the Station Administrator's line.
+
+So no more than three capitalized lines show before the table.
+
+**Boss lines (inside the disclosure).** One line per measure, chosen by the result: at or past the goal, between last year and the goal, or below last year. Bosses speak in capitals. The numbers are the card's.
 
 | Boss (measure) | At or past the goal | Between last year and the goal | Below last year |
 | --- | --- | --- | --- |
@@ -121,15 +141,43 @@ Options (title, then one line):
 | The Throughput Subcommittee (Readers served) | `{result} READERS PASSED THROUGH THE DOOR. THE DOOR PERFORMED ADMIRABLY. SO DID YOU.` | `{result} READERS. THE DOOR HAS CAPACITY FOR MORE. THE DOOR IS DISAPPOINTED.` | `FEWER READERS THAN LAST YEAR. WE HAVE INSPECTED THE DOOR. THE DOOR IS NOT AT FAULT.` |
 | The Readers' Guild survey drone (Happiness) | `HAPPINESS: {result}. THIS EXCEEDS THE REQUIRED HAPPINESS. PLEASE DO NOT BECOME COMPLACENT ABOUT HAPPINESS.` | `HAPPINESS: {result}. PLEASE BE {goal}.` | `HAPPINESS HAS DECLINED. THE DRONE HAS RECORDED SEVERAL SIGHS.` |
 | The Ministry of Culture (Culture) | `CULTURE INCREASED. YOU MAY CELEBRATE FOR 0.5 MINUTES.` | `CULTURE INCREASED {pct}%. CULTURE TARGET: {goalPct}%. PLEASE CULTURE HARDER.` | `CULTURE HAS DECREASED. THE MINISTRY IS UNCULTURED BY THIS.` |
-| The Station Administrator (combined) | `COMBINED SCORE: {score}. THIS IS A WHOLE SHOP.` (100) | `COMBINED SCORE: {score}. THIS IS {fraction} OF A SHOP. PLEASE ACQUIRE THE REMAINDER.` (60 to 99) | `COMBINED SCORE: {score}. THE ADMINISTRATOR WILL NEED TO SIT DOWN.` (below 60) |
+| The Station Administrator (overall) | `OVERALL SCORE: {score}. THIS IS A WHOLE SHOP.` (100) | `OVERALL SCORE: {score}. THIS IS {fraction} OF A SHOP. PLEASE ACQUIRE THE REMAINDER.` (60 to 99) | `OVERALL SCORE: {score}. THE ADMINISTRATOR WILL NEED TO SIT DOWN.` (below 60) |
 
 For the Station Administrator, `{fraction}` is the score in words: the nearest of THREE-FIFTHS, TWO-THIRDS, SEVEN-TENTHS, THREE-QUARTERS, FOUR-FIFTHS, FIVE-SIXTHS, NINE-TENTHS and NINETEEN-TWENTIETHS. It is prefixed with "ABOUT" when the fraction isn't exact: 75 is "THREE-QUARTERS", and 78 is "ABOUT THREE-QUARTERS".
+
+**Lowest-measure lines.** These are spoken by the binding measure's boss, under the overall score.
+These lines aren't matched first-come. Each line has an exact condition (`r` is a measure's result, `g` its goal, `last` its Q1 2193 value):
+
+| Line | Shows when |
+| --- | --- |
+| All met | Every measure has r ≥ g, so every score is 100 |
+| One binder | Not all met, and exactly one measure has the lowest score |
+| Tie | Not all met, and two or more measures share the lowest score. Name them all: "{A} AND {B}", or "{A}, {B} AND {C}" |
+| Sacrifice | Not all met, at least one measure has r < last, and a different measure has r > g |
+| Close behind | Not all met, and some non-binding measure's score is at most 3 above the overall score. Show it only for the closest such measure; if two are equally close, use card order (Profit, Readers served, Happiness, Culture) |
+
+What shows, in this order:
+- All met: that line alone.
+- Otherwise: the one-binder or tie line, then the sacrifice line if its condition holds, then the close-behind line if its condition holds. That's at most three lines.
+
+Certificates are separate from these lines and use their own conditions. Exceeds Requirements goes to each measure with r > g, strictly; meeting the goal exactly scores 100 but earns no certificate. Well-Rounded Shop goes to a card where every score is 80 or more. Certificates can appear alongside any of the lines above.
+
+`{MEASURE}` is the measure's name in capitals: PROFIT, READERS SERVED, HAPPINESS, CULTURE.
+
+| Moment | Line |
+| --- | --- |
+| One measure sets the score | `{MEASURE} HAS SET YOUR SCORE: {score}. THE OTHER MEASURES WERE IRRELEVANT. WE ADMIRED THEM BRIEFLY.` |
+| A tie sets the score | `{MEASURE} AND {MEASURE} HAVE JOINTLY SET YOUR SCORE: {score}. WE ARE SUSPICIOUS OF TIES.` |
+| Sacrifice | `YOU RAISED ONE MEASURE BY LOWERING ANOTHER. WE ONLY COUNT THE LOWER ONE. THIS IS POLICY.` |
+| All met | `ALL MEASURES MET REQUIREMENTS. YOUR SCORE IS 100. WE ARE RECALIBRATING OUR EXPECTATIONS UPWARD.` |
+| Close behind | `{MEASURE} WAS {n} POINTS FROM SETTING YOUR SCORE. IT IS WATCHING.` |
 
 **Numbers in the lines:** goals are rounded up for display, and a result that falls short of its goal is rounded down. That way a result never appears to meet a goal it missed: culture up 4.6% against a 5% target reads "CULTURE INCREASED 4%".
 
 ### What happened
 
-Each option has three sentences, filled from the model.
+Each move has its sentences, filled from the model. Holding course shows [A]. A plan with moves shows each move's sentences in the order re-pick, author nights, sale. In a two-move plan, drop each move's last sentence (its comparison with holding course) and end with the total:
+> Together, your two moves changed gross profit by {+/-}${amount} compared with holding course.
 
 **[A] Hold course**
 > You kept the schedule. The three Books of the Month sold about {extra} extra copies between them. Because they were already bestsellers, the 15% discount also went on {baseCopies} copies that would have sold anyway, and that cost ${discountCost}. Gross profit for the quarter was ${profit}.
@@ -170,6 +218,7 @@ If revenue falls instead (that can only happen if the assumption is changed):
 | Assumed | `A station-wide 15% sale sells 20% more of every book. With 10%, gross profit would have changed by {p10}; with 30%, by {p30}.` |
 | Assumed | `Each author night adds between 30 and 70 orders that day, at Q1's average order value of $13.96.` |
 | Assumed | `Each author night costs $200.` |
+| Assumed | `Readers at an author night enjoy the night out: those visits get 20 extra happiness points.` |
 
 **Proposal:** show every line for every option, and highlight the lines the player's option used. The panel then teaches the whole model, not only the player's slice of it.
 
