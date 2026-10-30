@@ -156,3 +156,12 @@ const tally = (xs: string[]) =>
   Object.entries(xs.reduce<Record<string, number>>((m, x) => ((m[x] = (m[x] ?? 0) + 1), m), {}))
     .sort((a, b) => b[1] - a[1])
     .map(([signal, players]) => ({ signal, players }));
+
+/** a held string sent in pieces (../client's pieces(): key, key_2, key_3, …) put back together */
+export function joined(p: Record<string, string | number | boolean>, key: string): string | undefined {
+  const k = key.slice(0, 36);
+  if (p[k] === undefined) return undefined;
+  let text = String(p[k]);
+  for (let i = 2; p[`${k}_${i}`] !== undefined; i++) text += String(p[`${k}_${i}`]);
+  return text;
+}
