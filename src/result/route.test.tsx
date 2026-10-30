@@ -36,6 +36,8 @@ describe("the result screen", () => {
     for (const name of ["Profit", "Readers served", "Happiness", "Culture"]) expect(html).toContain(`<th scope="row">${name}</th>`);
     expect(html).toContain("If you had held course");
     expect(html).not.toMatch(/\d-</);
+    expect(html).toContain("The Commerce Office");
+    expect(html).toMatch(/COMBINED SCORE: \d+\./);
   });
 
   it("drops the comparison column when the plan was to hold course", () => {
