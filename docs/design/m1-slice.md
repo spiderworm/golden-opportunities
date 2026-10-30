@@ -142,7 +142,7 @@ After the quarter plays out, the result screen shows:
 How it keeps its limits in character:
 
 - **A specific question gets a direct answer and a chart.** "Weekday orders per day: Q3, 199; Q4, 104. Pinned it if you want it."
-- **An open question gets questions back.** Asked "Why is revenue down?", Dewey says: "I can't tell you why; that part's yours. I can break Q4 down by genre, weekday or format, or compare order counts with order sizes. Where would you like to start?"
+- **An open question gets questions back.** Asked "Why is revenue down?", Dewey says: "I can't tell you why; that part's yours. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?" **Decided (David):** a redirect always offers this full menu, in a fixed order, and never a subset chosen for the question (see `m1-copy.md`).
 - **A request for advice gets a polite refusal.** Asked "Which option should I pick?", Dewey says: "Not my shelf. I can show you what last year's data says about anything an option touches."
 - **It doesn't volunteer.** If the player has filtered to the 15% rate, Dewey answers what was asked and doesn't point out that it's one title a month.
 - **It explains terms** (average order value, seasonal index) **and shows how to use the tools.**
