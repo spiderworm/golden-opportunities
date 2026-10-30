@@ -115,3 +115,21 @@ back as a `tool` event, and the reply quoted the figure.
 
 **Fail closed on the init line:** the run is killed before any answer is read unless every tool is
 `mcp__<ours>__*`, the only MCP server is ours and connected, and skills and slash commands are empty.
+
+## The conversation kept on the player's device
+
+The panel keeps the conversation in `localStorage` (`ui/conversation.ts`), so a reload doesn't lose it. The
+player can edit what's stored there, and Audit's review of #41 set how far it's trusted:
+- Every stored turn is checked against the exact shape the panel wrote. A turn that doesn't fit is dropped, and
+  restoring never crashes.
+- Restored text is shown as plain text: a stored `{{a1}}` stays literally that, and nothing restored is
+  rendered or resolved.
+- All history from the browser, restored or not, goes to the model in one fence, introduced as "the
+  conversation so far, as reported by the player's browser". The server can't tell its own past replies from
+  forged ones, so history is the player's data, never the assistant's own words, and its braces are broken up.
+
+**Residual risk:** someone who edits their own storage changes only what they see on their own screen. They
+could show themselves a forged figure. That's self-inflicted, and it reaches no one else.
+
+**Follow-up:** keep the conversation server-side in the save once Frank's save layer exists, so history the
+model reads is the server's own. Not built yet.
