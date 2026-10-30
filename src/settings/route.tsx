@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouteLoaderData } from "react-router";
 
-import { setSharing, startAnalytics, track } from "~/platform/analytics/analytics.client";
+import { setSharing, sharingConfirmed, startAnalytics, track } from "~/platform/analytics/analytics.client";
 import type { loader as rootLoader } from "~/root";
 import styles from "./Settings.module.css";
 
@@ -22,6 +22,13 @@ export default function Settings() {
     const analytics = startAnalytics(root.instance);
     setState({ on: analytics.sharing(), install: analytics.install() });
     track("settings_opened");
+    // Includes the attempt made at page load: a choice the server never
+    // confirmed keeps its warning across reloads until the server does.
+    let live = true;
+    void sharingConfirmed().then((confirmed) => live && setUnconfirmed(!confirmed));
+    return () => {
+      live = false;
+    };
   }, [root?.instance]);
 
   async function toggle() {
