@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { QueryView } from "~/query/types";
+import { runQuery as engineQuery } from "~/query/run-query.server";
+import type { Query, QueryView } from "~/query/types";
 import { change } from "./format";
 import { buildTile, investigate } from "./investigation.server";
-import { runQuery } from "./query-stub.server";
 import { DEFAULT_STATE } from "./state";
+
+// Frank's engine, without its telemetry.
+const runQuery = (query: Query, v: QueryView) => engineQuery(query, v, () => {});
 
 const view: QueryView = { periods: ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"], includeUndated: true };
 const quarters = view.periods;

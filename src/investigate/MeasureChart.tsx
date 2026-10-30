@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
 import { categoryHeight, categoryModel, categoryOption, legendItems, TOP_RANKED } from "./charts/category-chart";
-import { EChart } from "./charts/EChart";
+import { EChart } from "~/platform/charts/EChart";
 import { Legend } from "./charts/Legend";
 import { ResultTable } from "./charts/ResultTable";
 import { DIMENSION_LABELS, formatDimensionValue, MEASURE_LABELS } from "./format";

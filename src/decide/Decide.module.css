@@ -1,0 +1,240 @@
+.page {
+  display: grid;
+  gap: 20px;
+  max-width: 1080px;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The Commerce Office's memo: formal and brief. */
+.memo {
+  padding: 26px 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel);
+}
+
+.memoHeading {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.goal {
+  margin: 10px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.briefing {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.subheading {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.listIntro {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.bookTitle {
+  color: var(--color-text);
+  font-style: italic;
+}
+
+/* The four options: radio cards. */
+.options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.option {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 20px 22px 20px 52px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel);
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--color-panel-raised);
+}
+
+.option[data-selected] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+
+.option input {
+  position: absolute;
+  top: 22px;
+  left: 20px;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.options:disabled .option {
+  cursor: default;
+}
+
+.options:disabled .option:not([data-selected]) {
+  opacity: 0.45;
+}
+
+.optionTitle {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.optionLine {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--color-accent-soft);
+}
+
+.primary:disabled {
+  background: var(--color-panel-raised);
+  color: var(--color-text-subtle);
+  cursor: not-allowed;
+}
+
+.secondary {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.secondary:hover {
+  background: var(--color-panel-raised);
+}
+
+.confirm {
+  display: grid;
+  gap: 14px;
+  padding: 20px 22px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel-raised);
+}
+
+.confirmText {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.playout {
+  display: grid;
+  gap: 6px;
+  padding: 24px 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel);
+}
+
+.month,
+.closed {
+  margin: 0;
+  animation: appear 400ms ease both;
+}
+
+.month {
+  color: var(--color-text-muted);
+  font-size: 18px;
+}
+
+.closed {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .month,
+  .closed {
+    animation: none;
+  }
+}
+
+@media (max-width: 1000px) {
+  .briefing,
+  .options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

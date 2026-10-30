@@ -1,6 +1,29 @@
+.layout {
+  display: grid;
+  gap: 20px;
+}
+
+.assistant {
+  min-width: 0;
+}
+
+/* Wide screens: Dewey gets a column, sticky beside the dashboard. */
+@media (min-width: 1600px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 400px;
+    align-items: start;
+  }
+
+  .assistant {
+    position: sticky;
+    top: 20px;
+  }
+}
+
 .page {
   display: grid;
   gap: 20px;
+  min-width: 0;
   transition: opacity 150ms ease;
 }
 

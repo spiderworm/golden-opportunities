@@ -4,8 +4,8 @@ import type { EChartsCoreOption } from "echarts/core";
 import { QUERY_LIMITS, type Dimension, type Measure, type QueryResult } from "~/query/types";
 import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
 import { isTotal } from "../state";
-import { chartTheme, seriesColor, tooltipStyle } from "./chart-theme";
-import { escapeHtml } from "./escape";
+import { chartTheme, seriesColor, tooltipStyle } from "~/platform/charts/chart-theme";
+import { escapeHtml } from "~/platform/charts/escape";
 
 export interface CategoryModel {
   measure: Measure;

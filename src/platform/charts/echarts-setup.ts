@@ -1,7 +1,7 @@
 // The only module that imports ECharts' runtime. EChart loads it lazily, so the
 // route's own chunk (and the server-rendered tiles and filters) don't wait for
-// it. Register just what the charts use: bars, and lines for pinned charts.
-// The screen draws its own legend, and the heatmap is an HTML grid.
+// it. Register just what the charts use: bars and lines. Screens draw their
+// own legends, and the heatmap is an HTML grid.
 import { BarChart, LineChart } from "echarts/charts";
 import { AriaComponent, GridComponent, TooltipComponent } from "echarts/components";
 import * as echarts from "echarts/core";

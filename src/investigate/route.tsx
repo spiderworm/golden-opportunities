@@ -1,6 +1,6 @@
 import { useLocation, useNavigation, useSearchParams } from "react-router";
 
-import type { QueryView } from "~/query/types";
+import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
 import type { ShellHandle } from "~/shell/Shell";
 import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
@@ -11,7 +11,8 @@ import { Heatmap } from "./Heatmap";
 import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
-import { runQuery } from "./query-stub.server";
+import { runQuery } from "~/query/run-query.server";
+import { resolveQueryView } from "~/query/view.server";
 import {
   DEFAULT_STATE,
   filtersExcept,
@@ -31,9 +32,6 @@ import styles from "./Investigate.module.css";
 
 export const handle: ShellHandle = { title: "Investigate" };
 
-// TODO(game-state): the visible periods come from Frank's game state once it
-// lands. Until then the player sees all of 2193, as the HTTP adapter does.
-const VIEW: QueryView = { periods: ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"], includeUndated: true };
 
 export function meta({}: Route.MetaArgs) {
   return [{ title: "Investigate | Orbital Books" }];
@@ -42,7 +40,8 @@ export function meta({}: Route.MetaArgs) {
 export function loader({ request }: Route.LoaderArgs) {
   const started = performance.now();
   const state = parseState(new URL(request.url).searchParams);
-  const investigation = investigate(state, runQuery, VIEW);
+  // The server decides what the player can see; Frank's game state will resolve it per save.
+  const investigation = investigate(state, runQuery, resolveQueryView());
   trackServer("investigate_loaded", {
     durationMs: Math.round(performance.now() - started),
     measure: state.measure,
@@ -60,7 +59,6 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   const refreshing = navigation.state === "loading" && navigation.location?.pathname === location.pathname;
 
   const pins = usePins(track);
-  // TODO(assistant): when Sage's panel (#19) is on this page, give it onPin={(chart) => pins.add(chart, "dewey")}.
   const chartPin = pinSpecFor(state);
 
   function update(next: InvestigateState) {
@@ -68,83 +66,89 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <div className={styles.page} data-refreshing={refreshing || undefined} aria-busy={refreshing}>
-      <FilterBar
-        filters={state.filters}
-        options={options}
-        onChange={(dimension, values) => {
-          track("investigate_filter_changed", { dimension, values: values.length });
-          update(setFilter(state, dimension, values));
-        }}
-        onDiscount={(choice) => {
-          // Rates are labels like "15%", not content; "all", "full" and "any" are fixed choices.
-          track("investigate_discount_filtered", { choice });
-          update(setDiscount(state, choice));
-        }}
-        onClear={() => {
-          track("investigate_filters_cleared");
-          update({ ...state, filters: DEFAULT_STATE.filters });
-        }}
-      />
-      <MetricTiles tiles={tiles} />
-      <MeasureChart
-        state={state}
-        result={chart}
-        quarters={options.quarter}
-        onMeasure={(measure) => {
-          track("investigate_measure_changed", { measure });
-          update({ ...state, measure });
-        }}
-        onGroup={(by) => {
-          track("investigate_regrouped", { by });
-          update({ ...state, by });
-        }}
-        onCompare={(compare) => {
-          track("investigate_compare_toggled", { compare });
-          update({ ...state, compare });
-        }}
-        onDrill={(value) => {
-          const next = toggleFilterValue(state, state.by, value);
-          track("investigate_drilldown", { source: "chart", dimension: state.by, selected: next.filters[state.by]?.length ?? 0 });
-          update(next);
-        }}
-        onTable={(shown) => track("investigate_table_toggled", { shown })}
-        onPin={() => pins.add(chartPin, "player")}
-        pinned={pins.has(chartPin.kind, chartPin.query)}
-      />
-      {titleView && (
-        <TitleView
-          state={state}
-          title={titleView.title}
-          result={titleView.result}
-          quarters={options.quarter}
-          onMonth={(month) => {
-            const next = toggleFilterValue(state, "month", month);
-            track("investigate_drilldown", { source: "title_view", dimension: "month", selected: next.filters.month?.length ?? 0 });
-            update(next);
+    <div className={styles.layout}>
+      <div className={styles.page} data-refreshing={refreshing || undefined} aria-busy={refreshing}>
+        <FilterBar
+          filters={state.filters}
+          options={options}
+          onChange={(dimension, values) => {
+            track("investigate_filter_changed", { dimension, values: values.length });
+            update(setFilter(state, dimension, values));
           }}
-          onClose={() => {
-            track("investigate_title_closed");
-            update(setFilter(state, "title", []));
+          onDiscount={(choice) => {
+            // Rates are labels like "15%", not content; "all", "full" and "any" are fixed choices.
+            track("investigate_discount_filtered", { choice });
+            update(setDiscount(state, choice));
+          }}
+          onClear={() => {
+            track("investigate_filters_cleared");
+            update({ ...state, filters: DEFAULT_STATE.filters });
           }}
         />
-      )}
-      <Heatmap
-        state={state}
-        result={heatmap}
-        quarters={options.quarter}
-        onCell={(weekday, month) => {
-          const next = toggleCell(state, weekday, month);
-          track("investigate_drilldown", { source: "heatmap", dimension: "weekday_month", selected: next.filters.month ? 1 : 0 });
-          update(next);
-        }}
-      />
-      <PinnedCharts
-        pins={pins.pins}
-        quarters={options.quarter}
-        onRemove={pins.remove}
-        onError={(code) => track("investigate_pin_failed", { code })}
-      />
+        <MetricTiles tiles={tiles} />
+        <MeasureChart
+          state={state}
+          result={chart}
+          quarters={options.quarter}
+          onMeasure={(measure) => {
+            track("investigate_measure_changed", { measure });
+            update({ ...state, measure });
+          }}
+          onGroup={(by) => {
+            track("investigate_regrouped", { by });
+            update({ ...state, by });
+          }}
+          onCompare={(compare) => {
+            track("investigate_compare_toggled", { compare });
+            update({ ...state, compare });
+          }}
+          onDrill={(value) => {
+            const next = toggleFilterValue(state, state.by, value);
+            track("investigate_drilldown", { source: "chart", dimension: state.by, selected: next.filters[state.by]?.length ?? 0 });
+            update(next);
+          }}
+          onTable={(shown) => track("investigate_table_toggled", { shown })}
+          onPin={() => pins.add(chartPin, "player")}
+          pinned={pins.has(chartPin.kind, chartPin.query)}
+        />
+        {titleView && (
+          <TitleView
+            state={state}
+            title={titleView.title}
+            result={titleView.result}
+            quarters={options.quarter}
+            onMonth={(month) => {
+              const next = toggleFilterValue(state, "month", month);
+              track("investigate_drilldown", { source: "title_view", dimension: "month", selected: next.filters.month?.length ?? 0 });
+              update(next);
+            }}
+            onClose={() => {
+              track("investigate_title_closed");
+              update(setFilter(state, "title", []));
+            }}
+          />
+        )}
+        <Heatmap
+          state={state}
+          result={heatmap}
+          quarters={options.quarter}
+          onCell={(weekday, month) => {
+            const next = toggleCell(state, weekday, month);
+            track("investigate_drilldown", { source: "heatmap", dimension: "weekday_month", selected: next.filters.month ? 1 : 0 });
+            update(next);
+          }}
+        />
+        <PinnedCharts
+          pins={pins.pins}
+          quarters={options.quarter}
+          onRemove={pins.remove}
+          onError={(code) => track("investigate_pin_failed", { code })}
+        />
+      </div>
+      {/* Dewey: a column beside the dashboard on wide screens, after it below that. */}
+      <aside className={styles.assistant} aria-label="Dewey">
+        <AssistantPanel onPin={(chart) => pins.add(chart, "dewey")} />
+      </aside>
     </div>
   );
 }
