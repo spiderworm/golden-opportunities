@@ -1,10 +1,12 @@
 // POST /api/assistant: one question in, the answer out as newline-delimited JSON. Every request is checked at
 // the door (method, origin, type, size, shape) before anything is spawned; one answer runs at a time.
 
+import { randomBytes } from "node:crypto";
 import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
 import type { ChartSpec } from "../tools/definitions.ts";
 import { acquire, ndjson } from "./assistant.server.ts";
+import { numbersIn, scrubber, unbackedFigures } from "./figures.server.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
 
@@ -120,6 +122,9 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
   if (event.name === "query_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.source === "string") {
     return { type: "data", query: event.input, columns: output.columns, rows: output.rows, total: output.total as number | null, source: output.source } as WireEvent;
   }
+  if (event.name === "compare_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.total === "object" && typeof output.source === "string") {
+    return { type: "comparison", query: event.input, columns: output.columns, rows: output.rows, total: output.total, source: output.source } as WireEvent;
+  }
   if (pins && event.name === "pin_chart" && output.pinned === true && typeof output.source === "string") {
     return { type: "pin", chart: output.chart as ChartSpec, source: output.source };
   }
@@ -141,43 +146,75 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     } catch (e) {
       return refused(e);
     }
-    // Admit before reading the body, so a slow or oversized body can't hold the server up uncounted.
-    const release = acquire(now());
-    if (release === "busy" || release === "limit") {
-      track("assistant_limited", { reason: release });
-      return refuse(429, release === "busy" ? `${ASSISTANT_NAME} is answering another question.` : "That's enough questions for this hour.");
+    // Admit before reading the body, so a slow or oversized body can't hold the server up uncounted. Only a
+    // question that passes every check counts toward the hour.
+    const slot = acquire(now());
+    if (typeof slot === "string") {
+      track("assistant_limited", { reason: slot });
+      return refuse(429, slot === "busy" ? `${ASSISTANT_NAME} is answering another question.` : slot === "flood" ? "Too many requests. Try again in a minute." : "That's enough questions for this hour.");
     }
     let input: AskInput;
     try {
       input = await readAsk(request, deadlineMs);
     } catch (e) {
-      release();
+      slot.release();
       return refused(e);
     }
+    slot.charge();
     const provider = providerFor({ pins: input.pins });
     const started = now();
-    const stats = { lookups: 0, failedLookups: 0, pins: 0, chars: 0 };
+    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, pins: 0, chars: 0, unbacked: 0 };
     let outcome = "aborted";
-    const prompt = buildPrompt(input.question, input.history, { pins: input.pins });
+    const nonce = randomBytes(6).toString("hex");
+    const prompt = buildPrompt(input.question, input.history, { pins: input.pins }, nonce);
+    // The fence code is no secret worth keeping (it's new for every answer), but the reply has no reason to
+    // show it (P4).
+    const scrub = scrubber(nonce);
+    // What the reply's figures may come from: this answer's tool calls, and what the player wrote.
+    const known = numbersIn(input.question);
+    let reply = "";
     return ndjson<WireEvent>(
       async function* (signal) {
         try {
           for await (const event of provider.ask(prompt, signal)) {
+            if (event.type === "tool") {
+              numbersIn(event.input, known);
+              if (!event.isError) {
+                try {
+                  numbersIn(JSON.parse(event.output), known);
+                } catch {
+                  numbersIn(event.output, known);
+                }
+              }
+            }
             const wire = toWire(event, input.pins);
             if (!wire) continue;
-            if (wire.type === "text") stats.chars += wire.text.length;
+            if (wire.type === "text") {
+              const text = scrub.push(wire.text);
+              reply += wire.text;
+              stats.chars += wire.text.length;
+              if (text) yield { type: "text", text };
+              continue;
+            }
             if (wire.type === "data") stats.lookups++;
+            if (wire.type === "comparison") stats.comparisons++;
             if (wire.type === "lookup_failed") stats.failedLookups++;
             if (wire.type === "pin") stats.pins++;
             yield wire;
           }
+          const rest = scrub.flush();
+          if (rest) yield { type: "text", text: rest };
           outcome = signal.aborted ? "aborted" : "answered";
-          if (!signal.aborted) yield { type: "done" };
+          if (!signal.aborted) {
+            stats.unbacked = unbackedFigures(reply, known).length;
+            if (stats.unbacked) yield { type: "unbacked", figures: stats.unbacked };
+            yield { type: "done" };
+          }
         } catch (e) {
           outcome = e instanceof AssistantUnavailable ? "unavailable" : "failed";
           throw e;
         } finally {
-          release();
+          slot.release();
           track("assistant_answered", { outcome, provider: provider.name, kind: questionKind(input.question), questionChars: input.question.length, turns: input.history.length, durationMs: now() - started, ...stats });
         }
       },

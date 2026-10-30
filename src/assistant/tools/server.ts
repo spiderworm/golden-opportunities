@@ -6,8 +6,8 @@
 // ORBITAL_PINS=0 removes pin_chart, for pages with nowhere to put a pin.
 
 import { createInterface } from "node:readline";
-import type { QueryResult } from "../../query/types.ts";
-import { checkChart, checkQuery, describeData, SERVER_NAME, ToolInputError, TOOLS } from "./definitions.ts";
+import type { QueryColumn, QueryResult } from "../../query/types.ts";
+import { checkChart, checkComparison, checkQuery, describeData, SERVER_NAME, ToolInputError, TOOLS, type Comparison, type ComparisonFigures, type ComparisonResult } from "./definitions.ts";
 
 const MAX_LINE = 65_536;
 const MAX_RESPONSE = 1_000_000;
@@ -51,6 +51,45 @@ async function runQuery(query: unknown, endpoint: { url: URL; token: string }): 
   return { columns, rows, total, source };
 }
 
+const figures = (from: number | null | undefined, to: number | null | undefined): ComparisonFigures => {
+  const a = typeof from === "number" ? from : null;
+  const b = typeof to === "number" ? to : null;
+  const change = a === null || b === null ? null : b - a;
+  return { from: a, to: b, change, percent_change: change === null || !a ? null : (change / Math.abs(a)) * 100 };
+};
+
+/**
+ * Runs a comparison as two queries, one per side, and works out the change here, so the assistant never does
+ * arithmetic of its own: every figure it can state comes back from a tool, with a source.
+ */
+async function runComparison(c: Comparison, endpoint: { url: URL; token: string }): Promise<ComparisonResult> {
+  const side = (value: string) => runQuery(checkQuery({ measure: c.measure, by: c.by, filter: { ...c.filter, [c.across]: [value] } }), endpoint);
+  const [a, b] = await Promise.all([side(c.from), side(c.to)]);
+  const dim = c.by[0];
+  const number = (label: string, key: string): ComparisonResult["columns"][number] => ({ key, label, type: "number", nullable: true });
+  const columns = [
+    ...(dim ? [a.columns.find((col: QueryColumn) => col.key === dim) ?? { key: dim, label: dim, type: "string" as const, nullable: true }] : []),
+    number(c.from, "from"),
+    number(c.to, "to"),
+    number("Change", "change"),
+    number("Change (%)", "percent_change"),
+  ];
+  let rows: ComparisonResult["rows"] = [];
+  if (dim) {
+    const key = (row: Record<string, unknown>) => (row[dim] ?? null) as string | null;
+    const toByKey = new Map(b.rows.map((r) => [key(r), r[c.measure]]));
+    const keys = [...new Set([...a.rows.map(key), ...b.rows.map(key)])];
+    const fromByKey = new Map(a.rows.map((r) => [key(r), r[c.measure]]));
+    rows = keys.map((k) => ({ [dim]: k, ...figures(fromByKey.get(k), toByKey.get(k)) }));
+  }
+  const source = [
+    `${c.measure} compared across ${c.across}, ${c.from} against ${c.to}. Change is ${c.to} minus ${c.from}; percent change is that change divided by ${c.from}, worked out by the data terminal.`,
+    `${c.from}: ${a.source}`,
+    `${c.to}: ${b.source}`,
+  ].join(" ");
+  return { columns, rows, total: figures(a.total, b.total), source };
+}
+
 const ok = (value: unknown): Content => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 const fail = (message: string): Content => ({ content: [{ type: "text", text: message }], isError: true });
 
@@ -59,6 +98,7 @@ export async function callTool(name: unknown, args: unknown, env: NodeJS.Process
   try {
     if (name === "describe_data") return ok(describeData());
     if (name === "query_data") return ok(await runQuery(checkQuery(args), queryEndpoint(env)));
+    if (name === "compare_data") return ok(await runComparison(checkComparison(args), queryEndpoint(env)));
     if (name === "pin_chart" && env.ORBITAL_PINS !== "0") {
       const chart = checkChart(args);
       const { source, rows } = await runQuery(chart.query, queryEndpoint(env));
