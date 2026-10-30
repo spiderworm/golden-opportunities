@@ -1,11 +1,5 @@
 import { useEffect, useRef } from "react";
-import { BarChart, HeatmapChart } from "echarts/charts";
-import { AriaComponent, GridComponent, LegendComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
-import * as echarts from "echarts/core";
-import type { ECElementEvent, EChartsCoreOption } from "echarts/core";
-import { SVGRenderer } from "echarts/renderers";
-
-echarts.use([BarChart, HeatmapChart, AriaComponent, GridComponent, LegendComponent, TooltipComponent, VisualMapComponent, SVGRenderer]);
+import type { ECElementEvent, ECharts, EChartsCoreOption } from "echarts/core";
 
 export type ChartClick = Pick<ECElementEvent, "dataIndex" | "seriesIndex" | "name" | "data">;
 
@@ -18,39 +12,53 @@ export interface EChartProps {
   onClick?: (event: ChartClick) => void;
   /** Category charts: a click anywhere in a category's band, not just on its bar. */
   onCategoryClick?: (index: number) => void;
+  /** Which axis holds the categories, for onCategoryClick. */
+  categoryAxis?: "x" | "y";
 }
 
 /** Draws an ECharts option on the client; the server renders an empty frame of the same size. */
-export function EChart({ option, height, label, onClick, onCategoryClick }: EChartProps) {
+export function EChart({ option, height, label, onClick, onCategoryClick, categoryAxis = "x" }: EChartProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const chart = useRef<echarts.ECharts | null>(null);
-  const clickRef = useRef(onClick);
-  clickRef.current = onClick;
-  const categoryRef = useRef(onCategoryClick);
-  categoryRef.current = onCategoryClick;
+  const chart = useRef<ECharts | null>(null);
+  const latest = useRef({ option, onClick, onCategoryClick, categoryAxis });
+  latest.current = { option, onClick, onCategoryClick, categoryAxis };
 
   useEffect(() => {
-    const instance = echarts.init(ref.current!, null, { renderer: "svg" });
-    chart.current = instance;
-    instance.on("click", (event) => clickRef.current?.(event as ECElementEvent));
-    const zr = instance.getZr();
-    const categoryAt = (x: number, y: number) => {
-      if (!categoryRef.current || !instance.containPixel("grid", [x, y])) return null;
-      const index = instance.convertFromPixel({ gridIndex: 0 }, [x, y]);
-      return typeof index === "number" ? index : Array.isArray(index) ? (index[0] ?? null) : null;
-    };
-    zr.on("click", (event) => {
-      const index = categoryAt(event.offsetX, event.offsetY);
-      if (index !== null) categoryRef.current?.(index);
+    let disposed = false;
+    let cleanup = () => {};
+    void import("./echarts-setup").then(({ init }) => {
+      if (disposed || !ref.current) return;
+      const instance = init(ref.current, null, { renderer: "svg" });
+      chart.current = instance;
+      instance.setOption(latest.current.option);
+      instance.on("click", (event) => latest.current.onClick?.(event as ECElementEvent));
+
+      const zr = instance.getZr();
+      const categoryAt = (x: number, y: number) => {
+        if (!latest.current.onCategoryClick || !instance.containPixel("grid", [x, y])) return null;
+        // Converting through the grid gives [x value, y value]; the category axis holds the index.
+        const point = instance.convertFromPixel({ gridIndex: 0 }, [x, y]) as number[] | null;
+        const index = point?.[latest.current.categoryAxis === "x" ? 0 : 1];
+        return typeof index === "number" ? index : null;
+      };
+      zr.on("click", (event) => {
+        const index = categoryAt(event.offsetX, event.offsetY);
+        if (index !== null) latest.current.onCategoryClick?.(index);
+      });
+      zr.on("mousemove", (event) => {
+        if (categoryAt(event.offsetX, event.offsetY) !== null) zr.setCursorStyle("pointer");
+      });
+
+      const resize = new ResizeObserver(() => instance.resize());
+      resize.observe(ref.current);
+      cleanup = () => {
+        resize.disconnect();
+        instance.dispose();
+      };
     });
-    zr.on("mousemove", (event) => {
-      if (categoryAt(event.offsetX, event.offsetY) !== null) zr.setCursorStyle("pointer");
-    });
-    const resize = new ResizeObserver(() => instance.resize());
-    resize.observe(ref.current!);
     return () => {
-      resize.disconnect();
-      instance.dispose();
+      disposed = true;
+      cleanup();
       chart.current = null;
     };
   }, []);

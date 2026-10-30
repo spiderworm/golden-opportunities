@@ -35,6 +35,18 @@ describe("investigate", () => {
   });
 });
 
+describe("the title view", () => {
+  it("appears for exactly one title, by month, ignoring its own month filter", () => {
+    expect(investigate(DEFAULT_STATE, runQuery, view).titleView).toBeNull();
+    const title = "Hashtag QuokkaSelfie";
+    const drilled = investigate({ ...DEFAULT_STATE, filters: { title: [title], month: ["12"] } }, runQuery, view);
+    expect(drilled.titleView?.title).toBe(title);
+    expect(drilled.titleView?.result.rows.length).toBe(12);
+    const twoTitles = investigate({ ...DEFAULT_STATE, filters: { title: [title, "The Thing Is"] } }, runQuery, view);
+    expect(twoTitles.titleView).toBeNull();
+  });
+});
+
 describe("buildTile", () => {
   const byQuarter = { columns: [], total: 0, source: "", rows: [{ quarter: "2193-Q1", units: 5 }, { quarter: "2193-Q3", units: 9 }] };
 

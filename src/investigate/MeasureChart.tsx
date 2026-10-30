@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 
 import type { QueryResult } from "~/query/types";
-import { barModel, barOption } from "./charts/bar-option";
+import { barHeight, barModel, barOption, TOP_RANKED } from "./charts/bar-option";
+import { quarterColor } from "./charts/chart-theme";
 import { EChart } from "./charts/EChart";
 import { DIMENSION_LABELS, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "./format";
-import { canCompare, CHART_MEASURES, GROUPINGS, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
+import { canCompare, monthsInScope, CHART_MEASURES, GROUPINGS, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
 import styles from "./Investigate.module.css";
 
 export interface MeasureChartProps {
@@ -20,8 +21,13 @@ export interface MeasureChartProps {
 
 export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCompare, onDrill, onTable }: MeasureChartProps) {
   const [table, setTable] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const selected = state.filters[state.by] ?? [];
-  const model = useMemo(() => barModel(result, state.by, state.compare), [result, state.by, state.compare]);
+  const months = state.by === "month" ? monthsInScope(quarters, state.filters.quarter) : [];
+  const model = useMemo(
+    () => barModel(result, state.by, state.compare, months, { top: showAll ? undefined : TOP_RANKED, keep: selected }),
+    [result, state.by, state.compare, months.join(), showAll, selected.join("\u0000")],
+  );
   const option = useMemo(
     () => barOption(model, { measure: state.measure, by: state.by, selected, quarters }),
     // selected is derived from state.filters, which changes identity with each navigation.
@@ -114,9 +120,34 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
           </table>
         </div>
       ) : (
-        <EChart option={option} height={320} label={`${title}. Click a bar to filter the screen to it.`} onCategoryClick={drillAt} />
+        <>
+          {state.compare && (
+            <ul className={styles.legend} aria-label="Quarters">
+              {quarters
+                .filter((q) => model.series.some((s) => s.quarter === q))
+                .map((q) => (
+                  <li key={q}>
+                    <span className={styles.legendSwatch} style={{ background: quarterColor(q, quarters) }} />
+                    {formatDimensionValue("quarter", q)}
+                  </li>
+                ))}
+            </ul>
+          )}
+          <EChart
+            option={option}
+            height={barHeight(model)}
+            label={`${title}. Click a bar to filter the screen to it.`}
+            onCategoryClick={drillAt}
+            categoryAxis={model.horizontal ? "y" : "x"}
+          />
+        </>
       )}
 
+      {!table && model.horizontal && model.ranked > TOP_RANKED && (
+        <button type="button" className={styles.showAll} onClick={() => setShowAll(!showAll)}>
+          {showAll ? `Show the top ${TOP_RANKED}` : `Show all ${model.ranked} titles`}
+        </button>
+      )}
       <p className={styles.source}>
         {selected.length > 0
           ? `Filtered to ${selected.map((v) => formatDimensionValue(state.by, v)).join(", ")}. Click a highlighted bar again to clear it. `

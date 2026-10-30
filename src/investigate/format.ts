@@ -9,6 +9,8 @@ export const MEASURE_LABELS: Record<Measure, string> = {
   avg_discount: "Average discount",
   avg_rating: "Average rating",
   checkouts: "Checkouts",
+  avg_order_value: "Average order value",
+  orders_per_day: "Orders per day",
 };
 
 export const DIMENSION_LABELS: Record<Dimension, string> = {
@@ -22,6 +24,7 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
   title: "Title",
   author: "Author",
   discounted: "Discounted",
+  discount_rate: "Discount",
 };
 
 /** How a dimension value reads on screen: "2193-Q4" as "Q4 2193", "03" as "Mar". */
@@ -32,7 +35,8 @@ export function formatDimensionValue(dimension: Dimension, value: string | null 
     return match ? `${match[2]} ${match[1]}` : value;
   }
   if (dimension === "month") return MONTHS[Number(value) - 1] ?? value;
-  if (dimension === "discounted") return value === "yes" ? "Discounted" : "Full price";
+  if (dimension === "discounted") return value === "yes" ? "Any discount" : "Full price";
+  if (dimension === "discount_rate") return parseFloat(value) === 0 ? "Full price" : `${value} off`;
   return value;
 }
 
@@ -46,12 +50,17 @@ export function formatDimensionShort(dimension: Dimension, value: string | null 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
 const whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const cents = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function formatMeasure(measure: Measure, value: number | null | undefined, options: { compact?: boolean } = {}): string {
   if (value === null || value === undefined) return "No data";
   switch (measure) {
     case "revenue":
-      return options.compact ? `$${compact.format(value)}` : money.format(value);
+      return options.compact && Math.abs(value) >= 1000 ? `$${compact.format(value)}` : money.format(value);
+    case "avg_order_value":
+      return cents.format(value);
+    case "orders_per_day":
+      return options.compact ? compact.format(value) : value.toFixed(1);
     case "avg_discount":
       return `${(value * 100).toFixed(1)}%`;
     case "avg_rating":
@@ -82,6 +91,6 @@ export function change(measure: Measure, current: number | null, previous: numbe
   const direction = rounded > 0 ? "up" : rounded < 0 ? "down" : "flat";
   const sign = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
   const text = `${sign}${Math.abs(rounded).toFixed(1)}${points ? " pts" : "%"}`;
-  const upIsGood = measure === "revenue" || measure === "units" || measure === "orders";
+  const upIsGood = ["revenue", "units", "orders", "avg_order_value", "orders_per_day"].includes(measure);
   return { text, direction, good: direction === "flat" || !upIsGood ? null : direction === "up" };
 }

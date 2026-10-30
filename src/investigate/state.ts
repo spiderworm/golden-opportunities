@@ -2,14 +2,44 @@
 // bookmarked and undone with Back.
 import type { Dimension, Measure } from "~/query/types";
 
-export const CHART_MEASURES = ["revenue", "units", "orders", "avg_discount"] as const satisfies readonly Measure[];
+export const CHART_MEASURES = [
+  "revenue",
+  "units",
+  "orders",
+  "avg_order_value",
+  "orders_per_day",
+  "avg_discount",
+] as const satisfies readonly Measure[];
 export type ChartMeasure = (typeof CHART_MEASURES)[number];
 
-export const GROUPINGS = ["month", "quarter", "genre", "format", "publisher"] as const satisfies readonly Dimension[];
+/** The headline figures, each against the quarter before. */
+export const TILE_MEASURES = ["revenue", "units", "orders", "avg_discount"] as const satisfies readonly ChartMeasure[];
+export type TileMeasure = (typeof TILE_MEASURES)[number];
+
+export const GROUPINGS = [
+  "month",
+  "quarter",
+  "genre",
+  "format",
+  "publisher",
+  "weekday",
+  "discount_rate",
+  "title",
+] as const satisfies readonly Dimension[];
 export type Grouping = (typeof GROUPINGS)[number];
 
-/** Dimensions the screen can filter on: the filter menus plus the heatmap's axes. */
-export const FILTER_DIMENSIONS = ["quarter", "genre", "format", "publisher", "month", "weekday"] as const satisfies readonly Dimension[];
+/** Dimensions the screen can filter on: the menus, the heatmap's axes, and drilldowns. */
+export const FILTER_DIMENSIONS = [
+  "quarter",
+  "genre",
+  "format",
+  "publisher",
+  "discount_rate",
+  "discounted",
+  "month",
+  "weekday",
+  "title",
+] as const satisfies readonly Dimension[];
 export type FilterDimension = (typeof FILTER_DIMENSIONS)[number];
 
 export type Filters = Partial<Record<FilterDimension, string[]>>;
@@ -32,7 +62,8 @@ function oneOf<T extends string>(allowed: readonly T[], value: string | null, fa
 }
 
 export function canCompare(by: Grouping): boolean {
-  return by !== "month" && by !== "quarter";
+  // Time groupings already are quarters or sit inside one; titles are too many to split.
+  return by !== "month" && by !== "quarter" && by !== "title";
 }
 
 export function parseState(params: URLSearchParams): InvestigateState {
@@ -76,6 +107,27 @@ export function toggleFilterValue(state: InvestigateState, dimension: FilterDime
   return setFilter(state, dimension, next);
 }
 
+/** The discount filter is one choice: every sale, full price only, any discount, or one rate ("15%"). */
+export type DiscountChoice = "all" | "full" | "any" | `${number}%`;
+
+const FULL_PRICE = "0%";
+
+export function discountChoice(filters: Filters): DiscountChoice {
+  if (filters.discounted?.length === 1 && filters.discounted[0] === "yes" && !filters.discount_rate) return "any";
+  if (filters.discount_rate?.length === 1 && !filters.discounted) {
+    const rate = filters.discount_rate[0]!;
+    return rate === FULL_PRICE ? "full" : (rate as DiscountChoice);
+  }
+  return "all";
+}
+
+export function setDiscount(state: InvestigateState, choice: DiscountChoice): InvestigateState {
+  const cleared = setFilter(setFilter(state, "discounted", []), "discount_rate", []);
+  if (choice === "all") return cleared;
+  if (choice === "any") return setFilter(cleared, "discounted", ["yes"]);
+  return setFilter(cleared, "discount_rate", [choice === "full" ? FULL_PRICE : choice]);
+}
+
 /** Drills into one heatmap cell, or back out if it's the only cell selected. */
 export function toggleCell(state: InvestigateState, weekday: string, month: string): InvestigateState {
   const only = (d: FilterDimension, v: string) => state.filters[d]?.length === 1 && state.filters[d]![0] === v;
@@ -92,4 +144,20 @@ export function filtersExcept(filters: Filters, dimensions: readonly Dimension[]
   const rest = { ...filters };
   for (const d of dimensions) delete rest[d as FilterDimension];
   return rest;
+}
+
+/** Months ("01" to "12") in the quarters in scope: the selected ones, or every visible one. */
+export function monthsInScope(visibleQuarters: readonly string[], selectedQuarters: readonly string[] = []): string[] {
+  const quarters = selectedQuarters.length ? visibleQuarters.filter((q) => selectedQuarters.includes(q)) : visibleQuarters;
+  const months = new Set<string>();
+  for (const quarter of quarters) {
+    const q = Number(quarter.slice(-1));
+    for (let m = q * 3 - 2; m <= q * 3; m++) months.add(String(m).padStart(2, "0"));
+  }
+  return [...months].sort();
+}
+
+/** Sums and counts are zero where nothing sold; averages have no value there. */
+export function isTotal(measure: ChartMeasure): boolean {
+  return measure !== "avg_order_value" && measure !== "avg_discount";
 }

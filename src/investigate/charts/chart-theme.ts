@@ -39,3 +39,13 @@ export const tooltipStyle = {
   textStyle: { color: chartTheme.text, fontFamily: chartTheme.font, fontSize: 13 },
   extraCssText: "border-radius: 12px; box-shadow: 0 12px 32px rgb(4 6 16 / 0.5);",
 } as const;
+
+/** The heat ramp's color at t (0 to 1), interpolated between its stops in sRGB. */
+export function heatColor(t: number): string {
+  const stops = chartTheme.heatRamp.map((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)));
+  const scaled = Math.min(Math.max(t, 0), 1) * (stops.length - 1);
+  const i = Math.min(Math.floor(scaled), stops.length - 2);
+  const f = scaled - i;
+  const rgb = stops[i]!.map((c, k) => Math.round(c + (stops[i + 1]![k]! - c) * f));
+  return `#${rgb.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}

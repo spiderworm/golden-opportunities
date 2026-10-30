@@ -1,12 +1,12 @@
 // Turns the player's question (InvestigateState) into the queries the screen
 // draws, and returns only those results to the browser.
 import type { Query, QueryResult, QueryView } from "~/query/types";
-import { CHART_MEASURES, filtersExcept, type ChartMeasure, type Filters, type InvestigateState } from "./state";
+import { filtersExcept, TILE_MEASURES, type Filters, type InvestigateState, type TileMeasure } from "./state";
 
 export type RunQuery = (query: Query, view: QueryView) => QueryResult;
 
 export interface Tile {
-  measure: ChartMeasure;
+  measure: TileMeasure;
   /** The quarter the tile reports, e.g. "2193-Q4"; null when nothing is visible. */
   quarter: string | null;
   previousQuarter: string | null;
@@ -19,12 +19,15 @@ export interface FilterOptions {
   genre: string[];
   format: string[];
   publisher: string[];
+  discount_rate: string[];
 }
 
 export interface Investigation {
   tiles: Tile[];
   chart: QueryResult;
   heatmap: QueryResult;
+  /** One title's sales by month, when the player has drilled into a single title. */
+  titleView: { title: string; result: QueryResult } | null;
   options: FilterOptions;
 }
 
@@ -46,7 +49,7 @@ export function quarterHasMonths(quarter: string, months: readonly string[] | un
  * read as a drop to zero; a real drop to zero under other filters still shows.
  */
 export function buildTile(
-  measure: ChartMeasure,
+  measure: TileMeasure,
   byQuarter: QueryResult,
   visibleQuarters: readonly string[],
   filters: Pick<Filters, "quarter" | "month"> = {},
@@ -79,10 +82,11 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
     genre: option("genre"),
     format: option("format"),
     publisher: option("publisher"),
+    discount_rate: option("discount_rate"),
   };
 
   const tileFilter = toQueryFilter(filtersExcept(state.filters, ["quarter"]));
-  const tiles = CHART_MEASURES.map((measure) =>
+  const tiles = TILE_MEASURES.map((measure) =>
     buildTile(measure, run({ measure, by: ["quarter"], filter: tileFilter }), options.quarter, state.filters),
   );
 
@@ -94,5 +98,13 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
     filter: toQueryFilter(filtersExcept(state.filters, ["weekday", "month"])),
   });
 
-  return { tiles, chart, heatmap, options };
+  const title = state.filters.title?.length === 1 ? state.filters.title[0]! : null;
+  const titleView = title
+    ? {
+        title,
+        result: run({ measure: state.measure, by: ["month"], filter: toQueryFilter(filtersExcept(state.filters, ["month"])) }),
+      }
+    : null;
+
+  return { tiles, chart, heatmap, titleView, options };
 }
