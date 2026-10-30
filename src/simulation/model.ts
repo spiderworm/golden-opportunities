@@ -4,14 +4,15 @@
 import type { BookshopData, DeepReadonly, SaleLine } from "~/bookshop/types";
 import { cloneOrder, itemOf, ordersOf, type Item, type Order } from "./orders";
 import { integer, pick, roundRandomly, sampleIndexes, stream, weightedIndex, type Random } from "./random";
-import type { OptionId } from "./types";
+import { has } from "./plan";
+import type { Plan } from "./types";
 
 export const YEAR = 2194;
 export const HISTORY_YEAR = 2193;
 export const MONTHS = ["01", "02", "03"] as const;
 export const PICK_DISCOUNT = 0.15;
 export const SALE_DISCOUNT = 0.15;
-/** Option B: the share of orders a station-wide sale clones (*assumed*). */
+/** The share of orders a station-wide sale clones (*assumed*). */
 export const SALE_RESPONSE = 0.2;
 export const NOISE = 0.03;
 export const EVENT_NIGHTS = 12;
@@ -158,15 +159,19 @@ export interface Levers {
   events: boolean;
 }
 
-export function leversFor(option: OptionId, saleResponse = SALE_RESPONSE): Levers {
+export function leversFor(plan: Plan, saleResponse = SALE_RESPONSE): Levers {
   return {
-    picks: option === "C" ? QUIET_PICKS : SCHEDULED_PICKS,
-    sale: option === "B" ? saleResponse : null,
-    events: option === "D",
+    picks: has(plan, "repick") ? QUIET_PICKS : SCHEDULED_PICKS,
+    sale: has(plan, "sale") ? saleResponse : null,
+    events: has(plan, "events"),
   };
 }
 
-/** Pulls the levers on the baseline. Each lever draws from its own stream, so options share every draw they have in common. */
+/**
+ * Pulls the levers on the baseline, in a fixed order: author nights, then the
+ * Books of the Month, then the sale. Each lever draws from its own stream, so
+ * plans share every draw they have in common.
+ */
 export function run(history: History, base: readonly Order[], seed: number, levers: Levers): Run {
   const orders = base.map((o) => cloneOrder(o));
 
@@ -190,7 +195,7 @@ export function run(history: History, base: readonly Order[], seed: number, leve
     const isbn = picks[m];
     for (const order of orders)
       if (monthOf(order.day) === month) for (const item of order.items) if (item.isbn === isbn) item.discount = PICK_DISCOUNT;
-    // A and C draw the same count and days from the same stream; only the title differs.
+    // Scheduled and re-picked titles draw the same count and days from the same stream; only the title differs.
     const random = stream(seed, `pick-extra:${month}`);
     const extra = pick(random, OBSERVED_EXTRAS);
     const days = quarterDays(YEAR).filter((d) => monthOf(d) === month);
@@ -205,8 +210,10 @@ export function run(history: History, base: readonly Order[], seed: number, leve
   if (levers.sale !== null) {
     const random = stream(seed, "sale");
     // One draw per order, so a larger response clones a superset of a smaller one's orders.
-    const clones = orders.filter(() => random() < levers.sale!).map((o) => cloneOrder(o));
+    // Clones keep their kind: an author night's clone is still an author-night visit.
+    const clones = orders.filter(() => random() < levers.sale!).map((o) => cloneOrder(o, { saleClone: true }));
     orders.push(...clones);
+    // The sale's 15% replaces every discount, the picks' included.
     for (const order of orders) for (const item of order.items) item.discount = SALE_DISCOUNT;
   }
 

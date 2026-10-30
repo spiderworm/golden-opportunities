@@ -7,6 +7,8 @@ import type { Order } from "./orders";
 export const COST_OF_GOODS = 0.6;
 export const EVENT_COST = 200;
 export const GENRES = 8;
+/** Happiness added to an author-night visit: readers enjoy the night out. */
+export const EVENT_HAPPINESS = 20;
 /** Culture per extra order at an author night: one attendee who bought a book. */
 export const CULTURE_PER_ATTENDEE = 1.2;
 
@@ -62,14 +64,14 @@ export function ledger(orders: readonly Order[], events = 0): Ledger {
   return { revenue, units, orders: orders.length, costOfGoods, eventCosts, grossProfit: revenue - costOfGoods - eventCosts };
 }
 
-/** One visit is one order: Quality and Value only in M1 (Comfort and Found it arrive in M2). */
+/** One visit is one order: Quality and Value only in M1 (Comfort and Found it arrive in M2), plus the night out. */
 export function orderHappiness(order: Order, ratings: Ratings): number {
   const n = order.items.length;
   const rating = order.items.reduce((t, i) => t + ratings.average(i.bookId), 0) / n;
   const discount = order.items.reduce((t, i) => t + i.discount, 0) / n;
   const quality = 100 * stretch(rating);
   const value = 50 + 50 * (1 - Math.exp(-discount / 0.075));
-  return 0.6 * quality + 0.4 * value;
+  return Math.min(100, 0.6 * quality + 0.4 * value + (order.kind === "event" ? EVENT_HAPPINESS : 0));
 }
 
 export function happiness(orders: readonly Order[], ratings: Ratings): number {
