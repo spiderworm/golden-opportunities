@@ -7,7 +7,7 @@ Status: **draft for David's approval.** Plot wrote it and Goldy coordinates it. 
 - **Decided:** the player sees the rules before deciding. Effects appear only after in-game time has passed. Projections, which may not hold true, may come later, once David has played the game.
 - **Decided:** the names Dewey and the Commerce Office. "Meridian Station" was approved on condition that it clears a check, and it didn't: it is a location in Microsoft's Halo. A replacement is proposed in section 1.
 - **Decided:** we generate whatever data gameplay needs, including customers and demographics (see `arc.md`).
-- **Decided:** scoring is a report card of four measures (Profit, Readers served, Happiness, Culture) plus a combined score. See `scoring.md`, which also proposes M1's reduced report card.
+- **Decided:** scoring is a report card of four measures (Profit, Readers served, Happiness, Culture) plus an overall score, which is the lowest of the four. See `scoring.md`, which also proposes M1's reduced report card.
 - **Decided:** the event director is Almanac ("Alma"). It sets up events, stretches goals and plays the book market. See `scoring.md`.
 
 M1 is the thinnest slice that can be played end to end: an alert, then the revenue chart, then one decision, then one simulated quarter, then the result.
