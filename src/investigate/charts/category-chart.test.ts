@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { QueryResult } from "~/query/types";
 import { pinMonths } from "../pins/PinnedCharts";
 import type { Pin } from "../pins/spec";
-import { categoryModel } from "./category-chart";
+import { categoryModel, categoryOption } from "./category-chart";
 
 const QUARTERS = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
 
@@ -54,5 +54,23 @@ describe("categoryModel", () => {
   it("doesn't pad a truncated month axis with months that may be missing", () => {
     const model = categoryModel(result([{ month: "01", units: 1 }, { month: "02", units: 2 }], ["month"]), "month", null, ["01", "02", "03"], { limit: 2 });
     expect(model.categories).toEqual(["01", "02"]);
+  });
+});
+
+describe("the bar tooltip", () => {
+  type Formatter = (params: { dataIndex: number; seriesIndex: number; seriesName: string; value: number | null; color: string }[]) => string;
+  const tooltip = (option: ReturnType<typeof categoryOption>) => (option.tooltip as { formatter: Formatter }).formatter;
+  const model = categoryModel(result([{ genre: "Fantasy", units: 30 }, { genre: "Poetry", units: 10 }], ["genre"]), "genre", null, []);
+
+  it("adds {share}% of {period} when given the whole, and Plot's hint", () => {
+    const format = tooltip(categoryOption(model, { quarters: QUARTERS, share: { total: () => 40, period: () => "2193" } }));
+    const html = format([{ dataIndex: 0, seriesIndex: 0, seriesName: "Units sold", value: 30, color: "#fff" }]);
+    expect(html).toContain("75% of 2193");
+    expect(html).toContain("Click to look closer");
+  });
+
+  it("leaves the share out when the bars aren't the whole", () => {
+    const html = tooltip(categoryOption(model, { quarters: QUARTERS }))([{ dataIndex: 0, seriesIndex: 0, seriesName: "Units sold", value: 30, color: "#fff" }]);
+    expect(html).not.toContain("% of");
   });
 });

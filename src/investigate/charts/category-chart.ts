@@ -106,7 +106,15 @@ export function categoryOption(
     selected = [],
     quarters,
     drill = true,
-  }: { kind?: "bar" | "line"; selected?: readonly string[]; quarters: readonly string[]; drill?: boolean },
+    share,
+  }: {
+    kind?: "bar" | "line";
+    selected?: readonly string[];
+    quarters: readonly string[];
+    drill?: boolean;
+    /** For the tooltip's "{share}% of {period}": each series' whole and the period it covers. Omit to leave the line out. */
+    share?: { total: (series: number) => number | null; period: (series: number) => string };
+  },
 ): EChartsCoreOption {
   const { measure, x } = model;
   const anySelected = selected.length > 0;
@@ -152,7 +160,7 @@ export function categoryOption(
         kind === "line"
           ? { type: "line", lineStyle: { color: chartTheme.axis, width: 1 } }
           : { type: "shadow", shadowStyle: { color: "rgb(143 132 255 / 0.08)" } },
-      formatter: (params: { dataIndex: number; seriesName: string; value: number | null; color: string }[]) => {
+      formatter: (params: { dataIndex: number; seriesIndex: number; seriesName: string; value: number | null; color: string }[]) => {
         const first = params[0];
         if (!first) return "";
         const heading = escapeHtml(formatDimensionValue(x, model.categories[first.dataIndex]));
@@ -160,9 +168,15 @@ export function categoryOption(
           const key = splitting
             ? `<span style="display:inline-block;width:10px;height:2px;margin-right:8px;vertical-align:middle;background:${p.color}"></span><span style="color:${chartTheme.textMuted}">${escapeHtml(p.seriesName)}</span>`
             : "";
-          return `<div style="display:flex;justify-content:space-between;gap:16px"><span>${key}</span><strong>${escapeHtml(formatMeasure(measure, p.value))}</strong></div>`;
+          const value = `<div style="display:flex;justify-content:space-between;gap:16px"><span>${key}</span><strong>${escapeHtml(formatMeasure(measure, p.value))}</strong></div>`;
+          const total = share?.total(p.seriesIndex);
+          const part =
+            share && p.value !== null && total
+              ? `<div style="font-size:11px;color:${chartTheme.textMuted}">${escapeHtml(`${Math.round((p.value / total) * 100)}% of ${share.period(p.seriesIndex)}`)}</div>`
+              : "";
+          return value + part;
         });
-        const hint = !drill ? "" : anySelected && isSelected(first.dataIndex) ? "Click to clear" : "Click to drill in";
+        const hint = !drill ? "" : anySelected && isSelected(first.dataIndex) ? "Click to clear" : "Click to look closer";
         const hintLine = hint ? `<div style="font-size:11px;color:${chartTheme.textSubtle};margin-top:6px">${hint}</div>` : "";
         return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${heading}</div>${lines.join("")}${hintLine}`;
       },

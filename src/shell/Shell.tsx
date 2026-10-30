@@ -8,9 +8,9 @@ import { formatStationDate } from "./station-date";
 import type { Track } from "~/platform/analytics/track";
 import styles from "./Shell.module.css";
 
-/** Routes name their page in the header with `handle = { title }`. */
+/** Routes name their page in the header with `handle = { title }`, fixed or from their loader data. */
 export interface ShellHandle {
-  title?: string;
+  title?: string | ((data: unknown) => string | undefined);
 }
 
 export interface ShellProps {
@@ -107,7 +107,8 @@ export function Shell({ stationDate, notifications, track, children }: ShellProp
 function usePageTitle(): string {
   const matches = useMatches();
   for (let i = matches.length - 1; i >= 0; i--) {
-    const title = (matches[i]?.handle as ShellHandle | undefined)?.title;
+    const handle = (matches[i]?.handle as ShellHandle | undefined)?.title;
+    const title = typeof handle === "function" ? handle(matches[i]?.loaderData) : handle;
     if (title) return title;
   }
   return "Orbital Books";

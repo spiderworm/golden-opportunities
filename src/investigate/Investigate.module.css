@@ -27,6 +27,29 @@
   transition: opacity 150ms ease;
 }
 
+/* The way on to the decision: one primary action, at the top right of the ledgers. */
+.pageActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.planLink {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--radius-control);
+  background: var(--color-accent);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.planLink:hover {
+  background: var(--color-accent-soft);
+}
+
 /* Refetching keeps the frame: the previous figures stay, dimmed, until the new ones land. */
 .page[data-refreshing] {
   opacity: 0.6;
@@ -58,11 +81,15 @@
 }
 
 .filterIcon {
-  display: grid;
-  place-items: center;
-  width: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   height: 40px;
+  padding-right: 4px;
   color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .filterMenu {
@@ -608,6 +635,17 @@
   background: var(--color-accent-selected);
   font-size: 12px;
   font-weight: 600;
+}
+
+/* The main chart when the filters leave nothing: said in words, not an empty plot. */
+.empty {
+  margin: 0;
+  padding: 40px 20px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-panel);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  text-align: center;
 }
 
 .pinnedEmpty {
