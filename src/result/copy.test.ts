@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
-import type { MeasureScore } from "~/game-stub/types";
-import { administratorLine, bossLine, fractionWords, heldCourseText, measureTexts, scoreText, shownAgainstGoal } from "./copy";
+import type { MeasureId, MeasureScore, ReportCard } from "~/simulation/types";
+import {
+  administratorLine,
+  bossLine,
+  certificateText,
+  fractionWords,
+  heldCourseText,
+  lowestMeasureLines,
+  lowestMeasureSpeakers,
+  measureTexts,
+  scoreText,
+  shownAgainstGoal,
+} from "./copy";
 
 const measure = (id: MeasureScore["id"], result: number, lastYear: number, goal: number): MeasureScore => ({
   id,
@@ -10,8 +21,20 @@ const measure = (id: MeasureScore["id"], result: number, lastYear: number, goal:
   // As the engine scores: only a result at or past the goal earns 100.
   score: result >= goal ? 100 : 99,
   grade: "F",
-  exceeds: false,
+  met: result >= goal,
+  exceeds: result > goal,
 });
+
+/** A card with these scores, and the engine's flags as given: the words never work them out. */
+function card(scores: Record<MeasureId, number>, overall: Partial<ReportCard["overall"]>): ReportCard {
+  const ids = Object.keys(scores) as MeasureId[];
+  const low = Math.min(...Object.values(scores));
+  return {
+    measures: ids.map((id) => ({ ...measure(id, scores[id], 0, 100), score: scores[id] })),
+    overall: { score: low, grade: "D", binding: [], closeBehind: [], closeMargin: 3, allMet: false, sacrifice: false, ...overall },
+    certificates: [],
+  };
+}
 
 describe("the report card's words", () => {
   it("writes scores as {score} ({grade}), with a true minus", () => {
@@ -66,10 +89,46 @@ describe("the report card's words", () => {
     }
   });
 
+  it("names the measure that set the score, and every measure in a tie", () => {
+    const one = card({ profit: 67, readers: 80, happiness: 75, culture: 90 }, { binding: ["profit"] });
+    expect(lowestMeasureLines(one)).toEqual(["PROFIT HAS SET YOUR SCORE: 67. THE OTHER MEASURES WERE IRRELEVANT. WE ADMIRED THEM BRIEFLY."]);
+    expect(lowestMeasureSpeakers(one)).toBe("The Commerce Office");
+    const three = card({ profit: 72, readers: 72, happiness: 72, culture: 90 }, { binding: ["profit", "readers", "happiness"] });
+    expect(lowestMeasureLines(three)[0]).toBe("PROFIT, READERS SERVED AND HAPPINESS HAVE JOINTLY SET YOUR SCORE: 72. WE ARE SUSPICIOUS OF TIES.");
+    expect(lowestMeasureSpeakers(three)).toBe("The Commerce Office, The Throughput Subcommittee and The Readers' Guild survey drone");
+  });
+
+  it("adds the sacrifice line, then the closest close-behind measure from the engine's order", () => {
+    const lines = lowestMeasureLines(
+      card({ profit: 40, readers: 100, happiness: 41, culture: 43 }, { binding: ["profit"], sacrifice: true, closeBehind: ["happiness", "culture"] }),
+    );
+    expect(lines).toEqual([
+      "PROFIT HAS SET YOUR SCORE: 40. THE OTHER MEASURES WERE IRRELEVANT. WE ADMIRED THEM BRIEFLY.",
+      "YOU RAISED ONE MEASURE BY LOWERING ANOTHER. WE ONLY COUNT THE LOWER ONE. THIS IS POLICY.",
+      "HAPPINESS WAS 1 POINT FROM SETTING YOUR SCORE. IT IS WATCHING.",
+    ]);
+    const three = lowestMeasureLines(card({ profit: 70, readers: 73, happiness: 90, culture: 90 }, { binding: ["profit"], closeBehind: ["readers"] }));
+    expect(three.at(-1)).toBe("READERS SERVED WAS 3 POINTS FROM SETTING YOUR SCORE. IT IS WATCHING.");
+  });
+
+  it("shows the all-met line alone when the engine says every goal was met", () => {
+    const all = card(
+      { profit: 100, readers: 100, happiness: 100, culture: 100 },
+      { allMet: true, binding: ["profit", "readers", "happiness", "culture"], sacrifice: true, closeBehind: ["readers"] },
+    );
+    expect(lowestMeasureLines(all)).toEqual(["ALL MEASURES MET REQUIREMENTS. YOUR SCORE IS 100. WE ARE RECALIBRATING OUR EXPECTATIONS UPWARD."]);
+    expect(lowestMeasureSpeakers(all)).toBe("The Station Administrator");
+  });
+
+  it("writes the certificates", () => {
+    expect(certificateText({ id: "exceeds", measure: "readers" })).toBe("Exceeds Requirements: Readers served beat its goal. Certificates don't change your score.");
+    expect(certificateText({ id: "wellRounded" })).toBe("Well-Rounded Shop: every measure scored 80 or more.");
+  });
+
   it("gives the Administrator a whole shop, a fraction of one, or a chair", () => {
-    expect(administratorLine(100)).toBe("COMBINED SCORE: 100. THIS IS A WHOLE SHOP.");
-    expect(administratorLine(75)).toBe("COMBINED SCORE: 75. THIS IS THREE-QUARTERS OF A SHOP. PLEASE ACQUIRE THE REMAINDER.");
-    expect(administratorLine(59)).toBe("COMBINED SCORE: 59. THE ADMINISTRATOR WILL NEED TO SIT DOWN.");
+    expect(administratorLine(100)).toBe("OVERALL SCORE: 100. THIS IS A WHOLE SHOP.");
+    expect(administratorLine(75)).toBe("OVERALL SCORE: 75. THIS IS THREE-QUARTERS OF A SHOP. PLEASE ACQUIRE THE REMAINDER.");
+    expect(administratorLine(59)).toBe("OVERALL SCORE: 59. THE ADMINISTRATOR WILL NEED TO SIT DOWN.");
     expect(fractionWords(78)).toBe("ABOUT FOUR-FIFTHS");
     expect(fractionWords(65)).toBe("ABOUT TWO-THIRDS");
   });
