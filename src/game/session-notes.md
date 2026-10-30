@@ -39,8 +39,30 @@ without deleting them. Orphaned atomic-write temporary files are removed under t
 
 Sale facts persist in normalized Sale form and rejoin the unchanged workbook catalog
 when serving a view; generated labels cannot replace catalog facts. Counterfactual lines
-never belong in played[]. The simulation integration will atomically store the selected
-plan, outcome and actual facts together. The store is server-only, not a mutation API.
+never belong in played[].
+
+`game.server.ts` implements synchronous submitPlan(request, plan), getPlan(request), and
+getOutcome(request). Decide and Result now use these functions; the in-memory game stub
+is removed. An existing cookie-owned save is required. No endpoint accepts a save ID,
+seed, revision or view in its body. Submission requires local same-origin POST and the
+engine's canonical plan (zero to two distinct levers). The route bounds and validates the
+form body before calling it.
+
+The engine uses the save's uint32 seed outside the short storage lock. One revision-checked
+atomic write persists the canonical plan, report card, assumptions, discoveries snapshot,
+outcome ID, and actual sale facts together. A concurrent or repeated submission returns
+409 without overwriting the winner. Failed simulation or persistence leaves the player's
+quarter unplayed. Reads never re-simulate: the recorded outcome survives restarts and
+later scoring changes. Persisted outcomes are validated before use by the Result screen.
+The quarter advances to April 1 and becomes query-visible only after commit; an unrelated
+save remains in January. Discoveries use the existing server-owned list; this slice does
+not introduce discovery detection. The same-seed counterfactual's metrics are displayed,
+but its lines never become visible facts.
+
+Commit/failure analytics contain only lever count, unit count, duration and a fixed error
+code. No save ID, seed, outcome, token or player text is recorded. Save-bound query API and
+assistant capabilities are implemented separately in PR #52; these screens and Investigate
+already use the server-derived session view.
 
 ## Query access
 
@@ -57,9 +79,6 @@ SESSION_ENDED/401 with fixed content-free text. Issuance is capped at four per s
 64 globally. No capability can fall back to baseline history or choose another save.
 No token, save identifier or query content enters telemetry. The startup global bearer
 has been removed. isLocalBrowserRequest is exported by query/access.server.ts for reuse.
-
-Decide/Result retain their stub until the simulation integration atomically stores actual
-facts and the outcome. Browser and agent query access is ready for those committed facts.
 
 The capability boundary is between local HTTP callers and server-owned save state. It
 is not isolation from code running as the same OS user, which can inspect private

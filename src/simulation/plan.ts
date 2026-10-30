@@ -1,5 +1,5 @@
 // Plans: shared by the Decide screen and the engine, so it imports nothing but types.
-import { LEVER_IDS, MAX_LEVERS, type LeverId, type Plan } from "./types";
+import { LEVER_IDS, MAX_LEVERS, type LeverId, type Plan } from "./types.ts";
 
 export const isLever = (value: unknown): value is LeverId => typeof value === "string" && (LEVER_IDS as readonly string[]).includes(value);
 
