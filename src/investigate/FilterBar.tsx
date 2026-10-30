@@ -9,6 +9,8 @@ import styles from "./Investigate.module.css";
 const MENUS = ["quarter", "genre", "format", "publisher"] as const satisfies readonly (keyof FilterOptions)[];
 /** Dimensions with their own menu; the rest show as chips. */
 const IN_MENUS: readonly FilterDimension[] = [...MENUS, "discount_rate", "discounted"];
+/** What a menu says when nothing in it is chosen (m1-copy section 2). */
+const ALL: Record<(typeof MENUS)[number], string> = { quarter: "All quarters", genre: "All genres", format: "All formats", publisher: "All publishers" };
 
 export interface FilterBarProps {
   filters: Filters;
@@ -29,6 +31,7 @@ export function FilterBar({ filters, options, onChange, onDiscount, onClear }: F
       <div className={styles.filterMenus}>
         <span className={styles.filterIcon}>
           <Icon name="filter" size={18} />
+          Only show
         </span>
         {MENUS.map((dimension) => (
           <FilterMenu
@@ -61,7 +64,7 @@ export function FilterBar({ filters, options, onChange, onDiscount, onClear }: F
           )}
           <li>
             <button type="button" className={styles.clearAll} onClick={onClear}>
-              Clear all
+              Clear filters
             </button>
           </li>
         </ul>
@@ -100,14 +103,14 @@ function FilterMenu({
   selected,
   onChange,
 }: {
-  dimension: keyof FilterOptions;
+  dimension: (typeof MENUS)[number];
   options: string[];
   selected: string[];
   onChange: (values: string[]) => void;
 }) {
   const { open, setOpen, rootRef, panelId } = usePopover();
   const summary =
-    selected.length === 0 ? "All" : selected.length === 1 ? formatDimensionValue(dimension, selected[0]) : `${selected.length} selected`;
+    selected.length === 0 ? ALL[dimension] : selected.length === 1 ? formatDimensionValue(dimension, selected[0]) : `${selected.length} selected`;
 
   return (
     <div className={styles.filterMenu} ref={rootRef}>
@@ -144,14 +147,14 @@ function FilterMenu({
 function DiscountMenu({ choice, rates, onChange }: { choice: DiscountChoice; rates: string[]; onChange: (choice: DiscountChoice) => void }) {
   const { open, setOpen, rootRef, panelId } = usePopover();
   const choices: { value: DiscountChoice; label: string }[] = [
-    { value: "all", label: "All sales" },
+    { value: "all", label: "Any price" },
     { value: "full", label: "Full price" },
     { value: "any", label: "Any discount" },
     ...rates
       .filter((rate) => parseFloat(rate) !== 0)
       .map((rate) => ({ value: rate as DiscountChoice, label: formatDimensionValue("discount_rate", rate) })),
   ];
-  const summary = choice === "all" ? "All" : (choices.find((c) => c.value === choice)?.label ?? "All");
+  const summary = choices.find((c) => c.value === choice)?.label ?? "Any price";
 
   return (
     <div className={styles.filterMenu} ref={rootRef}>
