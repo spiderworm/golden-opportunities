@@ -2,6 +2,13 @@
 
 Status: **draft for David's approval.** Plot wrote it and Goldy coordinates it. Every judgement call is marked **Proposal**. Numbers come from `src/bookshop/data.json` unless they are marked *assumed* or *generated*.
 
+**David's review (October 30, 2026):**
+- **Decided:** the assumed numbers in section 4 stand.
+- **Decided:** the player sees the rules before deciding. Effects appear only after in-game time has passed. Projections, which may not hold true, may come later, once David has played the game.
+- **Decided:** the names Dewey and the Commerce Office. "Meridian Station" was approved on condition that it clears a check, and it didn't: it is a location in Microsoft's Halo. A replacement is proposed in section 1.
+- **Open:** scoring. David doesn't want gross profit to be the only score. Other measures, including ones that aren't about money, are under discussion.
+- **Open:** an event director. David wants a separate LLM, behind the scenes, to watch play and drive events. That would add unpredictability to the seasonal baseline in section 4. Its design is to follow.
+
 M1 is the thinnest slice that can be played end to end: an alert, then the revenue chart, then one decision, then one simulated quarter, then the result.
 
 ## 1. The opening alert
@@ -17,7 +24,7 @@ The game opens on 1 January 2194, the day after the data ends.
 >
 > Submit your plan when you are ready.
 
-**Proposal:** call the station Meridian Station and the issuer the Commerce Office. A landlord gives the slump some pressure without inventing customers we can't model.
+**Proposal:** rename the station **Larkspur Station** (to be done after approval; the copy still says Meridian). The search found no game, novel or brand using that name, but it was not a trademark search. "Meridian Station" is a location in Halo, and "Meridian" also has a pending game trademark. The issuer is the Commerce Office. A landlord gives the slump some pressure without inventing customers we can't model.
 
 ## 2. The investigation
 
@@ -78,16 +85,16 @@ The previous manager has already scheduled the Q1 Books of the Month: *The Malle
 A, C and D are all defensible. C has the best footing in the data, D is a bet on a real pattern, and A is the honest "nothing is broken". B is the overreaction. It still "wins" on revenue, which is the lesson.
 
 **Proposals:**
-- Score on gross profit, not revenue, and show revenue beside it.
+- ~~Score on gross profit only.~~ **Open:** David asked for more than one measure (see the review at the top).
 - In M1, option C's three titles are preset. Letting the player choose the titles is M2 (see `arc.md`).
 - Options are exclusive in M1 (one decision).
-- Before choosing, the player sees the rules of the world: the goal, the 60% cost of goods and the price of an event. They see the effect sizes only after the quarter plays out, in the assumptions panel. Showing effect sizes up front would give the answer away.
+- **Decided (David):** before choosing, the player sees the rules of the world: the goal, the 60% cost of goods and the price of an event. They see the effect sizes only after the quarter plays out, in the assumptions panel.
 
 ## 4. The simulation
 
 The model is small enough to explain in the assumptions panel, with one line per lever.
 
-**Baseline (Option A, and the base for every other option).** Q1 2194 replays Q1 2193: the same titles, months and weekday pattern, with seeded noise of about ±3% on daily orders. First, the 2193 Book of the Month effect is taken out (those copies return to full price, and the extra copies are removed). Then the 2194 picks are applied. *This assumes 2194 repeats 2193's seasons, so within the game, insight A is true.* **Proposal:** accept this. A world where the slump has a hidden cause belongs to a later investigation.
+**Baseline (Option A, and the base for every other option).** Q1 2194 replays Q1 2193: the same titles, months and weekday pattern, with seeded noise of about ±3% on daily orders. First, the 2193 Book of the Month effect is taken out (those copies return to full price, and the extra copies are removed). Then the 2194 picks are applied. *This assumes 2194 repeats 2193's seasons, so within the game, insight A is true.* **Open:** David wants seasonal trends with some unpredictability, driven by an event director. This baseline would become the director's starting point.
 
 **Levers**
 
