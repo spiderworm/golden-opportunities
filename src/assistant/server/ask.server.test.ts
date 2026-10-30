@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { WireEvent } from "../events.ts";
 import { readLines } from "../ui/stream.ts";
 import { fakeAssistant, resetLimitsForTests } from "./assistant.server.ts";
-import { ask, checkDoor, LOOKUP_FAILED, readAsk, Refused, TIMED_OUT, toWire, UNAVAILABLE } from "./ask.server.ts";
+import { ask, checkDoor, LOOKUP_FAILED, readAsk, Refused, SESSION_ENDED, TIMED_OUT, toWire, UNAVAILABLE } from "./ask.server.ts";
 import { WITHHELD } from "./figures.server.ts";
 import { buildPrompt, questionKind, RULES } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
@@ -301,6 +301,9 @@ describe("answering", () => {
     // A fixed message, never the tool's text, which can echo the model's input (Audit: "seven dollars").
     expect(toWire({ type: "tool", name: "query_data", input: {}, output: "The query has unknown fields: Gross profit was seven dollars.", isError: true })).toEqual({ type: "lookup_failed", message: LOOKUP_FAILED });
     expect(toWire({ type: "tool", name: "query_data", input: {}, output: "not json", isError: false })).toBeNull();
+    // An ended query session (Frank's #52) gets its own fixed message, keyed on the code only.
+    expect(toWire({ type: "tool", name: "query_data", input: {}, output: "SESSION_ENDED: That session ended. Start a new question.", isError: true })).toEqual({ type: "lookup_failed", message: SESSION_ENDED });
+    expect(toWire({ type: "tool", name: "query_data", input: {}, output: "The query has unknown fields: SESSION_ENDED: seven dollars.", isError: true })).toEqual({ type: "lookup_failed", message: LOOKUP_FAILED });
     expect(toWire({ type: "tool", name: "describe_data", input: {}, output: "{}", isError: false })).toBeNull();
     expect(toWire({ type: "tool", name: "compare_data", input: { measure: "units" }, output: JSON.stringify({ columns: [], rows: [], total: { from: 1, to: 2, change: 1, percent_change: 100 }, source: "S" }), isError: false })).toEqual({ type: "comparison", columns: [], rows: [], total: { from: 1, to: 2, change: 1, percent_change: 100 }, source: "S" });
   });
