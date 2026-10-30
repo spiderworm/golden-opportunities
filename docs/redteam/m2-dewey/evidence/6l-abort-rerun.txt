@@ -1,0 +1,11 @@
+# 6l rerun, 30 Oct 2026, main at 56b5159, harness/abort.mjs (process group and temp folder search). Captured with tee; machine paths printed as $HOME and $TMPDIR by the script.
+# Dev server pid 88540, on [::1]:5291, real provider.
+claude pid=88905 pgid=88905, found 4381ms after the request
+cwd $TMPDIR/orbital-assistant-063UTP exists=true
+its process group before abort:
+  88905 ppid=88540 claude -p --tools  --strict-mcp-config --mcp-config {"mcpServers":{"orbital":{"command":"$HOME/.local/share/fn
+  88914 ppid=88905 $HOME/.local/share/fnm/node-versions/v24.21.0/installation/bin/node $HOME/Projects/golden-opportunities/.tmp-w
++500ms after abort: group 88905=["88905 ppid=88540 pgid=88905 (2.1.314)"] under folder=[] folder exists=false ps -p 88905,88914: []
++1500ms after abort: group 88905=[] under folder=[] folder exists=false ps -p 88905,88914: []
++3500ms after abort: group 88905=[] under folder=[] folder exists=false ps -p 88905,88914: []
++6000ms after abort: group 88905=[] under folder=[] folder exists=false ps -p 88905,88914: []
