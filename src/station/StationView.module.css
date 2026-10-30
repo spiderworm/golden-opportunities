@@ -1,0 +1,77 @@
+.view {
+  position: relative;
+  height: calc(100vh - 150px);
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: #03050d;
+}
+
+.poster,
+.poster svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.note {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  max-width: 340px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  background: rgb(15 20 36 / 0.85);
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.place {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-control);
+  background: rgb(15 20 36 / 0.7);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.move {
+  position: absolute;
+  left: 20px;
+  bottom: 20px;
+  padding: 10px 18px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-control);
+  background: rgb(22 28 48 / 0.85);
+  color: var(--color-text);
+  font: 500 14px var(--font-body);
+  cursor: pointer;
+}
+
+.move:hover {
+  background: var(--color-accent-selected);
+}
+
+.move:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.stats {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.6);
+  color: #b8ffcf;
+  font: 12px ui-monospace, monospace;
+}

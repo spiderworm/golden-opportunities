@@ -1,0 +1,50 @@
+{
+  "about": "Where every model in public/models/ came from. Add an entry for each model you copy in. 'item' is the studio item.json's provenance, copied verbatim.",
+  "copied": "2026-10-30",
+  "by": "Orbit",
+  "from": "games-studio a338b161",
+  "models": {
+    "armchair.glb": {
+      "source": "games-studio/research/assets/items/armchair/armchair.glb",
+      "sha256": "f70aca7fca0eb5b9ca36dd58e73b9060274baf80e6ac90f9d1cf3f0dafb988df",
+      "bytes": 112428,
+      "facing": 90,
+      "item": {
+        "made": "Tripo image-to-3D from a Gemini reference picture (23 Oct 2026: many more prizes)",
+        "reference": "research/gemini-items.ts (MORE['armchair'])",
+        "more": "prototypes/cubeberg/research/item-provenance.json"
+      }
+    },
+    "globe.glb": {
+      "source": "games-studio/research/assets/items/globe/globe.glb",
+      "sha256": "e3615dd402cf6c45a1b6f4c3d4afd0485fba787d6aa31aa08b94d08c3cee172e",
+      "bytes": 117016,
+      "facing": 0,
+      "item": {
+        "made": "Tripo image-to-3D from a Gemini reference picture (23 Oct 2026: many more prizes)",
+        "reference": "research/gemini-items.ts (MORE['globe'])",
+        "more": "prototypes/cubeberg/research/item-provenance.json"
+      }
+    },
+    "hourglass.glb": {
+      "source": "games-studio/research/assets/items/hourglass/hourglass.glb",
+      "sha256": "5a6ec68b2a5988bbd9c045fa9e86667586c6933227c487ae660b658975a95f66",
+      "bytes": 117560,
+      "facing": 0,
+      "item": {
+        "made": "Tripo image-to-3D from a Gemini reference picture (23 Oct 2026: many more prizes)",
+        "reference": "research/gemini-items.ts (MORE['hourglass'])",
+        "more": "prototypes/cubeberg/research/item-provenance.json"
+      }
+    },
+    "rocket.glb": {
+      "source": "games-studio/research/assets/items/rocket/rocket.glb",
+      "sha256": "8cd069602e30da36f27f7c373570a279312cf3a85e10a55e7b7c75a3fe0e4af1",
+      "bytes": 121232,
+      "facing": 0,
+      "item": {
+        "made": "see prototypes/cubeberg/research/item-provenance.json and research/*-item.ts"
+      }
+    }
+  }
+}

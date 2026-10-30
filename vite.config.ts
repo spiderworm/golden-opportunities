@@ -15,4 +15,10 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  optimizeDeps: {
+    // The station's 3D loads lazily, so the dev server would only find these
+    // on the first visit and reload mid-import ("Importing a module script
+    // failed" in WebKit). Bundle them up front instead.
+    include: ["three", "@react-three/fiber", "@react-three/drei"],
+  },
 });
