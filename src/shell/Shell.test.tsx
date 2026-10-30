@@ -38,6 +38,7 @@ describe("Shell", () => {
     const html = renderAt("/");
     expect(html).toContain('href="/investigate"');
     expect(html).not.toContain('href="/decisions"');
-    expect(html.match(/Soon/g)).toHaveLength(3);
+    expect(html).toContain('href="/settings"');
+    expect(html.match(/Soon/g)).toHaveLength(2);
   });
 });

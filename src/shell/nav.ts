@@ -12,5 +12,5 @@ export const navItems: NavItem[] = [
   { label: "Investigate", icon: "investigate", to: "/investigate" },
   { label: "Decisions", icon: "decisions" },
   { label: "Reports", icon: "reports" },
-  { label: "Settings", icon: "settings" },
+  { label: "Settings", icon: "settings", to: "/settings" },
 ];
