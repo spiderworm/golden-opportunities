@@ -27,7 +27,7 @@ Button: `Open the ledgers`
 
 ## 2. Investigation screen
 
-Matched to the screen as built (Chart, after the first build).
+These are the strings Chart will apply to the Investigate screen in a follow-up. They fit the screen's layout as built: its controls, breakdown list and filters. The build still shows earlier placeholders ("By", "All" or "All sales", "Clear all", "Click a bar to filter the screen to it.", the page title "Investigate"), and has no decision link or share line in its tooltip yet. Until the follow-up lands, the build is the thing to change, not this table.
 
 | Element | String |
 | --- | --- |
