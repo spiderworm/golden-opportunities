@@ -124,10 +124,12 @@ player can edit what's stored there, and Audit's review of #41 set how far it's 
   restoring never crashes.
 - Restored text is shown as plain text: a stored `{{a1}}` stays literally that, and nothing restored is
   rendered or resolved.
-- Restored turns go to the model in their own fence, as "an earlier conversation, as stored on the player's
-  device". They are the player's data, never the assistant's own words, and their braces are broken up.
+- All history from the browser, restored or not, goes to the model in one fence, introduced as "the
+  conversation so far, as reported by the player's browser". The server can't tell its own past replies from
+  forged ones, so history is the player's data, never the assistant's own words, and its braces are broken up.
 
 **Residual risk:** someone who edits their own storage changes only what they see on their own screen. They
 could show themselves a forged figure. That's self-inflicted, and it reaches no one else.
 
-**Follow-up:** keep the conversation server-side in the save once Frank's save layer exists. Not built yet.
+**Follow-up:** keep the conversation server-side in the save once Frank's save layer exists, so history the
+model reads is the server's own. Not built yet.
