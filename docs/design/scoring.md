@@ -166,7 +166,7 @@ M1 is one decision and one quarter, with no market and no Alma. **Proposal** (Pl
 - **Title value:** v = 1 + 9 × clamp((r − 3.0) ÷ 1.7, 0, 1) + 3 × (number of awards for the title). Here r is the title's average rating, and awards join on the exact title. Values run from 1.0 (*Soft, Pliable Truth*) to 15.8 (*The Mallemaroking*).
 - **Daily title culture:** the sum of v over the distinct titles sold that day. Titles are de-duplicated across editions, so each title counts once a day however many copies or formats sold.
 - **Genre spread:** the number of distinct genres sold that day, divided by 8.
-- **Events:** each author night adds 1.2 × its extra orders. This assumes each extra order is one attendee who bought a book.
+- **Events:** each author night adds 1.2 × its extra orders, as drawn for that night (30 to 70). This assumes each extra order is one attendee who bought a book. If the sale clones author-night orders, the clones do **not** count toward Culture: attendance is the night's own draw. (They do get Happiness's +20, because those buyers were at the night too.)
 - **Library ties:** 0 in M1.
 - **Quarter Culture:** the sum over days of (daily title culture × genre spread), plus Events. Events are not multiplied by genre spread.
 
@@ -195,7 +195,7 @@ M1 is one decision and one quarter, with no market and no Alma. **Proposal** (Pl
 | Plan | Overall | Usually bound by |
 | --- | --- | --- |
 | None (hold course) | 67–70, median 67 (D) | Profit |
-| Any plan with `sale` | about 38–42 (F) | Profit |
+| Any plan with `sale` | 38–45 (F): the sale alone 38–42, with re-pick up to 45, with author nights up to 44 | Profit |
 | `repick` | 71–76, median 72 (C−) | Happiness or Readers served |
 | `events` | 69–89, median 72 (C−) | Profit |
 | `repick` + `events` | 85–91, median 87 (B+) | Happiness |
