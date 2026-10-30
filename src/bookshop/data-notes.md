@@ -8,7 +8,11 @@ it supports these Excel workbooks, typed parsing, and Excel serial dates without
 shipping an XLSX parser to players. Distribution reference:
 https://docs.sheetjs.com/docs/getting-started/installation/nodejs/
 
-Import `loadBookshop` from `src/bookshop/loader` on either server or browser.
+Import `loadBookshop` from `src/bookshop/loader.server` in server code only.
+React Router rejects client imports of this module. Browser consumers receive
+selected data through route loaders and server queries; `joinBookshop` from
+`src/bookshop/joins` and the types remain importable in either runtime without
+importing the dataset.
 It returns a cached, deeply readonly typed view with normalized tables and joined
 books, sale lines, ratings, checkouts, libraries, and catalog entries. The joined
 sale's `book` includes its source ID, author, info, series, editions, and awards.
@@ -16,8 +20,8 @@ Optional `track(event, props)` receives a content-free `bookshop_loaded` event w
 cache hit, and sale count; connect it to the application's platform analytics.
 The converter emits success/failure and timing events to stdout/stderr. There is
 no UI, simulation data, network request, or analytics vendor dependency here.
-The normalized JSON is about 14 MB uncompressed; import it only where the full
-dataset is needed (server consumers can send smaller query results to the UI).
+The normalized JSON is about 14 MB uncompressed and stays on the server.
+Route loaders should return only the subset needed by their UI.
 The cache lasts for the module lifetime; a new build replaces the imported data.
 
 ## Normalization and omissions
