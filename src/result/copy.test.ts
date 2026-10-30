@@ -95,7 +95,7 @@ describe("the report card's words", () => {
     expect(lowestMeasureSpeakers(one)).toBe("The Commerce Office");
     const three = card({ profit: 72, readers: 72, happiness: 72, culture: 90 }, { binding: ["profit", "readers", "happiness"] });
     expect(lowestMeasureLines(three)[0]).toBe("PROFIT, READERS SERVED AND HAPPINESS HAVE JOINTLY SET YOUR SCORE: 72. WE ARE SUSPICIOUS OF TIES.");
-    expect(lowestMeasureSpeakers(three)).toBe("The Commerce Office, The Throughput Subcommittee and The Readers' Guild survey drone");
+    expect(lowestMeasureSpeakers(three)).toBe("The Commerce Office, the Throughput Subcommittee and the Readers' Guild survey drone");
   });
 
   it("adds the sacrifice line, then the closest close-behind measure from the engine's order", () => {
