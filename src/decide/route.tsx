@@ -40,11 +40,18 @@ export async function action({ request }: Route.ActionArgs) {
   try {
     plan = await readPlan(request);
   } catch (error) {
-    if (error instanceof PlanRefused) return data({ ok: false as const }, { status: error.status });
+    if (error instanceof PlanRefused) return data({ ok: false as const, played: false }, { status: error.status });
     throw error;
   }
-  if (getPlan(request)) return data({ ok: false as const }, { status: 409 });
-  submitPlan(request, plan);
+  try {
+    if (getPlan(request)) return data({ ok: false as const, played: true }, { status: 409 });
+    submitPlan(request, plan);
+  } catch (error) {
+    // The game refuses with a Response: a lost race to play (409), no save, or storage
+    // trouble. The player goes back to choosing, or to the results if the quarter is played.
+    if (error instanceof Response) return data({ ok: false as const, played: error.status === 409 }, { status: error.status });
+    throw error;
+  }
   trackServer("plan_submitted", { levers: planLabel(plan.levers), moves: plan.levers.length });
   return { ok: true as const };
 }
@@ -74,10 +81,15 @@ export default function Decide() {
   }
   const fetcher = useFetcher<typeof action>();
 
-  // A plan the server refused (already submitted, or not a valid plan) goes back to choosing.
+  const navigate = useNavigate();
+
+  // A plan the server refused goes back to choosing; if the quarter has already
+  // been played (say, from another tab), its results are what's left to see.
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data?.ok === false) setStep("choose");
-  }, [fetcher.state, fetcher.data]);
+    if (fetcher.state !== "idle" || fetcher.data?.ok !== false) return;
+    if (fetcher.data.played) navigate("/result");
+    else setStep("choose");
+  }, [fetcher.state, fetcher.data, navigate]);
 
   return (
     <div className={styles.page}>
