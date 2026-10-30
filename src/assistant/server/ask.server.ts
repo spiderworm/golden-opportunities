@@ -4,9 +4,9 @@
 import { randomBytes } from "node:crypto";
 import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
-import type { ChartSpec } from "../tools/definitions.ts";
+import { chartTitle, type ChartSpec } from "../tools/definitions.ts";
 import { acquire, arrive, ndjson } from "./assistant.server.ts";
-import { Refs, scrubDeep, sentenceGate, titleIsClean } from "./figures.server.ts";
+import { Refs, scrubDeep, sentenceGate } from "./figures.server.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
 
@@ -109,10 +109,21 @@ export async function readAsk(request: Request, deadlineMs = 5_000): Promise<Ask
   return { question: question.trim(), history: turns, pins };
 }
 
-/** Turns a provider's tool events into what the browser shows. Tool output is ours, but parse it defensively. */
+// What the browser is told when a lookup fails or the assistant stops: fixed strings from this code, never text
+// from a tool, the model or the CLI (Audit, #32: a validation error echoed a model-written key). The model
+// still reads the tool's own error.
+export const LOOKUP_FAILED = "The terminal couldn't run that lookup.";
+export const UNAVAILABLE = "The assistant is unavailable right now. Try again in a moment.";
+export const TIMED_OUT = "The assistant took too long, so it was stopped.";
+export const FAILED = "Something went wrong with the assistant.";
+
+/**
+ * Turns a provider's tool events into what the browser shows: the data's own tables and sources, never the
+ * model's tool input. Tool output is ours, but parse it defensively.
+ */
 export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
   if (event.type === "text") return event;
-  if (event.isError) return { type: "lookup_failed", message: event.output.slice(0, 300) };
+  if (event.isError) return { type: "lookup_failed", message: LOOKUP_FAILED };
   let output: Record<string, unknown>;
   try {
     output = JSON.parse(event.output);
@@ -120,19 +131,16 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
     return null;
   }
   if (event.name === "query_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.source === "string") {
-    return { type: "data", query: event.input, columns: output.columns, rows: output.rows, total: output.total as number | null, source: output.source } as WireEvent;
+    return { type: "data", columns: output.columns, rows: output.rows, total: output.total as number | null, source: output.source } as WireEvent;
   }
   if (event.name === "compare_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.total === "object" && typeof output.source === "string") {
-    return { type: "comparison", query: event.input, columns: output.columns, rows: output.rows, total: output.total, source: output.source } as WireEvent;
+    return { type: "comparison", columns: output.columns, rows: output.rows, total: output.total, source: output.source } as WireEvent;
   }
   if (pins && event.name === "pin_chart" && output.pinned === true && typeof output.source === "string") {
     return { type: "pin", chart: output.chart as ChartSpec, source: output.source };
   }
   return null;
 }
-
-/** A plain title for a pin whose own title stated a figure or direction. */
-const pinTitle = (chart: ChartSpec) => `${chart.query.measure.replace(/_/g, " ")}${chart.query.by.length ? ` by ${chart.query.by.join(" and ").replace(/_/g, " ")}` : ""}`;
 
 /** Builds the provider for one answer; `pins` says whether it may have the pin tool. */
 export type ProviderFor = (options: { pins: boolean }) => AssistantProvider;
@@ -171,7 +179,7 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     slot.charge();
     const provider = providerFor({ pins: input.pins });
     const started = now();
-    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, pins: 0, chars: 0, withheld: 0, figures: 0, pinTitlesReplaced: 0 };
+    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, pins: 0, chars: 0, withheld: 0, figures: 0 };
     let outcome = "aborted";
     const nonce = randomBytes(6).toString("hex");
     const prompt = buildPrompt(input.question, input.history, { pins: input.pins }, nonce);
@@ -211,16 +219,21 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
               continue;
             }
             if (wire.type === "pin") {
-              // A pin's title is the model's text, shown on the page: no figures or directions of its own.
+              // The model doesn't title pins: the title is always built from the chart's query (Probe X1).
               stats.pins++;
-              const clean = titleIsClean(wire.chart.title);
-              if (!clean) stats.pinTitlesReplaced++;
-              const chart = clean ? wire.chart : { ...wire.chart, title: pinTitle(wire.chart) };
+              const chart = { ...wire.chart, title: chartTitle(wire.chart.query) };
               yield hide({ ...wire, chart });
               continue;
             }
             if (wire.type === "data") stats.lookups++;
-            if (wire.type === "comparison") stats.comparisons++;
+            if (wire.type === "comparison") {
+              stats.comparisons++;
+              // Its column headings are the values the model compared: shown only where the data had something.
+              const ref = (JSON.parse((event as { output: string }).output) as { ref?: unknown }).ref;
+              const sides = typeof ref === "string" ? refs.compared(ref) : null;
+              yield hide({ ...wire, columns: wire.columns.map((c) => (c.key === "from" || c.key === "to" ? { ...c, label: sides?.[c.key] ?? (c.key === "from" ? "First" : "Second") } : c)) });
+              continue;
+            }
             if (wire.type === "lookup_failed") stats.failedLookups++;
             yield hide(wire);
           }
@@ -238,7 +251,7 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
           track("assistant_answered", { outcome, provider: provider.name, kind: questionKind(input.question), questionChars: input.question.length, turns: input.history.length, durationMs: now() - started, ...stats });
         }
       },
-      (e) => hide({ type: "error", message: e instanceof AssistantUnavailable ? e.message : "Something went wrong with the assistant." }),
+      (e) => ({ type: "error", message: e instanceof AssistantUnavailable ? (e.kind === "timeout" ? TIMED_OUT : UNAVAILABLE) : FAILED }),
       request,
     );
   })();

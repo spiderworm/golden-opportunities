@@ -26,7 +26,10 @@ export interface AssistantProvider {
 
 /** Its message is shown to the player, so it never carries an email address (stderr and results can). */
 export class AssistantUnavailable extends Error {
-  constructor(message: string) {
+  /** Which fixed message the player sees: the message itself can carry outside text (stderr, the CLI's). */
+  readonly kind: "timeout" | "other";
+  constructor(message: string, kind: "timeout" | "other" = "other") {
     super(redactEmails(message));
+    this.kind = kind;
   }
 }

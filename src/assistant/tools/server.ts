@@ -6,7 +6,7 @@
 // ORBITAL_PINS=0 removes pin_chart, for pages with nowhere to put a pin.
 
 import { createInterface } from "node:readline";
-import type { QueryColumn, QueryResult } from "../../query/types.ts";
+import { QUERY_LIMITS, type QueryColumn, type QueryResult } from "../../query/types.ts";
 import { checkChart, checkComparison, checkQuery, describeData, SERVER_NAME, ToolInputError, TOOLS, type Comparison, type ComparisonFigures, type ComparisonResult } from "./definitions.ts";
 
 const MAX_LINE = 65_536;
@@ -63,7 +63,7 @@ const figures = (from: number | null | undefined, to: number | null | undefined)
  * Runs a comparison as two queries, one per side, and works out the change here, so the assistant never does
  * arithmetic of its own: every figure it can state comes back from a tool, with a source.
  */
-async function runComparison(c: Comparison, endpoint: { url: URL; token: string }): Promise<ComparisonResult> {
+async function runComparison(c: Comparison, endpoint: { url: URL; token: string }): Promise<{ result: ComparisonResult; sides: number[] }> {
   const side = (value: string) => runQuery(checkQuery({ measure: c.measure, by: c.by, filter: { ...c.filter, [c.across]: [value] } }), endpoint);
   const [a, b] = await Promise.all([side(c.from), side(c.to)]);
   const dim = c.by[0];
@@ -88,7 +88,7 @@ async function runComparison(c: Comparison, endpoint: { url: URL; token: string 
     `${c.from}: ${a.source}`,
     `${c.to}: ${b.source}`,
   ].join(" ");
-  return { columns, rows, total: figures(a.total, b.total), source };
+  return { result: { columns, rows, total: figures(a.total, b.total), source }, sides: [a.rows.length, b.rows.length] };
 }
 
 // Every successful lookup gets a ref ("a", "b", ...) and each of its rows one more ("a1", "a2", ...). The model
@@ -105,10 +105,15 @@ function nextRef(): string {
   } while (n >= 0);
   return ref;
 }
-function withRefs<T extends { rows: object[] }>(result: T): T & { ref: string } {
+function withRefs<T extends { rows: object[] }>(result: T, complete: boolean): T & { ref: string; complete: boolean } {
   const ref = nextRef();
-  return { ref, ...result, rows: result.rows.map((row, i) => ({ ref: `${ref}${i + 1}`, ...row })) };
+  return { ref, ...result, rows: result.rows.map((row, i) => ({ ref: `${ref}${i + 1}`, ...row })), complete };
 }
+/**
+ * Whether a result holds every group, so "the highest" can be said of it. A limit or the row cap may have cut
+ * it; when the rows reach either, it's treated as cut, even if it happens to be whole.
+ */
+const isComplete = (rows: number, limit: number = QUERY_LIMITS.rows) => rows < Math.min(limit, QUERY_LIMITS.rows);
 
 const ok = (value: unknown): Content => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 const fail = (message: string): Content => ({ content: [{ type: "text", text: message }], isError: true });
@@ -117,8 +122,15 @@ const fail = (message: string): Content => ({ content: [{ type: "text", text: me
 export async function callTool(name: unknown, args: unknown, env: NodeJS.ProcessEnv = process.env): Promise<Content> {
   try {
     if (name === "describe_data") return ok(describeData());
-    if (name === "query_data") return ok(withRefs(await runQuery(checkQuery(args), queryEndpoint(env))));
-    if (name === "compare_data") return ok(withRefs(await runComparison(checkComparison(args), queryEndpoint(env))));
+    if (name === "query_data") {
+      const query = checkQuery(args);
+      const result = await runQuery(query, queryEndpoint(env));
+      return ok(withRefs(result, isComplete(result.rows.length, query.limit)));
+    }
+    if (name === "compare_data") {
+      const { result, sides } = await runComparison(checkComparison(args), queryEndpoint(env));
+      return ok(withRefs(result, sides.every((n) => isComplete(n))));
+    }
     if (name === "pin_chart" && env.ORBITAL_PINS !== "0") {
       const chart = checkChart(args);
       const { source, rows } = await runQuery(chart.query, queryEndpoint(env));

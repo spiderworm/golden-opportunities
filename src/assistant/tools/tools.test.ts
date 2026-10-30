@@ -53,10 +53,10 @@ describe("checking a query from the model", () => {
     expect(() => checkQuery(input)).toThrow(message);
   });
 
-  it("checks charts to pin, and strips control characters from titles", () => {
-    expect(checkChart({ title: "Sales\nby quarter", kind: "bar", query: { measure: "revenue", by: ["quarter"] } })).toEqual({ title: "Sales by quarter", kind: "bar", query: { measure: "revenue", by: ["quarter"] } });
+  it("checks charts to pin and titles them from their query, ignoring any title from the model (Probe X1)", () => {
+    expect(checkChart({ title: "Revenue soared in autumn", kind: "bar", query: { measure: "revenue", by: ["quarter"] } })).toEqual({ title: "Revenue by quarter", kind: "bar", query: { measure: "revenue", by: ["quarter"] } });
+    expect(checkChart({ kind: "line", query: { measure: "avg_order_value", by: ["discount_rate", "month"], filter: { genre: ["Mystery"] } } }).title).toBe("Average order value by discount rate and month, filtered");
     expect(() => checkChart({ title: "x", kind: "pie", query: { measure: "revenue", by: [] } })).toThrow(/kind/);
-    expect(() => checkChart({ title: "x".repeat(81), kind: "bar", query: { measure: "revenue", by: [] } })).toThrow(/title/);
     expect(() => checkChart({ title: "x", kind: "bar", query: { measure: "revenue", by: [] }, html: "<script>" })).toThrow(/unknown fields/);
   });
 });
@@ -150,9 +150,11 @@ describe("calling tools against the app", () => {
     resetRefsForTests();
     const result = await callTool("query_data", { measure: "revenue", by: ["quarter"] }, env);
     expect(result.isError).toBeUndefined();
-    expect(JSON.parse(result.content[0].text)).toEqual({ ref: "a", columns: [{ key: "quarter", label: "Quarter", type: "string", nullable: false }], rows: [{ ref: "a1", quarter: "2193-Q1", revenue: 10 }], total: 10, source: "Sales, 2193-Q1 to Q4" });
+    expect(JSON.parse(result.content[0].text)).toEqual({ ref: "a", columns: [{ key: "quarter", label: "Quarter", type: "string", nullable: false }], rows: [{ ref: "a1", quarter: "2193-Q1", revenue: 10 }], total: 10, source: "Sales, 2193-Q1 to Q4", complete: true });
     expect(seen.at(-1)).toEqual({ auth: "Bearer tok", body: { measure: "revenue", by: ["quarter"] } });
     expect(JSON.parse((await callTool("query_data", { measure: "revenue", by: [] }, env)).content[0].text)).toMatchObject({ ref: "b", rows: [{ ref: "b1" }] });
+    // A limit the rows reach may have cut the result, so rankings over it aren't offered.
+    expect(JSON.parse((await callTool("query_data", { measure: "revenue", by: ["quarter"], limit: 1 }, env)).content[0].text).complete).toBe(false);
   });
 
   it("never reaches the app with a bad query", async () => {
@@ -187,8 +189,8 @@ describe("calling tools against the app", () => {
   });
 
   it("pins a chart after checking its query runs", async () => {
-    const result = JSON.parse((await callTool("pin_chart", { title: "Revenue", kind: "line", query: { measure: "revenue", by: ["quarter"] } }, env)).content[0].text);
-    expect(result).toEqual({ pinned: true, chart: { title: "Revenue", kind: "line", query: { measure: "revenue", by: ["quarter"] } }, rows: 1, source: "Sales, 2193-Q1 to Q4" });
+    const result = JSON.parse((await callTool("pin_chart", { kind: "line", query: { measure: "revenue", by: ["quarter"] } }, env)).content[0].text);
+    expect(result).toEqual({ pinned: true, chart: { title: "Revenue by quarter", kind: "line", query: { measure: "revenue", by: ["quarter"] } }, rows: 1, source: "Sales, 2193-Q1 to Q4" });
   });
 
   it("leaves out pin_chart for pages with nowhere to pin", async () => {
