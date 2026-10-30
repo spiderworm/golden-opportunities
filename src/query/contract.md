@@ -35,6 +35,9 @@ const query: Query = { measure: 'revenue', by: ['quarter'] };
   as first name + space + last name. Missing book/series values group as null,
   not invented labels. Consumers should display null as an unknown/missing value.
 - discounted: `yes` for discount > 0, otherwise `no`.
+- discount_rate: actual discount as a percent label (`0%`, `5%`, `10%`, `13%`,
+  `15%`, `20%` in the source); up to eight fractional percentage digits for
+  future rates, with trailing zeros omitted.
 
 Filters are exact, case-sensitive matches. Values within one dimension are OR;
 different dimensions are AND. Each filter contains 1–50 strings of at most 200
@@ -48,6 +51,13 @@ sort last. Limit is 1–200 (default 200). Source states when rows are truncated
 Without grouping, return one aggregate row even when no facts match. With
 grouping, do not synthesize missing zero-valued categories.
 
+Every response, including errors and provenance, is capped at 131,072 UTF-8
+bytes of serialized JSON. Dimension values and column labels are capped at 200
+characters, source at 4096, and error messages at 300. Oversized results fail
+with `RESULT_TOO_LARGE` (HTTP 422) and a short bounded error; labels and totals
+are never silently truncated. Row limiting is explicit in source. These bounds
+also apply to direct `runQuery` results, not only the HTTP endpoint.
+
 ## Fact grain and totals
 
 | Measure | Fact grain and aggregation | Supported dimensions (group and filter) |
@@ -55,6 +65,8 @@ grouping, do not synthesize missing zero-valued categories.
 | revenue | Sum price × (1 − discount), no per-line cent rounding | All |
 | units | Count sale lines | All |
 | orders | Count distinct source OrderID in each group; global total is independently distinct | All |
+| avg_order_value | Sum revenue / distinct OrderID | All |
+| orders_per_day | Distinct OrderID / eligible calendar days | All |
 | avg_discount | Arithmetic mean of the sale-line discount fractions, not percentages | All |
 | avg_rating | Arithmetic mean of individual source ratings, including unknown-book ratings | genre, series, title, author |
 | checkouts | Sum source Number of Checkouts at book/month grain | genre, series, title, author, month |
@@ -67,6 +79,15 @@ checkouts, except the observed checkout month. An average over no facts is
 null; empty sums/counts are zero. Total is over all filtered visible facts before
 grouping or limiting, so grouped distinct orders need not sum to total and
 averages are never an unweighted average of group averages.
+
+For orders_per_day, eligible days are ALL calendar dates in the server-visible
+periods, narrowed by quarter/month/weekday filters and the group's calendar
+dimension values. Count zero-sale days too. Non-calendar filters and groups do
+not reduce the day denominator. The total divides globally distinct matching
+orders by all eligible days, independently of groups. No eligible calendar days
+means null; eligible days with no orders means zero. avg_order_value is null
+when there are no orders. Both calculations respect visibility before any
+aggregation; neither averages already-computed group values.
 
 ## Visibility and access
 
@@ -90,7 +111,9 @@ never logged or exposed in route data. The planned server-only
 `getQueryToken()` in `src/query/access.server.ts` lets Sage's spawner pass it via
 its child environment, outside model context. Access is for this local-only
 milestone; deployment/session authentication must be revisited before hosting.
-HTTP responses are private/no-store. Bounded per-caller and global rate limits
+The bearer capability never selects or authorizes arbitrary save views; later
+session integration must resolve the view independently from trusted session
+state. HTTP responses are private/no-store. Bounded per-caller and global rate limits
 protect compute; caches, if added, must include the trusted view and fact version.
 
 Telemetry accepts `(event, props?)` and records only allowlisted measure,
