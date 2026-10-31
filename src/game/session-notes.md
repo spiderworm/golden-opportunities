@@ -92,7 +92,11 @@ revocation, expiry or revision changes during a slow body cannot produce a respo
 The agreed rule table is in m1-slice section 5 (PR #58). Only successful, nonempty,
 untruncated 2193 views count before play. `/api/query` observes the validated query after
 result serialization; pins and Dewey use the same path. Investigate observes the chart,
-heatmap and title detail only when normalized controls differ from the default. Filter
+heatmap and title detail only when that panel's query differs from its own default.
+Changing only the main chart grouping never credits the unchanged default heatmap.
+If recording evidence is busy, Investigate skips that write and renders its existing
+session snapshot; a later visit can retry. It emits discovery_record_deferred with
+SAVE_BUSY only, without save or query content. Filter
 option queries never count. The existing tiles contain no AOV or qualifying category
 breakdown, so cannot earn these discoveries. There is no browser claim endpoint.
 
