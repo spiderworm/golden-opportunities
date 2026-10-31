@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { ignoreCutOff } from "~/platform/music/cut-off";
+import { cutOff } from "~/platform/lazy/cut-off";
 
 import styles from "./Shell.module.css";
 
@@ -34,7 +34,7 @@ export function MusicPopup() {
         },
       });
       addEventListener("resize", placeAll);
-    }, ignoreCutOff);
+    }, cutOff("music popup"));
     return () => {
       live = false;
       removeEventListener("resize", placeAll);

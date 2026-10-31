@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { ECElementEvent, ECharts, EChartsCoreOption } from "echarts/core";
+import { cutOff } from "~/platform/lazy/cut-off";
 
 export type ChartClick = Pick<ECElementEvent, "dataIndex" | "seriesIndex" | "name" | "data">;
 
@@ -55,7 +56,7 @@ export function EChart({ option, height, label, onClick, onCategoryClick, catego
         resize.disconnect();
         instance.dispose();
       };
-    });
+    }, cutOff("charts"));
     return () => {
       disposed = true;
       cleanup();
