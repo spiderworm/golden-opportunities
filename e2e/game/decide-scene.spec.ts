@@ -40,3 +40,16 @@ test('the bosses brief the plan together: the Administrator first, then whicheve
   await page.getByRole('checkbox', { name: /Weekday author nights/ }).check();
   await expect(page.getByRole('checkbox', { name: /Weekday author nights/ })).toBeChecked();
 });
+
+test('where the browser can draw them, the bosses stand in 3D under the same bubbles', async ({ page }) => {
+  await page.goto('/decide?analytics-test=1');
+  const scene = page.getByRole('region', { name: 'PLAN FOR Q1 2194' });
+  const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
+  test.skip(!webgl, 'no WebGL 2 here: the 2D scene stands in');
+  // The robots are decoration on a canvas the bubbles above describe.
+  await expect(scene.locator('[aria-hidden="true"] canvas')).toBeVisible({ timeout: 30_000 });
+  const ministry = scene.getByRole('button', { name: /^The Ministry of Culture/ });
+  await ministry.click();
+  await expect(ministry).toHaveAttribute('aria-expanded', 'true');
+  await expect(scene.getByRole('button', { name: /^The Station Administrator/ })).toHaveAttribute('aria-expanded', 'false');
+});

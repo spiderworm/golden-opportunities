@@ -1,0 +1,57 @@
+{
+  "about": "Where each boss model in public/models/bosses/ came from. Decide's 3D boss scene (src/platform/bosses/BossScene3D.tsx) draws them; the 2D cutouts in public/bosses/full/ are made from the same concepts, so both scenes show the same robots.",
+  "date": "2026-10-30",
+  "by": "Orbit, in David's Tripo account; David named Tripo for these (\"animated robots. Tripo\", via Goldy)",
+  "credits": "285: five models at 45 and three rigs at 20 (8,190 -> 7,905). The concepts and preset animations were free.",
+  "processed": "research/station-assets/process.mjs <exports> public/models/bosses 1024: color texture only, as 1024 px webp; static models baked, centered and resting on y = 0; rigged ones keep their skeleton and clips (resampled).",
+  "models": {
+    "overall": {
+      "name": "The Station Administrator",
+      "concept": "research/station-assets/boss-figures/overall.jpg (the full-body concept in public/bosses/provenance.json \"figures\", made with the boss's portrait as the reference image)",
+      "model": "Tripo Studio image to 3D: HD Model, H3.1, 2K texture, triangles, 10,000 polygon target; task f815f35d-72bd-46d8-b62e-27a5ddb42fcc; 45 credits",
+      "file": "public/models/bosses/overall.glb",
+      "sha256": "4f4174c11f9ea43a7180ada9f33dfd55cb34c50e7a7b1df72f748526e549cfa2",
+      "bytes": 324500,
+      "animations": "none: not humanoid, so the scene moves it in code (a bob, and a lean when it talks)"
+    },
+    "profit": {
+      "name": "The Commerce Office",
+      "concept": "research/station-assets/boss-figures/profit.jpg (the full-body concept in public/bosses/provenance.json \"figures\", made with the boss's portrait as the reference image)",
+      "model": "Tripo Studio image to 3D: HD Model, H3.1, 2K texture, triangles, 10,000 polygon target; task 036f3b8e-02fa-48e9-ae42-aced0c794fab; 45 credits",
+      "file": "public/models/bosses/profit.glb",
+      "sha256": "e1591a4a8d580e8d70331fe84d4e9e440aca35b9ca62769f4c84fbfebbc3d006",
+      "bytes": 1036904,
+      "rig": "Tripo Auto Rig: Humanoid, Mixamo skeleton; 20 credits",
+      "animations": "Tripo's preset animations idle, agree (used as talking), fold_arms and walk, retargeted free; exported as GLB, 2K textures, with the skeleton, animations in place"
+    },
+    "culture": {
+      "name": "The Ministry of Culture",
+      "concept": "research/station-assets/boss-figures/culture.jpg (the grey concept; the green copy was only for the 2D cutout)",
+      "model": "Tripo Studio image to 3D: HD Model, H3.1, 2K texture, triangles, 10,000 polygon target; task 03dc7fc5-fc1f-449c-aa2a-6e2f5bc88505; 45 credits",
+      "file": "public/models/bosses/culture.glb",
+      "sha256": "9b3c92ed677e88728b452c50c0234ddccee0f469b8f27f74e7b854544c6c8f26",
+      "bytes": 1028476,
+      "rig": "Tripo Auto Rig: Humanoid, Mixamo skeleton; 20 credits",
+      "animations": "Tripo's preset animations idle, agree (used as talking), fold_arms and walk, retargeted free; exported as GLB, 2K textures, with the skeleton, animations in place"
+    },
+    "happiness": {
+      "name": "The Readers' Guild survey drone",
+      "concept": "research/station-assets/boss-figures/happiness.jpg (the full-body concept in public/bosses/provenance.json \"figures\", made with the boss's portrait as the reference image)",
+      "model": "Tripo Studio image to 3D: HD Model, H3.1, 2K texture, triangles, 10,000 polygon target; task 076ed8c7-92c5-4fb2-b03a-4613bb8b19f6; 45 credits",
+      "file": "public/models/bosses/happiness.glb",
+      "sha256": "4b37fada166bb86943eba75e3860d6b43f7cc5d2b4d6739d9a6a4bde926a4ee8",
+      "bytes": 326376,
+      "animations": "none: not humanoid, so the scene moves it in code (a bob, and a lean when it talks)"
+    },
+    "readers": {
+      "name": "The Throughput Subcommittee",
+      "concept": "research/station-assets/boss-figures/readers.jpg (the full-body concept in public/bosses/provenance.json \"figures\", made with the boss's portrait as the reference image)",
+      "model": "Tripo Studio image to 3D: HD Model, H3.1, 2K texture, triangles, 10,000 polygon target; task be8f86a9-1950-4846-8f0b-051a12ce6f42; 45 credits",
+      "file": "public/models/bosses/readers.glb",
+      "sha256": "9286fa04d47283c0ac4dd9588a68e12c2f6c46dfdc8c4f27072a81d2688d9e7e",
+      "bytes": 1069880,
+      "rig": "Tripo Auto Rig: Humanoid, Mixamo skeleton; 20 credits",
+      "animations": "Tripo's preset animations idle, agree (used as talking), fold_arms and walk, retargeted free; exported as GLB, 2K textures, with the skeleton, animations in place"
+    }
+  }
+}

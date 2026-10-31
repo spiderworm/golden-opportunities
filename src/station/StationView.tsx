@@ -6,7 +6,7 @@ import type { StationViewpoint } from "./scene/StationScene";
 import { heldFrame, watchHeldFrame } from "./held-frame";
 import { StationPoster } from "./StationPoster";
 import { FIRST_VIEW, rememberedView, rememberView } from "./view-memory";
-import { canRenderWebGL2 } from "./webgl";
+import { canRenderWebGL2 } from "~/platform/webgl";
 import styles from "./StationView.module.css";
 
 // three.js and the scene load only here, after the page is up and the

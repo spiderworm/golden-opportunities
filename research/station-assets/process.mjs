@@ -7,8 +7,9 @@
 // It borrows the studio's installed gltf-transform and sharp rather than add
 // them to this app:
 //   STUDIO=~/Projects/games-studio/research/prototypes/cubeberg \
-//     node research/station-assets/process.mjs <exports dir>
-// Writes public/models/station/<name>.glb.
+//     node research/station-assets/process.mjs <exports dir> [models dir] [texture px]
+// Writes <models dir>/<name>.glb: public/models/station/ unless another is
+// given (the Decide bosses go to public/models/bosses/, at 1024 px).
 import { mkdirSync, readdirSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
@@ -25,11 +26,11 @@ const sharp = (await load("sharp")).default;
 
 /** The longest side of each model's colour texture. Big, close-up things get more. */
 const TEXTURE = { "station-exterior": 1024, "shelf-unit": 1024, counter: 1024 };
-const DEFAULT_TEXTURE = 512;
+const [input, models = "public/models/station", texture = "512"] = process.argv.slice(2);
+const DEFAULT_TEXTURE = Number(texture);
 
-const input = process.argv[2];
-if (!input) throw new Error("usage: process.mjs <dir of Tripo GLB exports>");
-const out = new URL("../../public/models/station/", import.meta.url).pathname;
+if (!input) throw new Error("usage: process.mjs <dir of Tripo GLB exports> [models dir] [texture px]");
+const out = new URL(`../../${models.replace(/\/?$/, "/")}`, import.meta.url).pathname;
 mkdirSync(out, { recursive: true });
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 
