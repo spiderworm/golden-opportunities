@@ -16,14 +16,47 @@ MERIDIAN STATION / COMMERCE OFFICE
 Quarterly review: Orbital Books, Ring C, Berth 14
 January 1, 2194
 
-Fourth-quarter revenue: $161,525. Third quarter: $274,036. Down 41%.
+Fourth-quarter revenue: $161,525. Third quarter: $274,036. **Down 41%.**
 
-The Commerce Office expects a plan for the first quarter before the shuttle season ends. Your ledgers are open on the console. Dewey can help you read them.
+The Commerce Office expects a plan for the first quarter before the shuttle season ends. Your ledgers are on the console, and Dewey can help you read them there.
 
 Submit your plan when you are ready.
 ```
 
-Button: `Open the ledgers`
+The memo arrives three ways: once as a transmission, then as a standing-order strip until the plan is submitted, and in the bell's archive throughout. The memo's facts stay plain; any joke goes in the boss line only.
+
+### Transmission
+
+Shown once per game, on first arrival at the station. It is a centred card over the scene, in the Decide bubble style: the Commerce Office's portrait and tint, a boss line (the joke), and the memo above as its plain fact strip, with `**Down 41%.**` in bold.
+
+| Element | String |
+| --- | --- |
+| Card label (small caps, above the bubble) | `INCOMING TRANSMISSION` |
+| Boss line | `THE NUMBERS HAVE GONE DOWN. WE PREFER UP. MR. ZOOLANDER TEACHES THAT ONE MUST ALWAYS LOOK. PLEASE LOOK AT THE LEDGERS.` |
+| Fact strip | The memo above, verbatim |
+| Primary button | `Open the ledgers` (goes to Investigate) |
+| Secondary button | `Later` (closes the card) |
+| Dialog's accessible name | `Transmission from the Commerce Office` |
+
+### Standing-order strip
+
+A slim strip under the header on every screen except Decide and Result, until the plan is submitted. Then it goes away.
+
+| Element | String |
+| --- | --- |
+| Line | `Standing order from the Commerce Office: Q4 revenue is down **41%** on Q3. Submit a plan for Q1 2194.` |
+| Line, narrow screens | `Standing order: Q4 revenue down **41%**. Plan due for Q1 2194.` |
+| Link | `Open the ledgers` (hidden on Investigate) |
+| Link | `Read the memo` (reopens the transmission) |
+
+### Bell
+
+The bell keeps the memo as its archive.
+
+| Element | String |
+| --- | --- |
+| Title | `Q4 revenue is down 41% on Q3` |
+| Detail | `Find out what happened, then submit a plan for Q1 2194.` |
 
 ## 2. Investigation screen
 
