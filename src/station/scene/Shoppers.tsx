@@ -1,12 +1,13 @@
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useLayoutEffect, useMemo } from "react";
-import { AnimationMixer, Box3, Group, Quaternion, Vector3, type Mesh, type MeshStandardMaterial } from "three";
+import { useMemo } from "react";
+import { AnimationMixer, Box3, Group, Quaternion, Vector3, type AnimationClip, type Mesh, type MeshStandardMaterial } from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import type { Bookshop } from "./bookshop";
 import { setWalking, startIdling, type Figure } from "./figures";
 import { modelUrl } from "./models";
+import { kept } from "./world";
 import { MAX_SHOPPERS } from "../scene-params";
 
 // Browsing customers: four generated, rigged residents with walk and idle
@@ -65,46 +66,51 @@ function plan(from: number, to: number, now: number): Walker {
   return { from, to, walk: Math.hypot(bx - ax, bz - az) / SPEED, browse: 3 + Math.random() * 6, started: now, carrying: -1 };
 }
 
+/** The keeper and the shoppers, each a clone of a variant's rigged model with its own motions. */
+function makeFigures(variants: { scene: Group; animations: AnimationClip[] }[]): Figure[] {
+  // Their textures glow faintly, so they read in the shop's low light.
+  for (const v of variants) {
+    v.scene.traverse((o) => {
+      const material = (o as Mesh).material as MeshStandardMaterial | undefined;
+      if (!material?.isMeshStandardMaterial) return;
+      material.emissive.set("#ffffff");
+      material.emissiveMap = material.map;
+      material.emissiveIntensity = 0.18;
+    });
+  }
+  const figures = Array.from({ length: MAX_SHOPPERS + 1 }, (_, i) => {
+    const source = variants[i === 0 ? KEEPER_VARIANT : (i - 1) % VARIANTS.length]!;
+    const body = cloneSkinned(source.scene);
+    const bounds = new Box3().setFromObject(body);
+    const scale = HEIGHT / (bounds.max.y - bounds.min.y);
+    body.scale.setScalar(scale);
+    body.position.y = -bounds.min.y * scale;
+    body.traverse((o) => (o.frustumCulled = false));
+    const root = new Group();
+    root.add(body);
+    const mixer = new AnimationMixer(body);
+    const clip = (name: string) => source.animations.find((a) => a.name.toLowerCase().includes(name)) ?? source.animations[0]!;
+    const walk = mixer.clipAction(clip("walk"));
+    const idle = mixer.clipAction(clip("idle"));
+    return { root, mixer, walk, idle, walking: false };
+  });
+  startIdling(figures);
+  return figures;
+}
+
 export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
   const variants = useGLTF(VARIANTS.map(modelUrl), false);
-  const figures = useMemo<Figure[]>(() => {
-    // Their textures glow faintly, so they read in the shop's low light.
-    for (const v of variants) {
-      v.scene.traverse((o) => {
-        const material = (o as Mesh).material as MeshStandardMaterial | undefined;
-        if (!material?.isMeshStandardMaterial) return;
-        material.emissive.set("#ffffff");
-        material.emissiveMap = material.map;
-        material.emissiveIntensity = 0.18;
-      });
-    }
-    return Array.from({ length: MAX_SHOPPERS + 1 }, (_, i) => {
-      const source = variants[i === 0 ? KEEPER_VARIANT : (i - 1) % VARIANTS.length]!;
-      const body = cloneSkinned(source.scene);
-      const bounds = new Box3().setFromObject(body);
-      const scale = HEIGHT / (bounds.max.y - bounds.min.y);
-      body.scale.setScalar(scale);
-      body.position.y = -bounds.min.y * scale;
-      body.traverse((o) => (o.frustumCulled = false));
-      const root = new Group();
-      root.add(body);
-      const mixer = new AnimationMixer(body);
-      const clip = (name: string) => source.animations.find((a) => a.name.toLowerCase().includes(name)) ?? source.animations[0]!;
-      const walk = mixer.clipAction(clip("walk"));
-      const idle = mixer.clipAction(clip("idle"));
-      return { root, mixer, walk, idle, walking: false };
-    });
-  }, [variants]);
-  // A layout effect, so they're posed before the first frame draws.
-  useLayoutEffect(() => startIdling(figures), [figures]);
-
+  // The residents and where they're headed outlive the canvas (see world.ts).
+  const figures = useMemo(() => kept("shoppers", () => makeFigures(variants)), [variants]);
   const walkers = useMemo(
     () =>
-      Array.from({ length: MAX_SHOPPERS }, (_, i) => {
-        const from = i % SPOTS.length;
-        // Start partway through browsing, so they don't all move at once.
-        return { ...plan(from, from, 0), browse: Math.random() * 6 };
-      }),
+      kept("walkers", () =>
+        Array.from({ length: MAX_SHOPPERS }, (_, i) => {
+          const from = i % SPOTS.length;
+          // Start partway through browsing, so they don't all move at once.
+          return { ...plan(from, from, 0), browse: Math.random() * 6 };
+        }),
+      ),
     [],
   );
   const hand = useMemo(() => ({ at: new Vector3(), turn: new Quaternion() }), []);
