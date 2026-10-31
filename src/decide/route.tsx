@@ -16,7 +16,7 @@ import { DECIDE_COPY as COPY, MOVES } from "./copy";
 import { MoveCard, useMoreLine } from "./MoveCard";
 import { onBubbleFocused, PlayOut, sceneOf } from "./PlanParts";
 import { PlanQ2 } from "./PlanQ2";
-import { PlanRefused, readPlan, readQ2Plan } from "./read-plan.server";
+import { PlanRefused, readAnyPlan } from "./read-plan.server";
 import styles from "./Decide.module.css";
 
 export const handle: ShellHandle = { title: "Decisions", standingOrder: false, bleed: true };
@@ -54,27 +54,21 @@ function hasPlan(request: Request): boolean {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  let quarter: QuarterId | null;
+  // The form says which quarter it was written for; the save says which is open now. A Q1 plan sent once the
+  // save has moved on (another tab played it) goes to the results; a Q2 plan during Q1 is the game's to refuse.
+  let sent: Awaited<ReturnType<typeof readAnyPlan>>;
   try {
-    quarter = currentQuarter(request);
+    sent = await readAnyPlan(request);
   } catch (error) {
-    if (error instanceof Response) return data({ ok: false as const, played: false }, { status: error.status });
+    if (error instanceof PlanRefused) return data({ ok: false as const, played: false, problem: "shape" as const }, { status: error.status });
     throw error;
   }
-  if (quarter === "2194-Q2") return actionQ2(request);
-  return actionQ1(request);
+  return sent.quarter === "2194-Q2" ? actionQ2(request, sent.plan) : actionQ1(request, sent.plan);
 }
 
-async function actionQ1(request: Request) {
-  let plan: Plan;
+function actionQ1(request: Request, plan: Plan) {
   try {
-    plan = await readPlan(request);
-  } catch (error) {
-    if (error instanceof PlanRefused) return data({ ok: false as const, played: false }, { status: error.status });
-    throw error;
-  }
-  try {
-    if (getPlan(request)) return data({ ok: false as const, played: true }, { status: 409 });
+    if (getPlan(request) || currentQuarter(request) !== "2194-Q1") return data({ ok: false as const, played: true }, { status: 409 });
     submitPlan(request, plan);
   } catch (error) {
     // The game refuses with a Response: a lost race to play, a busy or changed save, no
@@ -87,10 +81,14 @@ async function actionQ1(request: Request) {
   return { ok: true as const };
 }
 
-/** Whether Q2's plan is in, asked again after a refusal; false if the save can't be read. */
+/**
+ * Whether Q2's plan is in, asked again after a refusal: Q2 is the last quarter, so no quarter left to plan.
+ * False during Q1 (Audit, on #144: a Q2 form sent then would bounce to the results and back), and if the
+ * save can't be read.
+ */
 function q2Played(request: Request): boolean {
   try {
-    return currentQuarter(request) !== "2194-Q2";
+    return currentQuarter(request) === null;
   } catch {
     return false;
   }
@@ -98,14 +96,7 @@ function q2Played(request: Request): boolean {
 
 type Q2Problem = "shape" | "unknown-edition" | "same-title";
 
-async function actionQ2(request: Request) {
-  let plan: Q2Plan;
-  try {
-    plan = await readQ2Plan(request);
-  } catch (error) {
-    if (error instanceof PlanRefused) return data({ ok: false as const, played: false, problem: "shape" as const }, { status: error.status });
-    throw error;
-  }
+async function actionQ2(request: Request, plan: Q2Plan) {
   try {
     submitQ2Plan(request, plan);
   } catch (error) {

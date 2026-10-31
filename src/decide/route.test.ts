@@ -104,7 +104,13 @@ describe("the Decide action in Q2", () => {
       throw Response.json({ problem: "same-title" }, { status: 400 });
     });
     expect(await act(q2())).toEqual({ data: { ok: false, played: false, problem: "same-title" }, status: 400 });
-    expect(await act(q2("levers=repick"))).toEqual({ data: { ok: false, played: false, problem: "shape" }, status: 400 });
+    expect(await act(q2(`picks=${A}%2C${B}&levers=`))).toEqual({ data: { ok: false, played: false, problem: "shape" }, status: 400 });
+  });
+
+  it("sends a Q1 plan from a tab left open in Q1 to the results: that quarter is played", async () => {
+    expect(await act(q2("levers=events"))).toEqual({ data: { ok: false, played: true }, status: 409 });
+    expect(game.submitPlan).not.toHaveBeenCalled();
+    expect(game.submitQ2Plan).not.toHaveBeenCalled();
   });
 
   it("sends a plan that lost the race to the results, and not a busy save", async () => {
@@ -120,10 +126,20 @@ describe("the Decide action in Q2", () => {
     expect(await act(q2())).toEqual({ data: { ok: false, played: false }, status: 409 });
   });
 
-  it("answers a save it can't read", async () => {
-    game.currentQuarter.mockImplementation(() => {
-      throw new Response("Start a game.", { status: 401 });
+  it("doesn't send a Q2 plan refused during Q1 to the results", async () => {
+    game.currentQuarter.mockReturnValue("2194-Q1");
+    game.submitQ2Plan.mockImplementation(() => {
+      throw new Response("Play the first quarter first.", { status: 409 });
     });
+    expect(await act(q2())).toEqual({ data: { ok: false, played: false }, status: 409 });
+  });
+
+  it("answers a save it can't read", async () => {
+    const unreadable = () => {
+      throw new Response("Start a game.", { status: 401 });
+    };
+    game.submitQ2Plan.mockImplementation(unreadable);
+    game.currentQuarter.mockImplementation(unreadable);
     expect(await act(q2())).toEqual({ data: { ok: false, played: false }, status: 401 });
   });
 });
