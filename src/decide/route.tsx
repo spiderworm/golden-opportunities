@@ -9,8 +9,8 @@ import { trackServer } from "~/platform/analytics/analytics.server";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
 import { BossBriefing } from "~/platform/bosses/BossBriefing";
-import { FactText } from "~/platform/bosses/facts";
 import type { BossId } from "~/platform/bosses/bosses";
+import { FactText } from "~/platform/bosses/facts";
 import type { FocusHow, SceneMode } from "~/platform/bosses/useBossFocus";
 import { DECIDE_COPY as COPY, MOVES, type BriefingBubble } from "./copy";
 import { PlanRefused, readPlan } from "./read-plan.server";
@@ -211,7 +211,7 @@ function onBubbleFocused(boss: BossId, how: FocusHow, mode: SceneMode) {
   track("bubble_focused", { boss, how, mode });
 }
 
-/** A bubble's fact strip: its sentence, with the key figures in bold, and bubble 6's scheduled picks. */
+/** A bubble's fact strip: its sentence, with the key figures in bold, and the survey drone's scheduled picks. */
 function Facts({ bubble }: { bubble: BriefingBubble }) {
   return (
     <>
@@ -230,7 +230,6 @@ function Facts({ bubble }: { bubble: BriefingBubble }) {
     </>
   );
 }
-
 
 /** January... February... March..., then the quarter closes and the results open. */
 function PlayOut({ done }: { done: boolean }) {

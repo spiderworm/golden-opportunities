@@ -23,8 +23,11 @@ afterAll(() => rmSync(directory, { recursive: true, force: true }));
 describe('the Commerce Office alert', () => {
   it('is unread and pending in a new game, read once seen, and seen only once', () => {
     const save = saves.create(); const req = request(save.id);
+    const queryRevision = saves.read(save.id).queryRevision;
     expect(getStationState(req)).toMatchObject({ alerts: [{ unread: true }], standingOrder: { seen: false, submitted: false } });
     markAlertSeen(req);
+    // Seeing the memo isn't a data change: a lookup Dewey is running keeps its grant.
+    expect(saves.read(save.id).queryRevision).toBe(queryRevision);
     expect(getStationState(req)).toMatchObject({ alerts: [{ unread: false }], standingOrder: { seen: true, submitted: false } });
     const revision = saves.read(save.id).revision;
     markAlertSeen(req);
