@@ -24,6 +24,16 @@
 
   --shadow-popover: 0 18px 48px rgb(4 6 16 / 0.55);
 
+  /* The studio's music player (@tellim/music), in the dashboard's colors. */
+  --music-bg: rgb(29 36 64 / 0.94);
+  --music-border: var(--color-border);
+  --music-fg: var(--color-text);
+  --music-muted: var(--color-text-muted);
+  --music-accent: var(--color-accent-soft);
+  --music-heart: var(--color-down);
+  --music-knob: var(--color-text);
+  --music-full-base: var(--color-panel);
+
   color-scheme: dark;
 }
 

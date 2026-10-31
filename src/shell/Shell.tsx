@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { NavLink, useMatches } from "react-router";
 
 import { Icon } from "./icons";
+import { MusicPopup } from "./MusicPopup";
 import { navItems } from "./nav";
 import { NotificationsBell, type StationNotification } from "./NotificationsBell";
 import { formatStationDate } from "./station-date";
@@ -87,6 +88,7 @@ export function Shell({ stationDate, notifications, track, children }: ShellProp
       </aside>
 
       <div className={styles.main}>
+        <MusicPopup />
         <header className={styles.header}>
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.headerTools}>
