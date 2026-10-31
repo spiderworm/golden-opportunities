@@ -2,7 +2,7 @@
 
 David's take-home for the Golden Analytics Full Stack Engineer challenge. The brief, broken down into a checklist, is in `~/Downloads/golden-analytics-take-home/requirements.md`. This file holds the requirements David has set for what we're building. Each one names who decided it and when.
 
-Due **3 November 2026**. Golden Analytics will extend if asked; David will decide after the first few hours of building (30 Oct).
+Due **3 November 2026**, with no extension: "no need to extend as it turns out" (David, 30 Oct).
 
 ## The game
 
@@ -17,7 +17,7 @@ Due **3 November 2026**. Golden Analytics will extend if asked; David will decid
 - **Scoring comes from how your actions affect the bookstore over time,** not from matching a single right answer. Points aren't the main reward; discovering something interesting in the data is. (David, 30 Oct)
 - **The score is a report card, not gross profit alone.** Four measures out of 100: Profit, Readers served, Happiness and Culture, with letter grades against goals set from last year. "Scoring on gross profit SOLELY feels icky to me." Details in `docs/design/scoring.md`. (David with Plot, 30 Oct)
 - **M1 uses a reduced card:** Profit, Readers served, Culture from real ratings and awards, and Happiness from Quality and Value only; goals are Q1 2193 plus 5%. (Plot's proposal, scoped by Goldy, 30 Oct)
-- **Names:** the agent is Dewey and the landlord is the Commerce Office. "Meridian Station" is out (it's a location in Halo); Larkspur Station is proposed. (David, 30 Oct)
+- **Names:** the agent is Dewey and the landlord is the Commerce Office. "Meridian Station" is out (it's a location in Halo); the station is Larkspur Station. (David, 30 Oct)
 
 ## Simulation
 

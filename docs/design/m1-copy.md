@@ -8,11 +8,12 @@ Status: **draft for David's approval.** It goes with `m1-slice.md` (PR #8) and u
 - `{braces}` mark values the code fills in. `[A]`, `[B]` and so on mark per-option variants.
 - **The station speaks** in the alert and on the decision screen: formal and brief, like a landlord's memo. **The ledger speaks** on the result screen: plain and factual, with no praise or blame. **Dewey speaks** in the chat: short sentences and the first person, and it always names what it looked at.
 - No string calls an option right or wrong. The numbers do that.
+- **The bosses revere Derek Zoolander.** To the station's robots he is a prophet and a management philosophy. They call him MR. ZOOLANDER and cite him in earnest, and nobody explains the references. Guardrails: only that character and his two films; short quotes or paraphrase; never in a fact strip, a rule or anything the player needs to know; the portraits stay generic robots, with no names or likeness.
 
 ## 1. Opening alert
 
 ```
-MERIDIAN STATION / COMMERCE OFFICE
+LARKSPUR STATION / COMMERCE OFFICE
 Quarterly review: Orbital Books, Ring C, Berth 14
 January 1, 2194
 
@@ -63,10 +64,10 @@ David's direction: the brief is delivered by the robot bosses in speech bubbles,
 
 | # | Speaker | Boss's line | Fact strip |
 | --- | --- | --- | --- |
-| 1 | The Station Administrator | `ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. YOUR SCORE WILL BE YOUR WEAKEST MEASURE. WE CALL THIS TEAMWORK.` | `Your plan runs from **January 1 to March 31, 2194**. Your score is your **lowest measure**: raise one by sinking another, and your score sinks with it.` |
+| 1 | The Station Administrator | `ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. YOUR SCORE WILL BE YOUR WEAKEST MEASURE. WE CALL THIS TEAMWORK. MR. ZOOLANDER WOULD CALL IT ONE LOOK.` | `Your plan runs from **January 1 to March 31, 2194**. Your score is your **lowest measure**: raise one by sinking another, and your score sinks with it.` |
 | 2 | The Commerce Office | `WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT. ALSO, BOOKS ARE NOT FREE. WE CHECKED.` | `You're graded on **Profit, Readers served, Happiness and Culture**. Each goal is **last year's first quarter plus 5%**. Profit is revenue minus what the books cost, and books cost the store **60% of their list price**.` |
 | 3 | The Ministry of Culture | `AUTHORS MAY BE INVITED. AUTHORS REQUIRE A SHUTTLE FARE. CULTURE IS EXPENSIVE. PLEASE PURCHASE SOME ANYWAY.` | `An author night costs **$200**: the author's shuttle fare and the room.` |
-| 4 | The Readers' Guild survey drone | `THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. THE DRONE DOES NOT SPECULATE.` | `Already scheduled, Book of the Month at **15% off** for the whole month: **January** The Mallemaroking (mass market paperback), **February** Rystwyth (hardcover), **March** Portmeirion (mass market paperback).` |
+| 4 | The Readers' Guild survey drone | `THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. WE ASSUME THEY COULD NOT TURN LEFT.` | `Already scheduled, Book of the Month at **15% off** for the whole month: **January** The Mallemaroking (mass market paperback), **February** Rystwyth (hardcover), **March** Portmeirion (mass market paperback).` |
 | 5 | The Throughput Subcommittee | `SELECT UP TO TWO MOVES. SELECTING THREE IS NOT PERMITTED. WE HAVE TESTED THIS PERSONALLY.` | `Choose **up to two** moves below, or none to hold course.` |
 
 Each boss speaks once. Five bubbles, rather than seven, keep the moves near the top of the screen.
@@ -131,6 +132,7 @@ Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events
 | Certificates heading | `Certificates` |
 | Exceeds Requirements certificate | `Exceeds Requirements: {Measure} beat its goal. Certificates don't change your score.` |
 | Well-Rounded Shop | `Well-Rounded Shop: every measure scored 80 or more.` |
+| Certificate issuer | `Issued by the Center for Shopkeepers Who Can't Sell Good` (small print under each certificate; decorative, and it carries no information) |
 | Note | `Each goal is Q1 2193 plus 5%. Matching last year scores 70 (C−). Meeting the goal scores 100 (A+).` |
 
 **Screen order (simple first).** The card shows, top to bottom:
@@ -146,11 +148,11 @@ So no more than three capitalized lines show before the table.
 
 | Boss (measure) | At or past the goal | Between last year and the goal | Below last year |
 | --- | --- | --- | --- |
-| The Commerce Office (Profit) | `PROFIT: ${result}. GOAL: ${goal}. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED.` | `PROFIT ROSE. IT DID NOT RISE ENOUGH. WE HAVE NOTED THIS IN A SPREADSHEET.` | `PROFIT FELL BELOW LAST YEAR. THIS IS THE OPPOSITE OF WHAT WE REQUESTED.` |
-| The Throughput Subcommittee (Readers served) | `{result} READERS PASSED THROUGH THE DOOR. THE DOOR PERFORMED ADMIRABLY. SO DID YOU.` | `{result} READERS. THE DOOR HAS CAPACITY FOR MORE. THE DOOR IS DISAPPOINTED.` | `FEWER READERS THAN LAST YEAR. WE HAVE INSPECTED THE DOOR. THE DOOR IS NOT AT FAULT.` |
-| The Readers' Guild survey drone (Happiness) | `HAPPINESS: {result}. THIS EXCEEDS THE REQUIRED HAPPINESS. PLEASE DO NOT BECOME COMPLACENT ABOUT HAPPINESS.` | `HAPPINESS: {result}. PLEASE BE {goal}.` | `HAPPINESS HAS DECLINED. THE DRONE HAS RECORDED SEVERAL SIGHS.` |
-| The Ministry of Culture (Culture) | `CULTURE INCREASED. YOU MAY CELEBRATE FOR 0.5 MINUTES.` | `CULTURE INCREASED {pct}%. CULTURE TARGET: {goalPct}%. PLEASE CULTURE HARDER.` | `CULTURE HAS DECREASED. THE MINISTRY IS UNCULTURED BY THIS.` |
-| The Station Administrator (overall) | `OVERALL SCORE: {score}. THIS IS A WHOLE SHOP.` (100) | `OVERALL SCORE: {score}. THIS IS {fraction} OF A SHOP. PLEASE ACQUIRE THE REMAINDER.` (60 to 99) | `OVERALL SCORE: {score}. THE ADMINISTRATOR WILL NEED TO SIT DOWN.` (below 60) |
+| The Commerce Office (Profit) | `PROFIT: ${result}. GOAL: ${goal}. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED. WE ARE DOING BLUE STEEL.` | `PROFIT ROSE. IT DID NOT RISE ENOUGH. WE HAVE NOTED THIS IN A SPREADSHEET. THE SPREADSHEET IS IN THE COMPUTER.` | `PROFIT FELL BELOW LAST YEAR. THIS IS THE OPPOSITE OF WHAT WE REQUESTED.` |
+| The Throughput Subcommittee (Readers served) | `{result} READERS PASSED THROUGH THE DOOR. THE DOOR PERFORMED ADMIRABLY. SO DID YOU.` | `{result} READERS. THE DOOR HAS CAPACITY FOR MORE. THE DOOR IS DISAPPOINTED.` | `FEWER READERS THAN LAST YEAR. WHAT IS THIS, A SHOP FOR ANTS? IT NEEDS TO BE AT LEAST THREE TIMES BIGGER.` |
+| The Readers' Guild survey drone (Happiness) | `HAPPINESS: {result}. THIS EXCEEDS THE REQUIRED HAPPINESS. PLEASE DO NOT BECOME COMPLACENT ABOUT HAPPINESS.` | `HAPPINESS: {result}. PLEASE BE {goal}.` | `HAPPINESS HAS DECLINED. THE DRONE HAS DETECTED MOISTURE. MR. ZOOLANDER CALLS THIS THE ESSENCE OF WETNESS.` |
+| The Ministry of Culture (Culture) | `CULTURE INCREASED. YOU MAY CELEBRATE FOR 0.5 MINUTES. A WALK-OFF IS PERMITTED.` | `CULTURE INCREASED {pct}%. CULTURE TARGET: {goalPct}%. PLEASE CULTURE HARDER.` | `CULTURE HAS DECREASED. THE MINISTRY IS UNCULTURED BY THIS.` |
+| The Station Administrator (overall) | `OVERALL SCORE: {score}. THIS IS A WHOLE SHOP. IT IS REALLY, REALLY, RIDICULOUSLY GOOD-LOOKING.` (100) | `OVERALL SCORE: {score}. THIS IS {fraction} OF A SHOP. PLEASE ACQUIRE THE REMAINDER.` (60 to 99) | `OVERALL SCORE: {score}. THE ADMINISTRATOR WILL NEED TO SIT DOWN.` (below 60) |
 
 For the Station Administrator, `{fraction}` is the score in words: the nearest of THREE-FIFTHS, TWO-THIRDS, SEVEN-TENTHS, THREE-QUARTERS, FOUR-FIFTHS, FIVE-SIXTHS, NINE-TENTHS and NINETEEN-TWENTIETHS. It is prefixed with "ABOUT" when the fraction isn't exact: 75 is "THREE-QUARTERS", and 78 is "ABOUT THREE-QUARTERS".
 
