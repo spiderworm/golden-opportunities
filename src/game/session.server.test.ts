@@ -8,7 +8,7 @@ import { runQuery } from '../query/run-query.server';
 vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }));
 const directory = mkdtempSync(path.join(os.tmpdir(), 'orbital-session-'));
 vi.stubEnv('ORBITAL_DATA_DIR', directory);
-const { saves, cookieSaveId, saveCookie, resolveSaveId, getGameSession, queryViewForSave, gameSessionMiddleware } = await import('./session.server');
+const { saves, cookieSaveId, saveCookie, resolveSaveId, getGameSession, queryViewForSave, gameSessionMiddleware, newGamesPerMinute } = await import('./session.server');
 const { submitPlan } = await import('./game.server');
 afterAll(() => { rmSync(directory, { recursive: true, force: true }); vi.unstubAllEnvs(); });
 const requestFor = (id?: string) => new Request('http://localhost:5173/investigate', { headers: id ? { cookie: 'orbital_save=' + id } : {} });
@@ -33,6 +33,20 @@ describe('cookie-selected game sessions', () => {
     const request2 = new Request(request.url, { headers: { cookie: cookie.split(';')[0] } });
     expect(getGameSession(request2).date).toBe('2194-01-01');
     expect(saveCookie(resolveSaveId(request2), new Request('https://localhost'))).toContain('; Secure');
+  });
+  it('starts at most 30 new games a minute by default, and only a positive integer changes that', async () => {
+    expect(process.env.ORBITAL_NEW_GAMES_PER_MINUTE).toBeUndefined();
+    for (const value of [undefined, '', '0', '-5', '2.5', '1e3', 'off', ' 40', '9999999999']) expect(newGamesPerMinute(value)).toBe(30);
+    expect(newGamesPerMinute('1')).toBe(1); expect(newGamesPerMinute('100000')).toBe(100000);
+    // A fresh window, then the module's own limit as loaded from the unset variable.
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(Date.now() + 120_000);
+    try {
+      const visit = () => gameSessionMiddleware({ request: requestFor(), url: new URL('http://localhost/'), pattern: '/', params: {}, context: new RouterContextProvider() }, async () => new Response()) as Promise<Response>;
+      for (let i = 0; i < 30; i++) expect((await visit()).headers.get('set-cookie')).toContain('orbital_save=');
+      await expect(visit()).rejects.toMatchObject({ status: 429 });
+      vi.setSystemTime(Date.now() + 60_000);
+      expect((await visit()).status).toBe(200);
+    } finally { vi.useRealTimers(); }
   });
   it('does not bootstrap mutations', async () => {
     await expect(gameSessionMiddleware({ request: new Request('http://localhost/decide', { method: 'POST' }), url: new URL('http://localhost/investigate'), pattern: '/investigate', params: {}, context: new RouterContextProvider() }, async () => new Response())).rejects.toMatchObject({ status: 401 });

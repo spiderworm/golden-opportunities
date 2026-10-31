@@ -14,6 +14,14 @@ import type { GameSave } from './types';
 export const saves = createSaveStore(path.join(DATA_DIR, 'saves'));
 const COOKIE = 'orbital_save';
 const active = new AsyncLocalStorage<string>();
+/**
+ * New games each process starts per minute. ORBITAL_NEW_GAMES_PER_MINUTE raises it for automated
+ * browsers, where every test is a fresh save; anything but a positive integer keeps the default.
+ */
+export function newGamesPerMinute(value = process.env.ORBITAL_NEW_GAMES_PER_MINUTE): number {
+  return value && /^[1-9]\d{0,8}$/.test(value) ? Number(value) : 30;
+}
+const NEW_GAMES_PER_MINUTE = newGamesPerMinute();
 let creationWindow = Date.now();
 let creations = 0;
 export function saveCookie(id: string, request: Request): string {
@@ -59,7 +67,7 @@ export const gameSessionMiddleware: MiddlewareFunction<Response> = async ({ requ
   if (!id) {
     if (request.method !== 'GET') throw new Response('Start a game first.', { status: 401 });
     if (Date.now() - creationWindow >= 60_000) { creationWindow = Date.now(); creations = 0; }
-    if (creations >= 30) throw new Response('Too many new games. Try again shortly.', { status: 429, headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' } });
+    if (creations >= NEW_GAMES_PER_MINUTE) throw new Response('Too many new games. Try again shortly.', { status: 429, headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' } });
     creations++;
     id = saves.create().id; created = true;
     trackServer('game_save_created', { version: 1 });
