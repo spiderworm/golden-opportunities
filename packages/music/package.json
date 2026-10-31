@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     "./player": "./src/player/player.ts",
+    "./desktop": "./src/player/desktop.ts",
     "./popup": "./src/ui/popup.ts",
     "./dock": "./src/ui/dock.ts",
     "./panel": "./src/ui/panel.ts",

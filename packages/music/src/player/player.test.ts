@@ -64,3 +64,17 @@ test("remember: after a reload it carries on with the same song, and a pause the
   const later = createMusic({ key: "r", songs: list, base: "", storage, remember: true });
   assert.equal(later.state().song, null);
 });
+
+test("pauseWhenHidden: a hidden page starts no music, unless the game says it may play behind", () => {
+  (globalThis as any).document = { hidden: true };
+  try {
+    createMusic({ key: "h", songs, base: "", storage: store({}) }).start();
+    assert.equal(FakeAudio.made.at(-1)!.src, "");
+    createMusic({ key: "h", songs, base: "", storage: store({}), pauseWhenHidden: () => true }).start();
+    assert.equal(FakeAudio.made.at(-1)!.src, "");
+    createMusic({ key: "h", songs, base: "", storage: store({}), pauseWhenHidden: false }).start();
+    assert.equal(FakeAudio.made.at(-1)!.src, "a.mp3");
+  } finally {
+    delete (globalThis as any).document;
+  }
+});
