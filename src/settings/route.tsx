@@ -3,8 +3,11 @@ import { useRouteLoaderData } from "react-router";
 
 import { setSharing, sharingConfirmed, startAnalytics, track } from "~/platform/analytics/analytics.client";
 import type { loader as rootLoader } from "~/root";
+import type { ShellHandle } from "~/shell/Shell";
 import { MusicSettings } from "./MusicSettings";
 import styles from "./Settings.module.css";
+
+export const handle: ShellHandle = { title: "Settings" };
 
 export function meta() {
   return [{ title: "Settings · Orbital Books" }];
@@ -44,7 +47,6 @@ export default function Settings() {
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>Settings</h1>
       <section className={styles.panel} aria-labelledby="share-heading">
         <div className={styles.row}>
           <div>
