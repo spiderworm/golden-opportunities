@@ -8,7 +8,8 @@ import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
-import { DECIDE_COPY as COPY, MOVES } from "./copy";
+import { BossBubble } from "~/platform/bosses/BossBubble";
+import { DECIDE_COPY as COPY, MOVES, type BriefingBubble, type FactLine } from "./copy";
 import { PlanRefused, readPlan } from "./read-plan.server";
 import styles from "./Decide.module.css";
 
@@ -107,44 +108,19 @@ export default function Decide() {
 
   return (
     <div className={styles.page}>
-      <article className={styles.memo} aria-labelledby="plan-heading">
-        <header className={styles.memoHeader}>
-          <h2 id="plan-heading" className={styles.memoHeading}>
-            {COPY.heading}
-          </h2>
-          {COPY.intro.map((line, i) => (
-            <p key={line} className={i === 0 ? styles.goal : styles.rule}>
-              {line}
-            </p>
+      {/* The brief, from the bosses (m1-copy section 3): the joke in capitals, the facts in each strip. */}
+      <section className={styles.briefing} aria-labelledby="plan-heading">
+        <h2 id="plan-heading" className={styles.memoHeading}>
+          {COPY.heading}
+        </h2>
+        <div className={styles.bubbles}>
+          {COPY.briefing.map((b, i) => (
+            <BossBubble key={i} boss={b.boss} order={i} facts={<Facts bubble={b} />}>
+              {b.line}
+            </BossBubble>
           ))}
-        </header>
-
-        <div className={styles.briefing}>
-          <section aria-labelledby="rules-heading">
-            <h3 id="rules-heading" className={styles.subheading}>
-              {COPY.rulesHeading}
-            </h3>
-            <ul className={styles.list}>
-              {COPY.rules.map((rule) => (
-                <li key={rule}>{rule}</li>
-              ))}
-            </ul>
-          </section>
-          <section aria-labelledby="scheduled-heading">
-            <h3 id="scheduled-heading" className={styles.subheading}>
-              {COPY.scheduledHeading}
-            </h3>
-            <p className={styles.listIntro}>{COPY.scheduledIntro}</p>
-            <ul className={styles.list}>
-              {COPY.scheduled.map((pick) => (
-                <li key={pick.month}>
-                  {pick.month}: <cite className={styles.bookTitle}>{pick.title}</cite> ({pick.format})
-                </li>
-              ))}
-            </ul>
-          </section>
         </div>
-      </article>
+      </section>
 
       <fieldset className={styles.moves} disabled={step !== "choose"} aria-describedby="moves-status">
         <legend className={styles.movesHeading}>{COPY.movesHeading}</legend>
@@ -223,6 +199,30 @@ export default function Decide() {
       {step === "playing" && <PlayOut done={fetcher.state === "idle" && fetcher.data?.ok === true} />}
     </div>
   );
+}
+
+/** A bubble's fact strip: its sentence, with the key figures in bold, and bubble 6's scheduled picks. */
+function Facts({ bubble }: { bubble: BriefingBubble }) {
+  return (
+    <>
+      <p>
+        <FactText line={bubble.facts} />
+      </p>
+      {bubble.picks && (
+        <ul>
+          {COPY.scheduled.map((pick) => (
+            <li key={pick.month}>
+              <strong>{pick.month}</strong> <cite className={styles.bookTitle}>{pick.title}</cite> ({pick.format})
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function FactText({ line }: { line: FactLine }) {
+  return line.map((part, i) => (typeof part === "string" ? part : <strong key={i}>{part.strong}</strong>));
 }
 
 /** January... February... March..., then the quarter closes and the results open. */
