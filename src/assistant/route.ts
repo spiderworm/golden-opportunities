@@ -13,8 +13,9 @@ import { AssistantUnavailable, type AssistantProvider } from "./server/provider.
 import { orbitalToolServer } from "./tools/toolServer.server.ts";
 import type { Route } from "./+types/route";
 
-// Content-free events only: what the player typed is recorded in the browser, held on the device.
-const track: ServerTrack = (event, props) => trackServer(event, props);
+// Content-free events, except the withheld sentences ask.server keeps, held on this machine and never sent. What
+// the player typed is recorded in the browser, held on the device.
+const track: ServerTrack = (event, props, options) => trackServer(event, props, options);
 
 const unavailable = (message: string): AssistantProvider => ({
   name: "unavailable",
