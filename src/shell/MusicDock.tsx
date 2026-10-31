@@ -2,6 +2,7 @@ import { useEffect, useRef, type RefObject } from "react";
 import type { createDock } from "@tellim/music/dock";
 
 import { cutOff } from "~/platform/lazy/cut-off";
+import { isPhoneScreen } from "~/platform/phone";
 
 import styles from "./Shell.module.css";
 
@@ -21,6 +22,8 @@ export function MusicDock({ collapsed, layer }: { collapsed: boolean; layer: Ref
   compact.current = collapsed;
 
   useEffect(() => {
+    // No music on a phone (David): it gets the phone screen, and the game only mounts there for a moment.
+    if (isPhoneScreen()) return;
     let live = true;
     void Promise.all([import("~/platform/music/music.client"), import("@tellim/music/dock")]).then(async ([{ loadMusic }, { createDock }]) => {
       const music = await loadMusic();
