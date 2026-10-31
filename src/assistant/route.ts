@@ -32,6 +32,8 @@ function provider(request: Request, { pins }: { pins: boolean }): AssistantProvi
           try {
             // Known offline (no Claude Code, signed out, failing to start): say so without spawning anything.
             const availability = await assistantAvailability({ track });
+            // Cancelled while the probe ran: stop here rather than spawn for no one (Audit, #67).
+            if (signal.aborted) return;
             if (availability.state === "offline") throw new AssistantUnavailable(`Claude Code is ${availability.reason}.`, availability.reason);
             yield* real.ask(prompt, signal);
           } finally { capability.revoke(); }

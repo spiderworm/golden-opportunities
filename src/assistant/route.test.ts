@@ -1,7 +1,8 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { AssistantProvider } from './server/provider.server';
 import type { Route } from './+types/route';
-const mocks = vi.hoisted(() => ({ revoke: vi.fn(), token: vi.fn(), real: vi.fn(), ask: vi.fn(), order: [] as string[] }));
+const mocks = vi.hoisted(() => ({ revoke: vi.fn(), token: vi.fn(), real: vi.fn(), ask: vi.fn(), availability: vi.fn(), order: [] as string[] }));
+vi.mock('./server/availability.server.ts', () => ({ assistantAvailability: mocks.availability, OFFLINE: 'offline', OFFLINE_HINT: 'hint' }));
 vi.mock('./server/queryToken.server.ts', () => ({ queryToken: mocks.token }));
 vi.mock('./server/assistant.server.ts', () => ({ getAssistant: (make: () => AssistantProvider) => make() }));
 vi.mock('./server/claudeCode.server.ts', () => ({ claudeCodeAssistant: mocks.real }));
@@ -10,6 +11,7 @@ vi.mock('~/platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }
 import { action } from './route';
 import { SaveError } from '~/game/store.server';
 beforeEach(() => {
+  mocks.availability.mockResolvedValue({ state: 'ready' });
   vi.clearAllMocks(); mocks.order.length = 0;
   mocks.revoke.mockImplementation(() => { mocks.order.push('revoked'); });
   mocks.token.mockReturnValue({ token: 'environment-only-token', revoke: mocks.revoke });
@@ -56,4 +58,19 @@ it.each(['MISSING_SAVE', 'SAVE_BUSY'] as const)('uses the start-game message onl
     ? 'Start a game, then try your question again.'
     : 'The assistant is unavailable right now. Try again in a moment.' }]);
   expect(mocks.revoke).not.toHaveBeenCalled();
+});
+
+it('never spawns for a request cancelled while the availability probe was pending (Audit, #67)', async () => {
+  let ready!: (value: { state: 'ready' }) => void;
+  mocks.availability.mockReturnValue(new Promise(resolve => { ready = resolve; }));
+  const realAsk = vi.fn(async function* () { yield { type: 'text', text: 'spent model time' }; });
+  mocks.real.mockReturnValue({ name: 'test', ask: realAsk });
+  const provider = providerForRequest();
+  const abort = new AbortController();
+  const pending = provider.ask({ system: '', message: '' }, abort.signal)[Symbol.asyncIterator]().next();
+  abort.abort();
+  ready({ state: 'ready' });
+  expect(await pending).toEqual({ done: true, value: undefined });
+  expect(realAsk).not.toHaveBeenCalled();
+  expect(mocks.revoke).toHaveBeenCalledOnce();
 });
