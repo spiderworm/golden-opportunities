@@ -14,13 +14,6 @@ function screenY(fit: { distance: number; height: number }, y: number, height: n
 }
 
 describe("framing the bosses to their floor", () => {
-  it("makes them smaller when a column is too narrow for the widest at full height", () => {
-    // A 400 px floor would make them about 380 px tall; 120 px columns can't hold neighbours that size.
-    const fit = fitCamera(400, 12, 120);
-    const top = screenY(fit, 1.03, 400);
-    expect(screenY(fit, 0, 400)).toBeCloseTo(396, 1);
-    expect(396 - top).toBeCloseTo((120 * 1.03) / 0.45, 0);
-  });
 
   for (const [height, headroom] of [
     [220, 12],
@@ -31,7 +24,7 @@ describe("framing the bosses to their floor", () => {
     it(`puts the feet on a ${height} px floor's bottom and the tallest ${headroom} px under its top`, () => {
       const fit = fitCamera(height, headroom);
       expect(screenY(fit, 0, height)).toBeCloseTo(height - 4, 1);
-      expect(screenY(fit, 1.03, height)).toBeCloseTo(headroom, 1);
+      expect(screenY(fit, 1, height)).toBeCloseTo(headroom, 1);
     });
   }
 });

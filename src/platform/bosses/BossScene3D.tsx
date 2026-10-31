@@ -64,16 +64,15 @@ const modelUrl = (boss: BossId) => `/models/bosses/${boss}.glb`;
 /** How far the open boss leans in and grows, where it stands. */
 const LEAN = 0.14;
 const GROW = 0.03;
-/** How far each boss turns toward the middle of the line-up, per place from it. */
-const TURN = 0.12;
-/** The Commerce Office is seven of the same unit: six faint copies stand behind the front one. */
+/** The Commerce Office is seven of the same unit: six faint copies queue close behind the front one,
+    peeking out a little on either side, so it keeps nearly its own width in its column. */
 const COPIES: [number, number][] = [
-  [-0.2, -0.35],
-  [0.2, -0.35],
-  [-0.32, -0.7],
-  [0, -0.7],
-  [0.32, -0.7],
-  [0, -1.05],
+  [-0.04, -0.3],
+  [0.04, -0.3],
+  [-0.06, -0.6],
+  [0, -0.6],
+  [0.06, -0.6],
+  [0, -0.9],
 ];
 
 export default function BossScene3D({ bubbles, open, onSelect, reducedMotion, onShown }: BossScene3DProps) {
@@ -117,7 +116,7 @@ function CameraFit({ stage }: { stage: RefObject<HTMLDivElement | null> }) {
   const { camera, size } = useThree();
   useLayoutEffect(() => {
     const headroom = parseFloat(stage.current ? getComputedStyle(stage.current).getPropertyValue("--robot-headroom") : "") || 12;
-    const fit = fitCamera(size.height, headroom, size.width / COLUMNS);
+    const fit = fitCamera(size.height, headroom);
     camera.position.set(0, fit.height, fit.distance);
     camera.rotation.set(-PITCH, 0, 0);
     camera.updateMatrixWorld(true);
@@ -131,27 +130,22 @@ const PITCH = 0.08;
 /** Feet sit this many pixels above the floor's bottom edge, and no boss comes nearer its sides than EDGE. */
 const FEET = 4;
 const EDGE = 8;
-/** The top of the tallest robot as the open boss reaches it (it grows a little), so no boss rises
-    under the name chips the layout keeps in the headroom. */
-const TALLEST = 1 + GROW;
-/** How wide two neighbouring bosses are on average (in tallest-boss heights, measured from the models): at
-    most one column apart without crowding, and the Administrator, at the end, narrower than that. */
-const WIDEST = 0.45;
-const COLUMNS = 5;
+/** The top of the tallest robot at rest: the 2D cutouts' rule, so both scenes stand them the same size.
+    The open boss grows a little into the headroom, as its 2D cutout does. */
+const TALLEST = 1;
+
 
 /**
  * Where the camera stands (height and distance from the robots' line, at a fixed pitch) so that, in a
  * floor `height` px tall, the floor line (y = 0) sits FEET px above the bottom and TALLEST sits
- * `headroom` px below the top, or lower if a `column` px wide couldn't hold the widest boss at that size. For a point at height y on the line, with Y = y - camera height and
+ * `headroom` px below the top. For a point at height y on the line, with Y = y - camera height and
  * the camera d away, looking down by p, its screen height is (Y cos p + d sin p) / ((d cos p - Y sin p) tan);
  * so each condition fixes Y / d, and the two together fix d.
  */
-export function fitCamera(height: number, headroom: number, column = Infinity) {
+export function fitCamera(height: number, headroom: number) {
   const t = Math.tan(MathUtils.degToRad(FOV / 2));
   const along = (ndc: number) => (ndc * t * Math.cos(PITCH) - Math.sin(PITCH)) / (Math.cos(PITCH) + ndc * t * Math.sin(PITCH));
-  // As tall as the floor allows, unless the widest boss would then overflow its column (and the first
-  // and last their edges of the scene): then a little smaller, keeping the feet where they are.
-  const tall = Math.min(height - FEET - Math.min(headroom, height * 0.4), (column * TALLEST) / WIDEST);
+  const tall = height - FEET - Math.min(headroom, height * 0.4);
   const bottom = along(-1 + (2 * FEET) / height);
   const top = along(1 - (2 * (height - FEET - tall)) / height);
   const distance = TALLEST / (top - bottom);
@@ -166,8 +160,10 @@ interface Figure {
   playing: AnimationAction | null;
   /** Materials and geometry made for this figure (its hit box, the faint copies'), to free when it goes. */
   owned: { dispose(): void }[];
-  /** Half its width as it stands (turned a little), in scene units, so it can be kept inside the scene's edges. */
+  /** Half its width at rest, in scene units (its copies included), to keep it within its column and the scene. */
   halfWidth: number;
+  /** How much it's scaled down to fit its column (1 if it fits). */
+  fit: number;
 }
 
 function Bosses({
@@ -187,7 +183,7 @@ function Bosses({
 }) {
   const models = useGLTF(bosses.map(modelUrl), false);
   const figures = useMemo(
-    () => bosses.map((boss, i) => makeFigure(boss, models[i]!, (bosses.length - 1) / 2 - i)),
+    () => bosses.map((boss, i) => makeFigure(boss, models[i]!)),
     [bosses, models],
   );
   useEffect(() => () => figures.forEach((f) => f.owned.forEach((m) => m.dispose())), [figures]);
@@ -218,23 +214,28 @@ function Bosses({
     const t = clock.elapsedTime;
     const box = gl.domElement.getBoundingClientRect();
     const placed: number[] = [];
+    const spans: number[] = [];
     figures.forEach((f, i) => {
       const focused = i === open;
       const root = f.root;
-      // Under the middle of its column. The columns are fixed, so this changes only on a resize.
       const column = columns.current?.[i]?.getBoundingClientRect();
       if (column && box.width > 0) {
-        work.ndc.set(((column.left + column.width / 2 - box.left) / box.width) * 2 - 1, -1 + (2 * FEET) / box.height);
-        work.ray.setFromCamera(work.ndc, camera);
-        if (work.ray.ray.intersectPlane(work.plane, work.at)) root.position.x = work.at.x;
-        // The bosses at the ends step in just enough to stand wholly inside the scene.
-        for (const edge of [-1, 1]) {
-          work.ndc.set(edge * (1 - (2 * EDGE) / box.width), work.ndc.y);
+        // Its column, kept EDGE px inside the scene at the ends.
+        const left = Math.max(column.left, box.left + EDGE);
+        const right = Math.min(column.right, box.right - EDGE);
+        const atFeet = (px: number) => {
+          work.ndc.set(((px - box.left) / box.width) * 2 - 1, -1 + (2 * FEET) / box.height);
           work.ray.setFromCamera(work.ndc, camera);
-          if (!work.ray.ray.intersectPlane(work.plane, work.at)) continue;
-          // By its size at rest, so the open boss growing never moves anyone (it stays inside the EDGE margin).
-          const limit = work.at.x - edge * f.halfWidth;
-          root.position.x = edge < 0 ? Math.max(root.position.x, limit) : Math.min(root.position.x, limit);
+          return work.ray.ray.intersectPlane(work.plane, work.at) ? work.at.x : 0;
+        };
+        // Under the middle of it, and no wider than it (David's no-overlap rule, as in 2D): a boss that
+        // would be stands smaller. The columns are fixed, so this changes only on a resize.
+        root.position.x = atFeet((left + right) / 2);
+        f.fit = Math.min(1, (atFeet(right) - atFeet(left)) / 2 / f.halfWidth);
+        // Its span on the page at rest, for anyone checking that no boss reaches into a neighbour's column.
+        for (const side of [-1, 1]) {
+          work.screen.set(root.position.x + side * f.halfWidth * f.fit, 0, 0).project(camera);
+          spans.push(Math.round(((work.screen.x + 1) / 2) * box.width));
         }
       }
       // Where it stands on the page, for anyone checking that nobody moved.
@@ -245,7 +246,8 @@ function Bosses({
       const grow = 1 + (focused ? GROW : 0);
       const ease = reducedMotion ? 1 : Math.min(1, delta * 6);
       root.rotation.x += (lean - root.rotation.x) * ease;
-      root.scale.setScalar(root.scale.x + (grow - root.scale.x) * ease);
+      const scale = grow * f.fit;
+      root.scale.setScalar(root.scale.x + (scale - root.scale.x) * ease);
       if (f.actions) play(f, focused ? f.actions.talk : f.actions.idle, reducedMotion);
       else if (!reducedMotion) {
         // The Administrator and the drone aren't rigged: they bob, faster while they talk.
@@ -255,6 +257,8 @@ function Bosses({
       if (!reducedMotion) for (const m of f.mixers) m.update(delta);
     });
     const where = placed.join(",");
+    const across = spans.join(",");
+    if (stage.current && stage.current.dataset.spans !== across) stage.current.dataset.spans = across;
     // And how high the tallest stands (px from the stage's top), for the layout and the tests.
     work.screen.set(0, TALLEST, 0).project(camera);
     const tallest = String(Math.round(((1 - work.screen.y) / 2) * box.height));
@@ -326,8 +330,8 @@ function play(f: Figure, to: AnimationAction, still: boolean) {
   if (still) f.mixers[0]!.update(0);
 }
 
-/** A boss's robot, scaled to its share of the line-up, turned a little toward the middle. */
-function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationClip[] }, fromMiddle: number): Figure {
+/** A boss's robot, scaled to its share of the line-up, facing the player. */
+function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationClip[] }): Figure {
   const { height, hover = 0 } = MODELS[boss];
   const unit = () => {
     const body = cloneSkinned(model.scene);
@@ -345,12 +349,12 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
   // a slender robot is otherwise all gaps.
   const bounds = new Box3().setFromObject(front);
   const size = bounds.getSize(new Vector3());
-  const hitGeometry = new BoxGeometry(Math.max(size.x, 0.3), size.y, Math.max(size.z, 0.3));
+  // As wide as the robot, so, with every boss within its column, a click reaches the boss whose column it is.
+  const hitGeometry = new BoxGeometry(size.x, size.y, Math.max(size.z, 0.3));
   const hitMaterial = new MeshBasicMaterial({ visible: false });
   const hit = new Mesh(hitGeometry, hitMaterial);
   bounds.getCenter(hit.position);
   root.add(hit);
-  root.rotation.y = fromMiddle * TURN;
   const clip = (name: string) => model.animations.find((a) => a.name === name);
   const mixers: AnimationMixer[] = [];
   const owned: { dispose(): void }[] = [hitMaterial];
@@ -386,7 +390,7 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
   }
   owned.push(hitGeometry);
   const turned = new Box3().setFromObject(root);
-  return { root, mixers, actions, playing: actions?.idle ?? null, owned, halfWidth: Math.max(-turned.min.x, turned.max.x) };
+  return { root, mixers, actions, playing: actions?.idle ?? null, owned, halfWidth: Math.max(-turned.min.x, turned.max.x), fit: 1 };
 }
 
 /** Fades a copy back, as the portrait does with the Commerce Office's other six units; returns its new materials. */
