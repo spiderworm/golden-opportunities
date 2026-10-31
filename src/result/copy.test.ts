@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { outcomeOption } from "./outcome-chart";
 import type { MeasureId, MeasureScore, ReportCard } from "~/simulation/types";
 import {
+  q2SeasonNote,
   administratorLine,
   bossLine,
   certificateText,
@@ -131,5 +133,29 @@ describe("the report card's words", () => {
     expect(administratorLine(59)).toBe("OVERALL SCORE: 59. THE ADMINISTRATOR WILL NEED TO SIT DOWN.");
     expect(fractionWords(78)).toBe("ABOUT FOUR-FIFTHS");
     expect(fractionWords(65)).toBe("ABOUT TWO-THIRDS");
+  });
+});
+
+describe("Q2's season note", () => {
+  it("compares Q2 with the player's own Q1, either way, then last year's two", () => {
+    expect(q2SeasonNote(175_000, 100_000)).toBe("Q2 revenue was 75% above Q1 2194. Last year, Q2 was the busier quarter: $164,437, 73% above Q1. To judge your plan, compare it with holding course, not with Q1.");
+    expect(q2SeasonNote(90_000, 100_000)).toMatch(/^Q2 revenue was 10% below Q1 2194\. Last year, Q2 was the busier quarter/);
+  });
+});
+
+describe("the outcome chart after Q2", () => {
+  it("labels the reference line Q1 2194 and names its months with their own year", () => {
+    const option = outcomeOption({
+      months: ["2194-04", "2194-05", "2194-06"],
+      plan: [1, 2, 3],
+      holdCourse: [1, 2, 3],
+      reference: [{ month: "01", revenue: 1 }, { month: "02", revenue: 2 }, { month: "03", revenue: 3 }],
+      referenceLabel: "Q1 2194 (for reference)",
+      referenceYear: "2194",
+    }) as { series: { name: string }[]; tooltip: { formatter: (p: unknown[]) => string } };
+    expect(option.series[0]!.name).toBe("Q1 2194 (for reference)");
+    const tip = option.tooltip.formatter([{ dataIndex: 1, seriesName: "Q1 2194 (for reference)", value: 2, color: "#000" }]);
+    expect(tip).toContain("Feb 2194");
+    expect(tip).toContain("May 2194");
   });
 });

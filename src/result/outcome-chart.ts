@@ -16,8 +16,12 @@ export interface OutcomeSeries {
   months: string[];
   plan: number[];
   holdCourse: number[];
-  /** Q4 2193 by month ("10", "11", "12"), drawn behind by position in the quarter. */
+  /** The quarter before, by month ("10", "11", "12" for Q4 2193), drawn behind by position in the quarter. */
   reference: { month: string; revenue: number }[];
+  /** Its legend: "Q4 2193 (for reference)" after Q1, "Q1 2194 (for reference)" after Q2. */
+  referenceLabel?: string;
+  /** Its year, for the tooltip: the months come bare. */
+  referenceYear?: string;
 }
 
 /**
@@ -27,6 +31,7 @@ export interface OutcomeSeries {
 export const OUTCOME_COLORS = { plan: chartTheme.series, holdCourse: chartTheme.textMuted, reference: chartTheme.dimmed } as const;
 
 export function outcomeOption(series: OutcomeSeries): EChartsCoreOption {
+  const referenceLabel = series.referenceLabel ?? RESULT_COPY.lines.reference;
   const line = (name: string, data: number[], color: string, width: number, z: number) => ({
     type: "line",
     name,
@@ -53,7 +58,7 @@ export function outcomeOption(series: OutcomeSeries): EChartsCoreOption {
         const rows = params.map((p) => {
           // The reference line is a different month: name it.
           const ref = series.reference[i];
-          const name = p.seriesName === RESULT_COPY.lines.reference && ref ? `${monthName(ref.month)} 2193` : p.seriesName;
+          const name = p.seriesName === referenceLabel && ref ? `${monthName(ref.month)} ${series.referenceYear ?? "2193"}` : p.seriesName;
           return `<div style="display:flex;justify-content:space-between;gap:16px"><span><span style="display:inline-block;width:10px;height:2px;margin-right:8px;vertical-align:middle;background:${p.color}"></span><span style="color:${chartTheme.textMuted}">${escapeHtml(name)}</span></span><strong>${escapeHtml(moneyText(p.value))}</strong></div>`;
         });
         return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${escapeHtml(`${monthName(series.months[i] ?? "")} 2194`)}</div>${rows.join("")}`;
@@ -75,7 +80,7 @@ export function outcomeOption(series: OutcomeSeries): EChartsCoreOption {
       splitLine: { lineStyle: { color: chartTheme.grid, width: 1, type: "solid" } },
     },
     series: [
-      line(RESULT_COPY.lines.reference, series.reference.map((r) => r.revenue), OUTCOME_COLORS.reference, 2, 1),
+      line(referenceLabel, series.reference.map((r) => r.revenue), OUTCOME_COLORS.reference, 2, 1),
       line(RESULT_COPY.lines.holdCourse, series.holdCourse, OUTCOME_COLORS.holdCourse, 2, 2),
       line(RESULT_COPY.lines.plan, series.plan, OUTCOME_COLORS.plan, 2, 3),
     ],

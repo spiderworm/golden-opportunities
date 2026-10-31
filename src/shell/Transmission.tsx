@@ -3,13 +3,14 @@ import { Link } from "react-router";
 
 import { BossBubble } from "~/platform/bosses/BossBubble";
 import { FactText } from "~/platform/bosses/facts";
-import { ALERT_COPY } from "./alert-copy";
+import { ALERT_COPY, type AlertCopy } from "./alert-copy";
 import styles from "./Transmission.module.css";
 
-const COPY = ALERT_COPY.transmission;
 
 export interface TransmissionProps {
   open: boolean;
+  /** Which quarter's memo: Q1's unless given. */
+  copy?: AlertCopy["transmission"];
   /** "Open the ledgers": the link goes to Investigate unless this prevents it. */
   onOpenLedgers: (event: MouseEvent<HTMLAnchorElement>) => void;
   /** "Later", Escape, or a click outside the card. */
@@ -20,7 +21,7 @@ export interface TransmissionProps {
  * The Commerce Office's memo, delivered by its robot over the station: a modal dialog, so focus
  * stays in it and Escape puts it off, with the scene still showing around it.
  */
-export function Transmission({ open, onOpenLedgers, onLater }: TransmissionProps) {
+export function Transmission({ open, copy: COPY = ALERT_COPY.transmission, onOpenLedgers, onLater }: TransmissionProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export function Transmission({ open, onOpenLedgers, onLater }: TransmissionProps
     >
       <div className={styles.card}>
         <p className={styles.kicker}>{COPY.kicker}</p>
-        <BossBubble boss="profit" facts={<Memo />}>
+        <BossBubble boss="profit" facts={<Memo copy={COPY} />}>
           {COPY.line}
         </BossBubble>
         <div className={styles.actions}>
@@ -62,7 +63,7 @@ export function Transmission({ open, onOpenLedgers, onLater }: TransmissionProps
   );
 }
 
-function Memo() {
+function Memo({ copy: COPY }: { copy: AlertCopy["transmission"] }) {
   return (
     <div className={styles.memo}>
       <p className={styles.memoHeader}>

@@ -51,6 +51,26 @@ export const RESULT_COPY = {
   },
 } as const;
 
+/** What differs between the two quarters' result screens (m1-copy.md section 4; q2.md section 7, with #139's answers). */
+export const QUARTER_COPY = {
+  "2194-Q1": {
+    title: "Q1 2194: the results",
+    reference: "Q4 2193 (for reference)",
+    lastYear: "Q1 2193",
+    goalsNote: RESULT_COPY.reportCard.goalsNote,
+  },
+  "2194-Q2": {
+    title: "Q2 2194: the results",
+    reference: "Q1 2194 (for reference)",
+    lastYear: "Q2 2193 + new volume",
+    goalsNote: "Each goal is Q2 2193, plus the new volume's expected effect, plus 5%. Matching Q2 2193 plus the new volume scores 70 (C\u2212). Meeting the goal scores 100 (A+).",
+  },
+} as const;
+export type ResultQuarter = keyof typeof QUARTER_COPY;
+
+/** After Q1, while Q2 is still to play (q2.md section 7): the primary button, to the station on April 1. */
+export const CONTINUE_TO_Q2 = "Continue to Q2";
+
 /** "$161,525": money in sentences. */
 export function moneyText(value: number): string {
   return `$${Math.round(Math.abs(value)).toLocaleString("en-US")}`;
@@ -251,6 +271,39 @@ export function certificateText(certificate: Certificate): string {
 /** The season note. */
 export function seasonNote(pctBelowQ4: number, lastQ1: number): string {
   return `Q1 revenue was ${Math.round(pctBelowQ4)}% below Q4 2193. Last year, Q1 was also the quietest quarter: ${moneyText(lastQ1)}. To judge your plan, compare it with holding course, not with Q4.`;
+}
+
+/**
+ * Q2's season note (q2.md section 7): this Q2 against the player's own Q1, then last year's two. Plot fixed
+ * last year's figures in the copy; they're the ledger's (Q2 2193 $164,437, 73% above Q1 2193).
+ */
+export function q2SeasonNote(revenue: number, q1Revenue: number): string {
+  const pct = Math.round(Math.abs(revenue / q1Revenue - 1) * 100);
+  return `Q2 revenue was ${pct}% ${revenue >= q1Revenue ? "above" : "below"} Q1 2194. Last year, Q2 was the busier quarter: $164,437, 73% above Q1. To judge your plan, compare it with holding course, not with Q1.`;
+}
+
+/** Section 7 of docs/design/q2.md: the review under Q2's result, which ends the game. */
+export const HALF_YEAR_COPY = {
+  heading: "Half-year review",
+  closing: "That's the end of the first half of 2194. Thanks for minding the shop.",
+  /** The table: a row per quarter, with each measure's score and the overall score (q2.md, #139). */
+  quarter: "Quarter",
+  overall: "Overall",
+  quarters: { "2194-Q1": "Q1 2194", "2194-Q2": "Q2 2194" } satisfies Record<ResultQuarter, string>,
+  playAgain: "Play again",
+  backToLedgers: "Back to the ledgers",
+} as const;
+
+/** `Half-year score: {score} ({grade})` */
+export function halfYearScoreText(score: number, grade: Grade): string {
+  return `Half-year score: ${scoreText(score, grade)}`;
+}
+
+/** The Station Administrator on the half-year score: 80 or above, 70 to 79, below 70. */
+export function halfYearAdministratorLine(score: number): string {
+  if (score >= 80) return `HALF-YEAR SCORE: ${score}. TWO GOOD QUARTERS IN A ROW. WE DID NOT KNOW THIS WAS PERMITTED. WE ARE DOING MAGNUM.`;
+  if (score >= 70) return `HALF-YEAR SCORE: ${score}. THE SHOP CONTINUES. THIS IS ALSO A LOOK.`;
+  return `HALF-YEAR SCORE: ${score}. THE ADMINISTRATOR WILL NEED TO SIT DOWN AGAIN.`;
 }
 
 /** `{found} of 3 found.` */
