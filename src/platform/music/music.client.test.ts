@@ -46,7 +46,10 @@ describe("loadMusic", () => {
       track,
       remember: true,
       oneTab: true,
+      pauseWhenHidden: expect.any(Function), // the desktop player's: plays on behind other tabs
     });
+    // a computer (no touch screen here) plays on while hidden
+    expect((createMusic.mock.calls[0]![0] as { pauseWhenHidden: () => boolean }).pauseWhenHidden()).toBe(false);
   });
 
   it("counts entries left out, without naming them", async () => {
