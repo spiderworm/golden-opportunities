@@ -31,6 +31,29 @@ export function fullName(host: HTMLElement, name: HTMLElement) {
   return () => host.matches(":hover") && check();
 }
 
+/** Another tab of the game wouldn't let go of the music (oneTab), shown
+ * where the player pressed play for a few seconds. */
+const OTHER_TAB = "Music is playing in another tab. Pause it there, then try again.";
+const NOTICE_MS = 6000;
+export function otherTabNotice(holder: HTMLElement, doc: Document, place?: (note: HTMLElement) => void) {
+  const note = doc.createElement("p");
+  note.className = "music-notice";
+  note.setAttribute("role", "alert");
+  note.hidden = true;
+  holder.append(note);
+  let timer = 0;
+  /** said, if `ok` is false (the player's play, skip or back didn't take);
+   * `note` to remove when its holder goes */
+  return Object.assign((ok: boolean) => {
+    if (ok) return;
+    note.textContent = OTHER_TAB;
+    note.hidden = false;
+    place?.(note);
+    clearTimeout(timer);
+    timer = window.setTimeout(() => (note.hidden = true), NOTICE_MS);
+  }, { note });
+}
+
 /** The music volume, down to Mute: the game's music volume setting. */
 export function volume(music: Music, where: Where, doc: Document) {
   const el = doc.createElement("label");
@@ -62,6 +85,7 @@ export function nowPlaying(music: Music, where: Where, doc: Document) {
   const button = (d: string) => el.querySelector<HTMLButtonElement>(`[data-do="${d}"]`)!;
   const title = el.querySelector<HTMLElement>(".music-title")!;
   const named = fullName(title, title);
+  const said = otherTabNotice(el, doc);
   const draw = () => {
     const s = music.state();
     el.hidden = !s.song;
@@ -73,9 +97,9 @@ export function nowPlaying(music: Music, where: Where, doc: Document) {
   el.addEventListener("click", (e) => {
     const d = (e.target as HTMLElement).closest<HTMLElement>("[data-do]")?.dataset.do;
     const song = music.state().song;
-    if (d === "back") music.back(where);
-    if (d === "skip") music.skip(where);
-    if (d === "play") music.state().playing ? music.pause(where) : music.resume(where);
+    if (d === "back") void music.back(where).then(said);
+    if (d === "skip") void music.skip(where).then(said);
+    if (d === "play") music.state().playing ? music.pause(where) : void music.resume(where).then(said);
     if (d === "heart" && song) music.setHearted(song.id, !music.hearted(song.id), where);
   });
   draw();
