@@ -100,17 +100,18 @@ test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
   await expect(popover).toBeVisible();
   await expect(popover).toContainText('at $200 each.');
   expect(await layout()).toEqual(before);
-  const more = page.getByRole('button', { name: 'Full description: Weekday author nights' });
+  const more = page.getByRole('button', { name: 'More about Weekday author nights' });
   await more.click();
-  await expect(more).toHaveAttribute('aria-expanded', 'true');
-  await expect(more).toHaveText('Less');
+  // Pinned, it says "Less", and its name follows what it says.
+  const less = page.getByRole('button', { name: 'Less about Weekday author nights' });
+  await expect(less).toHaveAttribute('aria-expanded', 'true');
   await page.mouse.move(5, 5);
   await expect(popover).toBeVisible();
   expect(await layout()).toEqual(before);
-  await more.focus();
+  await less.focus();
   await page.keyboard.press('Escape');
   await expect(popover).toBeHidden();
-  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('button', { name: 'More about Weekday author nights' })).toHaveAttribute('aria-expanded', 'false');
 });
 
 test('a bubble focused in the 2D scene stays focused when the 3D scene takes over', async ({ page }) => {

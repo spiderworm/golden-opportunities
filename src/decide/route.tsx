@@ -170,10 +170,14 @@ export default function Decide() {
                       className={styles.more}
                       aria-expanded={more?.id === m.id && more.pinned}
                       aria-controls={`move-more-${m.id}`}
-                      aria-label={`${COPY.moreLabel} ${m.title}`}
                       onClick={() => setMore(more?.id === m.id && more.pinned ? null : { id: m.id, pinned: true })}
                     >
                       {more?.id === m.id && more.pinned ? COPY.less : COPY.more}
+                      {/* Its name starts with what it says ("More about ..."), so voice control can use it (WCAG 2.5.3). */}
+                      <span className={styles.visuallyHidden}>
+                        {" "}
+                        {COPY.moreAbout} {m.title}
+                      </span>
                     </button>
                     {/* The full line over the scene on hover, focus or a tap on "more": it overlays, so nothing moves. */}
                     <div id={`move-more-${m.id}`} className={styles.popover} aria-hidden="true">
