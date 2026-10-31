@@ -44,7 +44,7 @@ describe("the report card's words", () => {
 
   it("picks each boss line by where the result stands, with the card's numbers", () => {
     expect(bossLine(measure("profit", 40_000, 37_642, 39_524.1))).toBe(
-      "PROFIT: $40,000. GOAL: $39,525. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED.",
+      "PROFIT: $40,000. GOAL: $39,525. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED. WE ARE DOING BLUE STEEL.",
     );
     expect(bossLine(measure("readers", 7_000, 6_825, 7_166))).toBe("7,000 READERS. THE DOOR HAS CAPACITY FOR MORE. THE DOOR IS DISAPPOINTED.");
     expect(bossLine(measure("happiness", 66.04, 65.07, 68.32))).toBe("HAPPINESS: 66.0. PLEASE BE 68.4.");
@@ -73,7 +73,7 @@ describe("the report card's words", () => {
     expect(measureTexts(measure("profit", 39_524.2, 37_642, 39_524.1))).toMatchObject({ result: "$39,525", goal: "$39,525" });
     expect(measureTexts(measure("happiness", 68.325, 65.07, 68.3241))).toMatchObject({ result: "68.4", goal: "68.4" });
     expect(bossLine(measure("profit", 39_524.2, 37_642, 39_524.1))).toBe(
-      "PROFIT: $39,525. GOAL: $39,525. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED.",
+      "PROFIT: $39,525. GOAL: $39,525. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED. WE ARE DOING BLUE STEEL.",
     );
   });
 
@@ -126,7 +126,7 @@ describe("the report card's words", () => {
   });
 
   it("gives the Administrator a whole shop, a fraction of one, or a chair", () => {
-    expect(administratorLine(100)).toBe("OVERALL SCORE: 100. THIS IS A WHOLE SHOP.");
+    expect(administratorLine(100)).toBe("OVERALL SCORE: 100. THIS IS A WHOLE SHOP. IT IS REALLY, REALLY, RIDICULOUSLY GOOD-LOOKING.");
     expect(administratorLine(75)).toBe("OVERALL SCORE: 75. THIS IS THREE-QUARTERS OF A SHOP. PLEASE ACQUIRE THE REMAINDER.");
     expect(administratorLine(59)).toBe("OVERALL SCORE: 59. THE ADMINISTRATOR WILL NEED TO SIT DOWN.");
     expect(fractionWords(78)).toBe("ABOUT FOUR-FIFTHS");

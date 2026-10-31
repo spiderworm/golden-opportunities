@@ -32,6 +32,8 @@ export const RESULT_COPY = {
     measures: { profit: "Profit", readers: "Readers served", happiness: "Happiness", culture: "Culture" } satisfies Record<MeasureId, string>,
     exceeds: "Exceeds Requirements",
     certificatesHeading: "Certificates",
+    /** Small print under each certificate: a joke, carrying no information. */
+    certificateIssuer: "Issued by the Center for Shopkeepers Who Can't Sell Good",
     goalsNote: "Each goal is Q1 2193 plus 5%. Matching last year scores 70 (C\u2212). Meeting the goal scores 100 (A+).",
     bossesDisclosure: "What the bosses said",
     bosses: {
@@ -144,22 +146,22 @@ export function bossLine(m: MeasureScore): string {
   const pct = shownAgainstGoal((m.result / m.lastYear - 1) * 100, (m.goal / m.lastYear - 1) * 100, metGoal(m), 1);
   const lines: Record<MeasureId, Record<ReturnType<typeof standing>, string>> = {
     profit: {
-      met: `PROFIT: ${result}. GOAL: ${goal}. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED.`,
-      short: "PROFIT ROSE. IT DID NOT RISE ENOUGH. WE HAVE NOTED THIS IN A SPREADSHEET.",
+      met: `PROFIT: ${result}. GOAL: ${goal}. THE GOAL HAS BEEN MET. WE ARE PLEASED. WE HAVE VOTED TO BE PLEASED. WE ARE DOING BLUE STEEL.`,
+      short: "PROFIT ROSE. IT DID NOT RISE ENOUGH. WE HAVE NOTED THIS IN A SPREADSHEET. THE SPREADSHEET IS IN THE COMPUTER.",
       below: "PROFIT FELL BELOW LAST YEAR. THIS IS THE OPPOSITE OF WHAT WE REQUESTED.",
     },
     readers: {
       met: `${result} READERS PASSED THROUGH THE DOOR. THE DOOR PERFORMED ADMIRABLY. SO DID YOU.`,
       short: `${result} READERS. THE DOOR HAS CAPACITY FOR MORE. THE DOOR IS DISAPPOINTED.`,
-      below: "FEWER READERS THAN LAST YEAR. WE HAVE INSPECTED THE DOOR. THE DOOR IS NOT AT FAULT.",
+      below: "FEWER READERS THAN LAST YEAR. WHAT IS THIS, A SHOP FOR ANTS? IT NEEDS TO BE AT LEAST THREE TIMES BIGGER.",
     },
     happiness: {
       met: `HAPPINESS: ${result}. THIS EXCEEDS THE REQUIRED HAPPINESS. PLEASE DO NOT BECOME COMPLACENT ABOUT HAPPINESS.`,
       short: `HAPPINESS: ${result}. PLEASE BE ${goal}.`,
-      below: "HAPPINESS HAS DECLINED. THE DRONE HAS RECORDED SEVERAL SIGHS.",
+      below: "HAPPINESS HAS DECLINED. THE DRONE HAS DETECTED MOISTURE. MR. ZOOLANDER CALLS THIS THE ESSENCE OF WETNESS.",
     },
     culture: {
-      met: "CULTURE INCREASED. YOU MAY CELEBRATE FOR 0.5 MINUTES.",
+      met: "CULTURE INCREASED. YOU MAY CELEBRATE FOR 0.5 MINUTES. A WALK-OFF IS PERMITTED.",
       short: `CULTURE INCREASED ${pct.value}%. CULTURE TARGET: ${pct.goal}%. PLEASE CULTURE HARDER.`,
       below: "CULTURE HAS DECREASED. THE MINISTRY IS UNCULTURED BY THIS.",
     },
@@ -187,7 +189,7 @@ export function fractionWords(score: number): string {
 
 /** The Station Administrator on the overall score. */
 export function administratorLine(score: number): string {
-  if (score >= 100) return `OVERALL SCORE: ${score}. THIS IS A WHOLE SHOP.`;
+  if (score >= 100) return `OVERALL SCORE: ${score}. THIS IS A WHOLE SHOP. IT IS REALLY, REALLY, RIDICULOUSLY GOOD-LOOKING.`;
   if (score >= 60) return `OVERALL SCORE: ${score}. THIS IS ${fractionWords(score)} OF A SHOP. PLEASE ACQUIRE THE REMAINDER.`;
   return `OVERALL SCORE: ${score}. THE ADMINISTRATOR WILL NEED TO SIT DOWN.`;
 }
