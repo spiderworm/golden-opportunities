@@ -105,5 +105,26 @@
         "bytes": 27638
       }
     }
+  },
+  "backdrop": {
+    "about": "The room the bosses stand in on Decide, for David: \"a nice, dreary, background that a robot would love but has no humanity in it, perhaps whatever we use for 3D but as a 2D shot\". Chart's 2D scene lays the bosses over it; the 3D scene stands its robots in front of the same picture.",
+    "date": "2026-10-30",
+    "by": "Orbit, in David's Tripo account",
+    "credits": "none (Tripo's free image allowance)",
+    "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 16:9, two images; the second (research/station-assets/backdrop/room.jpg) is used",
+    "prompt": "A wide, empty, dreary room that a robot would love and that has no humanity in it: an office for robot bosses on a space station. Bare grey concrete walls and floor, cable trays and thick bundled cables running along the walls and ceiling, tall grey server racks along the back wall with tiny dim green and blue status lights, ventilation grilles, flat cold fluorescent tube lights in the ceiling giving even, sterile light. Viewed straight on from standing height at the middle of the room: the back wall fills most of the picture and the floor meets it at about four-fifths of the way down, with a clear empty stretch of floor across the whole width in front. No people, no plants, no art, no windows, no furniture to sit on, no warmth, no text, no letters, no logos. Muted cool grey palette with a slight navy tint, low contrast, quiet. Stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces.",
+    "processed": "research/station-assets/backdrop.py: cropped to 2:1 about the middle, darkened to 62% and tinted toward navy, then 2400 x 1200 (upscaled from Tripo's 1376 px, lightly sharpened) and 1200 x 600 webp at quality 82. It reproduces these files byte for byte from Tripo's PNG. The floor meets the back wall about 72% of the way down.",
+    "files": {
+      "backdrop.webp": {
+        "file": "public/bosses/backdrop.webp",
+        "sha256": "14e69e04bc5f5b8b302f024c7bf33e36fedd6d4607527981574d61528016b08a",
+        "bytes": 44282
+      },
+      "backdrop-1200.webp": {
+        "file": "public/bosses/backdrop-1200.webp",
+        "sha256": "f72ba4c78e6ff1e88e19ae379512ed02f73b22bceb2cf3f23a96dab62e577630",
+        "bytes": 17230
+      }
+    }
   }
 }
