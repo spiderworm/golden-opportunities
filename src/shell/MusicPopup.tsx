@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 
+import { ignoreCutOff } from "~/platform/music/cut-off";
+
 import styles from "./Shell.module.css";
 
 const MARGIN = 20;
@@ -32,7 +34,7 @@ export function MusicPopup() {
         },
       });
       addEventListener("resize", placeAll);
-    });
+    }, ignoreCutOff);
     return () => {
       live = false;
       removeEventListener("resize", placeAll);
