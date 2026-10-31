@@ -1,0 +1,4 @@
+/* A frame round whichever scene is up: its width decides 3D or 2D, and focus is kept across a swap. */
+.briefing {
+  min-width: 0;
+}
