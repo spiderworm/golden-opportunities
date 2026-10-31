@@ -13,6 +13,8 @@ import { startAnalytics } from "./platform/analytics/analytics.client";
 import { serverAnalytics } from "./platform/analytics/analytics.server";
 import { instanceId } from "./platform/analytics/instance.server";
 import "./platform/theme/theme.css";
+import { useIsPhone } from "./phone/phone";
+import { PhoneScreen } from "./phone/PhoneScreen";
 
 export function loader() {
   serverAnalytics();
@@ -54,7 +56,16 @@ export default function App({ loaderData }: Route.ComponentProps) {
   useEffect(() => {
     startAnalytics(loaderData.instance);
   }, [loaderData.instance]);
-  return <Outlet />;
+  // A phone gets one scene instead of the game. Its stylesheet shows the scene
+  // and hides the page from the first paint; once the browser has said it's a
+  // phone, the game isn't mounted at all.
+  const phone = useIsPhone();
+  return (
+    <>
+      <PhoneScreen active={phone} />
+      {!phone && <Outlet />}
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
