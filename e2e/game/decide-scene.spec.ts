@@ -18,7 +18,7 @@ test('the bosses brief the plan together: the Administrator first, then whicheve
   // A click opens another, and closes the first.
   await commerce.click();
   await expect(commerce).toHaveAttribute('aria-expanded', 'true');
-  await expect(commerce).toContainText('THREE SEEMED LENIENT');
+  await expect(scene.getByText(/THREE SEEMED LENIENT/)).toBeVisible();
   await expect(scene.getByText('60% of their list price')).toBeVisible();
   await expect(administrator).toHaveAttribute('aria-expanded', 'false');
   await expect(scene.getByText('January 1 to March 31, 2194')).toBeHidden();
@@ -52,4 +52,39 @@ test('where the browser can draw them, the bosses stand in 3D under the same bub
   await ministry.click();
   await expect(ministry).toHaveAttribute('aria-expanded', 'true');
   await expect(scene.getByRole('button', { name: /^The Station Administrator/ })).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves nothing', async ({ page }) => {
+  // The 2D scene, as a browser without WebGL 2 gets it (else the 3D scene replaces it mid-test).
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+      return type === 'webgl2' ? null : (getContext as (...args: unknown[]) => unknown).call(this, type, ...rest);
+    } as typeof getContext;
+  });
+  await page.goto('/decide?analytics-test=1');
+  const scene = page.getByRole('region', { name: 'PLAN FOR Q1 2194' });
+  const bubbles = scene.getByRole('button');
+  await expect(bubbles).toHaveCount(5);
+  await expect(scene.getByText('January 1 to March 31, 2194')).toBeVisible();
+  await expect(scene.locator('[data-boss]')).toHaveCount(5);
+
+  // Clicking a robot opens its bubble, like clicking the bubble.
+  await scene.locator('[data-boss="culture"]').click();
+  await expect(bubbles.nth(2)).toHaveAttribute('aria-expanded', 'true');
+  await expect(scene.getByText('the author\'s shuttle fare and the room.')).toBeVisible();
+
+  // Every bubble in turn: no robot, bubble or move shifts (the open boss steps forward by transform only).
+  const layout = () => page.evaluate(() => ({
+    robots: [...document.querySelectorAll('[data-boss]')].map(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }),
+    bubbles: [...document.querySelectorAll('[aria-controls]')].map(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }),
+    moves: (document.querySelector('fieldset') as HTMLElement).offsetTop,
+  }));
+  await page.waitForTimeout(800); // the scene's entrance
+  const before = await layout();
+  for (let i = 0; i < 5; i++) {
+    await bubbles.nth(i).click();
+    await expect(bubbles.nth(i)).toHaveAttribute('aria-expanded', 'true');
+    expect(await layout()).toEqual(before);
+  }
 });

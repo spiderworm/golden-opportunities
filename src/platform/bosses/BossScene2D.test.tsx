@@ -9,28 +9,32 @@ const bubbles: SceneBubble[] = [
   { boss: "profit", teaser: "PROFIT.", line: "PROFIT. A WHOLE LINE.", facts: <p>Fact two.</p> },
 ];
 
+const expanded = (html: string) => [...html.matchAll(/aria-expanded="(true|false)"/g)].map((m) => m[1]);
+
 describe("the 2D boss scene", () => {
-  it("draws the open bubble it's given, with its full line, and the teasers elsewhere", () => {
+  it("keeps every teaser in its bubble, and shows the open boss's full line and facts in the panel", () => {
     const html = renderToString(<BossScene2D bubbles={bubbles} open={1} onSelect={() => {}} />);
-    expect([...html.matchAll(/aria-expanded="(true|false)"/g)].map((m) => m[1])).toEqual(["false", "true"]);
+    expect(expanded(html)).toEqual(["false", "true"]);
     expect(html).toContain(">ATTENTION.</span>");
-    expect(html).toContain(">PROFIT. A WHOLE LINE.</span>");
-    expect(html).toMatch(/<li[^>]*data-open="true"[^>]*style="--tint:#199e70;--order:1"/);
-    // Each button controls its own facts; the closed one's are hidden.
+    expect(html).toContain(">PROFIT.</span>");
+    // Each button controls its own panel; both panels are laid out (so the box never resizes), one shown.
     const controls = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((m) => m[1]!);
-    expect(new Set(controls).size).toBe(2);
-    const panels = [...html.matchAll(/<div id="([^"]+)" class="[^"]*"( hidden="")?>/g)].map((m) => [m[1], Boolean(m[2])]);
-    expect(panels).toEqual([[controls[0], true], [controls[1], false]]);
+    const panels = [...html.matchAll(/<div id="([^"]+)" class="[^"]*panel[^"]*"( data-open="true")?/g)].map((m) => [m[1], Boolean(m[2])]);
+    expect(panels).toEqual([[controls[0], false], [controls[1], true]]);
+    // The open bubble's button is described by its panel; the closed one's isn't.
+    expect([...html.matchAll(/aria-describedby="([^"]+)"/g)].map((m) => m[1])).toEqual([controls[1]]);
+    expect(html).toMatch(/data-open="true" style="--tint:#199e70"><div[^>]*><p[^>]*>The Commerce Office<\/p><p[^>]*>PROFIT\. A WHOLE LINE\.<\/p>/);
   });
 
-  it("stands each boss in the scene as decoration: the name in the bubble says who", () => {
+  it("stands each boss on the floor as decoration that opens its bubble when clicked", () => {
     const html = renderToString(<BossScene2D bubbles={bubbles} open={0} onSelect={() => {}} />);
-    expect(html.match(/<div class="[^"]*figure[^"]*" aria-hidden="true">/g)).toHaveLength(2);
+    expect(html.match(/<div class="[^"]*figure[^"]*" data-boss="(overall|profit)"( data-open="true")? aria-hidden="true"/g)).toHaveLength(2);
     expect(html).toContain('<img src="/bosses/full/overall.webp" alt=""');
+    // The figure isn't a second control: the bubble is the one button per boss.
+    expect(html.match(/<button/g)).toHaveLength(2);
   });
 
   it("opens the first bubble in a briefing unless told otherwise", () => {
-    const expanded = (html: string) => [...html.matchAll(/aria-expanded="(true|false)"/g)].map((m) => m[1]);
     expect(expanded(renderToString(<BossBriefing bubbles={bubbles} />))).toEqual(["true", "false"]);
     expect(expanded(renderToString(<BossBriefing bubbles={bubbles} initial={1} />))).toEqual(["false", "true"]);
   });
