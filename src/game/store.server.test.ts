@@ -25,6 +25,19 @@ describe('server save persistence', () => {
     expect(() => store.update(a.id, 1, () => {})).toThrow('SAVE_BUSY');
     expect(store.read(a.id).discoveries).toEqual(['B']);
   });
+  it('marks the alert seen once, keeping the query revision, and refuses any other seen value', () => {
+    const { store, dir } = fixture(); const a = store.create();
+    const seen = store.markAlertSeen(a.id);
+    expect(seen).toMatchObject({ alertSeen: true, revision: 1, queryRevision: 0 });
+    expect(store.markAlertSeen(a.id).revision).toBe(1);
+    expect(store.update(a.id, 1, () => {})).toMatchObject({ alertSeen: true, revision: 2, queryRevision: 1 });
+    writeFileSync(path.join(dir, a.id + '.json.lock'), '');
+    expect(() => store.markAlertSeen(store.create().id)).not.toThrow();
+    expect(() => store.markAlertSeen(a.id)).toThrow('SAVE_BUSY');
+    const b = store.create();
+    writeFileSync(path.join(dir, b.id + '.json'), JSON.stringify({ ...b, alertSeen: false }));
+    expect(() => store.read(b.id)).toThrow('INVALID_SAVE');
+  });
   it('does not publish failed or invalid transactions', () => {
     const { store } = fixture(); const a = store.create();
     expect(() => store.update(a.id, 0, s => { s.discoveries.push('A'); throw Error('engine failed'); })).toThrow('engine failed');

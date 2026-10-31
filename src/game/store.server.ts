@@ -170,6 +170,18 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
         return { save: publish(id, save), before, oldEvidence };
       });
     },
+    /** Record that the opening transmission was seen. Not query data, so it never changes the query grant; idempotent. */
+    markAlertSeen(id: string): GameSave {
+      return locked(() => {
+        if (existsSync(file(id) + '.lock')) throw new SaveError('SAVE_BUSY');
+        const save = readUnlocked(id);
+        if (save.alertSeen) return save;
+        save.queryRevision = save.queryRevision ?? save.revision;
+        save.revision++;
+        save.alertSeen = true;
+        return publish(id, save);
+      });
+    },
     update(id: string, revision: number, change: (save: GameSave) => void): GameSave {
       const target = file(id);
       return locked(() => {

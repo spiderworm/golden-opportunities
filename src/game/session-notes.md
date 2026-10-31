@@ -118,8 +118,8 @@ Duplicate evidence does not write. Reads after plan commit cannot add discoverie
 the outcome's frozen discovery snapshot.
 
 `revision` advances on every persisted change. `queryRevision` is the query data/view
-version: the dedicated discovery-only operation preserves it, and all other updates bump
-it. Every data/view change must go through the latter path; no caller can opt out. Legacy
+version: the dedicated discovery-only and alert-seen operations preserve it, and all
+other updates bump it. Every data/view change must go through the latter path; no caller can opt out. Legacy
 saves default it to revision. Thus discovery metadata cannot cut off the answer which
 found it, while play still invalidates all pre-play capabilities. A stale query snapshot
 cannot add evidence after a data/view change. There is no in-place save migration.
