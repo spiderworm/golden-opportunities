@@ -55,6 +55,7 @@ test("remember: after a reload it carries on with the same song, and a pause the
 
   const again = createMusic({ key: "r", songs: list, base: "", storage, remember: true });
   assert.equal(again.state().song?.id, playing);
+  assert.equal(again.state().paused, true); // so the dock's play resumes it (a tap won't)
   again.start(); // a tap: but the player paused it
   assert.equal(FakeAudio.made.at(-1)!.src, "");
   assert.equal(JSON.parse(m.get("r.music.session")!).t, 42);

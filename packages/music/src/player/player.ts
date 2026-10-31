@@ -86,6 +86,8 @@ export type MusicState = {
   quiet: boolean;
   /** another app has the music (oneTab): play takes it */
   elsewhere: boolean;
+  /** the player paused it (here, before a reload, or in another tab of the app) */
+  paused: boolean;
 };
 
 export function createMusic(o: MusicOptions) {
@@ -136,7 +138,7 @@ export function createMusic(o: MusicOptions) {
   const audible = () => prefs.volume > 0 && !quiet && !paused && !yielded && started && !away.size && !hidden();
   // with the app's tabs together, playing is the app's: a tab not heard shows what the heard one does
   const playing = () => !!song && (sync && !sounding ? !paused && !yielded && !!sync.latest()?.running : !deck.paused);
-  const state = (): MusicState => ({ song, playing: playing(), volume: prefs.volume, quiet, elsewhere: yielded });
+  const state = (): MusicState => ({ song, playing: playing(), volume: prefs.volume, quiet, elsewhere: yielded, paused });
   const changed = () => listeners.forEach((f) => f(state()));
 
   function wire() {
