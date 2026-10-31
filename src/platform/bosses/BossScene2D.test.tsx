@@ -21,6 +21,8 @@ describe("the 2D boss scene", () => {
     const controls = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((m) => m[1]!);
     const panels = [...html.matchAll(/<div id="([^"]+)" class="[^"]*panel[^"]*"( data-open="true")?/g)].map((m) => [m[1], Boolean(m[2])]);
     expect(panels).toEqual([[controls[0], false], [controls[1], true]]);
+    // The open bubble's button is described by its panel; the closed one's isn't.
+    expect([...html.matchAll(/aria-describedby="([^"]+)"/g)].map((m) => m[1])).toEqual([controls[1]]);
     expect(html).toMatch(/data-open="true" style="--tint:#199e70"><div[^>]*><p[^>]*>The Commerce Office<\/p><p[^>]*>PROFIT\. A WHOLE LINE\.<\/p>/);
   });
 
