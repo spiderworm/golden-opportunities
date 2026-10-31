@@ -100,7 +100,7 @@ describe("the bosses' brief (m1-copy section 3)", () => {
       expect(html).toMatch(new RegExp(`<p id="move-line-${id}" class="[^"]*optionLine[^"]*">`));
       expect(html).toContain(`>${figure}</span>`);
       // "More" pins the copy over the scene: a fixed name, its state in aria-expanded; the copy itself is decoration.
-      expect(html).toMatch(new RegExp(`aria-expanded="false" aria-controls="move-more-${id}" aria-label="Full description: [^"]+">More</button>`));
+      expect(html).toMatch(new RegExp(`aria-expanded="false" aria-controls="move-more-${id}">More<span class="[^"]*visuallyHidden[^"]*"> <!-- -->about<!-- --> <!-- -->[^<]+</span></button>`));
       expect(html).toMatch(new RegExp(`<div id="move-more-${id}" class="[^"]*popover[^"]*" aria-hidden="true">`));
     }
   });
