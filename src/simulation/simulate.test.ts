@@ -14,8 +14,19 @@ const weekday = (day: string) => new Date(`${day}T00:00:00Z`).getUTCDay();
 const plan = (...levers: LeverId[]): Plan => ({ levers });
 const HOLD = plan();
 const PLANS: Plan[] = [HOLD, plan("repick"), plan("events"), plan("sale"), plan("repick", "events"), plan("repick", "sale"), plan("events", "sale")];
+// Each simulation takes about 30 ms, and the sweeps below run hundreds; under machine
+// load that crosses Vitest's 5-second default, so the sweeps share results and get room.
+const SWEEP = { timeout: 30_000 };
+const outcomes = new Map<string, ReturnType<typeof simulateQuarter>["outcome"]>();
+/** The outcome only (not the lines), shared between tests. */
+const outcomeOf = (p: Plan, seed: number) => {
+  const key = `${p.levers.join("+")}:${seed}`;
+  let outcome = outcomes.get(key);
+  if (!outcome) outcomes.set(key, (outcome = simulateQuarter(p, seed, data).outcome));
+  return outcome;
+};
 const profitChange = (p: Plan, seed: number) => {
-  const { plan, holdCourse } = simulateQuarter(p, seed, data).outcome.totals;
+  const { plan, holdCourse } = outcomeOf(p, seed).totals;
   return plan.grossProfit - holdCourse.grossProfit;
 };
 const median = (values: number[]) => {
@@ -23,7 +34,7 @@ const median = (values: number[]) => {
   return (s[Math.floor((s.length - 1) / 2)] + s[Math.ceil((s.length - 1) / 2)]) / 2;
 };
 
-describe("determinism", () => {
+describe("determinism", SWEEP, () => {
   it("gives the same output for the same seed", () => {
     for (const p of PLANS) expect(simulateQuarter(p, 42, data)).toEqual(simulateQuarter(p, 42, data));
   });
@@ -118,10 +129,10 @@ describe("last year, measured with the same recipe (scoring.md, Audit's full-pre
   });
 });
 
-describe("the levers against holding course (m1-slice section 3)", () => {
+describe("the levers against holding course (m1-slice section 3)", SWEEP, () => {
   it("the sale: revenue rises a little, gross profit falls about 22%, readers rise about 20%", () => {
     for (const seed of SEEDS) {
-      const { plan: mine, holdCourse } = simulateQuarter(plan("sale"), seed, data).outcome.totals;
+      const { plan: mine, holdCourse } = outcomeOf(plan("sale"), seed).totals;
       expect(mine.revenue / holdCourse.revenue - 1).toBeGreaterThan(0);
       expect(mine.revenue / holdCourse.revenue - 1).toBeLessThan(0.06);
       expect(mine.grossProfit / holdCourse.grossProfit - 1).toBeGreaterThan(-0.25);
@@ -154,7 +165,7 @@ describe("the levers against holding course (m1-slice section 3)", () => {
   it("author nights: 12 nights on Tuesday to Thursday, in different weeks, each adding 30 to 70 orders", () => {
     expect(eventWeeks()).toHaveLength(13);
     for (const seed of SEEDS) {
-      const { outcome } = simulateQuarter(plan("events"), seed, data);
+      const outcome = outcomeOf(plan("events"), seed);
       const events = outcome.facts.events!;
       expect(events.nights).toBe(12);
       expect(events.eventCosts).toBe(2400);
@@ -182,9 +193,9 @@ describe("the levers against holding course (m1-slice section 3)", () => {
   });
 });
 
-describe("the overall score, against Plot's calibration on seeds 1 to 20 (scoring.md)", () => {
+describe("the overall score, against Plot's calibration on seeds 1 to 20 (scoring.md)", SWEEP, () => {
   const seeds = Array.from({ length: 20 }, (_, i) => i + 1);
-  const overall = (p: Plan) => seeds.map((seed) => simulateQuarter(p, seed, data).outcome.reportCard.plan.overall);
+  const overall = (p: Plan) => seeds.map((seed) => outcomeOf(p, seed).reportCard.plan.overall);
   const scores = (p: Plan) => overall(p).map((o) => o.score);
   const within = (values: number[], min: number, max: number) => {
     expect(Math.min(...values)).toBeGreaterThanOrEqual(min);
@@ -230,7 +241,7 @@ describe("the overall score, against Plot's calibration on seeds 1 to 20 (scorin
   });
 });
 
-describe("the result copy", () => {
+describe("the result copy", SWEEP, () => {
   it("fills every option's sentences, with no unfilled values", () => {
     for (const p of PLANS) {
       const { happened, assumptions } = simulateQuarter(p, 1, data).outcome;
