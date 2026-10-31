@@ -48,26 +48,22 @@ const HEIGHT = 1.75;
 const WALK = [0.2, 1.9] as const;
 const REACH = [1.5, 2.3] as const;
 const SHAKE = 0.5;
+/** The most the arm grows to bring the hand near the glass. */
+const MAX_GROW = 2.6;
 /** Where the robot starts. */
-/** The most the arms grow to reach the glass. */
-const MAX_GROW = 1.8;
 const START = 4.2;
 const FOV = 50;
-/** The palm's width against the phone's width (and height), and how far its middle sits above the words (in palm widths). */
-const PALM_WIDE = 0.4;
-const PALM_TALL = 0.3;
-const PALM_UP = 0.35;
-/** The digits reach this far toward the phone's sides before they bend round them, and grow at most this long. */
+/** How far from the camera the hand holds the phone; how far toward its sides the fingers and thumb bend round
+    them; the knuckle row's height above the words (a share of the screen's height); and, on a turned phone, the
+    most of its height the hand stands. */
+const GRIP_DEPTH = 0.32;
 const EDGE_IN = 0.97;
-const MAX_DIGIT = 4;
+const KNUCKLES_UP = 0.06;
+const HAND_TALL = 0.5;
 /** The thumb's joints: it swings across the palm about its knuckle's X (measured), and curls about Z. */
 const THUMB = 4;
-const THUMB_ACROSS = 3.1;
+const THUMB_ACROSS = 2.8;
 const THUMB_CURL = [0.2, 0.5, 0.6];
-/** How far in front of the head the hand takes hold. */
-const REACH_OUT = 0.7;
-/** The nearest the hand comes to the glass. */
-const NEAREST = 0.32;
 /** Which way the finger joints curl toward the glass, about their Z (the rig's right hand, measured), and how far
     each joint, knuckle to tip, curls round the phone's side once it has hold. */
 const CURL = -1;
@@ -218,23 +214,36 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     // One open hand takes the phone at the bottom of the picture, as a person holds one (David: "open up the
     // hand, face the palm towards the camera, and have the fingers grip one side of the phone, and the thumb the
     // other"): palm to the glass, fingers across to one side and curled round that edge, thumb across to the other
-    // and round it. Its palm is big in the middle of the bottom of the picture (David: "bring the palm of the hand
-    // closer to the camera"), sized to the phone, and its robot fingers and thumb reach out as far as the phone's
-    // sides ("The thumb does not" look like it's on the side), so the grip opens exactly as wide as the phone is.
+    // and round it. It's near the lens, big, its palm mostly cropped by the bottom of the picture ("bring the palm
+    // of the hand closer to the camera. We don't need to see as much of the thumb or fingers"). The whole hand is
+    // sized at once, never a finger or the thumb on its own ("Thumb badly stretched"), so that the fingers bend
+    // round the phone's left side where the thumb bends round its right: the grip opens as wide as the phone is.
     const reach = reducedMotion ? 1 : ease(clamp01((t - REACH[0]) / (REACH[1] - REACH[0])));
     const close = reducedMotion ? 1 : ease(clamp01((t - REACH[1] + 0.3) / 0.3));
-    const handsAt = Math.max(NEAREST, -work.headAt.z - REACH_OUT);
-    const wide = 2 * handsAt * tan * aspect;
     const arm = rig.arm;
     const [shoulder] = arm.joints;
     shoulder.scale.setScalar(1);
     arm.hand.scale.setScalar(1);
     shoulder.updateMatrixWorld(true);
+    // As near the lens as the arm reaches (grown to MAX_GROW, with some to spare for reaching across and down):
+    // the hand is sized against the screen at whatever depth it's held, so this only sharpens its perspective.
+    const armLength =
+      shoulder.getWorldPosition(work.v).distanceTo(arm.joints[1].getWorldPosition(work.w)) +
+      work.w.distanceTo(arm.hand.getWorldPosition(work.target));
+    const shoulderAt = -shoulder.getWorldPosition(work.v).applyMatrix4(cam.matrixWorldInverse).z;
+    const handsAt = Math.max(GRIP_DEPTH, shoulderAt - 0.75 * MAX_GROW * armLength);
+    const halfWide = handsAt * tan * aspect;
+    const halfTall = handsAt * tan;
+    const turned = aspect > 1;
 
     // The hand, posed as it is now, measured from the camera: how far its fingers and thumb reach to each side,
     // and how tall it stands, at its own size.
     const pose = (curl: number) => {
-      work.up.set(-1, 0.2, 0).normalize().transformDirection(cam.matrixWorld);
+      // Fingers to the left; on a short, turned phone tipped down, so they slide under the words.
+      work.up
+        .set(-1, turned ? -0.5 : 0.15, 0)
+        .normalize()
+        .transformDirection(cam.matrixWorld);
       work.palm.set(0, 0, 1).transformDirection(cam.matrixWorld);
       aim(arm.hand, work.up, work.palm, reach, work);
       arm.fingers.forEach((joints, f) => {
@@ -256,22 +265,35 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     pose(curl);
     arm.hand.getWorldPosition(work.v);
     const toCam = work.q.copy(cam.quaternion).invert();
-    // The palm, from the wrist to the middle finger's knuckle.
-    const palm = arm.fingers[1]![0]!.getWorldPosition(work.w)
-      .sub(work.v)
-      .applyQuaternion(toCam)
-      .clone();
-    // Its size: the palm across PALM_WIDE of the phone, so a wider phone gets a bigger hand, but no taller than
-    // PALM_TALL of it (a turned phone is short), leaving its fingers and thumb to reach the rest of the way.
-    const handSize = Math.max(
-      0.5,
-      Math.min(PALM_WIDE * wide, PALM_TALL * 2 * handsAt * tan) / Math.max(1e-3, Math.abs(palm.x)),
+    // Measured from the wrist at the hand's own size: where the fingers bend round (the index's second joint), where
+    // the thumb does (its second joint), the knuckle row's height, and how tall the hand stands.
+    const off = (joint: Bone) =>
+      joint.getWorldPosition(work.w).sub(work.v).applyQuaternion(toCam).clone();
+    const fingersBend = off(arm.fingers[0]![1]!);
+    const thumbBend = off(arm.fingers[THUMB]![1]!);
+    const knuckles = off(arm.fingers[1]![0]!);
+    let low = 0;
+    let high = 0;
+    for (const joints of arm.fingers) {
+      for (const joint of joints) {
+        const y = off(joint).y;
+        low = Math.min(low, y);
+        high = Math.max(high, y);
+      }
+    }
+    // Its size, the whole hand at once (no finger or thumb grows on its own): the fingers bend round the phone's
+    // left side and the thumb round its right, so the grip opens exactly as wide as the phone is. On a turned
+    // phone, no taller than HAND_TALL of the screen; there its thumb keeps the right side and the far side is implied.
+    const across = Math.max(1e-3, thumbBend.x - fingersBend.x);
+    const handSize = Math.min(
+      (2 * EDGE_IN * halfWide) / across,
+      (HAND_TALL * 2 * halfTall) / Math.max(1e-3, high - low),
     );
-    // Where: the middle of the palm in the middle across, just above the words along the bottom.
-    const words = handsAt * tan * (1 - 2 * zone.current.hold);
+    // Where: the thumb's bend on the right side, and the knuckle row just above the words along the bottom.
+    const words = halfTall * (1 - 2 * zone.current.hold);
     work.target.set(
-      -(palm.x / 2) * handSize,
-      words + PALM_UP * Math.abs(palm.x) * handSize - (palm.y / 2) * handSize,
+      EDGE_IN * halfWide - thumbBend.x * handSize,
+      words + KNUCKLES_UP * 2 * halfTall - knuckles.y * handSize,
       -handsAt,
     );
     cam.localToWorld(work.target);
@@ -298,23 +320,6 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       // The arm has grown; the hand makes up the rest of its size.
       arm.hand.scale.setScalar(1 + (handSize / grow - 1) * reach);
       arm.hand.updateMatrixWorld(true);
-      // The fingers reach the phone's left side and the thumb its right, however wide it is: each grows along its
-      // length until the joint where it bends round sits on that side.
-      for (const [f, side] of [
-        [0, -1],
-        [1, -1],
-        [2, -1],
-        [3, -1],
-        [THUMB, 1],
-      ] as const) {
-        const [base, bend] = arm.fingers[f]!;
-        const from = base!.getWorldPosition(work.v).applyMatrix4(cam.matrixWorldInverse).clone();
-        const to = bend!.getWorldPosition(work.w).applyMatrix4(cam.matrixWorldInverse);
-        // The side, at the depth of the bend.
-        const edge = side * -to.z * tan * aspect * EDGE_IN;
-        const k = (edge - from.x) / (to.x - from.x);
-        base!.scale.y = 1 + (MathUtils.clamp(Number.isFinite(k) ? k : 1, 1, MAX_DIGIT) - 1) * reach;
-      }
       arm.hand.updateMatrixWorld(true);
     }
 
