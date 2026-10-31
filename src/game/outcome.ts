@@ -1,6 +1,7 @@
 import { isPlan } from '../simulation/plan.ts';
 import type { Outcome } from '../simulation/types';
-import { isQuarterId, quarterMonths } from './quarters.ts';
+import { isQ2Outcome } from '../simulation/outcome-check.ts';
+import type { PlayedQuarter } from './types';
 
 const record = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -25,9 +26,9 @@ function report(v: unknown): boolean {
 }
 /** Validate persisted output on read: a corrupt result must fail closed, not become UI data. */
 export function isOutcome(v: unknown): v is Outcome {
-  if (!record(v) || !isPlan(v.plan) || !isQuarterId(v.quarter) || !record(v.totals) || !metrics(v.totals.plan) || !metrics(v.totals.holdCourse)
+  if (!record(v) || !isPlan(v.plan) || v.quarter !== '2194-Q1' || !record(v.totals) || !metrics(v.totals.plan) || !metrics(v.totals.holdCourse)
     || !record(v.reportCard) || !report(v.reportCard.plan) || !report(v.reportCard.holdCourse)) return false;
-  if (!Array.isArray(v.monthly) || v.monthly.length !== 3 || !v.monthly.every((m, i) => record(m) && m.month === quarterMonths(v.quarter as never)[i]
+  if (!Array.isArray(v.monthly) || v.monthly.length !== 3 || !v.monthly.every((m, i) => record(m) && m.month === `2194-0${i + 1}`
     && record(m.plan) && record(m.holdCourse) && [m.plan.revenue, m.plan.units, m.holdCourse.revenue, m.holdCourse.units].every(finite))) return false;
   if (!Array.isArray(v.assumptions) || v.assumptions.length > 100 || !v.assumptions.every(a => record(a) && text(a.id) && text(a.text)
     && ['data', 'assumed', 'setup'].includes(String(a.source)) && typeof a.usedByPlan === 'boolean')) return false;
@@ -36,4 +37,10 @@ export function isOutcome(v: unknown): v is Outcome {
     || new Set(v.discoveries).size !== v.discoveries.length || !record(v.facts) || !finite(v.facts.amount)) return false;
   return Object.entries(v.facts).every(([key, value]) => key === 'amount' || (['holdCourse', 'repick', 'events', 'sale'].includes(key)
     && record(value) && Object.values(value).every(finite)));
+}
+const discoveryList = (v: unknown) => Array.isArray(v) && v.length <= 3 && v.every(d => ['A', 'B', 'C'].includes(d)) && new Set(v).size === v.length;
+/** The stored result for a quarter: M1's Outcome for Q1, Sim's Q2 outcome plus the game's discoveries for Q2. */
+export function isQuarterOutcome(period: PlayedQuarter['period'], v: unknown): boolean {
+  if (period === '2194-Q1') return isOutcome(v);
+  return isQ2Outcome(v) && discoveryList((v as { discoveries?: unknown }).discoveries);
 }

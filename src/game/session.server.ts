@@ -8,6 +8,7 @@ import { DATA_DIR } from '../platform/analytics/instance.server';
 import { trackServer } from '../platform/analytics/analytics.server';
 import { createSaveStore, isSaveId, SaveError } from './store.server';
 import type { GameSave } from './types';
+import { saveDate } from './progress';
 
 export const saves = createSaveStore(path.join(DATA_DIR, 'saves'));
 const COOKIE = 'orbital_save';
@@ -54,7 +55,16 @@ export function queryViewForSave(save: GameSave): QueryView {
 }
 export function getGameSession(request: Request) {
   const save = saves.read(resolveSaveId(request));
-  return { save, queryView: queryViewForSave(save), date: save.played.length ? '2194-04-01' : '2194-01-01' };
+  return { save, queryView: queryViewForSave(save), date: saveDate(save) };
+}
+/** A new save, under the per-minute limit shared by first visits and Play again. The caller sets its cookie. */
+export function startGame(): string {
+  if (Date.now() - creationWindow >= 60_000) { creationWindow = Date.now(); creations = 0; }
+  if (creations >= NEW_GAMES_PER_MINUTE) throw new Response('Too many new games. Try again shortly.', { status: 429, headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' } });
+  creations++;
+  const id = saves.create().id;
+  trackServer('game_save_created', { version: 1 });
+  return id;
 }
 /** One bootstrap before parallel shell/child loaders; never creates saves for API callers or POSTs. */
 export const gameSessionMiddleware: MiddlewareFunction<Response> = async ({ request }, next) => {
@@ -63,11 +73,7 @@ export const gameSessionMiddleware: MiddlewareFunction<Response> = async ({ requ
   catch (error) { if (error instanceof SaveError && error.code === 'MISSING_SAVE') id = null; else throw error; }
   if (!id) {
     if (request.method !== 'GET') throw new Response('Start a game first.', { status: 401 });
-    if (Date.now() - creationWindow >= 60_000) { creationWindow = Date.now(); creations = 0; }
-    if (creations >= NEW_GAMES_PER_MINUTE) throw new Response('Too many new games. Try again shortly.', { status: 429, headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' } });
-    creations++;
-    id = saves.create().id; created = true;
-    trackServer('game_save_created', { version: 1 });
+    id = startGame(); created = true;
   }
   const response = await active.run(id, next);
   response.headers.set('Cache-Control', 'private, no-store');

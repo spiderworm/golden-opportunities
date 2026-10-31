@@ -3,7 +3,8 @@
 The shell middleware creates one save before parallel page loaders run. Its HttpOnly,
 SameSite=Strict cookie contains only a cryptographically random ID; HTTPS adds Secure.
 The seed, discoveries and sale facts stay on the server. The station opens 1 January
-2194. Only a committed played quarter opens 2194-Q1 and advances to 1 April.
+2194. Each committed quarter opens itself to the ledgers and advances the date: Q1 to 1 April,
+Q2 to 1 July, where the game ends.
 Investigation uses this save's QueryView. Each browser profile gets an independent save.
 
 Files live in ORBITAL_DATA_DIR/saves (default .data/saves), with private directory/file
@@ -126,10 +127,22 @@ cannot add evidence after a data/view change.
 
 Each played quarter is saved with its own plan and result (`outcomeId`, `outcome`) beside
 its sale lines, written in one transaction. `src/game/quarters.ts` lists the quarters in
-play order; today only 2194-Q1. Version 1 saves kept the one result in a separate
+play order: 2194-Q1, then 2194-Q2. Version 1 saves kept the one result in a separate
 `completion` field. They are converted when read and become version 2 on their next write;
 the file is not rewritten just for being read. A version 1 quarter without its result, or a
 result without its quarter, was never written by the game and fails as INVALID_SAVE.
+
+Two quarters (docs/design/q2.md). `progress.ts` reads the save alone: the quarter being planned
+is the first unplayed one, so a quarter can only be played in order and only once. Q1 stores
+M1's Outcome, and Q2 stores Sim's Q2 outcome with the game's discoveries (none until D, E and
+F are detected); the store checks each with its own validator, plus the units against its
+lines. `submitQ2Plan` answers a plan Sim's `q2PlanProblem` refuses with a 400 naming the
+problem, before simulating. No Q1 state goes into Q2 except the ledgers' rows. Each quarter
+has its own Commerce Office memo: `alertsSeen` lists the quarters whose memo was seen, and the
+old `alertSeen: true` means Q1's and folds into the list on the next mark. Play again
+(POST /game/new) is allowed once both quarters are played. It starts a new save under the same
+new-games limit and replaces the cookie, and the old save expires unused. The half-year score
+is the mean of the two overall scores, rounded half up (`results.server.ts`).
 
 Content-free events: `discovery_found` with id A/B/C only, and `discovery_part_found` with
 A1/A2/C_partial only. Awards emit only after persistence succeeds. No query, filters, save

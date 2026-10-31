@@ -34,17 +34,17 @@ describe('the Commerce Office alert', () => {
     expect(saves.read(save.id).revision).toBe(revision);
   });
 
-  it('lifts the standing order once the plan is in', () => {
+  it("lifts Q1's standing order once its plan is in, and opens Q2's", () => {
     const save = saves.create(); const req = request(save.id);
     submitPlan(req, { levers: [] });
-    expect(getStationState(req).standingOrder).toEqual({ seen: false, submitted: true });
+    expect(getStationState(req).standingOrder).toEqual({ quarter: '2194-Q2', seen: false, submitted: false });
   });
 
   it('takes only same-origin POSTs', () => {
     const save = saves.create();
     status(() => markAlertSeen(request(save.id, 'GET')), 405);
     status(() => markAlertSeen(request(save.id, 'POST', 'http://evil.example')), 403);
-    expect(saves.read(save.id).alertSeen).toBeUndefined();
+    expect(saves.read(save.id).alertsSeen).toBeUndefined();
   });
 
   it('refuses a save whose seen flag is anything but true', () => {

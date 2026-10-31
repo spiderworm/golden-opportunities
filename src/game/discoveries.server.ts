@@ -6,12 +6,14 @@ import { combinedDiscoveryParts } from './discovery-evidence';
 import { saves } from './session.server';
 import { trackServer } from '../platform/analytics/analytics.server';
 import { SaveError } from './store.server';
+import { currentQuarter } from './progress';
 import { QueryError } from '../query/errors';
 
 export interface ObservedQuery { query: Query; result: QueryResult }
 /** Caller supplies server-authorized state and queries actually shown, never request claims. */
 export function recordDiscoveries(save: GameSave, view: QueryView, observed: readonly ObservedQuery[]): void {
-  if (save.played.length) return;
+  // A, B and C are Q1's, from views before its plan. Q2's own (D, E, F) aren't detected yet.
+  if (currentQuarter(save) !== '2194-Q1') return;
   const evidence: Record<string, string[]> = {};
   for (const { query, result } of observed) for (const key of evidenceFromQuery(query, view, result)) {
     const promotion = key.startsWith('c:');

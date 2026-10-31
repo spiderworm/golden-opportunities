@@ -136,7 +136,7 @@ describe('persisted quarter transaction', () => {
   it('records commit telemetry without save IDs, seeds, outcomes or plan text', () => {
     vi.mocked(trackServer).mockClear();
     const save = saves.create(); submitPlan(request(save.id), { levers: [] });
-    expect(trackServer).toHaveBeenCalledWith('game_quarter_committed', { leverCount: 0, units: expect.any(Number), durationMs: expect.any(Number) });
+    expect(trackServer).toHaveBeenCalledWith('game_quarter_committed', { quarter: 'Q1', leverCount: 0, units: expect.any(Number), durationMs: expect.any(Number) });
     const logged = JSON.stringify(vi.mocked(trackServer).mock.calls);
     expect(logged).not.toContain(save.id);
     expect(logged).not.toContain('seed'); expect(logged).not.toContain('outcome');
