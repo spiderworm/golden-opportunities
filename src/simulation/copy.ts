@@ -1,6 +1,6 @@
 // Plot's result copy (docs/design/m1-copy.md, sections 4 and 5), filled from the model.
 import { has } from "./plan";
-import type { Assumption, HappenedFacts, LeverId, Plan } from "./types";
+import type { Assumption, HappenedFacts, LeverId, Plan, Q2Facts, Q2Plan } from "./types";
 import { EVENT_HAPPINESS } from "./measures";
 import { OBSERVED_EXTRAS } from "./model";
 
@@ -70,7 +70,7 @@ export function happened(facts: HappenedFacts): string[] {
 }
 
 export interface AssumptionValues {
-  /** Q1 2193's average order value. */
+  /** The quarter of 2193's average order value. */
   averageOrderValue: number;
   /** The change in gross profit the sale makes to the plan's other moves, had it sold 10% or 30% more. */
   saleAt10: number;
@@ -82,24 +82,28 @@ const median = (values: readonly number[]) => {
   return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
 };
 
-/** Every rule, for every plan; the ones the player's plan used are marked. */
-export function assumptions(plan: Plan, v: AssumptionValues): Assumption[] {
-  // null: every plan uses the rule. The Books of the Month run in every plan, scheduled or re-picked.
-  const rules: (Omit<Assumption, "usedByPlan"> & { usedBy: LeverId | null })[] = [
+type Rule = Omit<Assumption, "usedByPlan"> & { usedBy: LeverId | "picks" | null };
+
+/** Every rule, filled for a quarter. null: every plan uses the rule. "picks": a plan with a Book of the Month does. */
+function rules(v: AssumptionValues, quarter: number): Rule[] {
+  const q = `Q${quarter}`;
+  // In Q1 the Books of the Month run in every plan, scheduled or re-picked; from Q2 the calendar starts empty.
+  const picks = quarter === 1 ? null : "picks";
+  return [
     {
       id: "replay",
       source: "setup",
       usedBy: null,
-      text: "Q1 2194 repeats Q1 2193: the same titles, months and weekday pattern, with small random day-to-day changes. Holding course uses the same random draws, so the comparison is fair.",
+      text: `${q} 2194 repeats ${q} 2193: the same titles, months and weekday pattern, with small random day-to-day changes. Holding course uses the same random draws, so the comparison is fair.`,
     },
-    { id: "botm-price", source: "data", usedBy: null, text: "A Book of the Month is 15% off for the whole month. In 2193, one title was featured each month." },
+    { id: "botm-price", source: "data", usedBy: picks, text: "A Book of the Month is 15% off for the whole month. In 2193, one title was featured each month." },
     {
       id: "botm-extra",
       source: "data",
-      usedBy: null,
+      usedBy: picks,
       text: `Each Book of the Month sells extra copies equal to one of the 12 picks from 2193, drawn at random. Those picks sold between ${Math.min(...OBSERVED_EXTRAS)} and ${Math.max(...OBSERVED_EXTRAS)} extra copies; the middle value was ${Math.round(median(OBSERVED_EXTRAS))}.`,
     },
-    { id: "no-cannibalization", source: "assumed", usedBy: null, text: "The extra copies are new sales. They don't take sales from other books." },
+    { id: "no-cannibalization", source: "assumed", usedBy: picks, text: "The extra copies are new sales. They don't take sales from other books." },
     { id: "cost-of-goods", source: "assumed", usedBy: null, text: "Books cost the store 60% of their list price." },
     {
       id: "sale-response",
@@ -111,7 +115,7 @@ export function assumptions(plan: Plan, v: AssumptionValues): Assumption[] {
       id: "event-orders",
       source: "assumed",
       usedBy: "events",
-      text: `Each author night adds between 30 and 70 orders that day, at Q1's average order value of ${cents(v.averageOrderValue)}.`,
+      text: `Each author night adds between 30 and 70 orders that day, at ${q}'s average order value of ${cents(v.averageOrderValue)}.`,
     },
     { id: "event-cost", source: "assumed", usedBy: "events", text: "Each author night costs $200." },
     {
@@ -121,5 +125,35 @@ export function assumptions(plan: Plan, v: AssumptionValues): Assumption[] {
       text: `Readers at an author night enjoy the night out: those visits get ${EVENT_HAPPINESS} extra happiness points.`,
     },
   ];
-  return rules.map(({ usedBy, ...rule }) => ({ ...rule, usedByPlan: usedBy === null || has(plan, usedBy) }));
+}
+
+/** Every rule, for every plan; the ones the player's plan used are marked. */
+export function assumptions(plan: Plan, v: AssumptionValues): Assumption[] {
+  return rules(v, 1).map(({ usedBy, ...rule }) => ({ ...rule, usedByPlan: usedBy === null || (usedBy !== "picks" && has(plan, usedBy)) }));
+}
+
+/** Q2's rules: the Book of the Month rules count only for a plan with a pick. */
+export function q2Assumptions(plan: Q2Plan, v: AssumptionValues): Assumption[] {
+  const used = (usedBy: Rule["usedBy"]) =>
+    usedBy === null || (usedBy === "picks" ? plan.picks.some((p) => p !== null) : usedBy !== "repick" && plan.levers.includes(usedBy));
+  return rules(v, 2).map(({ usedBy, ...rule }) => ({ ...rule, usedByPlan: used(usedBy) }));
+}
+
+const Q2_MONTHS = ["April", "May", "June"];
+
+/** Q2's "What happened": the picks as one move, then the other move; two moves end with their total. */
+export function q2Happened(facts: Q2Facts): string[] {
+  const picks = facts.picks.flatMap((f, m) =>
+    f
+      ? [`In ${Q2_MONTHS[m]}, ${f.title} sold about ${about(f.extra)} extra copies; the discount on ${about(f.baseCopies)} copies that would have sold anyway cost ${money(f.discountCost)}.`]
+      : [],
+  );
+  const others = moveSentences({ events: facts.events, sale: facts.sale, amount: facts.amount });
+  const moves = picks.length ? [[...picks, `Gross profit was ${signedMoney(facts.amount)} compared with holding course.`], ...others] : others;
+  if (moves.length === 0) return ["You left the calendar empty: no Book of the Month in April, May or June."];
+  if (moves.length < 2) return moves.flat();
+  return [
+    ...moves.flatMap((sentences) => sentences.slice(0, -1)),
+    `Together, your two moves changed gross profit by ${signedMoney(facts.amount)} compared with holding course.`,
+  ];
 }

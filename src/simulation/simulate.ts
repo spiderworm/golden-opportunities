@@ -4,28 +4,30 @@ import type { BookshopData, DeepReadonly } from "~/bookshop/types";
 import { assumptions, happened } from "./copy";
 import { reportCard } from "./grading";
 import { ledger, measures, ratingsOf, type Ledger, type Ratings } from "./measures";
-import { baseline, historyOf, leversFor, MONTHS, PICK_DISCOUNT, run, YEAR, type History, type Run } from "./model";
+import { baseline, historyOf, leversFor, PICK_DISCOUNT, run, YEAR, type History, type QuarterNumber, type Run } from "./model";
 import { linesOf, ordersOf, type Order } from "./orders";
 import { has, isPlan } from "./plan";
-import type { HappenedFacts, MeasureId, Metrics, Plan, ReportCard, SimulationResult } from "./types";
+import type { HappenedFacts, MeasureId, Metrics, MonthOutcome, Plan, ReportCard, SimulationResult } from "./types";
 import { MEASURE_IDS } from "./types";
 
-interface Prepared {
+export interface Prepared {
   history: History;
   ratings: Ratings;
-  /** Q1 2193, measured as it was sold. */
+  /** The quarter of 2193, measured as it was sold. */
   lastYear: Record<MeasureId, number>;
   quarterlyAverage: Record<MeasureId, number>;
   averageOrderValue: number;
 }
 
-// The history never changes for a loaded dataset, so its derived values are worked out once.
-const prepared = new WeakMap<DeepReadonly<BookshopData>, Prepared>();
+// The history never changes for a loaded dataset, so its derived values are worked out once per quarter.
+const prepared = new WeakMap<DeepReadonly<BookshopData>, Map<QuarterNumber, Prepared>>();
 
-function prepare(data: DeepReadonly<BookshopData>): Prepared {
-  const cached = prepared.get(data);
+export function prepare(data: DeepReadonly<BookshopData>, quarter: QuarterNumber = 1): Prepared {
+  let byQuarter = prepared.get(data);
+  if (!byQuarter) prepared.set(data, (byQuarter = new Map()));
+  const cached = byQuarter.get(quarter);
   if (cached) return cached;
-  const history = historyOf(data);
+  const history = historyOf(data, quarter);
   const ratings = ratingsOf(data);
   const quarters = [1, 2, 3, 4].map((q) => measures(ordersOf(data.saleLines.filter((l) => l.quarter === q)), ratings));
   const quarterlyAverage = Object.fromEntries(
@@ -39,15 +41,15 @@ function prepare(data: DeepReadonly<BookshopData>): Prepared {
     quarterlyAverage,
     averageOrderValue: ledger(lastYearOrders).revenue / lastYearOrders.length,
   };
-  prepared.set(data, result);
+  byQuarter.set(quarter, result);
   return result;
 }
 
 const HOLD_COURSE: Plan = { levers: [] };
 
-const metricsOf = (l: Ledger): Metrics => ({ ...l });
+export const metricsOf = (l: Ledger): Metrics => ({ ...l });
 
-function cardFor(p: Prepared, r: Run): ReportCard {
+export function cardFor(p: Prepared, r: Run): ReportCard {
   const results = measures(r.orders, p.ratings, r.nights.length, r.nights.reduce((t, n) => t + n.orders, 0));
   return reportCard(
     Object.fromEntries(
@@ -57,7 +59,7 @@ function cardFor(p: Prepared, r: Run): ReportCard {
 }
 
 /** The featured editions' copies that would have sold without the promotion, and what their discount cost. */
-function pickedCopies(r: Run) {
+function pickedCopies(r: Run, months: readonly string[]) {
   let baseCopies = 0;
   let discountCost = 0;
   let extra = 0;
@@ -68,7 +70,7 @@ function pickedCopies(r: Run) {
       extra += 1;
       continue;
     }
-    const isbn = r.picks[MONTHS.indexOf(order.day.slice(5, 7) as (typeof MONTHS)[number])];
+    const isbn = r.picks[months.indexOf(order.day.slice(5, 7))];
     for (const item of order.items)
       if (item.isbn === isbn) {
         baseCopies += 1;
@@ -78,24 +80,37 @@ function pickedCopies(r: Run) {
   return { extra, baseCopies, discountCost };
 }
 
-function factsFor(plan: Plan, r: Run, mine: Ledger, hold: Ledger): HappenedFacts {
+/** The author nights' facts: their own orders, before the sale clones any of them. */
+export function eventFacts(r: Run, mine: Ledger): NonNullable<HappenedFacts["events"]> {
+  const nights = ledger(r.orders.filter((o) => o.kind === "event" && !o.saleClone));
+  const orders = r.nights.reduce((t, n) => t + n.orders, 0);
+  return { nights: r.nights.length, orders, perNight: orders / r.nights.length, gross: nights.grossProfit, eventCosts: mine.eventCosts };
+}
+
+/** The sale's facts, against holding course. */
+export const saleFacts = (mine: Ledger, hold: Ledger): NonNullable<HappenedFacts["sale"]> => ({
+  unitsPct: mine.units / hold.units - 1,
+  perBook: hold.grossProfit / hold.units - mine.grossProfit / mine.units,
+  revPct: mine.revenue / hold.revenue - 1,
+  profitPct: mine.grossProfit / hold.grossProfit - 1,
+});
+
+function factsFor(plan: Plan, r: Run, months: readonly string[], mine: Ledger, hold: Ledger): HappenedFacts {
   const facts: HappenedFacts = { amount: mine.grossProfit - hold.grossProfit };
-  if (plan.levers.length === 0) facts.holdCourse = { ...pickedCopies(r), profit: mine.grossProfit };
-  if (has(plan, "repick")) facts.repick = pickedCopies(r);
-  if (has(plan, "events")) {
-    // The nights' own orders, before the sale clones any of them.
-    const nights = ledger(r.orders.filter((o) => o.kind === "event" && !o.saleClone));
-    const orders = r.nights.reduce((t, n) => t + n.orders, 0);
-    facts.events = { nights: r.nights.length, orders, perNight: orders / r.nights.length, gross: nights.grossProfit, eventCosts: mine.eventCosts };
-  }
-  if (has(plan, "sale"))
-    facts.sale = {
-      unitsPct: mine.units / hold.units - 1,
-      perBook: hold.grossProfit / hold.units - mine.grossProfit / mine.units,
-      revPct: mine.revenue / hold.revenue - 1,
-      profitPct: mine.grossProfit / hold.grossProfit - 1,
-    };
+  if (plan.levers.length === 0) facts.holdCourse = { ...pickedCopies(r, months), profit: mine.grossProfit };
+  if (has(plan, "repick")) facts.repick = pickedCopies(r, months);
+  if (has(plan, "events")) facts.events = eventFacts(r, mine);
+  if (has(plan, "sale")) facts.sale = saleFacts(mine, hold);
   return facts;
+}
+
+/** Revenue and units by month, under the plan and holding course. */
+export function monthlyOf(months: readonly string[], planRun: Run, holdRun: Run): MonthOutcome[] {
+  const monthOf = (orders: readonly Order[], month: string) => {
+    const l = ledger(orders.filter((o) => o.day.slice(5, 7) === month));
+    return { revenue: l.revenue, units: l.units };
+  };
+  return months.map((month) => ({ month: `${YEAR}-${month}`, plan: monthOf(planRun.orders, month), holdCourse: monthOf(holdRun.orders, month) }));
 }
 
 /** Plays Q1 2194 under the plan, and under holding course from the same seed (a 32-bit unsigned integer). */
@@ -116,11 +131,7 @@ export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<Boo
   };
   const withoutSale = profitOf(others);
   const saleChange = (response: number) => profitOf({ levers: [...others.levers, "sale"] }, response) - withoutSale;
-  const facts = factsFor(plan, planRun, mine, hold);
-  const monthOf = (orders: readonly Order[], month: string) => {
-    const l = ledger(orders.filter((o) => o.day.slice(5, 7) === month));
-    return { revenue: l.revenue, units: l.units };
-  };
+  const facts = factsFor(plan, planRun, p.history.months, mine, hold);
 
   return {
     lines: linesOf(planRun.orders, YEAR),
@@ -128,11 +139,7 @@ export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<Boo
     outcome: {
       plan: { levers: [...plan.levers] },
       quarter: `${YEAR}-Q1`,
-      monthly: MONTHS.map((month) => ({
-        month: `${YEAR}-${month}`,
-        plan: monthOf(planRun.orders, month),
-        holdCourse: monthOf(holdRun.orders, month),
-      })),
+      monthly: monthlyOf(p.history.months, planRun, holdRun),
       totals: { plan: metricsOf(mine), holdCourse: metricsOf(hold) },
       reportCard: { plan: cardFor(p, planRun), holdCourse: cardFor(p, holdRun) },
       assumptions: assumptions(plan, { averageOrderValue: p.averageOrderValue, saleAt10: saleChange(0.1), saleAt30: saleChange(0.3) }),

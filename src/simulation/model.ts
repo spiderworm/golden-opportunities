@@ -1,6 +1,7 @@
 // The M1 model (docs/design/m1-slice.md section 4; the order rules are in
-// docs/design/scoring.md, "M1's reduced report card"): Q1 2194 replays Q1
-// 2193, without 2193's Books of the Month, then each option pulls its levers.
+// docs/design/scoring.md, "M1's reduced report card"): a quarter of 2194
+// replays the same quarter of 2193, without 2193's Books of the Month, then
+// each option pulls its levers. M1 plays Q1; every function takes the quarter.
 import type { BookshopData, DeepReadonly, SaleLine } from "~/bookshop/types";
 import { cloneOrder, itemOf, ordersOf, type Item, type Order } from "./orders";
 import { integer, pick, roundRandomly, sampleIndexes, stream, weightedIndex, type Random } from "./random";
@@ -9,7 +10,17 @@ import type { Plan } from "./types";
 
 export const YEAR = 2194;
 export const HISTORY_YEAR = 2193;
+export type QuarterNumber = 1 | 2 | 3 | 4;
+/** Q1's months, January to March. */
 export const MONTHS = ["01", "02", "03"] as const;
+/** A quarter's three months, as MM. */
+export const monthsOf = (quarter: QuarterNumber): string[] =>
+  [0, 1, 2].map((i) => String(3 * (quarter - 1) + i + 1).padStart(2, "0"));
+/**
+ * A seeded stream's name in a quarter. Q1 keeps M1's names, so its draws never
+ * change; later quarters draw from their own streams.
+ */
+export const streamName = (quarter: QuarterNumber, name: string) => (quarter === 1 ? name : `q${quarter}:${name}`);
 export const PICK_DISCOUNT = 0.15;
 export const SALE_DISCOUNT = 0.15;
 /** The share of orders a station-wide sale clones (*assumed*). */
@@ -28,7 +39,7 @@ interface PickSpec {
 const MALLEMAROKING = { title: "The Mallemaroking", format: "Mass market paperback" };
 const RYSTWYTH = { title: "Rystwyth", format: "Hardcover" };
 const PORTMEIRION = { title: "Portmeirion", format: "Mass market paperback" };
-/** January to March. */
+/** January to March 2194. */
 export const SCHEDULED_PICKS: readonly PickSpec[] = [MALLEMAROKING, RYSTWYTH, PORTMEIRION];
 export const QUIET_PICKS: readonly PickSpec[] = [
   { title: "Kalakalal Avenue", format: "Hardcover" },
@@ -41,10 +52,11 @@ const dayOf = (time: number) => new Date(time).toISOString().slice(0, 10);
 const timeOf = (day: string) => Date.parse(`${day}T00:00:00Z`);
 const monthOf = (day: string) => day.slice(5, 7);
 
-/** Every day of Q1 in a year. */
-export function quarterDays(year: number): string[] {
+/** Every day of a quarter (Q1 by default) in a year. */
+export function quarterDays(year: number, quarter: QuarterNumber = 1): string[] {
   const days: string[] = [];
-  for (let t = Date.UTC(year, 0, 1); t < Date.UTC(year, 3, 1); t += DAY) days.push(dayOf(t));
+  const first = 3 * (quarter - 1);
+  for (let t = Date.UTC(year, first, 1); t < Date.UTC(year, first + 3, 1); t += DAY) days.push(dayOf(t));
   return days;
 }
 
@@ -55,7 +67,10 @@ export function replayedDay(day: string): string {
 }
 
 export interface History {
-  /** Q1 2193 as it was sold. */
+  quarter: QuarterNumber;
+  /** The quarter's three months, as MM. */
+  months: readonly string[];
+  /** The quarter of 2193 as it was sold. */
   lastYear: readonly DeepReadonly<SaleLine>[];
   /** A sale line for each edition sold in 2193. */
   template: (isbn: string) => DeepReadonly<SaleLine>;
@@ -64,7 +79,9 @@ export interface History {
   observedPick: (month: string) => string;
 }
 
-export function historyOf(data: DeepReadonly<BookshopData>): History {
+export function historyOf(data: DeepReadonly<BookshopData>, quarter: QuarterNumber = 1): History {
+  const months = monthsOf(quarter);
+  const [from, to] = [`${HISTORY_YEAR}-${months[0]}-01`, quarter === 4 ? `${HISTORY_YEAR + 1}-01-01` : `${HISTORY_YEAR}-${monthsOf((quarter + 1) as QuarterNumber)[0]}-01`];
   const templates = new Map<string, DeepReadonly<SaleLine>>();
   const picks = new Map<string, Set<string>>();
   for (const line of data.saleLines) {
@@ -75,7 +92,9 @@ export function historyOf(data: DeepReadonly<BookshopData>): History {
     }
   }
   return {
-    lastYear: data.saleLines.filter((l) => l.date < `${HISTORY_YEAR}-04-01`),
+    quarter,
+    months,
+    lastYear: data.saleLines.filter((l) => l.date >= from && l.date < to),
     template: (isbn) => {
       const line = templates.get(isbn);
       if (!line) throw new Error(`No 2193 sale of edition ${isbn}`);
@@ -95,15 +114,15 @@ export function historyOf(data: DeepReadonly<BookshopData>): History {
   };
 }
 
-/** Q1 2193 without its Books of the Month: the extra copies removed, the rest back at full price. */
+/** The quarter of 2193 without its Books of the Month: the extra copies removed, the rest back at full price. */
 export function unpromoted(history: History, seed: number): Order[] {
   const removed = new Set<DeepReadonly<SaleLine>>();
   const restored = new Set<DeepReadonly<SaleLine>>();
-  MONTHS.forEach((month, m) => {
+  history.months.forEach((month) => {
     const isbn = history.observedPick(month);
     const lines = history.lastYear.filter((l) => l.isbn === isbn && monthOf(l.date) === month);
     const random = stream(seed, `unpromote:${month}`);
-    const out = new Set(sampleIndexes(random, lines.length, OBSERVED_EXTRAS[m]));
+    const out = new Set(sampleIndexes(random, lines.length, OBSERVED_EXTRAS[Number(month) - 1]));
     lines.forEach((line, i) => (out.has(i) ? removed : restored).add(line));
   });
   // An order left empty disappears.
@@ -115,13 +134,13 @@ export function unpromoted(history: History, seed: number): Order[] {
   }));
 }
 
-/** Q1 2194 as it would go with no Book of the Month: each day replays its 2193 day, with ±3% noise on orders. */
+/** The quarter of 2194 as it would go with no Book of the Month: each day replays its 2193 day, with ±3% noise on orders. */
 export function baseline(history: History, seed: number): Order[] {
   const byDay = new Map<string, Order[]>();
   for (const order of unpromoted(history, seed)) byDay.set(order.day, [...(byDay.get(order.day) ?? []), order]);
-  const random = stream(seed, "noise");
+  const random = stream(seed, streamName(history.quarter, "noise"));
   const orders: Order[] = [];
-  for (const day of quarterDays(YEAR)) {
+  for (const day of quarterDays(YEAR, history.quarter)) {
     const source = byDay.get(replayedDay(day)) ?? [];
     const factor = 1 - NOISE + 2 * NOISE * random();
     const target = roundRandomly(random, source.length * factor);
@@ -132,10 +151,10 @@ export function baseline(history: History, seed: number): Order[] {
   return orders;
 }
 
-/** Tuesday to Thursday of each week of Q1 2194 that has one: 13 weeks. */
-export function eventWeeks(): string[][] {
+/** Tuesday to Thursday of each week of a quarter of 2194 that has one: 13 weeks in Q1. */
+export function eventWeeks(quarter: QuarterNumber = 1): string[][] {
   const weeks = new Map<number, string[]>();
-  for (const day of quarterDays(YEAR)) {
+  for (const day of quarterDays(YEAR, quarter)) {
     const weekday = new Date(timeOf(day)).getUTCDay();
     if (weekday < 2 || weekday > 4) continue;
     const monday = Math.floor((timeOf(day) - ((weekday + 6) % 7) * DAY) / DAY);
@@ -146,14 +165,15 @@ export function eventWeeks(): string[][] {
 
 export interface Run {
   orders: Order[];
-  /** The edition featured each month, January to March, if any. */
-  picks: readonly string[];
+  /** The edition featured each month of the quarter, or null for none. */
+  picks: readonly (string | null)[];
   /** Author nights held, by day, with the orders each added. */
   nights: { day: string; orders: number }[];
 }
 
 export interface Levers {
-  picks: readonly PickSpec[];
+  /** Each month's Book of the Month, by title and format or by ISBN, or null for none. */
+  picks: readonly (PickSpec | string | null)[];
   /** Share of orders a station-wide sale clones, or null for no sale. */
   sale: number | null;
   events: boolean;
@@ -177,8 +197,8 @@ export function run(history: History, base: readonly Order[], seed: number, leve
 
   const nights: Run["nights"] = [];
   if (levers.events) {
-    const random = stream(seed, "events");
-    const weeks = eventWeeks();
+    const random = stream(seed, streamName(history.quarter, "events"));
+    const weeks = eventWeeks(history.quarter);
     for (const w of sampleIndexes(random, weeks.length, EVENT_NIGHTS)) {
       const day = pick(random, weeks[w]);
       const count = integer(random, EVENT_ORDERS.min, EVENT_ORDERS.max);
@@ -190,15 +210,17 @@ export function run(history: History, base: readonly Order[], seed: number, leve
     }
   }
 
-  const picks = levers.picks.map((spec) => history.isbnOf(spec));
-  MONTHS.forEach((month, m) => {
+  // Q2 picks by ISBN: a title can have two editions in one format (Heliotrope Pajamas has two paperbacks).
+  const picks = levers.picks.map((spec) => (spec === null ? null : typeof spec === "string" ? spec : history.isbnOf(spec)));
+  history.months.forEach((month, m) => {
     const isbn = picks[m];
+    if (isbn === null) return;
     for (const order of orders)
       if (monthOf(order.day) === month) for (const item of order.items) if (item.isbn === isbn) item.discount = PICK_DISCOUNT;
     // Scheduled and re-picked titles draw the same count and days from the same stream; only the title differs.
     const random = stream(seed, `pick-extra:${month}`);
     const extra = pick(random, OBSERVED_EXTRAS);
-    const days = quarterDays(YEAR).filter((d) => monthOf(d) === month);
+    const days = quarterDays(YEAR, history.quarter).filter((d) => monthOf(d) === month);
     const weights = days.map((d) => base.filter((o) => o.day === d).length);
     const template = history.template(isbn);
     for (let i = 0; i < extra; i++) {
@@ -208,7 +230,7 @@ export function run(history: History, base: readonly Order[], seed: number, leve
   });
 
   if (levers.sale !== null) {
-    const random = stream(seed, "sale");
+    const random = stream(seed, streamName(history.quarter, "sale"));
     // One draw per order, so a larger response clones a superset of a smaller one's orders.
     // Clones keep their kind: an author night's clone is still an author-night visit.
     const clones = orders.filter(() => random() < levers.sale!).map((o) => cloneOrder(o, { saleClone: true }));
