@@ -53,11 +53,16 @@ const SHAKE = 0.5;
 const MAX_GROW = 1.8;
 const START = 4.2;
 const FOV = 50;
-/** How wide the grip is, tip to tip, against the phone's width: past its sides, so they run off the screen. */
-const HOLD = 1.5;
+/** The palm's width against the phone's width (and height), and how far its middle sits above the words (in palm widths). */
+const PALM_WIDE = 0.4;
+const PALM_TALL = 0.3;
+const PALM_UP = 0.35;
+/** The digits reach this far toward the phone's sides before they bend round them, and grow at most this long. */
+const EDGE_IN = 0.97;
+const MAX_DIGIT = 4;
 /** The thumb's joints: it swings across the palm about its knuckle's X (measured), and curls about Z. */
 const THUMB = 4;
-const THUMB_ACROSS = 2.9;
+const THUMB_ACROSS = 3.1;
 const THUMB_CURL = [0.2, 0.5, 0.6];
 /** How far in front of the head the hand takes hold. */
 const REACH_OUT = 0.7;
@@ -213,10 +218,9 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     // One open hand takes the phone at the bottom of the picture, as a person holds one (David: "open up the
     // hand, face the palm towards the camera, and have the fingers grip one side of the phone, and the thumb the
     // other"): palm to the glass, fingers across to one side and curled round that edge, thumb across to the other
-    // and round it. Its palm fills the bottom of the picture and its fingers and thumb run off the phone's sides
-    // (David: "bring the palm of the hand closer to the camera. We don't need to see as much of the thumb or
-    // fingers"). It's sized to the phone's width, so the grip opens as wide as the phone is, as far as the room
-    // between the robot's head and the words along the bottom allows.
+    // and round it. Its palm is big in the middle of the bottom of the picture (David: "bring the palm of the hand
+    // closer to the camera"), sized to the phone, and its robot fingers and thumb reach out as far as the phone's
+    // sides ("The thumb does not" look like it's on the side), so the grip opens exactly as wide as the phone is.
     const reach = reducedMotion ? 1 : ease(clamp01((t - REACH[0]) / (REACH[1] - REACH[0])));
     const close = reducedMotion ? 1 : ease(clamp01((t - REACH[1] + 0.3) / 0.3));
     const handsAt = Math.max(NEAREST, -work.headAt.z - REACH_OUT);
@@ -236,6 +240,7 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       arm.fingers.forEach((joints, f) => {
         joints.forEach((joint, n) => {
           joint.quaternion.copy(rig.rest[f]![n]!);
+          joint.scale.setScalar(1);
           if (f === THUMB) {
             // Across the palm to the far side, then round that edge toward the glass.
             if (n === 0) joint.rotateX(THUMB_ACROSS * reach);
@@ -251,35 +256,24 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     pose(curl);
     arm.hand.getWorldPosition(work.v);
     const toCam = work.q.copy(cam.quaternion).invert();
-    let left = 0;
-    let right = 0;
-    let low = 0;
-    let high = 0;
-    for (const joints of arm.fingers) {
-      for (const joint of joints) {
-        const p = joint.getWorldPosition(work.w).sub(work.v).applyQuaternion(toCam);
-        left = Math.min(left, p.x);
-        right = Math.max(right, p.x);
-        low = Math.min(low, p.y);
-        high = Math.max(high, p.y);
-      }
-    }
-    // The middle of the palm, between the wrist and the middle finger's knuckle.
+    // The palm, from the wrist to the middle finger's knuckle.
     const palm = arm.fingers[1]![0]!.getWorldPosition(work.w)
       .sub(work.v)
       .applyQuaternion(toCam)
-      .multiplyScalar(0.5);
-    const span = Math.max(1e-3, right - left);
-    // Its top just under the head's band, and the middle of its palm no lower than the words along the bottom.
-    const top = handsAt * tan * (1 - 2 * zone.current.bottom);
-    const words = handsAt * tan * (1 - 2 * zone.current.hold);
-    // Its size: tip to tip past the phone's sides, unless its palm would then sink under the words.
+      .clone();
+    // Its size: the palm across PALM_WIDE of the phone, so a wider phone gets a bigger hand, but no taller than
+    // PALM_TALL of it (a turned phone is short), leaving its fingers and thumb to reach the rest of the way.
     const handSize = Math.max(
       0.5,
-      Math.min((wide * HOLD) / span, (top - words) / Math.max(1e-3, high - palm.y)),
+      Math.min(PALM_WIDE * wide, PALM_TALL * 2 * handsAt * tan) / Math.max(1e-3, Math.abs(palm.x)),
     );
-    // Where: its palm in the middle across, and its top under the head's band.
-    work.target.set(-palm.x * handSize, top - high * handSize, -handsAt);
+    // Where: the middle of the palm in the middle across, just above the words along the bottom.
+    const words = handsAt * tan * (1 - 2 * zone.current.hold);
+    work.target.set(
+      -(palm.x / 2) * handSize,
+      words + PALM_UP * Math.abs(palm.x) * handSize - (palm.y / 2) * handSize,
+      -handsAt,
+    );
     cam.localToWorld(work.target);
     const length =
       shoulder.getWorldPosition(work.v).distanceTo(arm.joints[1].getWorldPosition(work.w)) +
@@ -303,6 +297,24 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       pose(curl);
       // The arm has grown; the hand makes up the rest of its size.
       arm.hand.scale.setScalar(1 + (handSize / grow - 1) * reach);
+      arm.hand.updateMatrixWorld(true);
+      // The fingers reach the phone's left side and the thumb its right, however wide it is: each grows along its
+      // length until the joint where it bends round sits on that side.
+      for (const [f, side] of [
+        [0, -1],
+        [1, -1],
+        [2, -1],
+        [3, -1],
+        [THUMB, 1],
+      ] as const) {
+        const [base, bend] = arm.fingers[f]!;
+        const from = base!.getWorldPosition(work.v).applyMatrix4(cam.matrixWorldInverse).clone();
+        const to = bend!.getWorldPosition(work.w).applyMatrix4(cam.matrixWorldInverse);
+        // The side, at the depth of the bend.
+        const edge = side * -to.z * tan * aspect * EDGE_IN;
+        const k = (edge - from.x) / (to.x - from.x);
+        base!.scale.y = 1 + (MathUtils.clamp(Number.isFinite(k) ? k : 1, 1, MAX_DIGIT) - 1) * reach;
+      }
       arm.hand.updateMatrixWorld(true);
     }
 
