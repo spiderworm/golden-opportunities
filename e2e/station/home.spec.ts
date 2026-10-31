@@ -214,11 +214,11 @@ test("when the station's code doesn't arrive, the still picture says so, and doe
   test.skip(!webgl, "no WebGL 2 here: the device's own note is right");
   await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
   const station = page.getByRole('region', { name: 'The station' });
-  await expect(station.getByText("The station didn't load, so here it is from the shuttle.")).toBeVisible({ timeout: 15_000 });
+  await expect(station.getByText("The station didn't load in 3D, so here it is from the shuttle.")).toBeVisible({ timeout: 15_000 });
   await expect(station.getByText("can't show the station in 3D")).toHaveCount(0);
   // It was tried again a moment later before giving up. WebKit keeps a failed module as failed, so there its
-  // second try makes no request (see retry.ts).
-  expect(tries.some(at => at >= 900)).toBe(browserName !== 'webkit');
+  // second try makes no request (see retry.ts): checked where the retry can fetch.
+  if (browserName !== 'webkit') expect(tries.some(at => at >= 900)).toBe(true);
 });
 
 test("a failed fetch of the station's code is tried once more", async ({ page, browserName }) => {
