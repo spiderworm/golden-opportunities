@@ -87,7 +87,7 @@ test('Q2: pick a book for each month, or none, and one more move, then play the 
   await page.getByRole('checkbox', { name: /^Weekday author nights/ }).check();
   await page.getByRole('checkbox', { name: /^Station-wide sale/ }).click();
   await expect(page.getByRole('checkbox', { name: /^Station-wide sale/ })).not.toBeChecked();
-  await expect(page.getByRole('status').filter({ hasText: 'You can choose one more move.' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'You can choose only one more move.' })).toBeVisible();
   expect(await layout(page)).toEqual(before);
 
   // The confirmation names the plan: each month's pick and the move.
