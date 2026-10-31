@@ -1,0 +1,59 @@
+{
+  "about": "Where each boss portrait in public/bosses/ came from. Plot's descriptions are in docs/design/m1-copy.md section 3 (PR #74); Chart's BossBubble draws them at 64 px in Decide's bubbles and up to 96 px on Result, cropped to a rounded square on #1d2440 inside a border in the boss's tint.",
+  "date": "2026-10-30",
+  "by": "Orbit, in David's Tripo account at his request",
+  "credits": "none (Tripo's free image allowance)",
+  "processed": "research/station-assets/bosses.py: background found as the color connected to the edges and set to #1d2440 with a soft edge; cropped square around the robot (bust-length; the Commerce Office framed on its front unit, so its copies run off the sides); 256 x 256 webp, quality 88. It reproduces these files byte for byte from Tripo's 1024 x 1024 PNGs.",
+  "bosses": {
+    "overall": {
+      "name": "The Station Administrator",
+      "accent": "orange",
+      "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image",
+      "prompt": "A robot boss character for a cozy retro-futuristic space-station bookshop game: the Station Administrator, a tall thin robot built into a desk-shaped chassis, with one large round glowing orange lens for a face and a mechanical arm holding a clipboard; stiff, slightly too formal posture. Bust-length portrait, facing the viewer, centered with generous margin so nothing touches the corners. Stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces, a strong simple silhouette that stays readable as a tiny icon. Body in dark navy and violet, with one bright orange accent. Plain flat solid dark navy blue background, no gradient, no text, no letters, no logo, no ground shadow.",
+      "source": "research/station-assets/bosses/overall.jpg (downscaled to 768 from the 1024 x 1024 PNG)",
+      "file": "public/bosses/overall.webp",
+      "sha256": "183c830de88e260d3dd5e5178c30d662649e47de8c0675c1ecb8d028accafbd4",
+      "bytes": 5506
+    },
+    "profit": {
+      "name": "The Commerce Office",
+      "accent": "green",
+      "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image",
+      "prompt": "A robot boss character for a cozy retro-futuristic space-station bookshop game: the Commerce Office, a stout grey filing-cabinet robot with drawer handles on its body, a speaker grille for a mouth and one bright green status light for an eye; six identical faint copies of it stand in a row behind it, fading into the background. Bust-length portrait, facing the viewer, centered with generous margin so nothing touches the corners. Stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces, a strong simple silhouette that stays readable as a tiny icon. Body in grey, dark navy and violet, with one bright green accent. Plain flat solid dark navy blue background, no gradient, no text, no letters, no logo, no ground shadow.",
+      "source": "research/station-assets/bosses/profit.jpg (downscaled to 768 from the 1024 x 1024 PNG)",
+      "file": "public/bosses/profit.webp",
+      "sha256": "3e3f148f396f6d1a81cfdb230a7797489e9c4e1b60d3e371cdfb0c414fbf6ad1",
+      "bytes": 8054
+    },
+    "culture": {
+      "name": "The Ministry of Culture",
+      "accent": "amber",
+      "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image",
+      "prompt": "A robot boss character for a cozy retro-futuristic space-station bookshop game: the Ministry of Culture, an ornate robot whose head is a white marble classical bust with a dignified expression, wearing an amber-gold monocle, its navy robot shoulders trimmed in amber, holding a tiny rolled scroll in one small mechanical hand. Bust-length portrait, facing the viewer, centered with generous margin so nothing touches the corners. Stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces, a strong simple silhouette that stays readable as a tiny icon. Body in dark navy and violet, with one bright amber accent. Plain flat solid dark navy blue background, no gradient, no text, no letters, no logo, no ground shadow.",
+      "source": "research/station-assets/bosses/culture.jpg (downscaled to 768 from the 1024 x 1024 PNG)",
+      "file": "public/bosses/culture.webp",
+      "sha256": "6983a1b460bbac5e1992eafb213de3e0eff5f23458f5e87f45532ba799e98678",
+      "bytes": 7182
+    },
+    "happiness": {
+      "name": "The Readers' Guild survey drone",
+      "accent": "pink",
+      "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image",
+      "prompt": "A robot boss character for a cozy retro-futuristic space-station bookshop game: the Readers' Guild survey drone, a small round hovering drone with one big swiveling camera eye glowing pink, tiny propeller rings, holding a clipboard in a little arm, with a five-star rating dial with pink stars on its front. Close-up portrait of the whole drone, facing the viewer, centered with generous margin so nothing touches the corners. Stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces, a strong simple silhouette that stays readable as a tiny icon. Body in dark navy and violet, with one bright pink accent. Plain flat solid dark navy blue background, no gradient, no text, no letters, no logo, no ground shadow.",
+      "source": "research/station-assets/bosses/happiness.jpg (downscaled to 768 from the 1024 x 1024 PNG)",
+      "file": "public/bosses/happiness.webp",
+      "sha256": "c7a49c3b538d919176a3e772ab2c9ce1b8abdef3b56f0ee23dc4121804874fc7",
+      "bytes": 5620
+    },
+    "readers": {
+      "name": "The Throughput Subcommittee",
+      "accent": "blue",
+      "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image",
+      "prompt": "A robot boss character for a cozy retro-futuristic space-station bookshop game: the Throughput Subcommittee, a robot shaped like a turnstile, with three metal turnstile arms as its shoulders and arms, a boxy head with two small square eyes, and a glowing blue digital counter screen on its chest. Bust-length portrait, facing the viewer, centered with generous margin so nothing touches the corners. Stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces, a strong simple silhouette that stays readable as a tiny icon. Body in dark navy and violet, with one bright blue accent. Plain flat solid dark navy blue background, no gradient, no text, no letters, no logo, no ground shadow.",
+      "source": "research/station-assets/bosses/readers.jpg (downscaled to 768 from the 1024 x 1024 PNG)",
+      "file": "public/bosses/readers.webp",
+      "sha256": "cc35200805e54cb874ee037eb9e4e3218f54c472858f9089347de10ea2c57b70",
+      "bytes": 6352
+    }
+  }
+}
