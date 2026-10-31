@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 import { NavLink, useLocation, useMatches, useNavigate } from "react-router";
 
 import { Icon } from "./icons";
-import { MusicPopup } from "./MusicPopup";
+import { MusicDock } from "./MusicDock";
 import { navItems } from "./nav";
 import { NotificationsBell, type StationNotification } from "./NotificationsBell";
 import { formatStationDate } from "./station-date";
@@ -32,6 +32,7 @@ export interface ShellProps {
 
 export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, track, children }: ShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const musicLayer = useRef<HTMLDivElement>(null);
   const title = usePageTitle();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -94,44 +95,49 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
           </button>
         </div>
 
-        <nav id="main-menu" className={styles.menu} aria-label="Main menu">
-          <div className={styles.brand}>
-            Orbital <span className={styles.brandLight}>Books</span>
-          </div>
-          <div className={styles.menuHeading}>Main menu</div>
-          <ul className={styles.menuList}>
-            {navItems.map((item) => (
-              <li key={item.label}>
-                {item.to ? (
-                  <NavLink
-                    to={item.to}
-                    end
-                    className={({ isActive }) => (isActive ? `${styles.menuItem} ${styles.active}` : styles.menuItem)}
-                    title={collapsed ? item.label : undefined}
-                    onClick={() => track("nav_selected", { item: item.label })}
-                  >
-                    <Icon name={item.icon} />
-                    <span className={styles.menuLabel}>{item.label}</span>
-                  </NavLink>
-                ) : (
-                  <span
-                    className={`${styles.menuItem} ${styles.soon}`}
-                    aria-disabled="true"
-                    title={collapsed ? `${item.label} (coming soon)` : undefined}
-                  >
-                    <Icon name={item.icon} />
-                    <span className={styles.menuLabel}>{item.label}</span>
-                    <span className={styles.soonBadge}>Soon</span>
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <div className={styles.menu}>
+          <nav id="main-menu" className={styles.menuNav} aria-label="Main menu">
+            <div className={styles.brand}>
+              Orbital <span className={styles.brandLight}>Books</span>
+            </div>
+            <div className={styles.menuHeading}>Main menu</div>
+            <ul className={styles.menuList}>
+              {navItems.map((item) => (
+                <li key={item.label}>
+                  {item.to ? (
+                    <NavLink
+                      to={item.to}
+                      end
+                      className={({ isActive }) => (isActive ? `${styles.menuItem} ${styles.active}` : styles.menuItem)}
+                      title={collapsed ? item.label : undefined}
+                      onClick={() => track("nav_selected", { item: item.label })}
+                    >
+                      <Icon name={item.icon} />
+                      <span className={styles.menuLabel}>{item.label}</span>
+                    </NavLink>
+                  ) : (
+                    <span
+                      className={`${styles.menuItem} ${styles.soon}`}
+                      aria-disabled="true"
+                      title={collapsed ? `${item.label} (coming soon)` : undefined}
+                    >
+                      <Icon name={item.icon} />
+                      <span className={styles.menuLabel}>{item.label}</span>
+                      <span className={styles.soonBadge}>Soon</span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </nav>
+          {/* Beside the menu's landmark, not in it (Chart): the music isn't navigation. */}
+          <MusicDock collapsed={collapsed} layer={musicLayer} />
+        </div>
       </aside>
 
       <div className={styles.main}>
-        <MusicPopup />
+        {/* The full player floats over the page from here; the dock is in the menu. */}
+        <div ref={musicLayer} className={styles.musicLayer} />
         <header className={styles.header}>
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.headerTools}>

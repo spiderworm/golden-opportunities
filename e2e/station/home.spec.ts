@@ -124,3 +124,63 @@ test('on first arrival the Commerce Office sends its memo once; the standing ord
   await expect(order.getByRole('link', { name: 'Open the ledgers' })).toHaveCount(0);
   await expect(order.getByRole('button', { name: 'Read the memo' })).toBeVisible();
 });
+
+test('coming back to the station resumes the scene where it was left', async ({ page }) => {
+  // Lets the test read the canvas between frames. Only in this test's browser.
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, kind: string, options?: object) {
+      return getContext.call(this, kind, kind === 'webgl2' ? { ...options, preserveDrawingBuffer: true } : options);
+    } as typeof getContext;
+  });
+  await page.goto('/?analytics-test=1');
+  await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
+  const station = page.getByRole('region', { name: 'The station' });
+  const control = station.getByRole('button', { name: /Go inside|Step outside/ });
+  const still = station.getByText("can't show the station in 3D");
+  await expect(control.or(still)).toBeVisible({ timeout: 15_000 });
+  test.skip(await still.isVisible(), 'no WebGL 2 here: no scene to resume');
+  await expect(station).toHaveAttribute('data-drawn', 'true', { timeout: 30_000 });
+  // Let the shoppers, robots and station move well away from where they start.
+  await page.waitForTimeout(6_000);
+  await page.getByRole('link', { name: 'Investigate' }).click();
+  await expect(station).toHaveCount(0);
+  await page.waitForTimeout(1_000);
+
+  // The frame kept as the player left, against the new scene's first drawn frame,
+  // both small and grey. Time stands still while the player is away, so they should match.
+  const difference = await page.evaluate(async () => {
+    const grey = (source: CanvasImageSource) => {
+      const small = document.createElement('canvas');
+      small.width = 96;
+      small.height = 64;
+      const g = small.getContext('2d')!;
+      g.drawImage(source, 0, 0, small.width, small.height);
+      const { data } = g.getImageData(0, 0, small.width, small.height);
+      return Array.from({ length: data.length / 4 }, (_, i) => (data[i * 4]! + data[i * 4 + 1]! + data[i * 4 + 2]!) / 3);
+    };
+    [...document.querySelectorAll('a')].find(a => a.textContent?.trim() === 'Station')!.click();
+    let held: string | undefined;
+    const first = await new Promise<number[]>(done => {
+      const look = () => {
+        const section = document.querySelector<HTMLElement>('section[aria-label="The station"]');
+        held ??= section?.querySelector('img')?.src;
+        if (section?.dataset.drawn) done(grey(section.querySelector('canvas')!));
+        else requestAnimationFrame(look);
+      };
+      look();
+    });
+    if (!held) return null;
+    const picture = new Image();
+    picture.src = held;
+    await picture.decode();
+    const kept = grey(picture);
+    return kept.reduce((sum, v, i) => sum + Math.abs(v - first[i]!), 0) / kept.length;
+  });
+  // Measured on 30 Oct (mean grey difference of 255): a scene that restarts
+  // differs by about 11.5 (webkit) to 16.5 (chromium); a resumed one by about
+  // 1.2 (webkit) to 7.5 (chromium, whose software rendering takes a few slow
+  // frames between the first draw and this read).
+  expect(difference).not.toBeNull();
+  expect(difference!).toBeLessThan(10);
+});

@@ -16,6 +16,7 @@ import { Bookshop } from "./bookshop";
 import { ROOM, smoothstep } from "./layout";
 import { selfLit, useModelParts } from "./models";
 import { SHELF_HEIGHT, SHELF_UNITS } from "./shelves";
+import { kept } from "./world";
 
 // The shop's little flying robots. They float above the shoppers' heads and
 // keep the place tidy: they fetch books left lying about and slide them back
@@ -98,21 +99,24 @@ export function Robots({ shop }: { shop: Bookshop }) {
     [geometry, materials],
   );
 
-  const robots = useMemo<Robot[]>(
+  // Where they are and what they're doing outlives the canvas (see world.ts).
+  const robots = useMemo(
     () =>
-      HOMES.map((home, i) => ({
-        at: home.clone(),
-        yaw: Math.PI,
-        tilt: 0,
-        // Staggered starts, so they don't all set off at once.
-        legs: [{ to: home.clone(), hold: 0.5 + i * 1.5 }],
-        held: -1,
-        carrying: -1,
-        beam: null,
-      })),
+      kept<Robot[]>("robots", () =>
+        HOMES.map((home, i) => ({
+          at: home.clone(),
+          yaw: Math.PI,
+          tilt: 0,
+          // Staggered starts, so they don't all set off at once.
+          legs: [{ to: home.clone(), hold: 0.5 + i * 1.5 }],
+          held: -1,
+          carrying: -1,
+          beam: null,
+        })),
+      ),
     [],
   );
-  const busy = useMemo(() => ({ polishing: -1, dusting: new Set<number>() }), []);
+  const busy = useMemo(() => kept("robot chores", () => ({ polishing: -1, dusting: new Set<number>() })), []);
   const work = useMemo(() => ({ dummy: new Object3D(), q: new Quaternion(), v: new Vector3(), m: new Matrix4() }), []);
 
   /** Fetch a stray book and put it back in its gap. */

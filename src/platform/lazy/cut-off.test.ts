@@ -12,8 +12,8 @@ describe("cutOff", () => {
     const { cutOff } = await import("./cut-off");
     const failed = new TypeError("Importing a module script failed.");
 
-    expect(() => cutOff("music popup")(failed)).toThrow(failed);
-    expect(track).toHaveBeenCalledWith("lazy_import_failed", { what: "music popup" });
+    expect(() => cutOff("music dock")(failed)).toThrow(failed);
+    expect(track).toHaveBeenCalledWith("lazy_import_failed", { what: "music dock" });
 
     track.mockClear();
     vi.useFakeTimers();
