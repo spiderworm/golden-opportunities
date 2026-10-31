@@ -57,14 +57,31 @@ function pickFacts(r: Run, months: readonly string[], candidates: ReadonlyMap<st
   });
 }
 
-/** Plays Q2 2194 under the plan, and under holding course (the empty calendar) from the same seed. */
-export function simulateQ2(plan: Q2Plan, seed: number, data: DeepReadonly<BookshopData>): Q2SimulationResult {
-  if (!isQ2Plan(plan)) throw new Error("Invalid Q2 plan: three months of an ISBN or null, and at most one of events or sale");
+/** Why a plan can't be played: its shape, an edition not sold in 2193, or one title picked twice. */
+export type Q2PlanProblem = "shape" | "unknown-edition" | "same-title";
+
+const PROBLEMS: Record<Q2PlanProblem, string> = {
+  shape: "three months of an ISBN or null, and at most one of events or sale",
+  "unknown-edition": "a pick isn't an edition sold in 2193",
+  "same-title": "the same title picked twice",
+};
+
+/** The player's mistake, if any, so the game can refuse the plan (a 400) before simulating; null for a playable plan. */
+export function q2PlanProblem(plan: unknown, data: DeepReadonly<BookshopData>): Q2PlanProblem | null {
+  if (!isQ2Plan(plan)) return "shape";
   const candidates = new Map(q2Candidates(data).map((c) => [c.isbn, c]));
   const chosen = plan.picks.filter((isbn): isbn is string => isbn !== null);
-  if (!chosen.every((isbn) => candidates.has(isbn))) throw new Error("Invalid Q2 plan: a pick isn't an edition sold in 2193");
-  if (new Set(chosen.map((isbn) => candidates.get(isbn)!.bookId)).size !== chosen.length)
-    throw new Error("Invalid Q2 plan: the same title picked twice");
+  if (!chosen.every((isbn) => candidates.has(isbn))) return "unknown-edition";
+  if (new Set(chosen.map((isbn) => candidates.get(isbn)!.bookId)).size !== chosen.length) return "same-title";
+  return null;
+}
+
+/** Plays Q2 2194 under the plan, and under holding course (the empty calendar) from the same seed. Throws for a plan with a problem. */
+export function simulateQ2(plan: Q2Plan, seed: number, data: DeepReadonly<BookshopData>): Q2SimulationResult {
+  const problem = q2PlanProblem(plan, data);
+  if (problem) throw new Error(`Invalid Q2 plan: ${PROBLEMS[problem]}`);
+  const candidates = new Map(q2Candidates(data).map((c) => [c.isbn, c]));
+  const chosen = plan.picks.filter((isbn) => isbn !== null);
 
   const p = prepare(data, QUARTER);
   const base = baseline(p.history, seed);
