@@ -19,8 +19,9 @@ export default defineConfig({
   ],
   webServer: {
     env: { ORBITAL_ANALYTICS: 'off', ORBITAL_ASSISTANT_PROVIDER: 'fake' },
-    command: 'npm run dev -- --host 127.0.0.1 --port 5187 --strictPort',
+    command: 'npm run build && node e2e/server.mjs',
     url: 'http://127.0.0.1:5187/?analytics-test=1',
     reuseExistingServer: false,
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
   },
 });
