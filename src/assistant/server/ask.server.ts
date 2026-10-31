@@ -11,7 +11,10 @@ import { Refs, scrubDeep, sentenceGate } from "./figures.server.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
 
-export type ServerTrack = (event: string, props?: Record<string, string | number | boolean>) => void;
+export type ServerTrack = (event: string, props?: Record<string, string | number | boolean>, options?: { hold?: "agent_text" }) => void;
+
+/** The most of a withheld sentence the held record keeps. */
+const WITHHELD_KEPT = 1_000;
 
 export const MAX_BODY = 16_384;
 
@@ -202,7 +205,11 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     // Figures come only by ref from this answer's successful lookups; a sentence with a figure or direction of
     // the model's own is withheld (figures.server.ts).
     const refs = new Refs();
-    const gate = sentenceGate(refs, hide);
+    // Each withheld sentence is kept on this machine only, held like the player's own text (never sent), so the
+    // filter's catches can be read: advice it stopped, or a harmless word it shouldn't have (Probe's Q2 red-team).
+    const gate = sentenceGate(refs, hide, (sentence) =>
+      track("assistant_sentence_withheld", { text: sentence.slice(0, WITHHELD_KEPT), chars: sentence.length, kind: questionKind(input.question) }, { hold: "agent_text" }),
+    );
     let last = "";
     let afterTool = false;
     return ndjson<WireEvent>(

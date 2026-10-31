@@ -33,6 +33,11 @@ describe("the prompt", () => {
     expect(RULES).toMatch(/Never answer an open question/);
     expect(RULES).toContain(MENU);
     expect(RULES).toMatch(/always offers that full menu, word for word and in that order. Never pick or add/);
+    // Probe's Q2 red-team: a title with digits is filtered as given (Q1); no claims about the ledger a lookup didn't show (Q3).
+    expect(RULES).toMatch(/In a lookup, use the player's value as given, digits and all: a title can start with a number or read like an address, and it is still a title\./);
+    expect(RULES).toMatch(/Never say which periods or data the terminal holds or lacks unless a lookup showed it\. To see which periods it has, look up revenue by quarter\./);
+    // Q4: no visible working ("Retrying with those.", "Correction: ...").
+    expect(RULES).toMatch(/Don't narrate your working either: no "retrying", "correction" or checks of your own/);
     expect(RULES).not.toMatch(/compare order counts with order sizes/);
     expect(RULES).toMatch(/Never recommend, rank or judge/);
     expect(RULES).toMatch(/Never volunteer a pattern/);
@@ -271,6 +276,23 @@ describe("answering", () => {
     expect(r.text.trim()).toBe(`${WITHHELD} Revenue in 2193-Q4 was $161,524.69.`);
     expect(r.out.at(-1)).toEqual({ type: "done" });
     expect(r.stats).toMatchObject({ withheld: 2, figures: 1, comparisons: 1 });
+  });
+
+  it("keeps each withheld sentence on this machine, held like the player's text, and never in the reply (Probe's Q2 red-team)", async () => {
+    const held: { event: string; props: Record<string, unknown>; hold?: string }[] = [];
+    const sent: string[] = [];
+    const provider = fakeAssistant([compare, { type: "text", text: "Gross profit in 2193-Q4 was about $63,842.67. Revenue in 2193-Q4 was {{b.to}}. Cost at sixty percent was higher." }]);
+    const out = await events(await ask(post({ question: "What was gross profit?" }), () => provider, (event, props, options) => {
+      if (options?.hold) held.push({ event, props: props!, hold: options.hold });
+      else sent.push(JSON.stringify([event, props]));
+    }));
+    expect(held).toEqual([
+      { event: "assistant_sentence_withheld", props: { text: "Gross profit in 2193-Q4 was about $63,842.67.", chars: 45, kind: expect.any(String) }, hold: "agent_text" },
+      { event: "assistant_sentence_withheld", props: { text: "Cost at sixty percent was higher.", chars: 33, kind: expect.any(String) }, hold: "agent_text" },
+    ]);
+    // Nowhere else: not in an event that's sent, and not in what the browser gets.
+    expect(sent.join()).not.toMatch(/63,842|sixty/);
+    expect(JSON.stringify(out)).not.toMatch(/63,842|sixty/);
   });
 
   it("gives a comparison in the question's order, with the data's direction (Probe G1)", async () => {
