@@ -101,5 +101,10 @@ describe("pins saved before months had a year", () => {
     expect(parsePinSpec({ title: "Jan to Feb", kind: "comparison", comparison: { measure: "revenue", across: "month", from: "01", to: "02", by: [] } })).toMatchObject({ comparison: { from: "2193-01", to: "2193-02" } });
     expect(parsePinSpec({ title: "Q3", kind: "comparison", comparison: { measure: "revenue", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: [] } })).toMatchObject({ comparison: { from: "2193-Q3" } });
     expect(parsePins(JSON.stringify([{ id: "p", pinnedBy: "player", title: "Old", kind: "bar", query: { measure: "units", by: ["weekday"], filter: { month: ["12"] } } }]))[0]).toMatchObject({ query: { filter: { month: ["2193-12"] } } });
+    // A restored Dewey lookup still holds "12": read first, it keys like the stored pin, so it shows as pinned (Sage).
+    const old: PinSpec = { title: "Old", kind: "bar", query: { measure: "units", by: ["weekday"], filter: { month: ["12"] } } };
+    const stored = parsePins(JSON.stringify([{ id: "p", pinnedBy: "dewey", ...old }]))[0]!;
+    expect(pinKey(parsePinSpec(old)!)).toBe(pinKey(stored));
+    expect(pinKey(old)).not.toBe(pinKey(stored));
   });
 });
