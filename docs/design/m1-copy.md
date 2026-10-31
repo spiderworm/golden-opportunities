@@ -140,6 +140,17 @@ Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events
 | Nothing chosen | `Hold course: the schedule runs as it is.` |
 | Trying to choose a third | `You can choose up to two moves.` |
 
+**The requisition form.** David asked to make the moves area "more intersting looking", so the moves are set as a requisition form the bosses issue: a dark laminated sheet with a serial strip, ruled option boxes, and a rubber stamp on each chosen move. The form's chrome is decoration. Every fact, the rule line and the move texts stay as above.
+
+| Element | String |
+| --- | --- |
+| Form header (top right, two lines) | `THROUGHPUT SUBCOMMITTEE` / `FORM TS-2: REQUISITION OF MOVES` |
+| Serial (by the barcode) | `LKS-2194-Q1-0002` |
+| Stamp on a chosen move (`aria-hidden`; the checkbox carries the state) | `REQUISITIONED` |
+| Footer (small print under the boxes) | `Two moves maximum. Filed requisitions are final.` |
+
+The submit button stays `Submit plan`, so it matches the confirm step ("Submit this plan?").
+
 | Element | String |
 | --- | --- |
 | Button | `Submit plan` |
