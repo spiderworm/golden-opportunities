@@ -1,8 +1,9 @@
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef, type RefObject } from "react";
 import type { DirectionalLight, Group } from "three";
 
 import { track } from "~/platform/analytics/analytics.client";
+import { holdFrame } from "../held-frame";
 import { sceneLevels } from "../scene-params";
 import { Bookshop } from "./bookshop";
 import { CameraRig, SUN_INTENSITY } from "./CameraRig";
@@ -31,6 +32,10 @@ export interface StationSceneProps {
   reducedMotion: boolean;
   onReady: (gl: WebGL2RenderingContext) => void;
   onSettled: (view: StationViewpoint) => void;
+  /** Called once the scene, models and all, has drawn its first frame. */
+  onDrawn: () => void;
+  /** Set to a function that keeps a picture of the scene (see held-frame.ts). */
+  hold: RefObject<(() => void) | null>;
   /** A line of live figures (fps, draw calls) for the ?stats overlay. */
   statsLine?: RefObject<HTMLElement | null>;
 }
@@ -77,6 +82,7 @@ export default function StationScene(props: StationSceneProps) {
             <DustMotes />
             <Props />
           </group>
+          <FirstFrame onDrawn={props.onDrawn} hold={props.hold} />
         </Suspense>
       </group>
       <Suspense fallback={null}>
@@ -96,6 +102,29 @@ function Spinner({ station }: { station: RefObject<Group | null> }) {
   useFrame(({ clock }) => {
     if (station.current) station.current.rotation.y = STATION_START_ANGLE + STATION_SPIN * clock.elapsedTime;
   });
+  return null;
+}
+
+/**
+ * Tells the Station screen when the scene has drawn (its picture of the last
+ * visit can go), and gives it a way to keep a picture of this one.
+ */
+function FirstFrame({ onDrawn, hold }: Pick<StationSceneProps, "onDrawn" | "hold">) {
+  const { gl, scene, camera } = useThree();
+  const frames = useRef(0);
+  // Frame callbacks run before the frame draws, so the second one follows the first drawn frame.
+  useFrame(() => {
+    if (++frames.current === 2) onDrawn();
+  });
+  useEffect(() => {
+    hold.current = () => {
+      gl.render(scene, camera);
+      holdFrame(gl.domElement);
+    };
+    return () => {
+      hold.current = null;
+    };
+  }, [gl, scene, camera, hold]);
   return null;
 }
 

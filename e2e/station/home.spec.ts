@@ -47,3 +47,50 @@ test('the station opens inside, then wherever the player left it', async ({ page
   await page.reload();
   await expect(control).toHaveText('Step outside', { timeout: 15_000 });
 });
+
+test('coming back to the station shows its last frame until the scene draws again', async ({ page }) => {
+  // Counts the scene's draw calls, so the page can tell when the new canvas has drawn.
+  await page.addInitScript(() => {
+    const gl = WebGL2RenderingContext.prototype;
+    for (const name of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced'] as const) {
+      const draw = gl[name] as (...args: unknown[]) => void;
+      (gl as unknown as Record<string, unknown>)[name] = function (this: WebGL2RenderingContext, ...args: unknown[]) {
+        (window as unknown as { draws: number }).draws = ((window as unknown as { draws?: number }).draws ?? 0) + 1;
+        return draw.apply(this, args);
+      };
+    }
+  });
+  await page.goto('/?analytics-test=1');
+  const station = page.getByRole('region', { name: 'The station' });
+  const control = station.getByRole('button', { name: /Go inside|Step outside/ });
+  const still = station.getByText("can't show the station in 3D");
+  await expect(control.or(still)).toBeVisible({ timeout: 15_000 });
+  test.skip(await still.isVisible(), 'no WebGL 2 here: no scene to hold a frame of');
+  // The models load after the control appears; a frame is only kept once the scene has drawn them.
+  await expect(station).toHaveAttribute('data-drawn', 'true', { timeout: 30_000 });
+
+  await page.getByRole('link', { name: 'Investigate' }).click();
+  await expect(station).toHaveCount(0);
+  // Every animation frame from the click until the new scene has drawn: what's in the station's place?
+  const frames = await page.evaluate(async () => {
+    const w = window as unknown as { draws: number };
+    w.draws = 0;
+    const seen: string[] = [];
+    [...document.querySelectorAll('a')].find(a => a.textContent?.trim() === 'Station')!.click();
+    const started = performance.now();
+    await new Promise<void>(done => {
+      const look = () => {
+        const section = document.querySelector('section[aria-label="The station"]');
+        if (section) seen.push(section.querySelector('img') ? 'held' : w.draws > 0 ? 'drawn' : 'empty');
+        if (seen.at(-1) === 'drawn' || performance.now() - started > 20_000) done();
+        else requestAnimationFrame(look);
+      };
+      look();
+    });
+    return seen;
+  });
+  expect(frames.at(-1)).toBe('drawn');
+  expect(frames.filter(frame => frame === 'empty')).toEqual([]);
+  expect(frames).toContain('held');
+  await expect(station.locator('img')).toHaveCount(0);
+});

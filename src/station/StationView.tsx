@@ -1,8 +1,9 @@
-import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 
 import { track } from "~/platform/analytics/analytics.client";
 import type { StationViewpoint } from "./scene/StationScene";
+import { heldFrame } from "./held-frame";
 import { StationPoster } from "./StationPoster";
 import { FIRST_VIEW, rememberedView, rememberView } from "./view-memory";
 import { canRenderWebGL2 } from "./webgl";
@@ -12,7 +13,8 @@ import styles from "./StationView.module.css";
 // browser has shown it can draw them. Without WebGL 2 (or if the scene
 // fails) the player sees a still picture instead. The camera stays where it
 // is until the player moves it: inside on a first visit, then wherever they
-// left it last time.
+// left it last time. Coming back to the screen, the last frame of the
+// previous visit stays up until the new scene has drawn.
 const StationScene = lazy(() => import("./scene/StationScene"));
 
 type Support = "checking" | "3d" | "static";
@@ -31,6 +33,9 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
   const [reducedMotion, setReducedMotion] = useState(false);
   const [view, setView] = useState<StationViewpoint>(FIRST_VIEW);
   const [ready, setReady] = useState(false);
+  const [held] = useState(heldFrame);
+  const [drawn, setDrawn] = useState(false);
+  const hold = useRef<(() => void) | null>(null);
   const moving = useRef<{ to: StationViewpoint; trigger: string; started: number } | null>(null);
   const statsLine = useRef<HTMLParagraphElement>(null);
   const [params] = useSearchParams();
@@ -46,6 +51,19 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
     setSupport(mode);
     track("station_viewed", { mode, reducedMotion: reduced, view: opening });
   }, []);
+
+  // Keep a picture of the station as the player leaves. A layout effect's
+  // cleanup runs before the canvas's own unmount takes the scene apart.
+  useLayoutEffect(
+    () => () => {
+      try {
+        hold.current?.();
+      } catch {
+        // A lost context has nothing worth keeping.
+      }
+    },
+    [],
+  );
 
   const move = useCallback((to: StationViewpoint) => {
     moving.current = { to, trigger: "button", started: performance.now() };
@@ -67,7 +85,7 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
 
   const next: StationViewpoint = view === "inside" ? "outside" : "inside";
   return (
-    <section className={styles.view} aria-label="The station">
+    <section className={styles.view} aria-label="The station" data-drawn={drawn || undefined}>
       {support === "3d" ? (
         <SceneBoundary onError={onFailed}>
           <Suspense fallback={<StationPoster />}>
@@ -79,6 +97,8 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
               reducedMotion={reducedMotion}
               onReady={() => setReady(true)}
               onSettled={onSettled}
+              onDrawn={() => setDrawn(true)}
+              hold={hold}
               statsLine={showStats ? statsLine : undefined}
             />
           </Suspense>
@@ -86,6 +106,7 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
       ) : (
         <StationPoster note={support === "static" ? "This device can't show the station in 3D, so here it is from the shuttle." : undefined} />
       )}
+      {held && !drawn && support !== "static" && <img className={styles.held} src={held} alt="" />}
       <p className={styles.place}>Orbital Books, Ring C, Berth 14</p>
       {support === "3d" && ready && (
         <button
