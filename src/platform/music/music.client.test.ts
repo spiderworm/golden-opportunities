@@ -44,6 +44,8 @@ describe("loadMusic", () => {
       base: "/music/",
       songs: [{ id: "nebula-waltz", file: "nebula-waltz.mp3", title: "Nebula Waltz" }],
       track,
+      remember: true,
+      oneTab: true,
     });
   });
 
