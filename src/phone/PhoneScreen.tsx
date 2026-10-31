@@ -1,6 +1,7 @@
-import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { track } from "~/platform/analytics/analytics.client";
+import { PHONE_EVENT } from "~/platform/phone";
 import { BossBubble } from "~/platform/bosses/BossBubble";
 import { canRenderWebGL2 } from "~/platform/webgl";
 import { PHONE_COPY } from "./copy";
@@ -9,7 +10,7 @@ import styles from "./PhoneScreen.module.css";
 
 // What a phone gets instead of the game (m1-copy section 8): the Throughput
 // Subcommittee reaches out of the screen, grabs the phone in its claw, and
-// says what it thinks of it. It's always in the page, and its stylesheet
+// says what it thinks of it: the same Tripo robot as on Decide. It's always in the page, and its stylesheet
 // shows it only on a phone, so a phone never sees the game's pages flash up
 // before the scripts run. The 3D scene loads only once the browser has said
 // this is a phone that can draw it; otherwise the boss stands still.
@@ -18,42 +19,84 @@ const PhoneScene = lazy(() => import("./PhoneScene"));
 export function PhoneScreen({ active }: { /** This is a phone: draw the scene and say so to analytics. */ active: boolean }) {
   const [scene, setScene] = useState<"still" | "3d">("still");
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [grabbed, setGrabbed] = useState(false);
+  // Whether the 3D scene has drawn: until then the still picture is what's there, and its name is right.
+  const [drawn, setDrawn] = useState(false);
+  // The boss speaks at once over the still picture; in 3D, when the claw closes or after 2.5 s,
+  // whichever is first. Once it has spoken, it stays spoken (m1-copy section 8).
+  const [speaking, setSpeaking] = useState(true);
+  const speak = useCallback(() => setSpeaking(true), []);
 
   useEffect(() => {
     if (!active) return;
-    track("phone_blocked", { size: sizeBucket(innerWidth, innerHeight) });
+    track(PHONE_EVENT, { size: sizeBucket(innerWidth, innerHeight) });
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     setReducedMotion(reduced);
-    setGrabbed(reduced);
-    if (canRenderWebGL2()) setScene("3d");
+    if (!canRenderWebGL2()) return;
+    setScene("3d");
+    if (reduced) return;
+    setSpeaking(false);
+    const soon = setTimeout(speak, 2500);
+    return () => clearTimeout(soon);
+  }, [active, speak]);
+
+  // The band between the bubble and the fact line, where the robot's head is kept (shares of the height).
+  const bubble = useRef<HTMLDivElement>(null);
+  const fact = useRef<HTMLParagraphElement>(null);
+  const sceneBox = useRef<HTMLDivElement>(null);
+  const zone = useRef({ top: 0.3, bottom: 0.82 });
+  useEffect(() => {
+    if (!active) return;
+    const measure = () => {
+      const high = innerHeight || 1;
+      zone.current = {
+        top: (bubble.current?.getBoundingClientRect().bottom ?? high * 0.3) / high,
+        bottom: (fact.current?.getBoundingClientRect().top ?? high * 0.82) / high,
+      };
+    };
+    measure();
+    const resized = new ResizeObserver(measure);
+    for (const el of [bubble.current, fact.current]) if (el) resized.observe(el);
+    addEventListener("resize", measure);
+    return () => {
+      resized.disconnect();
+      removeEventListener("resize", measure);
+    };
   }, [active]);
 
-  const still = (
-    <div className={styles.still}>
-      <img src="/bosses/full/readers.webp" alt="" />
-    </div>
-  );
-  // The bubble waits for the claw to close; standing still, the boss speaks at once.
-  const speaking = scene === "still" || grabbed;
+  const still = <Still onShown={speak} />;
   return (
     <main className={styles.phone}>
-      <div className={styles.scene} role="img" aria-label={PHONE_COPY.scene}>
+      <div ref={sceneBox} className={styles.scene} role="img" aria-label={scene === "3d" && drawn ? PHONE_COPY.scene : PHONE_COPY.still}>
         {active && scene === "3d" ? (
           <SceneBoundary fallback={still} onError={() => setScene("still")}>
-            <Suspense fallback={null}>
-              <PhoneScene reducedMotion={reducedMotion} onGrabbed={() => setGrabbed(true)} />
+            <Suspense fallback={still}>
+              <PhoneScene reducedMotion={reducedMotion} onDrawn={() => setDrawn(true)} onGrabbed={speak} zone={zone} head={sceneBox} />
             </Suspense>
           </SceneBoundary>
         ) : (
           still
         )}
       </div>
-      <div className={styles.speech} data-speaking={speaking || undefined}>
+      <div ref={bubble} className={styles.speech} data-speaking={speaking || undefined}>
         <BossBubble boss="readers">{PHONE_COPY.line}</BossBubble>
       </div>
-      <p className={styles.fact}>{PHONE_COPY.fact}</p>
+      <p ref={fact} className={styles.fact}>
+        {PHONE_COPY.fact}
+      </p>
     </main>
+  );
+}
+
+/**
+ * The Subcommittee standing there, already saying it. Lazily loaded, like every picture here: on a
+ * desktop the phone screen is hidden, and a hidden lazy image is never fetched.
+ */
+function Still({ onShown }: { onShown: () => void }) {
+  useEffect(onShown, [onShown]);
+  return (
+    <div className={styles.still}>
+      <img src="/bosses/full/readers.webp" alt="" loading="lazy" />
+    </div>
   );
 }
 

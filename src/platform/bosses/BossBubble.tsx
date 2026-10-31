@@ -33,7 +33,7 @@ export function BossAvatar({ portrait }: { portrait?: string }) {
   return (
     <div className={styles.avatar} aria-hidden="true">
       {portrait ? (
-        <img src={portrait} alt="" width={64} height={64} />
+        <img src={portrait} alt="" width={64} height={64} loading="lazy" />
       ) : (
         <svg viewBox="0 0 64 64" width="64" height="64" className={styles.face}>
           <line x1="32" y1="6" x2="32" y2="15" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />

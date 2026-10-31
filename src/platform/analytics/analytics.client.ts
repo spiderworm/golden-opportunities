@@ -1,5 +1,6 @@
 import { createAnalytics, type Analytics } from "@tellim/analytics/client";
 import { deployed } from "@tellim/analytics/deployed";
+import { isPhoneScreen, PHONE_EVENT } from "../phone";
 import { BUILD, GAME, VERSION, type Props, type Track, type TrackOptions } from "./track";
 
 let analytics: Analytics | undefined;
@@ -46,8 +47,14 @@ export function setAnalyticsGl(get: () => WebGLRenderingContext | null) {
   glSource = get;
 }
 
-/** track() for browser code. */
+/**
+ * track() for browser code. A phone records only that it got the phone
+ * screen: the game's pages mount once while the page hydrates, before the
+ * phone screen takes over, and their events (station_viewed, say) would
+ * describe a game the player never saw.
+ */
 export const track: Track = (event, props, options) => {
+  if (event !== PHONE_EVENT && isPhoneScreen()) return;
   if (analytics) analytics.track(event, props, options);
   else early.push([event, props, options]);
 };

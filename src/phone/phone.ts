@@ -1,20 +1,16 @@
 import { useSyncExternalStore } from "react";
 
+import { isPhoneScreen, PHONE_QUERY } from "~/platform/phone";
+
 // Orbital Books isn't laid out for phones: a phone gets one scene instead of
-// the game (m1-copy section 8). A phone is a coarse pointer on a screen whose
-// short side is 600 px or less, so a tablet gets the game, and so does a
-// desktop window dragged narrow (its pointer is fine). Decided in the browser,
-// never from the user agent. PhoneScreen.module.css repeats this query, so the
-// phone sees its scene before the page's scripts run.
-export const PHONE_QUERY = "(pointer: coarse) and (max-width: 600px), (pointer: coarse) and (max-height: 600px)";
+// the game (m1-copy section 8). What counts as a phone is platform/phone.ts's
+// PHONE_QUERY; PhoneScreen.module.css repeats it, so the phone sees its scene
+// before the page's scripts run.
+export { PHONE_QUERY };
 
 /** Whether this is a phone; false on the server and until the browser says. */
 export function useIsPhone(): boolean {
-  return useSyncExternalStore(subscribe, isPhone, () => false);
-}
-
-function isPhone() {
-  return typeof matchMedia === "function" && matchMedia(PHONE_QUERY).matches;
+  return useSyncExternalStore(subscribe, isPhoneScreen, () => false);
 }
 
 function subscribe(changed: () => void) {

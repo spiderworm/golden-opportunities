@@ -46,3 +46,23 @@ test("a confirmed choice needs nothing at load", async () => {
   expect(await page.sharingConfirmed()).toBe(true);
   expect(calls).toEqual([]);
 });
+
+test("a phone records only that it got the phone screen; a desktop records everything", async () => {
+  const sent: string[] = [];
+  vi.doMock("@tellim/analytics/client", () => ({
+    createAnalytics: () => ({ track: (event: string) => sent.push(event), sharing: () => true, setSharing() {}, install: () => "install" }),
+  }));
+  try {
+    for (const phone of [true, false]) {
+      sent.length = 0;
+      vi.stubGlobal("matchMedia", () => ({ matches: phone }));
+      const page = await load(ok);
+      page.startAnalytics("instance-1");
+      page.track("station_viewed", { mode: "3d" });
+      page.track("phone_blocked", { size: "360-399" });
+      expect(sent.filter((e) => e !== "instance")).toEqual(phone ? ["phone_blocked"] : ["station_viewed", "phone_blocked"]);
+    }
+  } finally {
+    vi.doUnmock("@tellim/analytics/client");
+  }
+});
