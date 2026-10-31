@@ -26,7 +26,7 @@ describe("the 2D boss scene", () => {
   it("stands each boss in the scene as decoration: the name in the bubble says who", () => {
     const html = renderToString(<BossScene2D bubbles={bubbles} open={0} onSelect={() => {}} />);
     expect(html.match(/<div class="[^"]*figure[^"]*" aria-hidden="true">/g)).toHaveLength(2);
-    expect(html).toContain('<img src="/bosses/overall.webp" alt=""');
+    expect(html).toContain('<img src="/bosses/full/overall.webp" alt=""');
   });
 
   it("opens the first bubble in a briefing unless told otherwise", () => {
