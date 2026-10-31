@@ -28,7 +28,7 @@ loss before disk sync. Candidate directories left before publication do not hold
 Save IDs are validated before filesystem access; malformed/unknown API sessions fail.
 An unknown page cookie starts a new save on GET only. Corrupt saves fail rather than reset.
 Bootstrap is limited to 30 new saves per process per minute. Saves are bounded to 16 MiB,
-100,000 M1 sale facts and one played quarter. The browser cookie lasts 30 days. Storage holds at most 200 saves and 256 MiB.
+100,000 sale facts per played quarter, and the quarters in `QUARTERS`. The browser cookie lasts 30 days. Storage holds at most 200 saves and 256 MiB.
 Reads refresh a durable last-used timestamp (file mtime); saves untouched for 30 days
 expire on the next store operation, including direct reads. Admission evicts the least
 recently used other saves first, never the requester or a save with a legacy update lock.
@@ -122,7 +122,14 @@ version: the dedicated discovery-only and alert-seen operations preserve it, and
 other updates bump it. Every data/view change must go through the latter path; no caller can opt out. Legacy
 saves default it to revision. Thus discovery metadata cannot cut off the answer which
 found it, while play still invalidates all pre-play capabilities. A stale query snapshot
-cannot add evidence after a data/view change. There is no in-place save migration.
+cannot add evidence after a data/view change.
+
+Each played quarter is saved with its own plan and result (`outcomeId`, `outcome`) beside
+its sale lines, written in one transaction. `src/game/quarters.ts` lists the quarters in
+play order; today only 2194-Q1. Version 1 saves kept the one result in a separate
+`completion` field. They are converted when read and become version 2 on their next write;
+the file is not rewritten just for being read. A version 1 quarter without its result, or a
+result without its quarter, was never written by the game and fails as INVALID_SAVE.
 
 Content-free events: `discovery_found` with id A/B/C only, and `discovery_part_found` with
 A1/A2/C_partial only. Awards emit only after persistence succeeds. No query, filters, save

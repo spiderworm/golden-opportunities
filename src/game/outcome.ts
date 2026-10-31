@@ -1,5 +1,6 @@
 import { isPlan } from '../simulation/plan.ts';
 import type { Outcome } from '../simulation/types';
+import { isQuarterId, quarterMonths } from './quarters.ts';
 
 const record = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -24,9 +25,9 @@ function report(v: unknown): boolean {
 }
 /** Validate persisted output on read: a corrupt result must fail closed, not become UI data. */
 export function isOutcome(v: unknown): v is Outcome {
-  if (!record(v) || !isPlan(v.plan) || v.quarter !== '2194-Q1' || !record(v.totals) || !metrics(v.totals.plan) || !metrics(v.totals.holdCourse)
+  if (!record(v) || !isPlan(v.plan) || !isQuarterId(v.quarter) || !record(v.totals) || !metrics(v.totals.plan) || !metrics(v.totals.holdCourse)
     || !record(v.reportCard) || !report(v.reportCard.plan) || !report(v.reportCard.holdCourse)) return false;
-  if (!Array.isArray(v.monthly) || v.monthly.length !== 3 || !v.monthly.every((m, i) => record(m) && m.month === `2194-0${i + 1}`
+  if (!Array.isArray(v.monthly) || v.monthly.length !== 3 || !v.monthly.every((m, i) => record(m) && m.month === quarterMonths(v.quarter as never)[i]
     && record(m.plan) && record(m.holdCourse) && [m.plan.revenue, m.plan.units, m.holdCourse.revenue, m.holdCourse.units].every(finite))) return false;
   if (!Array.isArray(v.assumptions) || v.assumptions.length > 100 || !v.assumptions.every(a => record(a) && text(a.id) && text(a.text)
     && ['data', 'assumed', 'setup'].includes(String(a.source)) && typeof a.usedByPlan === 'boolean')) return false;

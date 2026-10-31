@@ -8,7 +8,7 @@ vi.mock('../platform/analytics/instance.server', () => ({ DATA_DIR: directory })
 vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }));
 import { issueGameQueryToken, QUERY_TOKEN_TTL_MS } from './query-token.server';
 import { saves } from './session.server';
-import { loadBookshop } from '../bookshop/loader.server';
+import { submitPlan } from './game.server';
 import { createQueryHandler } from '../query/http.server';
 import { isLocalBrowserRequest } from '../query/access.server';
 import { trackServer } from '../platform/analytics/analytics.server';
@@ -25,8 +25,7 @@ function request(id?: string, token?: string, body: unknown = query) {
 }
 const handle = () => createQueryHandler({ track: () => {} });
 function play(id: string) {
-  const original = loadBookshop().sales[0];
-  saves.update(id, 0, save => { save.played.push({ period: '2194-Q1', sales: [{ ...original, id: 'sim-1', date: '2194-01-02', quarter: 1 }] }); });
+  submitPlan(new Request('http://localhost/decide', { method: 'POST', headers: { origin: 'http://localhost', cookie: 'orbital_save=' + id } }), { levers: [] });
 }
 describe('server-owned query capabilities', () => {
   it('requires a real save, rejects anonymous and forged cookies, and never bootstraps an API save', async () => {

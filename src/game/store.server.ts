@@ -4,10 +4,23 @@ import path from 'node:path';
 import { withSaveLock, SaveLockBusy } from './lock.server.ts';
 import { isOutcome } from './outcome.ts';
 import type { GameSave } from './types';
+import { QUARTERS, quarterMonths, quarterNumber } from './quarters.ts';
 import { EVIDENCE_KEYS, MAX_EVIDENCE_SCOPES, discoveriesFromBuckets, discoveryParts } from './discovery-evidence.ts';
 
 const ID = /^[A-Za-z0-9_-]{43}$/;
 const MAX_BYTES = 16 * 1024 * 1024;
+/**
+ * Version 1 kept the one quarter's result beside the save (`completion`), apart from its sales.
+ * Version 2 keeps each result with its quarter. Converted on read and written as version 2 by
+ * the next write. The game always wrote a v1 quarter and its result together, so any other
+ * pairing is left as v1 to fail validation.
+ */
+function upgrade(save: unknown): unknown {
+  if (typeof save !== 'object' || save === null || (save as { version?: unknown }).version !== 1) return save;
+  const { completion, played, ...rest } = save as Record<string, unknown>;
+  if (!Array.isArray(played) || played.length !== (completion === undefined ? 0 : 1)) return save;
+  return { ...rest, version: 2, played: played.map(quarter => ({ ...quarter, ...(completion as object) })) };
+}
 export function isSaveId(value: string): boolean { return ID.test(value); }
 export class SaveError extends Error {
   readonly code: 'MISSING_SAVE' | 'INVALID_SAVE' | 'SAVE_BUSY' | 'STALE_SAVE' | 'SAVE_CAPACITY';
@@ -20,7 +33,7 @@ function validEvidence(value: unknown): value is Record<string, string[]> {
       && new Set(keys).size === keys.length && keys.every(k => EVIDENCE_KEYS.has(k)));
 }
 function validate(save: GameSave, id: string): void {
-  if (!save || save.version !== 1 || save.id !== id || !isSaveId(id)
+  if (!save || save.version !== 2 || save.id !== id || !isSaveId(id)
     || !Number.isSafeInteger(save.seed) || save.seed < 0 || save.seed > 0xffffffff
     || !Number.isSafeInteger(save.revision) || save.revision < 0
     || (save.queryRevision !== undefined && (!Number.isSafeInteger(save.queryRevision) || save.queryRevision < 0 || save.queryRevision > save.revision))
@@ -29,18 +42,20 @@ function validate(save: GameSave, id: string): void {
     || !Array.isArray(save.discoveries) || save.discoveries.length > 3
     || new Set(save.discoveries).size !== save.discoveries.length
     || !save.discoveries.every(d => ['A', 'B', 'C'].includes(d))
-    || !Array.isArray(save.played) || save.played.length > 1) throw new SaveError('INVALID_SAVE');
-  if (save.completion !== undefined && (!save.completion || typeof save.completion.outcomeId !== 'string'
-    || !/^[a-f0-9-]{36}$/.test(save.completion.outcomeId) || !isOutcome(save.completion.outcome)
-    || save.played.length !== 1 || !Array.isArray(save.played[0]?.sales)
-    || save.completion.outcome.totals.plan.units !== save.played[0].sales.length)) throw new SaveError('INVALID_SAVE');
-  for (const quarter of save.played) {
-    if (quarter.period !== '2194-Q1' || !Array.isArray(quarter.sales) || quarter.sales.length > 100_000) throw new SaveError('INVALID_SAVE');
-    const ids = new Set<string>();
+    || !Array.isArray(save.played) || save.played.length > QUARTERS.length) throw new SaveError('INVALID_SAVE');
+  // Sale ids are unique across quarters, not just within one.
+  const ids = new Set<string>();
+  for (const [index, quarter] of save.played.entries()) {
+    if (!quarter || quarter.period !== QUARTERS[index] || typeof quarter.outcomeId !== 'string' || !/^[a-f0-9-]{36}$/.test(quarter.outcomeId)
+      || !isOutcome(quarter.outcome) || quarter.outcome.quarter !== quarter.period
+      || !Array.isArray(quarter.sales) || quarter.sales.length > 100_000
+      || quarter.outcome.totals.plan.units !== quarter.sales.length) throw new SaveError('INVALID_SAVE');
+    const months = quarterMonths(quarter.period); const number = quarterNumber(quarter.period);
     for (const sale of quarter.sales) {
       const date = new Date(sale.date + 'T00:00:00Z');
-      if (!/^2194-0[1-3]-[0-3]\d$/.test(sale.date) || !Number.isFinite(date.valueOf()) || date.toISOString().slice(0, 10) !== sale.date
-        || sale.quarter !== 1 || !Number.isFinite(sale.discount) || sale.discount < 0 || sale.discount > 1
+      if (typeof sale.date !== 'string' || !months.includes(sale.date.slice(0, 7)) || !/^\d{4}-\d{2}-[0-3]\d$/.test(sale.date)
+        || !Number.isFinite(date.valueOf()) || date.toISOString().slice(0, 10) !== sale.date
+        || sale.quarter !== number || !Number.isFinite(sale.discount) || sale.discount < 0 || sale.discount > 1
         || !Number.isSafeInteger(sale.sourceRow) || sale.sourceRow < 0
         || ![sale.id, sale.isbn, sale.orderId, sale.itemId, sale.sourceSheet].every(v => typeof v === 'string' && v.length > 0 && v.length <= 200)
         || ids.has(sale.id)) throw new SaveError('INVALID_SAVE');
@@ -103,7 +118,7 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
       const stat = statSync(target);
       if (now() - stat.mtimeMs >= idleMs && !existsSync(target + '.lock')) { assertOwned(); unlinkSync(target); throw new SaveError('MISSING_SAVE'); }
       if (stat.size > MAX_BYTES) throw new SaveError('INVALID_SAVE');
-      const save = JSON.parse(readFileSync(target, 'utf8')) as GameSave;
+      const save = upgrade(JSON.parse(readFileSync(target, 'utf8'))) as GameSave;
       validate(save, id); return save;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new SaveError('MISSING_SAVE');
@@ -137,7 +152,7 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
     },
     create(): GameSave {
       return locked(() => {
-        const save: GameSave = { version: 1, id: randomBytes(32).toString('base64url'), seed: randomBytes(4).readUInt32LE(), revision: 0, queryRevision: 0, discoveries: [], played: [] };
+        const save: GameSave = { version: 2, id: randomBytes(32).toString('base64url'), seed: randomBytes(4).readUInt32LE(), revision: 0, queryRevision: 0, discoveries: [], played: [] };
         const json = encode(save); makeRoom(1, Buffer.byteLength(json));
         assertOwned();
         writeFileSync(file(save.id), json, { flag: 'wx', mode: 0o600 }); touch(file(save.id));
@@ -151,7 +166,7 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
         if (existsSync(file(id) + '.lock')) throw new SaveError('SAVE_BUSY');
         const save = readUnlocked(id);
         const before = [...save.discoveries]; const oldEvidence = structuredClone(save.discoveryEvidence ?? {});
-        if (save.completion || save.played.length || (save.queryRevision ?? save.revision) !== queryRevision) return { save, before, oldEvidence };
+        if (save.played.length || (save.queryRevision ?? save.revision) !== queryRevision) return { save, before, oldEvidence };
         const merged = structuredClone(oldEvidence);
         for (const [scope, keys] of Object.entries(evidence)) {
           const combined = [...new Set([...(merged[scope] ?? []), ...keys])].sort();
