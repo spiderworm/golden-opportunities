@@ -16,9 +16,18 @@ export class PlanRefused extends Error {
   }
 }
 
+/** Either quarter's plan, by the fields its form sends; for a save that may have moved on since the form loaded. */
+export async function readAnyPlan(request: Request, deadlineMs = DEADLINE_MS): Promise<{ quarter: "2194-Q1"; plan: Plan } | { quarter: "2194-Q2"; plan: Q2Plan }> {
+  const form = await readForm(request, deadlineMs);
+  return form.has("picks") ? { quarter: "2194-Q2", plan: q2PlanFrom(form) } : { quarter: "2194-Q1", plan: planFrom(form) };
+}
+
 /** Q1's plan in one field: `levers=repick,events`, or `levers=` to hold course. */
 export async function readPlan(request: Request, deadlineMs = DEADLINE_MS): Promise<Plan> {
-  const form = await readForm(request, deadlineMs);
+  return planFrom(await readForm(request, deadlineMs));
+}
+
+function planFrom(form: URLSearchParams): Plan {
   const keys = [...form.keys()];
   if (keys.length !== 1 || keys[0] !== "levers") throw new PlanRefused(400, "Send only the chosen moves.");
   const value = form.get("levers")!;
@@ -34,7 +43,10 @@ export async function readPlan(request: Request, deadlineMs = DEADLINE_MS): Prom
  * shape is checked here; whether each ISBN is an edition, and no title is picked twice, is the engine's call.
  */
 export async function readQ2Plan(request: Request, deadlineMs = DEADLINE_MS): Promise<Q2Plan> {
-  const form = await readForm(request, deadlineMs);
+  return q2PlanFrom(await readForm(request, deadlineMs));
+}
+
+function q2PlanFrom(form: URLSearchParams): Q2Plan {
   const keys = [...form.keys()].sort();
   if (keys.length !== 2 || keys[0] !== "levers" || keys[1] !== "picks") throw new PlanRefused(400, "Send only the picks and the move.");
   const picks = form.get("picks")!.split(",").map((isbn) => isbn || null);
