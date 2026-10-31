@@ -153,7 +153,7 @@ Responses remain private/no-store because views are player-specific;
 source indicates limited result rows and the independent pre-limit total.
 
 
-Discovery-only writes preserve `queryRevision`; ordinary save updates (including play)
+Discovery-only and alert-seen writes preserve `queryRevision`; ordinary save updates (including play)
 advance it. Legacy saves without the field use their existing `revision`. The storage
 revision still advances for evidence writes, preserving optimistic update safety. An
 answer may discover an insight without invalidating its own next lookup. Revocation,
