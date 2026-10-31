@@ -172,8 +172,8 @@ export interface Run {
 }
 
 export interface Levers {
-  /** Each month's Book of the Month, or null for none. */
-  picks: readonly (PickSpec | null)[];
+  /** Each month's Book of the Month, by title and format or by ISBN, or null for none. */
+  picks: readonly (PickSpec | string | null)[];
   /** Share of orders a station-wide sale clones, or null for no sale. */
   sale: number | null;
   events: boolean;
@@ -210,7 +210,8 @@ export function run(history: History, base: readonly Order[], seed: number, leve
     }
   }
 
-  const picks = levers.picks.map((spec) => (spec ? history.isbnOf(spec) : null));
+  // Q2 picks by ISBN: a title can have two editions in one format (Heliotrope Pajamas has two paperbacks).
+  const picks = levers.picks.map((spec) => (spec === null ? null : typeof spec === "string" ? spec : history.isbnOf(spec)));
   history.months.forEach((month, m) => {
     const isbn = picks[m];
     if (isbn === null) return;

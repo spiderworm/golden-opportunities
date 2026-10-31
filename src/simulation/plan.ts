@@ -1,5 +1,5 @@
 // Plans: shared by the Decide screen and the engine, so it imports nothing but types.
-import { LEVER_IDS, MAX_LEVERS, type LeverId, type Plan } from "./types.ts";
+import { LEVER_IDS, MAX_LEVERS, Q2_LEVER_IDS, Q2_MAX_LEVERS, type LeverId, type Plan, type Q2Plan } from "./types.ts";
 
 export const isLever = (value: unknown): value is LeverId => typeof value === "string" && (LEVER_IDS as readonly string[]).includes(value);
 
@@ -20,3 +20,15 @@ export function planOf(levers: readonly unknown[]): Plan | null {
 }
 
 export const has = (plan: Plan, lever: LeverId) => plan.levers.includes(lever);
+
+/** Three months, each an ISBN or null with no ISBN twice; at most one lever; nothing else on the object. */
+export function isQ2Plan(value: unknown): value is Q2Plan {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  if (Object.keys(value).some((key) => key !== "picks" && key !== "levers")) return false;
+  const { picks, levers } = value as { picks?: unknown; levers?: unknown };
+  if (!Array.isArray(picks) || picks.length !== 3) return false;
+  if (!picks.every((p) => p === null || (typeof p === "string" && p.length > 0 && p.length <= 32))) return false;
+  const chosen = picks.filter((p) => p !== null);
+  if (new Set(chosen).size !== chosen.length) return false;
+  return Array.isArray(levers) && levers.length <= Q2_MAX_LEVERS && levers.every((l) => (Q2_LEVER_IDS as readonly unknown[]).includes(l));
+}
