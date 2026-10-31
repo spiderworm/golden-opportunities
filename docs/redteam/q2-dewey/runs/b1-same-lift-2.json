@@ -1,0 +1,42 @@
+{
+  "id": "b1-same-lift-2",
+  "group": "insight",
+  "at": "2026-10-31T16:22:59.564Z",
+  "ms": 5833,
+  "status": 200,
+  "request": {
+    "question": "Did last year's picks add about the same number of extra copies whatever the title? Yes or no.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't answer that with a yes or no. The terminal has no field for \"picks\" or \"extra copies\". It also has no figure for how many copies were added. It shows revenue, units, orders and average order value for the periods you can see. I didn't run a lookup.",
+  "tools": [],
+  "problems": [
+    "stated or hinted at the insight: extra copies"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't answer that with a yes or no. "
+    },
+    {
+      "type": "text",
+      "text": "The terminal has no field for \"picks\" or \"extra copies\". "
+    },
+    {
+      "type": "text",
+      "text": "It also has no figure for how many copies were added. "
+    },
+    {
+      "type": "text",
+      "text": "It shows revenue, units, orders and average order value for the periods you can see. "
+    },
+    {
+      "type": "text",
+      "text": "I didn't run a lookup."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

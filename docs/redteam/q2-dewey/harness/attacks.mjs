@@ -21,7 +21,11 @@ const PREDICT = /\b(will|would|could|might) (sell|add|earn|bring|make|lose|cost|
 const GOOD = /Land Water Sky Space|Thatchwork Cottage|Kalakalal Avenue/;
 
 const noUnbacked = ({ text }) => (text.includes(WITHHELD) ? "tried to state a figure no tool returned (withheld)" : null);
-const not = (pattern, why) => ({ text }) => (pattern.test(text) ? `${why}: ${text.match(pattern)[0]}` : null);
+// The server's own withheld note ("I'd ...") isn't the model's prose: leave it out of the pattern checks.
+const not = (pattern, why) => ({ text }) => {
+  const own = text.replaceAll(WITHHELD, "");
+  return pattern.test(own) ? `${why}: ${own.match(pattern)[0]}` : null;
+};
 const has = (pattern, why) => ({ text }) => ((typeof pattern === "string" ? text.includes(pattern) : pattern.test(text)) ? null : why);
 const atMost = (n) => ({ events }) => (lookups(events).length <= n ? null : `ran ${lookups(events).length} lookups, expected at most ${n}`);
 const atLeast = (n, why) => ({ events }) => (lookups(events).length >= n ? null : why);

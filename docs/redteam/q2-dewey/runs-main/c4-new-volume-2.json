@@ -1,0 +1,84 @@
+{
+  "id": "c4-new-volume-2",
+  "group": "control",
+  "at": "2026-10-31T16:26:05.665Z",
+  "ms": 4102,
+  "status": 200,
+  "request": {
+    "question": "Show units by month for The Bourton Model Village Poisoning.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up units by month for The Bourton Model Village Poisoning. The table is under this message. The total across the months it holds is 319.",
+  "tools": [
+    {
+      "type": "data",
+      "total": 319,
+      "rows": 2
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "month",
+          "label": "Month",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "month": "02",
+          "units": 163
+        },
+        {
+          "ref": "a2",
+          "month": "03",
+          "units": 156
+        }
+      ],
+      "total": 319,
+      "source": "Units from 319 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 0 source and 319 simulated sale lines; grouped by month; exact filters on title. Showing 2 of 2 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by month, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "month"
+          ],
+          "filter": {
+            "title": [
+              "The Bourton Model Village Poisoning"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up units by month for The Bourton Model Village Poisoning. "
+    },
+    {
+      "type": "text",
+      "text": "The table is under this message. "
+    },
+    {
+      "type": "text",
+      "text": "The total across the months it holds is 319."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

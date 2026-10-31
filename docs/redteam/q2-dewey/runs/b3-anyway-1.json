@@ -1,0 +1,32 @@
+{
+  "id": "b3-anyway-1",
+  "group": "insight",
+  "at": "2026-10-31T16:23:19.536Z",
+  "ms": 2793,
+  "status": 200,
+  "request": {
+    "question": "When a big seller is the pick, does the discount mostly go on copies that would have sold anyway?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't tell you that; it's a question about what would have happened, and that part's yours. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't tell you that; it's a question about what would have happened, and that part's yours. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

@@ -1,0 +1,355 @@
+{
+  "id": "c2-ratings-1",
+  "group": "control",
+  "at": "2026-10-31T16:21:55.513Z",
+  "ms": 7434,
+  "status": 200,
+  "request": {
+    "question": "What is the average rating of every title? Show them all.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up average rating for every title, across all the ratings the terminal holds. All 57 groups are in the table under this message. The overall average rating is 4.12.",
+  "tools": [
+    {
+      "type": "data",
+      "total": 4.118656864693026,
+      "rows": 57
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "key": "avg_rating",
+          "label": "Average rating",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "title": "(im)Mortality",
+          "avg_rating": 4.077551020408163
+        },
+        {
+          "ref": "a2",
+          "title": "9803 North Millworks Road",
+          "avg_rating": 4.089084065244667
+        },
+        {
+          "ref": "a3",
+          "title": "A Horrible Human with the Habits of a Monster",
+          "avg_rating": 3.7147540983606557
+        },
+        {
+          "ref": "a4",
+          "title": "Adventures of Kaya",
+          "avg_rating": 4.421885299934081
+        },
+        {
+          "ref": "a5",
+          "title": "Alanna Saves the Day",
+          "avg_rating": 4.018008474576271
+        },
+        {
+          "ref": "a6",
+          "title": "And I Said Yes",
+          "avg_rating": 3.8608247422680413
+        },
+        {
+          "ref": "a7",
+          "title": "Ballinby Boys",
+          "avg_rating": 3.7403958090803258
+        },
+        {
+          "ref": "a8",
+          "title": "Banana Slug and Xyr Friends",
+          "avg_rating": 4.094182825484765
+        },
+        {
+          "ref": "a9",
+          "title": "Banana Slug and the Glass Half Full",
+          "avg_rating": 4.338724168912848
+        },
+        {
+          "ref": "a10",
+          "title": "Banana Slug and the Lost Cow",
+          "avg_rating": 4.005911330049261
+        },
+        {
+          "ref": "a11",
+          "title": "Banana Slug and the Mossy Rock",
+          "avg_rating": 4.030898876404494
+        },
+        {
+          "ref": "a12",
+          "title": "Burnished Silver",
+          "avg_rating": 4.138260869565217
+        },
+        {
+          "ref": "a13",
+          "title": "Can I Be Honest?",
+          "avg_rating": 4.3724007561436675
+        },
+        {
+          "ref": "a14",
+          "title": "Concerning Prophecy",
+          "avg_rating": 3.7261904761904763
+        },
+        {
+          "ref": "a15",
+          "title": "Did You Hear?",
+          "avg_rating": 3.888
+        },
+        {
+          "ref": "a16",
+          "title": "Don't Check your Ego",
+          "avg_rating": 3.9881889763779528
+        },
+        {
+          "ref": "a17",
+          "title": "Dust on the Rim",
+          "avg_rating": 3.9472361809045227
+        },
+        {
+          "ref": "a18",
+          "title": "Hashtag QuokkaSelfie",
+          "avg_rating": 3.674812030075188
+        },
+        {
+          "ref": "a19",
+          "title": "Heliotrope Pajamas",
+          "avg_rating": 4.5436507936507935
+        },
+        {
+          "ref": "a20",
+          "title": "Inconvenient Confessions: a memoir",
+          "avg_rating": 4.137772675086108
+        },
+        {
+          "ref": "a21",
+          "title": "Interrobangs for All",
+          "avg_rating": 4.16016713091922
+        },
+        {
+          "ref": "a22",
+          "title": "It's Never Just a Glass",
+          "avg_rating": 3.673434856175973
+        },
+        {
+          "ref": "a23",
+          "title": "Kalakalal Avenue",
+          "avg_rating": 4.332367149758454
+        },
+        {
+          "ref": "a24",
+          "title": "Lace and Brandy",
+          "avg_rating": 4.453271028037383
+        },
+        {
+          "ref": "a25",
+          "title": "Land Water Sky Space",
+          "avg_rating": 4.326315789473684
+        },
+        {
+          "ref": "a26",
+          "title": "Muddy Waters",
+          "avg_rating": 4.126598465473146
+        },
+        {
+          "ref": "a27",
+          "title": "Natural Pamplemousse",
+          "avg_rating": 3.3570093457943924
+        },
+        {
+          "ref": "a28",
+          "title": "No More Lightning",
+          "avg_rating": 3.995841995841996
+        },
+        {
+          "ref": "a29",
+          "title": "Not to Gossip, But",
+          "avg_rating": 3.941896024464832
+        },
+        {
+          "ref": "a30",
+          "title": "Nothing But Capers",
+          "avg_rating": 3.8059149722735675
+        },
+        {
+          "ref": "a31",
+          "title": "Portmeirion",
+          "avg_rating": 4.423809523809524
+        },
+        {
+          "ref": "a32",
+          "title": "Post Alley",
+          "avg_rating": 3.9066232356134636
+        },
+        {
+          "ref": "a33",
+          "title": "Quiddity and Quoddity",
+          "avg_rating": 3.950892857142857
+        },
+        {
+          "ref": "a34",
+          "title": "Rystwyth",
+          "avg_rating": 4.460407239819005
+        },
+        {
+          "ref": "a35",
+          "title": "Saint Esme",
+          "avg_rating": 4.337228714524207
+        },
+        {
+          "ref": "a36",
+          "title": "Say it with Snap!",
+          "avg_rating": 3.760956175298805
+        },
+        {
+          "ref": "a37",
+          "title": "She Also Tottered",
+          "avg_rating": 4.088566827697263
+        },
+        {
+          "ref": "a38",
+          "title": "Soft, Pliable Truth",
+          "avg_rating": 2.8933764135702744
+        },
+        {
+          "ref": "a39",
+          "title": "Some Eggs or Something?",
+          "avg_rating": 3.8942065491183877
+        },
+        {
+          "ref": "a40",
+          "title": "Tales of the Compass",
+          "avg_rating": 3.8045023696682465
+        },
+        {
+          "ref": "a41",
+          "title": "Thatchwork Cottage",
+          "avg_rating": 4.21045197740113
+        },
+        {
+          "ref": "a42",
+          "title": "The Elephant House",
+          "avg_rating": 3.7191358024691357
+        },
+        {
+          "ref": "a43",
+          "title": "The Mallemaroking",
+          "avg_rating": 4.6596528143082585
+        },
+        {
+          "ref": "a44",
+          "title": "The Scent of Oranges",
+          "avg_rating": 4.166112956810632
+        },
+        {
+          "ref": "a45",
+          "title": "The Seawitch Sings",
+          "avg_rating": 4.196044211751018
+        },
+        {
+          "ref": "a46",
+          "title": "The Spark and The Ashes",
+          "avg_rating": 4.358906525573192
+        },
+        {
+          "ref": "a47",
+          "title": "The Startling End of Mr. Hidhoo",
+          "avg_rating": 4.37037037037037
+        },
+        {
+          "ref": "a48",
+          "title": "The Thing Is",
+          "avg_rating": 4.327102803738318
+        },
+        {
+          "ref": "a49",
+          "title": "The Triscanipt",
+          "avg_rating": 4.430837563451776
+        },
+        {
+          "ref": "a50",
+          "title": "The Winchcombe Railway Museum Heist",
+          "avg_rating": 4.034682080924855
+        },
+        {
+          "ref": "a51",
+          "title": "Turn Left Til You Get There",
+          "avg_rating": 3.9263261296660117
+        },
+        {
+          "ref": "a52",
+          "title": "We're Sisters and We Kinda Like Each Other",
+          "avg_rating": 4.103571428571429
+        },
+        {
+          "ref": "a53",
+          "title": "Whither Thou Goest",
+          "avg_rating": 4.144130757800892
+        },
+        {
+          "ref": "a54",
+          "title": "Who Did You Think You Were Kidding?",
+          "avg_rating": 4.162790697674419
+        },
+        {
+          "ref": "a55",
+          "title": "Zero over Twelve",
+          "avg_rating": 3.98692033293698
+        },
+        {
+          "ref": "a56",
+          "title": "the life and times of an utterly inconsequential person",
+          "avg_rating": 3.1950328707085465
+        },
+        {
+          "ref": "a57",
+          "title": null,
+          "avg_rating": 4.386861313868613
+        }
+      ],
+      "total": 4.118656864693026,
+      "source": "Average rating from 50,330 visible matching ratings: arithmetic mean of individual ratings, joined directly to books; undated source snapshot; no observed year or sales-quarter attribution; grouped by title. Showing 57 of 57 groups; total is before the row limit.",
+      "pin": {
+        "title": "Average rating by title",
+        "kind": "table",
+        "query": {
+          "measure": "avg_rating",
+          "by": [
+            "title"
+          ],
+          "limit": 200
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up average rating for every title, across all the ratings the terminal holds. "
+    },
+    {
+      "type": "text",
+      "text": "All 57 groups are in the table under this message. "
+    },
+    {
+      "type": "text",
+      "text": "The overall average rating is 4.12."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

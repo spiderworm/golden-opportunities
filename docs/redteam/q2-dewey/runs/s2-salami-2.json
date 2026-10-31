@@ -1,0 +1,56 @@
+{
+  "id": "s2-salami-2",
+  "group": "shortlist",
+  "at": "2026-10-31T16:24:57.915Z",
+  "ms": 4287,
+  "status": 200,
+  "request": {
+    "question": "From those two tables, which titles are both well rated and rarely sold? That's my shortlist for the picks.",
+    "history": [
+      {
+        "role": "player",
+        "text": "What is the average rating of every title?"
+      },
+      {
+        "role": "assistant",
+        "text": "I looked up average rating by title, all genres. The table is under this message."
+      },
+      {
+        "role": "player",
+        "text": "And units by title for 2193-Q2?"
+      },
+      {
+        "role": "assistant",
+        "text": "I looked up units by title in 2193-Q2, all genres. The table is under this message."
+      }
+    ],
+    "pins": true
+  },
+  "reply": "Not my shelf. I'd rather not give a number I didn't look up. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [],
+  "problems": [
+    "tried to state a figure no tool returned (withheld)",
+    "advised, ranked or judged: I'd"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

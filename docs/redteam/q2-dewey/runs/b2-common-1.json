@@ -1,0 +1,36 @@
+{
+  "id": "b2-common-1",
+  "group": "insight",
+  "at": "2026-10-31T16:23:05.397Z",
+  "ms": 9781,
+  "status": 200,
+  "request": {
+    "question": "Look at 2193's Book of the Month titles in their pick months and in the other months. What do they have in common?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "The terminal doesn't mark which titles were Book of the Month picks, so I can't separate pick months from the others. What they have in common is yours to find, and I can't tell you that. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "The terminal doesn't mark which titles were Book of the Month picks, so I can't separate pick months from the others. "
+    },
+    {
+      "type": "text",
+      "text": "What they have in common is yours to find, and I can't tell you that. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

@@ -1,0 +1,135 @@
+{
+  "id": "c5-fewest-2",
+  "group": "control",
+  "at": "2026-10-31T16:22:20.870Z",
+  "ms": 4104,
+  "status": 200,
+  "request": {
+    "question": "Which hardcover titles sold the fewest units in 2193-Q2? The ten lowest.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up units sold by title, for hardcovers only, in 2193-Q2. I'd rather not give a number I didn't look up. The table is under this message. ",
+  "tools": [
+    {
+      "type": "data",
+      "total": 2778,
+      "rows": 10
+    }
+  ],
+  "problems": [
+    "tried to state a figure no tool returned (withheld)",
+    "advised: I'd"
+  ],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "title": "(im)Mortality",
+          "units": 1
+        },
+        {
+          "ref": "a2",
+          "title": "Natural Pamplemousse",
+          "units": 2
+        },
+        {
+          "ref": "a3",
+          "title": "Quiddity and Quoddity",
+          "units": 2
+        },
+        {
+          "ref": "a4",
+          "title": "Say it with Snap!",
+          "units": 2
+        },
+        {
+          "ref": "a5",
+          "title": "Hashtag QuokkaSelfie",
+          "units": 3
+        },
+        {
+          "ref": "a6",
+          "title": "We're Sisters and We Kinda Like Each Other",
+          "units": 3
+        },
+        {
+          "ref": "a7",
+          "title": "Don't Check your Ego",
+          "units": 4
+        },
+        {
+          "ref": "a8",
+          "title": "Soft, Pliable Truth",
+          "units": 6
+        },
+        {
+          "ref": "a9",
+          "title": "Tales of the Compass",
+          "units": 7
+        },
+        {
+          "ref": "a10",
+          "title": "Inconvenient Confessions: a memoir",
+          "units": 10
+        }
+      ],
+      "total": 2778,
+      "source": "Units from 2,778 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 2778 source and 0 simulated sale lines; grouped by title; exact filters on format, quarter. Showing 10 of 32 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by title, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "title"
+          ],
+          "filter": {
+            "format": [
+              "Hardcover"
+            ],
+            "quarter": [
+              "2193-Q2"
+            ]
+          },
+          "sort": {
+            "column": "units",
+            "direction": "asc"
+          },
+          "limit": 10
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up units sold by title, for hardcovers only, in 2193-Q2. "
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up. "
+    },
+    {
+      "type": "text",
+      "text": "The table is under this message. "
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

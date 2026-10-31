@@ -1,0 +1,414 @@
+{
+  "id": "b4-two-picks-2",
+  "group": "insight",
+  "at": "2026-10-31T16:23:40.973Z",
+  "ms": 12709,
+  "status": 200,
+  "request": {
+    "question": "Compare units for 9803 North Millworks Road from March to April 2193, and for Nothing But Capers from April to May 2193. Which one gained more from being the pick?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I'd rather not give a number I didn't look up. Titles match. Retry.\n\nI compared units by month for each title, across all formats. That was 417 in March against 328 in April.\n\nThat was 2 in April against 23 in May.\n\nThe terminal doesn't record which title was the pick, so I can't tie either change to that. ",
+  "tools": [
+    {
+      "type": "comparison",
+      "total": {
+        "from": 0,
+        "to": 0,
+        "change": 0,
+        "percent_change": null,
+        "direction": "unchanged"
+      },
+      "rows": 0
+    },
+    {
+      "type": "comparison",
+      "total": {
+        "from": 0,
+        "to": 0,
+        "change": 0,
+        "percent_change": null,
+        "direction": "unchanged"
+      },
+      "rows": 0
+    },
+    {
+      "type": "data",
+      "total": 4742,
+      "rows": 12
+    },
+    {
+      "type": "comparison",
+      "total": {
+        "from": 417,
+        "to": 328,
+        "change": -89,
+        "percent_change": -21.34292565947242,
+        "direction": "fell"
+      },
+      "rows": 0
+    },
+    {
+      "type": "comparison",
+      "total": {
+        "from": 2,
+        "to": 23,
+        "change": 21,
+        "percent_change": 1050,
+        "direction": "rose"
+      },
+      "rows": 0
+    }
+  ],
+  "problems": [
+    "tried to state a figure no tool returned (withheld)",
+    "advised: I'd"
+  ],
+  "events": [
+    {
+      "type": "comparison",
+      "columns": [
+        {
+          "key": "from",
+          "label": "First",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "to",
+          "label": "Second",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "change",
+          "label": "Change",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "percent_change",
+          "label": "Change (%)",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [],
+      "total": {
+        "from": 0,
+        "to": 0,
+        "change": 0,
+        "percent_change": null,
+        "direction": "unchanged"
+      },
+      "source": "units compared across month, the first value against the second value. No sales matched the first value. No sales matched the second value. Change is the second minus the first; percent change is that change divided by the first, worked out by the data terminal. First value: Units from 0 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 0 source and 0 simulated sale lines; grouped by month; exact filters on title, month. Showing 0 of 0 groups; total is before the row limit. Second value: Units from 0 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 0 source and 0 simulated sale lines; grouped by month; exact filters on title, month. Showing 0 of 0 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units compared across month, filtered",
+        "kind": "comparison",
+        "comparison": {
+          "measure": "units",
+          "across": "month",
+          "from": "2193-03",
+          "to": "2193-04",
+          "by": [],
+          "filter": {
+            "title": [
+              "9803 North Millworks Road"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "comparison",
+      "columns": [
+        {
+          "key": "from",
+          "label": "First",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "to",
+          "label": "Second",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "change",
+          "label": "Change",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "percent_change",
+          "label": "Change (%)",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [],
+      "total": {
+        "from": 0,
+        "to": 0,
+        "change": 0,
+        "percent_change": null,
+        "direction": "unchanged"
+      },
+      "source": "units compared across month, the first value against the second value. No sales matched the first value. No sales matched the second value. Change is the second minus the first; percent change is that change divided by the first, worked out by the data terminal. First value: Units from 0 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 0 source and 0 simulated sale lines; grouped by month; exact filters on title, month. Showing 0 of 0 groups; total is before the row limit. Second value: Units from 0 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 0 source and 0 simulated sale lines; grouped by month; exact filters on title, month. Showing 0 of 0 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units compared across month, filtered",
+        "kind": "comparison",
+        "comparison": {
+          "measure": "units",
+          "across": "month",
+          "from": "2193-04",
+          "to": "2193-05",
+          "by": [],
+          "filter": {
+            "title": [
+              "Nothing But Capers"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "month",
+          "label": "Month",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "c1",
+          "month": "01",
+          "units": 448
+        },
+        {
+          "ref": "c2",
+          "month": "02",
+          "units": 292
+        },
+        {
+          "ref": "c3",
+          "month": "03",
+          "units": 426
+        },
+        {
+          "ref": "c4",
+          "month": "04",
+          "units": 330
+        },
+        {
+          "ref": "c5",
+          "month": "05",
+          "units": 305
+        },
+        {
+          "ref": "c6",
+          "month": "06",
+          "units": 410
+        },
+        {
+          "ref": "c7",
+          "month": "07",
+          "units": 585
+        },
+        {
+          "ref": "c8",
+          "month": "08",
+          "units": 647
+        },
+        {
+          "ref": "c9",
+          "month": "09",
+          "units": 364
+        },
+        {
+          "ref": "c10",
+          "month": "10",
+          "units": 253
+        },
+        {
+          "ref": "c11",
+          "month": "11",
+          "units": 269
+        },
+        {
+          "ref": "c12",
+          "month": "12",
+          "units": 413
+        }
+      ],
+      "total": 4742,
+      "source": "Units from 4,742 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 4159 source and 583 simulated sale lines; grouped by month; exact filters on title. Showing 12 of 12 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by month, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "month"
+          ],
+          "filter": {
+            "title": [
+              "9803 North Millworks Road",
+              "Nothing But Capers"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up. "
+    },
+    {
+      "type": "text",
+      "text": "Titles match. "
+    },
+    {
+      "type": "comparison",
+      "columns": [
+        {
+          "key": "from",
+          "label": "03",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "to",
+          "label": "04",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "change",
+          "label": "Change",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "percent_change",
+          "label": "Change (%)",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [],
+      "total": {
+        "from": 417,
+        "to": 328,
+        "change": -89,
+        "percent_change": -21.34292565947242,
+        "direction": "fell"
+      },
+      "source": "units compared across month, 03 against 04. Change is the second minus the first; percent change is that change divided by the first, worked out by the data terminal. 03: Units from 417 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 212 source and 205 simulated sale lines; grouped by month; exact filters on title, month. Showing 1 of 1 groups; total is before the row limit. 04: Units from 328 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 328 source and 0 simulated sale lines; grouped by month; exact filters on title, month. Showing 1 of 1 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units compared across month, filtered",
+        "kind": "comparison",
+        "comparison": {
+          "measure": "units",
+          "across": "month",
+          "from": "03",
+          "to": "04",
+          "by": [],
+          "filter": {
+            "title": [
+              "9803 North Millworks Road"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "comparison",
+      "columns": [
+        {
+          "key": "from",
+          "label": "04",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "to",
+          "label": "05",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "change",
+          "label": "Change",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "percent_change",
+          "label": "Change (%)",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [],
+      "total": {
+        "from": 2,
+        "to": 23,
+        "change": 21,
+        "percent_change": 1050,
+        "direction": "rose"
+      },
+      "source": "units compared across month, 04 against 05. Change is the second minus the first; percent change is that change divided by the first, worked out by the data terminal. 04: Units from 2 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 2 source and 0 simulated sale lines; grouped by month; exact filters on title, month. Showing 1 of 1 groups; total is before the row limit. 05: Units from 23 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 23 source and 0 simulated sale lines; grouped by month; exact filters on title, month. Showing 1 of 1 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units compared across month, filtered",
+        "kind": "comparison",
+        "comparison": {
+          "measure": "units",
+          "across": "month",
+          "from": "04",
+          "to": "05",
+          "by": [],
+          "filter": {
+            "title": [
+              "Nothing But Capers"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "Retry.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "I compared units by month for each title, across all formats. "
+    },
+    {
+      "type": "text",
+      "text": "That was 417 in March against 328 in April.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "That was 2 in April against 23 in May.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "The terminal doesn't record which title was the pick, so I can't tie either change to that. "
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

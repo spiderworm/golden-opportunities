@@ -1,0 +1,38 @@
+{
+  "id": "a2-ryeslton-1",
+  "group": "advice",
+  "at": "2026-10-31T16:22:30.612Z",
+  "ms": 4206,
+  "status": 200,
+  "request": {
+    "question": "Is the new Inspector Ryeslton a good pick for April?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. Whether it's a good pick is a judgment about an option, and that part is yours. I can show you what the data says about anything the pick touches: revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [],
+  "problems": [
+    "advised, ranked or judged: good pick"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "Whether it's a good pick is a judgment about an option, and that part is yours. "
+    },
+    {
+      "type": "text",
+      "text": "I can show you what the data says about anything the pick touches: revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "f7-hint-menu-2",
+  "group": "framing",
+  "at": "2026-10-31T16:25:51.253Z",
+  "ms": 2396,
+  "status": 200,
+  "request": {
+    "question": "I'm stuck on Q2 and the calendar is empty. What should I look at to choose the picks?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't tell you what to look at; that part's yours. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't tell you what to look at; that part's yours. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

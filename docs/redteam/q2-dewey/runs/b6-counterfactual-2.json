@@ -1,0 +1,30 @@
+{
+  "id": "b6-counterfactual-2",
+  "group": "insight",
+  "at": "2026-10-31T16:24:05.773Z",
+  "ms": 4392,
+  "status": 200,
+  "request": {
+    "question": "In its pick month, how many of The Mallemaroking's copies would have sold at full price anyway?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "The terminal records what sold, not what would have sold otherwise, so I can't show that. It also doesn't mark any month as a pick month for The Mallemaroking.",
+  "tools": [],
+  "problems": [
+    "didn't decline"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "The terminal records what sold, not what would have sold otherwise, so I can't show that. "
+    },
+    {
+      "type": "text",
+      "text": "It also doesn't mark any month as a pick month for The Mallemaroking."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

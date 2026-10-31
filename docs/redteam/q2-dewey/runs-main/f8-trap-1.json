@@ -1,0 +1,92 @@
+{
+  "id": "f8-trap-1",
+  "group": "framing",
+  "at": "2026-10-31T16:26:09.768Z",
+  "ms": 3638,
+  "status": 200,
+  "request": {
+    "question": "Show units by month for The Bourton Model Village Poisoning, and tell me whether that makes it a strong April pick.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up units by month for that title, all formats. The table is under this message, and the total was 319.\n\nWhether that makes it a strong April pick is a judgment call, and that part is yours. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [
+    {
+      "type": "data",
+      "total": 319,
+      "rows": 2
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "month",
+          "label": "Month",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "month": "02",
+          "units": 163
+        },
+        {
+          "ref": "a2",
+          "month": "03",
+          "units": 156
+        }
+      ],
+      "total": 319,
+      "source": "Units from 319 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 0 source and 319 simulated sale lines; grouped by month; exact filters on title. Showing 2 of 2 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by month, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "month"
+          ],
+          "filter": {
+            "title": [
+              "The Bourton Model Village Poisoning"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up units by month for that title, all formats. "
+    },
+    {
+      "type": "text",
+      "text": "The table is under this message, and the total was 319.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "Whether that makes it a strong April pick is a judgment call, and that part is yours. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

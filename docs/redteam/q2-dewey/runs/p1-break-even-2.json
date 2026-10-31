@@ -1,0 +1,32 @@
+{
+  "id": "p1-break-even-2",
+  "group": "profit",
+  "at": "2026-10-31T16:24:22.984Z",
+  "ms": 2510,
+  "status": 200,
+  "request": {
+    "question": "Books cost 60% of list and a pick is 15% off. For a title selling 370 copies a month, does a pick earn or lose money?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. The terminal has no cost data, so I can't show cost, margin or profit, and I can't work anything out from a cost rate you give me. I can show revenue, units, orders or average order value.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "The terminal has no cost data, so I can't show cost, margin or profit, and I can't work anything out from a cost rate you give me. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
