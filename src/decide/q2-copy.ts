@@ -1,5 +1,6 @@
 // The Q2 decision screen's words, as Plot wrote them (docs/design/q2.md,
-// sections 5 and 9). Change them there first. What Q2 doesn't change (the
+// section 5, with the form's legend, statuses and play-out from #145).
+// Change them there first. What Q2 doesn't change (the
 // rule line, the form's issuer and stamp, the confirm step) stays in copy.ts.
 import type { Q2LeverId } from "~/simulation/types";
 import { DECIDE_COPY, MOVES, type BriefingBubble } from "./copy";
@@ -62,15 +63,14 @@ export const DECIDE_Q2_COPY = {
       facts: ["Choose ", { strong: "up to three" }, " picks, one for each month, and ", { strong: "up to one" }, " more move. Choose nothing to hold course."],
     },
   ] satisfies BriefingBubble[] as BriefingBubble[],
-  // Draft (Chart): q2.md names the two sections but not the form's legend.
-  movesHeading: "Your plan (up to three picks and one more move)",
+  movesHeading: "Your moves (up to three picks and one more)",
   picks: {
     label: "BOOK OF THE MONTH",
     none: "No pick",
     search: "Find a title",
     /** Shown on another month's pick, which can't be picked twice. */
     taken: (month: Month) => `Already picked for ${month}.`,
-    // Draft (Chart): what the list says when the search finds nothing.
+    /** What the list says when the search finds nothing. */
     nothing: "No title matches.",
   },
   moreLabel: "ONE MORE MOVE (OPTIONAL)",
@@ -78,9 +78,8 @@ export const DECIDE_Q2_COPY = {
     serial: "LKS-2194-Q2-0003",
     footer: "Three picks and one move maximum. Filed requisitions are final.",
   },
-  // Drafts (Chart): q2.md doesn't give these; they follow M1's.
   holdCourse: "Hold course: no picks and no other move.",
-  tooMany: "You can choose one more move.",
+  tooMany: "You can choose only one more move.",
   playing: ["April...", "May...", "June..."],
 } as const;
 
