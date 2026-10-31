@@ -58,8 +58,9 @@ export function BossLayout({ bubbles, open, onSelect, floor, columnRef }: BossLa
                     <p id={`${id}-${i}-speaker`} className={styles.speaker}>
                       {name}
                     </p>
-                    <p className={styles.line}>{b.line}</p>
+                    {/* Facts first: in a short window the panel scrolls, and only the joke may wait below. */}
                     <div className={styles.facts}>{b.facts}</div>
+                    <p className={styles.line}>{b.line}</p>
                   </div>
                 );
               })}
