@@ -38,7 +38,7 @@ export function isOutcome(v: unknown): v is Outcome {
   return Object.entries(v.facts).every(([key, value]) => key === 'amount' || (['release', 'holdCourse', 'repick', 'events', 'sale'].includes(key)
     && record(value) && Object.values(value).every(finite)));
 }
-const discoveryList = (v: unknown) => Array.isArray(v) && v.length <= 3 && v.every(d => ['A', 'B', 'C'].includes(d)) && new Set(v).size === v.length;
+const discoveryList = (v: unknown) => Array.isArray(v) && v.length <= 3 && v.every(d => ['D', 'E', 'F'].includes(d)) && new Set(v).size === v.length;
 /** The stored result for a quarter: M1's Outcome for Q1, Sim's Q2 outcome plus the game's discoveries for Q2. */
 export function isQuarterOutcome(period: PlayedQuarter['period'], v: unknown): boolean {
   if (period === '2194-Q1') return isOutcome(v);
