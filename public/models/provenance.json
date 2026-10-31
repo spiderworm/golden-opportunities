@@ -1,5 +1,5 @@
 {
-  "about": "Where every model in public/models/ came from. Add an entry for each model you copy in. 'item' is the studio item.json's provenance, copied verbatim.",
+  "about": "Where every model and texture under public/models/ and public/textures/ came from. Add an entry for each one you add. 'models' are copied from the studio ('item' is its item.json provenance, verbatim); 'station' and 'textures' were generated for the 3D station.",
   "copied": "2026-10-30",
   "by": "Orbit",
   "from": "games-studio a338b161",
@@ -46,5 +46,298 @@
         "made": "see prototypes/cubeberg/research/item-provenance.json and research/*-item.ts"
       }
     }
+  },
+  "station": {
+    "shelf-unit": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "A tall sci-fi bookshelf for a cozy space-station bookshop: warm wood shelves in a brushed-metal frame with softly curved ends and a thin warm light strip under each shelf, five empty shelves, front-facing. Stylized game-ready 3D render, chunky clean shapes, soft bevels, smooth matte surfaces, seen from the front three-quarter view slightly above, the whole object in frame, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/shelf-unit.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "9210b0bd-be32-4a2e-9459-dc421fbce1be",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "file": "public/models/station/shelf-unit.glb",
+      "sha256": "e346d5ec2ac98015fb59c1b2a71d1ac1a5b5e95d8f46a938fe6d8897dc751f5c",
+      "bytes": 289212,
+      "processed": "research/station-assets/process.mjs: color texture only, as webp (1024 px for the station, shelf and counter; 512 for the rest); static models baked to stand on y = 0, centered, facing +z",
+      "used": "The shelf units: two per wall unit, stretched to fill it (scene/shelves.ts)."
+    },
+    "robot": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "A small flying helper robot for a cozy space-station bookshop: a round glossy white body the size of a melon, a glowing cyan visor eye on the front, a slim glowing violet halo ring floating just above its top, two small grabber arms folded underneath, no legs, friendly and cute. Stylized game-ready 3D render, chunky clean shapes, soft bevels, smooth matte surfaces, seen from the front three-quarter view slightly above, the whole object in frame, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/robot.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "c7245878-3744-4901-ab83-06aa48ec7f66",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "file": "public/models/station/robot.glb",
+      "sha256": "b3bda51ef6bd387295874e68a67c693ef8a70620fa77700277c814604fd91a34",
+      "bytes": 265120,
+      "processed": "research/station-assets/process.mjs: color texture only, as webp (1024 px for the station, shelf and counter; 512 for the rest); static models baked to stand on y = 0, centered, facing +z",
+      "used": "The tidying robots (scene/Robots.tsx)."
+    },
+    "counter": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "A bookshop counter for a cozy space-station bookshop: a long low counter with a warm wood front panel, a brushed-metal top with rounded ends, and a small glowing holographic register terminal on top at one end, retro-futuristic. Stylized game-ready 3D render, chunky clean shapes, soft bevels, smooth matte surfaces, seen from the front three-quarter view slightly above, the whole object in frame, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/counter.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "09a60bc0-33c7-4cdf-a2a9-0d271420859d",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "file": "public/models/station/counter.glb",
+      "sha256": "b27946e23bc59094e3b0d7096e3545d024704a5ef71b7464692beef91190a5a6",
+      "bytes": 393540,
+      "processed": "research/station-assets/process.mjs: color texture only, as webp (1024 px for the station, shelf and counter; 512 for the rest); static models baked to stand on y = 0, centered, facing +z",
+      "used": "The shop counter (scene/Interior.tsx)."
+    },
+    "featured-stand": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "An empty display stand for a single featured book in a cozy space-station bookshop: a slim brass easel with a small wooden ledge where the book would rest, on a short round brass base, retro-futuristic, no book on it. Stylized game-ready 3D render, chunky clean shapes, soft bevels, smooth matte surfaces, seen from the front three-quarter view slightly above, the whole object in frame, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/featured-stand.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "b677e197-0d5b-4a5e-bf95-66f83d6eee5d",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "file": "public/models/station/featured-stand.glb",
+      "sha256": "86a5d52b44228d8827bcddaa0105bb79258c2c4b54c27f9f20dae863250e805b",
+      "bytes": 312008,
+      "processed": "research/station-assets/process.mjs: color texture only, as webp (1024 px for the station, shelf and counter; 512 for the rest); static models baked to stand on y = 0, centered, facing +z",
+      "used": "The featured book's easel (scene/Interior.tsx)."
+    },
+    "shuttle": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "A small passenger shuttle for a space station: rounded, friendly hull, white with violet stripes, a wide cockpit window at the front, two short stubby wings and two glowing engine nozzles at the back. Stylized game-ready 3D render, chunky clean shapes, soft bevels, smooth matte surfaces, seen from the front three-quarter view slightly above, the whole object in frame, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/shuttle.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "927b7f72-f534-4ef3-99c4-ba7dda040e68",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "file": "public/models/station/shuttle.glb",
+      "sha256": "e5b12ff091318bf6e7e699d3b644f99a65872e7f6571c37fc90fa8f07c15581a",
+      "bytes": 313044,
+      "processed": "research/station-assets/process.mjs: color texture only, as webp (1024 px for the station, shelf and counter; 512 for the rest); static models baked to stand on y = 0, centered, facing +z",
+      "used": "The shuttles circling the station (scene/Exterior.tsx)."
+    },
+    "berth-pod": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "A cozy bookstore module for a space station, seen from outside: a boxy pod with rounded edges, one wide panoramic front window glowing with warm light, a blank sign plate above the window, a docking collar at the back, white hull panels with violet trim lights. Stylized game-ready 3D render, chunky clean shapes, soft bevels, smooth matte surfaces, seen from the front three-quarter view slightly above, the whole object in frame, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/berth-pod.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "21cafabc-e46a-4f82-9993-e53ab6f46b12",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "used": false,
+      "why": "Not used: the camera flies through the berth's window into the real shop, and the model's window is a painted surface, so the berth stays built in code. Kept in Tripo (task above) in case it finds a use."
+    },
+    "station-exterior": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "A ring-shaped space station: a central hub with a docking spire, four straight spokes, a wide torus ring lined with small habitat pods, two solar panel arrays on the hub; white and graphite hull panels with small violet accent lights. Stylized game-ready 3D render, chunky clean shapes, soft bevels, smooth matte surfaces, seen from the front three-quarter view from above, the whole station in frame, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/station-exterior.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "b3820107-c59f-457c-8e18-f0f9d1daea78",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "file": "public/models/station/station-exterior.glb",
+      "sha256": "df6736ec5ba7639d07b4a8a90b00db03e8a7bdee035e75590f1e6e6f35031dcb",
+      "bytes": 474028,
+      "processed": "research/station-assets/process.mjs: color texture only, as webp (1024 px for the station, shelf and counter; 512 for the rest); static models baked to stand on y = 0, centered, facing +z",
+      "used": "The station's hub, spokes and ring; the berth on its rim is still built in code (scene/Exterior.tsx)."
+    },
+    "shopper-teal": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "A friendly stylized space-station resident, a woman with short dark hair in a casual teal jumpsuit with rolled sleeves and soft boots, simple rounded shapes, standing in a T-pose with arms straight out to the sides, full body, front view. Stylized game-ready 3D character render, chunky clean shapes, smooth matte surfaces, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/shopper-teal.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "29b8cd89-b770-4a4d-803d-2a5060b32231",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "rig": {
+        "tool": "Tripo Studio Auto Rig, Humanoid, Mixamo skeleton",
+        "credits": 20,
+        "motions": "presets walk and idle, retargeted (no credits), exported in place"
+      },
+      "file": "public/models/station/shopper-teal.glb",
+      "sha256": "d91b6c302db1259d2881fe8671412a89ac6550d6f9907add8209edb126655449",
+      "bytes": 710548,
+      "processed": "research/station-assets/process.mjs: color texture only, as webp (1024 px for the station, shelf and counter; 512 for the rest); static models baked to stand on y = 0, centered, facing +z",
+      "used": "A shopper (scene/Shoppers.tsx)."
+    },
+    "shopper-cardigan": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "A friendly stylized space-station resident, an older man with round glasses and a grey beard, a mustard cardigan over a navy jumpsuit and soft boots, simple rounded shapes, standing in a T-pose with arms straight out to the sides, full body, front view. Stylized game-ready 3D character render, chunky clean shapes, smooth matte surfaces, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/shopper-cardigan.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "fb2ee457-caba-4ea5-baa5-4384c2bb705a",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "rig": {
+        "tool": "Tripo Studio Auto Rig, Humanoid, Mixamo skeleton",
+        "credits": 20,
+        "motions": "presets walk and idle, retargeted (no credits), exported in place"
+      },
+      "file": "public/models/station/shopper-cardigan.glb",
+      "sha256": "a84d3670ba9fd9faba8b384bbc428a9ef4c49ca3d7782ba3ebc2e3811040edeb",
+      "bytes": 677356,
+      "processed": "research/station-assets/process.mjs: color texture only, as webp (1024 px for the station, shelf and counter; 512 for the rest); static models baked to stand on y = 0, centered, facing +z",
+      "used": "The keeper behind the counter, and a shopper (scene/Shoppers.tsx)."
+    },
+    "shopper-coral": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "A friendly stylized space-station resident, a young person with curly hair and round headphones around their neck, a coral jumpsuit with a small backpack and soft boots, simple rounded shapes, standing in a T-pose with arms straight out to the sides, full body, front view. Stylized game-ready 3D character render, chunky clean shapes, smooth matte surfaces, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/shopper-coral.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "153e2147-22e8-4de1-b0ac-25b4807cb1a6",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "rig": {
+        "tool": "Tripo Studio Auto Rig, Humanoid, Mixamo skeleton",
+        "credits": 20,
+        "motions": "presets walk and idle, retargeted (no credits), exported in place"
+      },
+      "file": "public/models/station/shopper-coral.glb",
+      "sha256": "74116a40caa0bc5166471e6fbcf0355759a100758f7650cc8326a79a4136ba08",
+      "bytes": 687960,
+      "processed": "research/station-assets/process.mjs: color texture only, as webp (1024 px for the station, shelf and counter; 512 for the rest); static models baked to stand on y = 0, centered, facing +z",
+      "used": "A shopper (scene/Shoppers.tsx)."
+    },
+    "shopper-lavender": {
+      "concept": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, free tier",
+        "prompt": "A friendly stylized space-station resident, a tall woman with a long braid, a lavender jumpsuit with a tool belt and soft boots, simple rounded shapes, standing in a T-pose with arms straight out to the sides, full body, front view. Stylized game-ready 3D character render, chunky clean shapes, smooth matte surfaces, plain white background, no text, no logo, no ground shadow.",
+        "image": "research/station-assets/concepts/shopper-lavender.jpg (downscaled from Tripo's 1024 x 1024 PNG)"
+      },
+      "model": {
+        "tool": "Tripo Studio image-to-3D, HD Model, AI model H3.1",
+        "settings": "Triangle topology, polycount 10,000, 2K texture, PBR, lighting removed",
+        "task": "53bc4733-4d93-4af1-bb46-a6fae7613286",
+        "credits": 45
+      },
+      "date": "2026-10-30",
+      "by": "Orbit, in David's Tripo account at his request",
+      "rig": {
+        "tool": "Tripo Studio Auto Rig, Humanoid, Mixamo skeleton",
+        "credits": 20,
+        "motions": "presets walk and idle, retargeted (no credits), exported in place"
+      },
+      "file": "public/models/station/shopper-lavender.glb",
+      "sha256": "35493453bda04f1e562d4a4e34da992d198bdab711e1fffa1cb6c8ff0acee4ba",
+      "bytes": 679456,
+      "processed": "research/station-assets/process.mjs: color texture only, as webp (1024 px for the station, shelf and counter; 512 for the rest); static models baked to stand on y = 0, centered, facing +z",
+      "used": "A shopper (scene/Shoppers.tsx)."
+    }
+  },
+  "textures": {
+    "planet-day.jpg": {
+      "tool": "Gemini app (gemini.google.com), image generation, in David's account",
+      "conversation": "Fictional Planet Texture Map",
+      "date": "2026-10-30",
+      "by": "Orbit, at David's request",
+      "prompts": [
+        "Create an image: a seamless equirectangular texture map (2:1 aspect ratio, as wide as possible) of the daytime surface of a fictional ocean planet, for wrapping onto a sphere in a 3D game. Deep blue oceans covering about 70 percent, green and ochre continents with mountain ranges, forests and deserts, small island chains, white polar ice caps along the top and bottom edges, no clouds, no text, no grid lines, no border, flat even lighting with no shadows or day-night line, and the left and right edges must join seamlessly.",
+        "That day map looks too much like Earth. Please make a new one with entirely invented continents that do not resemble any real Earth landmass: three large irregular continents and several archipelagos, deep blue oceans covering about 70 percent, green and ochre land with mountain ranges, forests and deserts, white polar ice caps along the top and bottom edges. Same format: seamless equirectangular texture map, 2:1 aspect ratio, as wide as possible, no clouds, no text, no grid lines, no border, flat even lighting, left and right edges joining seamlessly.",
+        "Good continents, but the map has place-name labels on it. Make exactly the same map with no labels, no words and no lettering anywhere: just the terrain, oceans and ice caps."
+      ],
+      "note": "The first result was plainly Earth and the second had place-name labels; the third is used.",
+      "file": "public/textures/station/planet-day.jpg",
+      "sha256": "4f3db963ae6ea5bfa8dbc71489bbc7d120c38fc7950c63d9b1c0b65a8b40a4de",
+      "bytes": 150377,
+      "size": "1456 x 720",
+      "processed": "research/station-assets/textures.py: the wrap's edges cross-faded so it leaves no seam; JPEG quality 82"
+    },
+    "planet-night.jpg": {
+      "tool": "Gemini app (gemini.google.com), image generation, in David's account",
+      "conversation": "Fictional Planet Texture Map",
+      "date": "2026-10-30",
+      "by": "Orbit, at David's request",
+      "prompts": [
+        "Now the matching night-side map of this same invented planet: exactly the same continents, coastlines and layout, same size and aspect ratio, but at night. Oceans and land nearly black, warm yellow-orange city lights clustered along coastlines and rivers, sparse in deserts and mountains, none on the ice caps. No clouds, no labels, no text, no grid lines, no border, left and right edges joining seamlessly."
+      ],
+      "note": "Checked against the day map: 99% of its city lights fall on the day map's land.",
+      "file": "public/textures/station/planet-night.jpg",
+      "sha256": "1e728e68af9b8c81ce5a176aec0565b9309c9f43b7597b6748a817dc293fa73e",
+      "bytes": 99373,
+      "size": "1456 x 720",
+      "processed": "research/station-assets/textures.py: the wrap's edges cross-faded so it leaves no seam; JPEG quality 82"
+    },
+    "starfield.jpg": {
+      "tool": "Gemini app (gemini.google.com), image generation, in David's account",
+      "conversation": "Fictional Planet Texture Map",
+      "date": "2026-10-30",
+      "by": "Orbit, at David's request",
+      "prompts": [
+        "Now a separate image: a seamless equirectangular starfield skybox texture (2:1 aspect ratio, as wide as possible) for a 3D space game. Mostly deep navy-black space, thousands of small sharp white and pale blue stars of varied brightness, a faint soft violet and navy nebula band crossing the middle, no planets, no galaxies in close-up, no text, no border, and the left and right edges must join seamlessly."
+      ],
+      "note": "Only its nebula is used: research/station-assets/textures.py filters its stars out.",
+      "file": "public/textures/station/starfield.jpg",
+      "sha256": "fac23b3ea5f4081edba0b46695aba2af95ad833207ca0bc4a3c4887ba30d446d",
+      "bytes": 28719,
+      "size": "1456 x 720",
+      "processed": "research/station-assets/textures.py: the wrap's edges cross-faded so it leaves no seam; JPEG quality 82"
+    }
+  },
+  "spent": {
+    "tripo_credits": 575,
+    "breakdown": "11 models at 45, 4 rigs at 20; balance 8,765 before, 8,190 after",
+    "gemini": "no credits (Tripo's free image allowance and the Gemini app)"
   }
 }

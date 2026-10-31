@@ -1,15 +1,17 @@
+import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
-import { CapsuleGeometry, Color, MeshStandardMaterial, Object3D, Quaternion, SphereGeometry, Vector3, type InstancedMesh } from "three";
+import { useEffect, useMemo } from "react";
+import { AnimationMixer, Box3, Group, Quaternion, Vector3, type AnimationAction, type Mesh, type MeshStandardMaterial } from "three";
+import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import type { Bookshop } from "./bookshop";
-import { merged } from "./geometry";
+import { modelUrl } from "./models";
 import { MAX_SHOPPERS } from "../scene-params";
 
-// Browsing customers, drawn as simple figures until real character models
-// arrive. Each walks between browsing spots and stops at each for a while.
-// Instance 0 is the keeper behind the counter; the rest come and go with
-// the shop's busyness. Now and then a shopper walks off with a book and sets
+// Browsing customers: four generated, rigged residents with walk and idle
+// motions, shared out among the shoppers. Each walks between browsing spots
+// and stops at each for a while. Figure 0 is the keeper behind the counter;
+// the rest come and go with the shop's busyness. Now and then a shopper walks off with a book and sets
 // it down wherever they stop next, or leaves one leaning; the robots tidy up.
 
 /** Where a shopper stands to browse, and which way they face (radians about Y, 0 = +z). */
@@ -33,7 +35,20 @@ const TAKE_CHANCE = 0.35;
 const LEAN_CHANCE = 0.25;
 const Y_AXIS = new Vector3(0, 1, 0);
 
-const COATS = ["#d0705a", "#5a8fd0", "#e0b45a", "#6fbf8f", "#b27ad6", "#e6e1d3", "#5ac2c2", "#d65a8f"];
+const VARIANTS = ["shopper-teal", "shopper-coral", "shopper-lavender", "shopper-cardigan"] as const;
+/** The keeper wears the cardigan. */
+const KEEPER_VARIANT = 3;
+const HEIGHT = 1.7;
+
+/** One resident: a clone of a variant's rigged model, with its own motions. */
+interface Figure {
+  root: Group;
+  mixer: AnimationMixer;
+  walk: AnimationAction;
+  idle: AnimationAction;
+  walking: boolean;
+}
+
 
 interface Walker {
   from: number;
@@ -59,14 +74,40 @@ function plan(from: number, to: number, now: number): Walker {
 }
 
 export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
-  const ref = useRef<InstancedMesh>(null);
-  const { geometry, material } = useMemo(
-    () => ({
-      geometry: merged([new CapsuleGeometry(0.26, 0.85, 4, 12).translate(0, 0.7, 0), new SphereGeometry(0.2, 14, 10).translate(0, 1.55, 0)]),
-      material: new MeshStandardMaterial({ roughness: 0.7 }),
-    }),
-    [],
-  );
+  const variants = useGLTF(VARIANTS.map(modelUrl), false);
+  const figures = useMemo<Figure[]>(() => {
+    // Their textures glow faintly, so they read in the shop's low light.
+    for (const v of variants) {
+      v.scene.traverse((o) => {
+        const material = (o as Mesh).material as MeshStandardMaterial | undefined;
+        if (!material?.isMeshStandardMaterial) return;
+        material.emissive.set("#ffffff");
+        material.emissiveMap = material.map;
+        material.emissiveIntensity = 0.18;
+      });
+    }
+    return Array.from({ length: MAX_SHOPPERS + 1 }, (_, i) => {
+      const source = variants[i === 0 ? KEEPER_VARIANT : (i - 1) % VARIANTS.length]!;
+      const body = cloneSkinned(source.scene);
+      const bounds = new Box3().setFromObject(body);
+      const scale = HEIGHT / (bounds.max.y - bounds.min.y);
+      body.scale.setScalar(scale);
+      body.position.y = -bounds.min.y * scale;
+      body.traverse((o) => (o.frustumCulled = false));
+      const root = new Group();
+      root.add(body);
+      const mixer = new AnimationMixer(body);
+      const clip = (name: string) => source.animations.find((a) => a.name.toLowerCase().includes(name)) ?? source.animations[0]!;
+      const walk = mixer.clipAction(clip("walk"));
+      const idle = mixer.clipAction(clip("idle"));
+      idle.play();
+      // Out of step with each other.
+      idle.time = Math.random() * idle.getClip().duration;
+      return { root, mixer, walk, idle, walking: false };
+    });
+  }, [variants]);
+  useEffect(() => () => figures.forEach((f) => f.mixer.stopAllAction()), [figures]);
+
   const walkers = useMemo(
     () =>
       Array.from({ length: MAX_SHOPPERS }, (_, i) => {
@@ -76,28 +117,15 @@ export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
       }),
     [],
   );
-  const dummy = useMemo(() => new Object3D(), []);
   const hand = useMemo(() => ({ at: new Vector3(), turn: new Quaternion() }), []);
 
-  useEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    for (let i = 0; i <= MAX_SHOPPERS; i++) mesh.setColorAt(i, new Color(i === 0 ? "#6b5cff" : COATS[(i - 1) % COATS.length]!));
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, []);
-  useEffect(() => () => {
-    geometry.dispose();
-    material.dispose();
-  }, [geometry, material]);
-
-  useFrame(({ clock }) => {
-    const mesh = ref.current;
-    if (!mesh) return;
+  useFrame(({ clock }, frameDelta) => {
+    const delta = Math.min(frameDelta, 0.1);
     const now = clock.elapsedTime;
-    dummy.position.set(KEEPER[0], 0, KEEPER[1]);
-    dummy.rotation.set(0, KEEPER[2] + Math.sin(now * 0.4) * 0.3, 0);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(0, dummy.matrix);
+    const keeper = figures[0]!;
+    keeper.root.position.set(KEEPER[0], 0, KEEPER[1]);
+    keeper.root.rotation.set(0, KEEPER[2] + Math.sin(now * 0.4) * 0.3, 0);
+    keeper.mixer.update(delta);
     for (let i = 0; i < count; i++) {
       let w = walkers[i]!;
       if (now - w.started > w.walk + w.browse) {
@@ -111,14 +139,16 @@ export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
       const [ax, az] = SPOTS[w.from]!;
       const [bx, bz, facing] = SPOTS[w.to]!;
       const walking = t < 1;
-      dummy.position.set(ax + (bx - ax) * t, walking ? Math.abs(Math.sin(now * 7 + i)) * 0.05 : 0, az + (bz - az) * t);
       const heading = Math.atan2(bx - ax, bz - az);
-      dummy.rotation.set(0, walking ? heading : facing, 0);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i + 1, dummy.matrix);
+      const f = figures[i + 1]!;
+      f.root.visible = true;
+      f.root.position.set(ax + (bx - ax) * t, 0, az + (bz - az) * t);
+      f.root.rotation.set(0, walking ? heading : facing, 0);
+      setWalking(f, walking);
+      f.mixer.update(delta);
       if (w.carrying >= 0) {
         if (walking) {
-          hand.at.set(dummy.position.x + Math.sin(heading) * 0.3, 0.95, dummy.position.z + Math.cos(heading) * 0.3);
+          hand.at.set(f.root.position.x + Math.sin(heading) * 0.3, 0.95, f.root.position.z + Math.cos(heading) * 0.3);
           shop.hold(w.carrying, hand.at, hand.turn.setFromAxisAngle(Y_AXIS, heading));
         } else {
           shop.setDown(w.carrying, bx, bz, heading);
@@ -128,15 +158,29 @@ export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
     }
     // Anyone who has left the shop puts down what they were holding.
     for (let i = count; i < MAX_SHOPPERS; i++) {
+      figures[i + 1]!.root.visible = false;
       const w = walkers[i]!;
       if (w.carrying < 0) continue;
       const [bx, bz, facing] = SPOTS[w.to]!;
       shop.setDown(w.carrying, bx, bz, facing);
       w.carrying = -1;
     }
-    mesh.count = count + 1;
-    mesh.instanceMatrix.needsUpdate = true;
   });
 
-  return <instancedMesh ref={ref} args={[geometry, material, MAX_SHOPPERS + 1]} frustumCulled={false} />;
+  return (
+    <>
+      {figures.map((f, i) => (
+        <primitive key={i} object={f.root} />
+      ))}
+    </>
+  );
+}
+
+/** Crossfades a figure between walking and standing. */
+function setWalking(f: Figure, walking: boolean) {
+  if (f.walking === walking) return;
+  f.walking = walking;
+  const [from, to] = walking ? [f.idle, f.walk] : [f.walk, f.idle];
+  to.reset().play();
+  from.crossFadeTo(to, 0.3, false);
 }
