@@ -47,7 +47,7 @@ unmatched value returns empty results, including a hidden/future quarter.
 Sort is `{ column, direction: 'asc' | 'desc' }`; its column must be the selected
 measure or a selected grouping dimension. Default order is ascending grouping
 columns in request order; ties use that same order for reproducibility. Nulls
-sort last. Limit is 1–200 (default 200). Source states when rows are truncated.
+sort last. Limit is 1–200 (default 200). Source states when rows are truncated. Results also include `truncated: boolean` from the engine so server consumers never need to parse that prose.
 Without grouping, return one aggregate row even when no facts match. With
 grouping, do not synthesize missing zero-valued categories.
 
@@ -108,8 +108,8 @@ Browser requests must be local and same-origin and have a valid save cookie.
 Sage's spawner resolves that cookie server-side and calls
 `issueGameQueryToken(saveId)` from `src/game/query-token.server.ts`, receiving
 `{ token, revoke }`. One random capability lives for at most three minutes and
-is revoked after the answer's provider finishes. It binds a save revision; a changed
-revision, revocation, expiry or missing save returns SESSION_ENDED/401. Comparisons
+is revoked after the answer's provider finishes. It binds a query revision; a changed
+query revision, revocation, expiry or missing save returns SESSION_ENDED/401. Comparisons
 must fail as a whole if either call ends, never combine different revisions.
 There is no startup-global bearer or fallback view. Tokens travel through child
 environment only; Host never chooses their destination or a save.
@@ -151,3 +151,10 @@ and undated grant in each key. Results are copied for callers. Simulated facts
 are not cached until the save layer supplies an immutable version contract.
 Responses remain private/no-store because views are player-specific;
 source indicates limited result rows and the independent pre-limit total.
+
+
+Discovery-only writes preserve `queryRevision`; ordinary save updates (including play)
+advance it. Legacy saves without the field use their existing `revision`. The storage
+revision still advances for evidence writes, preserving optimistic update safety. An
+answer may discover an insight without invalidating its own next lookup. Revocation,
+expiry and a committed play still end the capability, including during body arrival.
