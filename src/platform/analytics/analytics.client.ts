@@ -1,34 +1,24 @@
-import { createAnalytics, type Analytics } from "@tellim/analytics/client";
-import { deployed } from "@tellim/analytics/deployed";
+import type { Analytics } from "@tellim/kit/analytics/client";
+import { setGl, studio } from "../kit.client";
 import { isPhoneScreen, PHONE_EVENT } from "../phone";
-import { BUILD, GAME, VERSION, type Props, type Track, type TrackOptions } from "./track";
+import { GAME, type Props, type Track, type TrackOptions } from "./track";
 
 let analytics: Analytics | undefined;
 // Whether the server has confirmed the player's sharing choice. Pending until
 // it answers; false (and remembered across reloads) until it confirms.
 const UNCONFIRMED_KEY = `${GAME}.sharingUnconfirmed`;
 let serverConfirmed: Promise<boolean> = Promise.resolve(true);
-// The game's WebGL context, once a scene has made one (setAnalyticsGl).
-let glSource: (() => WebGLRenderingContext | null) | undefined;
 // Events tracked before startAnalytics() runs, sent once it does.
 const early: [string, Props | undefined, TrackOptions | undefined][] = [];
 
 /**
- * Starts the browser's analytics once per page load. Local runs send too
- * (David, 30 Oct 2026: "every bit, to me"), marked as platform "webdev".
- * Automated browsers (webdriver, ?analytics-test=1) never send.
+ * Starts the browser's analytics once per page load, through the studio's
+ * kit (../kit.client: where they're sent, and from what).
  */
 export function startAnalytics(instance: string, gl?: () => WebGLRenderingContext | null): Analytics {
   if (analytics) return analytics;
-  analytics = createAnalytics({
-    game: GAME,
-    key: GAME,
-    endpoint: deployed.endpoint,
-    build: BUILD,
-    version: VERSION,
-    platform: import.meta.env.DEV ? "webdev" : "web",
-    gl: gl ?? (() => glSource?.() ?? null),
-  });
+  if (gl) setGl(gl);
+  analytics = studio().analytics!;
   analytics.track("instance", { id: instance });
   // A fresh server doesn't know this browser's choice; tell it if sharing is off.
   if (!analytics.sharing()) serverConfirmed = tellServer(false);
@@ -44,7 +34,7 @@ export function startAnalytics(instance: string, gl?: () => WebGLRenderingContex
  * (e.g. arriving on the Station screen).
  */
 export function setAnalyticsGl(get: () => WebGLRenderingContext | null) {
-  glSource = get;
+  setGl(get);
 }
 
 /**

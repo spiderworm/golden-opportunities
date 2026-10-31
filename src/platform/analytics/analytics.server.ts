@@ -1,6 +1,6 @@
 import path from "node:path";
-import { createAnalytics, type Analytics } from "@tellim/analytics/client";
-import { deployed } from "@tellim/analytics/deployed";
+import { createAnalytics, type Analytics } from "@tellim/kit/analytics/client";
+import { deployed } from "@tellim/kit/analytics/deployed";
 import { fileStorage } from "./file-storage.server";
 import { DATA_DIR, instanceId } from "./instance.server";
 import { BUILD, GAME, VERSION, type Track } from "./track";

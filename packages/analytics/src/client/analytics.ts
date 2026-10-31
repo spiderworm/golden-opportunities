@@ -26,15 +26,20 @@ export type Event = { t: number; s: string; n?: number; e: string; p: Props };
 /** an event as it's sent (and as ingest keeps it) */
 export type Sent = Event & { n: number };
 
+/** the app, as @tellim/platform's defineApp() gives it (read structurally, so this package needn't depend on platform) */
+export type App = { id: string; storagePrefix?: string; build?: string; version?: string };
+
 export type Options = {
-  /** the game's name at the endpoint, e.g. "waddleberg" */
-  game: string;
+  /** who the app is (David, 31 Oct 2026): game from its id, key from its storagePrefix (else its id), build and version from it. The options below still work, and override it. */
+  app?: App;
+  /** the game's name at the endpoint, e.g. "waddleberg" (default: app.id) */
+  game?: string;
   /** the ingest endpoint (a Lambda function URL); none: kept on the device only */
   endpoint?: string;
-  /** prefix for this game's storage keys, e.g. "cubeberg" */
-  key: string;
-  /** the build the events came from */
-  build: string;
+  /** prefix for this game's storage keys, e.g. "cubeberg" (default: app.storagePrefix, else app.id) */
+  key?: string;
+  /** the build the events came from (default: app.build) */
+  build?: string;
   /** the release it is, e.g. "0.1.12-alpha" (the game's versionName); sent with each batch, so reports needn't guess it */
   version?: string;
   /** e.g. "android" or "web" */
@@ -79,7 +84,15 @@ export function nextBatch<T>(queue: T[], maxBytes = BATCH_BYTES): T[] {
   return queue.slice(0, i);
 }
 
-export function createAnalytics(options: Options) {
+type Resolved = Options & { game: string; key: string; build: string };
+
+export function createAnalytics(given: Options) {
+  const app = given.app;
+  const game = given.game ?? app?.id;
+  const key = given.key ?? app?.storagePrefix ?? app?.id;
+  const build = given.build ?? app?.build;
+  if (!game || !key || !build) throw new Error("[analytics] createAnalytics needs an app, or game, key and build");
+  const options: Resolved = { ...given, game, key, build, version: given.version ?? app?.version };
   // Every game gets these without asking (shared, David 27 Oct 2026): Play's
   // test robots send as platform "testlab"; automated runs send nothing, in
   // a log of their own; and a "device" event goes once per startup.
@@ -90,7 +103,7 @@ export function createAnalytics(options: Options) {
     session: (() => { try { return globalThis.sessionStorage; } catch { return undefined; } })(),
   };
   const automated = automation(env.webdriver, env.search, options.key, env.session);
-  const o: Options = {
+  const o: Resolved = {
     ...options,
     key: automated ? `${options.key}.test` : options.key,
     endpoint: automated ? undefined : options.endpoint,

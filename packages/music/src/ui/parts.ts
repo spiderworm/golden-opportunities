@@ -31,9 +31,9 @@ export function fullName(host: HTMLElement, name: HTMLElement) {
   return () => host.matches(":hover") && check();
 }
 
-/** Another tab of the game wouldn't let go of the music (oneTab), shown
+/** Another app wouldn't let go of the music (oneTab), shown
  * where the player pressed play for a few seconds. */
-const OTHER_TAB = "Music is playing in another tab. Pause it there, then try again.";
+const OTHER_TAB = "Music is playing in another game. Pause it there, then try again.";
 const NOTICE_MS = 6000;
 export function otherTabNotice(holder: HTMLElement, doc: Document, place?: (note: HTMLElement) => void) {
   const note = doc.createElement("p");

@@ -69,12 +69,24 @@ test('with songs listed, the dock waits in the menu, the first tap starts the mu
   await expect(page.getByRole('region', { name: 'Music' }).locator('.music-panel')).toBeVisible();
 });
 
-test('one tab at a time, and a reload carries on: a second tab waits, its play takes over, a pause holds', async ({ context }) => {
+test("the game's tabs are one app: one song and one pause in every tab, heard only in the tab used last, and a reload carries on", async ({ context }) => {
   const thirty = silentWav(30); // long enough that no song ends mid-test
   await context.route('**/music/songs.json', route =>
     route.fulfill({ json: { songs: [{ id: 'test-silence', file: 'test-silence.wav', title: 'Test Silence' }] } }));
   await context.route('**/music/test-silence.wav', route => route.fulfill({ body: thirty, contentType: 'audio/wav' }));
+  // each tab's own <audio>, to see which one is sounding
+  await context.addInitScript(() => {
+    const Real = window.Audio;
+    const decks: HTMLAudioElement[] = [];
+    (window as unknown as { __sounding: () => boolean }).__sounding = () => decks.some(d => !d.paused);
+    window.Audio = function (src?: string) {
+      const d = new Real(src);
+      decks.push(d);
+      return d;
+    } as unknown as typeof Audio;
+  });
   const play = (page: import('@playwright/test').Page) => page.locator('.music-dock [data-do="play"]');
+  const sounding = (page: import('@playwright/test').Page) => page.evaluate(() => (window as unknown as { __sounding: () => boolean }).__sounding());
 
   const first = await context.newPage();
   await first.goto('/investigate');
@@ -82,26 +94,42 @@ test('one tab at a time, and a reload carries on: a second tab waits, its play t
   await first.mouse.click(5, 5);
   await expect(play(first)).toHaveAttribute('aria-label', 'Pause');
 
-  // A second tab doesn't start by itself while the first has the music.
+  // A second tab, used now, carries the music on: the same song, playing, and
+  // only this tab is heard.
   const second = await context.newPage();
   await second.goto('/investigate');
   await expect(second.locator('.music-dock')).toContainText('Test Silence');
   await second.mouse.click(5, 5);
-  await second.waitForTimeout(500);
-  await expect(play(second)).toHaveAttribute('aria-label', 'Play');
+  await expect.poll(() => sounding(second)).toBe(true);
+  await expect.poll(() => sounding(first)).toBe(false);
+  await expect(play(second)).toHaveAttribute('aria-label', 'Pause');
   await expect(play(first)).toHaveAttribute('aria-label', 'Pause');
 
-  // Its own play takes the music: the first tab stops.
-  await play(second).click();
-  await expect(play(second)).toHaveAttribute('aria-label', 'Pause');
-  await expect(play(first)).toHaveAttribute('aria-label', 'Play');
+  // Back to the first: it's heard again, and the second is quiet.
+  await first.bringToFront();
+  await first.mouse.click(5, 5);
+  await expect.poll(() => sounding(first)).toBe(true);
+  await expect.poll(() => sounding(second)).toBe(false);
 
-  // A pause the player chose holds through a reload; a tap doesn't undo it.
-  await play(second).click();
+  // A pause in one tab is the game's: every tab is paused.
+  await play(first).click();
+  await expect(play(first)).toHaveAttribute('aria-label', 'Play');
   await expect(play(second)).toHaveAttribute('aria-label', 'Play');
+  await expect.poll(() => sounding(first)).toBe(false);
+
+  // It holds through a reload; a tap doesn't undo it.
+  await second.bringToFront();
   await second.reload();
   await expect(second.locator('.music-dock')).toContainText('Test Silence');
   await second.mouse.click(5, 5);
   await second.waitForTimeout(500);
   await expect(play(second)).toHaveAttribute('aria-label', 'Play');
+  expect(await sounding(second)).toBe(false);
+
+  // Play in either tab plays for both, heard where it was pressed.
+  await play(second).click();
+  await expect(play(second)).toHaveAttribute('aria-label', 'Pause');
+  await expect(play(first)).toHaveAttribute('aria-label', 'Pause');
+  await expect.poll(() => sounding(second)).toBe(true);
+  await expect.poll(() => sounding(first)).toBe(false);
 });

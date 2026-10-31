@@ -2,7 +2,7 @@
 // Audit's probe on #65, against the studio's real player: a saved volume must
 // hold from the first note, not only after the slider moves.
 import { afterEach, expect, it, vi } from "vitest";
-import { createMusic } from "@tellim/music/player";
+import { createMusic } from "@tellim/kit/music/player";
 import { musicContext, resetMusicContext } from "./audio-context";
 
 class Deck extends EventTarget {
