@@ -129,7 +129,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           }}
           onTable={(shown) => track("investigate_table_toggled", { shown })}
           onPin={() => pins.add(chartPin, "player")}
-          pinned={pins.has(chartPin.kind, chartPin.query)}
+          pinned={pins.has(chartPin)}
         />
         {titleView && (
           <TitleView
@@ -167,7 +167,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
       </div>
       {/* Dewey: a column beside the dashboard on wide screens, after it below that. */}
       <aside className={styles.assistant} aria-label="Dewey">
-        <AssistantPanel onPin={(chart) => pins.add(chart, "dewey")} />
+        <AssistantPanel onPin={(chart) => pins.add(chart, "dewey")} onPinLookup={(pin) => pins.add(pin, "player")} isPinned={pins.has} />
       </aside>
     </div>
   );

@@ -189,6 +189,38 @@ const MEASURE_TITLES: Record<Measure, string> = {
 /** A chart's title, built from its query: the model doesn't title pins (Probe X1, #32). */
 export const chartTitle = (query: Query) => `${MEASURE_TITLES[query.measure]}${query.by.length ? ` by ${query.by.join(" and ").replace(/_/g, " ")}` : ""}${query.filter && Object.keys(query.filter).length ? ", filtered" : ""}`;
 
+const DIMENSION_WORDS = (by: readonly Dimension[]) => by.join(" and ").replace(/_/g, " ");
+
+/**
+ * A comparison's title, built from its measure and dimensions only: the compared values are the model's free
+ * text, shown only as the data returns them (Audit, #32).
+ */
+export const comparisonTitle = (c: Comparison) => `${MEASURE_TITLES[c.measure]} compared across ${DIMENSION_WORDS([c.across])}${c.by.length ? ` by ${DIMENSION_WORDS(c.by)}` : ""}${c.filter && Object.keys(c.filter).length ? ", filtered" : ""}`;
+
+/**
+ * What the player can pin from a lookup Dewey showed: the query or comparison that ran, never its rows, so
+ * Investigate runs it again through POST /api/query. Structurally one of Chart's PinSpecs
+ * (src/investigate/pins/spec.ts).
+ */
+export type LookupPin = { title: string; kind: "table"; query: Query } | { title: string; kind: "comparison"; comparison: Comparison };
+
+/** The pin for a lookup that ran, from the tool's input checked as the tool server checked it; null if it doesn't check. */
+export function lookupPin(tool: string, input: unknown): LookupPin | null {
+  try {
+    if (tool === "query_data") {
+      const query = checkQuery(input);
+      return { title: chartTitle(query), kind: "table", query };
+    }
+    if (tool === "compare_data") {
+      const comparison = checkComparison(input);
+      return { title: comparisonTitle(comparison), kind: "comparison", comparison };
+    }
+  } catch (e) {
+    if (!(e instanceof ToolInputError)) throw e;
+  }
+  return null;
+}
+
 /** Checks a chart to pin, and titles it from its query. A title from the model is ignored. Throws ToolInputError. */
 export function checkChart(input: unknown): ChartSpec {
   if (!isObject(input)) throw new ToolInputError("The chart must be an object.");

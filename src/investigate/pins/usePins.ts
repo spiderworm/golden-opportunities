@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { Track } from "~/platform/analytics/track";
-import type { Query } from "~/query/types";
-import { addPin, parsePins, parsePinSpec, pinKey, type Pin, type PinKind, type PinSpec } from "./spec";
+import { addPin, parsePins, parsePinSpec, pinKey, type Pin, type PinSpec } from "./spec";
 
 // TODO(game-state): pins belong in the player's save once Frank's game state
 // lands. Until then they're kept in this browser.
@@ -10,10 +9,11 @@ const STORAGE_KEY = "orbital-books:pins:v1";
 
 export interface Pins {
   pins: Pin[];
-  /** Pins a chart; returns false when the spec isn't a valid chart. Dewey's onPin can be this, bound to "dewey". */
+  /** Pins a chart, table or comparison; returns false when the spec isn't a valid one. Dewey's onPin can be this, bound to "dewey". */
   add: (spec: unknown, pinnedBy: Pin["pinnedBy"]) => boolean;
   remove: (id: string) => void;
-  has: (kind: PinKind, query: Query) => boolean;
+  /** Whether the same pin is on the board, whatever its title. */
+  has: (spec: PinSpec) => boolean;
 }
 
 export function usePins(track: Track): Pins {
@@ -38,7 +38,8 @@ export function usePins(track: Track): Pins {
         return false;
       }
       setPins((current) => addPin(current ?? [], spec, pinnedBy, crypto.randomUUID()));
-      track("investigate_pin_added", { pinnedBy, kind: spec.kind, measure: spec.query.measure, dimensions: spec.query.by.length });
+      const { measure, by } = spec.kind === "comparison" ? spec.comparison : spec.query;
+      track("investigate_pin_added", { pinnedBy, kind: spec.kind, measure, dimensions: by.length });
       return true;
     },
     [track],
@@ -46,13 +47,14 @@ export function usePins(track: Track): Pins {
 
   const remove = useCallback(
     (id: string) => {
+      const pin = pins.find((p) => p.id === id);
       setPins((current) => (current ?? []).filter((p) => p.id !== id));
-      track("investigate_pin_removed");
+      track("investigate_pin_removed", pin ? { kind: pin.kind } : {});
     },
-    [track],
+    [track, pins],
   );
 
-  const has = useCallback((kind: PinKind, query: Query) => pins.some((p) => pinKey(p.kind, p.query) === pinKey(kind, query)), [pins]);
+  const has = useCallback((spec: PinSpec) => pins.some((p) => pinKey(p) === pinKey(spec)), [pins]);
 
   return { pins, add, remove, has };
 }

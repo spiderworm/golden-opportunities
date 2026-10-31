@@ -7,6 +7,10 @@ import { DIMENSIONS, MEASURES } from "../../query/types.ts";
 import { checkChart, checkComparison, checkQuery, describeData, ToolInputError, TOOLS } from "./definitions.ts";
 import { callTool, handle, queryEndpoint, resetRefsForTests } from "./server.ts";
 import { defaultQueryUrl, orbitalToolServer } from "./toolServer.server.ts";
+import { toWire } from "../server/ask.server.ts";
+import { fakeLookupAssistant } from "../server/fakeLookups.server.ts";
+import { Refs, sentenceGate } from "../server/figures.server.ts";
+import type { ProviderEvent } from "../server/provider.server.ts";
 
 describe("the tool list", () => {
   it("is exactly: describe, query, compare, pin; every input schema is closed", () => {
@@ -189,6 +193,17 @@ describe("calling tools against the app", () => {
     expect(result.total).toEqual({ from: 240, to: 160, change: -80, percent_change: (-80 / 240) * 100, direction: "fell" });
     expect(result.labels).toEqual({ from: "2193-Q3", to: "2193-Q4" });
     expect(result.source).toMatch(/^revenue compared across quarter, 2193-Q3 against 2193-Q4\. .*2193-Q3: Genres, 2193-Q3 2193-Q4: Genres, 2193-Q4$/);
+  });
+
+  it("the fake provider looks up for real, through this code, and says nothing the figure gate would withhold", async () => {
+    const events: ProviderEvent[] = [];
+    for await (const e of fakeLookupAssistant(env as Record<string, string>).ask({ system: "", message: "" }, new AbortController().signal)) events.push(e);
+    // The stub has one quarter, so there's nothing to compare.
+    expect(events.map((e) => (e.type === "tool" ? e.name : e.type))).toEqual(["text", "query_data"]);
+    expect(toWire(events[1]!)).toMatchObject({ type: "data", rows: [{ quarter: "2193-Q1", revenue: 10 }], pin: { kind: "table", query: { measure: "revenue", by: ["quarter"] } } });
+    const text = (events[0] as { text: string }).text;
+    const gate = sentenceGate(new Refs());
+    expect(gate.push(text) + gate.flush()).toBe(text);
   });
 
   it("names compared values only as the data returned them: never the model's text (Audit's probe)", async () => {

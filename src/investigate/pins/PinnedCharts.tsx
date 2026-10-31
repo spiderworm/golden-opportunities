@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { QueryResult } from "~/query/types";
+import { combineComparison, comparisonQueries } from "~/assistant/tools/comparison";
+import type { ComparisonResult } from "~/assistant/tools/definitions";
+import type { Dimension, QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
 import { categoryHeight, categoryModel, categoryOption, legendItems } from "../charts/category-chart";
 import { MAX_SERIES } from "~/platform/charts/chart-theme";
 import { EChart } from "~/platform/charts/EChart";
 import { Legend } from "../charts/Legend";
 import { ResultTable } from "../charts/ResultTable";
-import { formatMeasure, MEASURE_LABELS } from "../format";
+import { formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
 import { monthsInScope } from "../state";
 import styles from "../Investigate.module.css";
 import { fetchQuery, QueryRequestError } from "./query-client";
-import type { Pin } from "./spec";
+import type { ChartPinSpec, ComparisonPinSpec, Pin } from "./spec";
 
 const CHART_HEIGHT = 240;
 
@@ -33,7 +35,7 @@ export function PinnedCharts({ pins, quarters, onRemove, onError }: PinnedCharts
         {pins.length > 0 && <span className={styles.pinnedCount}>{pins.length}</span>}
       </header>
       {pins.length === 0 ? (
-        <p className={styles.pinnedEmpty}>Pin a chart to keep it here: use Pin on the chart above, or ask Dewey to pin one.</p>
+        <p className={styles.pinnedEmpty}>Pin a chart to keep it here: use Pin on the chart above or on a table Dewey shows, or ask Dewey to pin one.</p>
       ) : (
         <ul className={styles.pinnedGrid}>
           {pins.map((pin) => (
@@ -47,7 +49,33 @@ export function PinnedCharts({ pins, quarters, onRemove, onError }: PinnedCharts
   );
 }
 
-type Load = { status: "loading" } | { status: "ready"; result: QueryResult } | { status: "failed"; message: string };
+type Loaded = { kind: "query"; result: QueryResult } | { kind: "comparison"; result: ComparisonResult };
+type Load = { status: "loading" } | ({ status: "ready" } & Loaded) | { status: "failed"; message: string };
+
+/**
+ * Runs a pin through POST /api/query, as the player's own queries run: nothing Dewey showed is kept or replayed.
+ * A comparison is its two queries, combined as Dewey's tool server combines them; if either side fails, the
+ * whole card fails, and the other side is cancelled.
+ */
+export async function runPin(pin: Pin, signal: AbortSignal): Promise<Loaded> {
+  if (pin.kind !== "comparison") return { kind: "query", result: await fetchQuery(pin.query, signal) };
+  const sides = new AbortController();
+  const stop = () => sides.abort();
+  signal.addEventListener("abort", stop);
+  try {
+    const [from, to] = await Promise.all(
+      comparisonQueries(pin.comparison).map((query) =>
+        fetchQuery(query, sides.signal).catch((error: unknown) => {
+          sides.abort();
+          throw error;
+        }),
+      ),
+    );
+    return { kind: "comparison", result: combineComparison(pin.comparison, from!, to!) };
+  } finally {
+    signal.removeEventListener("abort", stop);
+  }
+}
 
 function PinnedChart({ pin, quarters, onRemove, onError }: { pin: Pin; quarters: readonly string[]; onRemove: () => void; onError: (code: string) => void }) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
@@ -55,8 +83,8 @@ function PinnedChart({ pin, quarters, onRemove, onError }: { pin: Pin; quarters:
   useEffect(() => {
     const controller = new AbortController();
     setLoad({ status: "loading" });
-    fetchQuery(pin.query, controller.signal)
-      .then((result) => setLoad({ status: "ready", result }))
+    runPin(pin, controller.signal)
+      .then((loaded) => setLoad({ status: "ready", ...loaded }))
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         const code = error instanceof QueryRequestError ? error.code : "NETWORK";
@@ -84,12 +112,17 @@ function PinnedChart({ pin, quarters, onRemove, onError }: { pin: Pin; quarters:
           {load.message}
         </p>
       )}
-      {load.status === "ready" && <PinBody pin={pin} result={load.result} quarters={quarters} />}
+      {load.status === "ready" &&
+        (pin.kind === "comparison" ? (
+          load.kind === "comparison" && <ComparisonBody pin={pin} result={load.result} />
+        ) : (
+          load.kind === "query" && <PinBody pin={pin} result={load.result} quarters={quarters} />
+        ))}
     </article>
   );
 }
 
-function PinBody({ pin, result, quarters }: { pin: Pin; result: QueryResult; quarters: readonly string[] }) {
+function PinBody({ pin, result, quarters }: { pin: ChartPinSpec; result: QueryResult; quarters: readonly string[] }) {
   const [x, seriesBy = null] = pin.query.by;
   const model = useMemo(
     () => (x ? categoryModel(result, x, seriesBy, x === "month" ? pinMonths(pin, quarters) : [], { limit: pin.query.limit }) : null),
@@ -129,8 +162,51 @@ function PinBody({ pin, result, quarters }: { pin: Pin; result: QueryResult; qua
   );
 }
 
+const percent = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1, signDisplay: "exceptZero" });
+
+/** A pinned comparison: each breakdown row, then the overall figures, as Dewey showed them. */
+function ComparisonBody({ pin, result }: { pin: ComparisonPinSpec; result: ComparisonResult }) {
+  const { measure } = pin.comparison;
+  // The overall figures go last, as in Dewey's panel; its breakdown cell reads "All".
+  const rows: Record<string, unknown>[] = [...result.rows, { ...result.total }];
+  const cell = (key: string, value: unknown, total: boolean) => {
+    if (key === "percent_change") return typeof value === "number" ? `${percent.format(value)}%` : "No data";
+    if (key === "from" || key === "to" || key === "change") return formatMeasure(measure, typeof value === "number" ? value : null);
+    return total ? "All" : formatDimensionValue(key as Dimension, value as string | null);
+  };
+  return (
+    <>
+      <div className={styles.tableWrap} style={{ height: CHART_HEIGHT }}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              {result.columns.map((c) => (
+                <th key={c.key} scope="col" className={c.type === "number" ? styles.numeric : undefined}>
+                  {c.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i}>
+                {result.columns.map((c) => (
+                  <td key={c.key} className={c.type === "number" ? styles.numeric : undefined}>
+                    {cell(c.key, row[c.key], i === result.rows.length)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className={styles.source}>Source: {result.source}</p>
+    </>
+  );
+}
+
 /** The months a pin's month axis covers: those in its quarters, narrowed by its own month filter. */
-export function pinMonths(pin: Pin, quarters: readonly string[]): string[] {
+export function pinMonths(pin: ChartPinSpec, quarters: readonly string[]): string[] {
   const months = monthsInScope(quarters, pin.query.filter?.quarter);
   const only = pin.query.filter?.month;
   return only ? months.filter((m) => only.includes(m)) : months;
