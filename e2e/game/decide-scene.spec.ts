@@ -147,12 +147,30 @@ test('in 3D, a robot opens its bubble when clicked, and opening bubbles moves no
 
   const layout = () => page.evaluate(() => ({
     robots: document.querySelector<HTMLElement>('[data-robots]')!.dataset.robots,
+    spans: document.querySelector<HTMLElement>('[data-robots]')!.dataset.spans,
     stage: (({ x, y, width, height }) => [x, y, width, height])(document.querySelector('[data-robots]')!.getBoundingClientRect()),
     bubbles: [...document.querySelectorAll('[data-tag]')].map(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }),
     form: (({ x, y, width, height }) => [x, y, width, height])((document.querySelector('fieldset') as HTMLElement).getBoundingClientRect()),
   }));
   await page.waitForTimeout(800); // the scene's entrance
   const before = await layout();
+
+  // No boss reaches into a neighbour's column (David's rule, as in 2D): each one's span on the page lies
+  // within its tag's column.
+  const spans = await page.evaluate(() => {
+    const stage = document.querySelector<HTMLElement>('[data-robots]')!;
+    const left = stage.getBoundingClientRect().left;
+    const across = stage.dataset.spans!.split(',').map(Number);
+    return [...document.querySelectorAll('[data-tag]')].map((tag, i) => {
+      const column = tag.closest('li')!.getBoundingClientRect();
+      return { from: across[i * 2]! + left, to: across[i * 2 + 1]! + left, column: [column.left, column.right] };
+    });
+  });
+  for (const { from, to, column } of spans) {
+    expect(from).toBeGreaterThanOrEqual(column[0]! - 2);
+    expect(to).toBeLessThanOrEqual(column[1]! + 2);
+  }
+
   for (let i = 0; i < 5; i++) {
     await bubbles.nth(i).click();
     await expect(bubbles.nth(i)).toHaveAttribute('aria-expanded', 'true');
