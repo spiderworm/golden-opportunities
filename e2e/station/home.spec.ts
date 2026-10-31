@@ -77,6 +77,15 @@ test('coming back to the station shows its last frame until the scene draws agai
         return draw.apply(this, args);
       };
     }
+    // And counts finished canvas encodes: the held frame is the app's only one (held-frame.ts is the only
+    // caller of toBlob at run time, three and its helpers included), counted once its callback has kept it.
+    const toBlob = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (this: HTMLCanvasElement, callback: BlobCallback, ...rest: unknown[]) {
+      return toBlob.call(this, (blob) => {
+        callback(blob);
+        (window as unknown as { pictures: number }).pictures = ((window as unknown as { pictures?: number }).pictures ?? 0) + 1;
+      }, ...(rest as [string?, number?]));
+    };
   });
   await page.goto('/?analytics-test=1');
   await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
@@ -88,8 +97,12 @@ test('coming back to the station shows its last frame until the scene draws agai
   // The models load after the control appears; a frame is only kept once the scene has drawn them.
   await expect(station).toHaveAttribute('data-drawn', 'true', { timeout: 30_000 });
 
+  const pictures = await page.evaluate(() => (window as unknown as { pictures?: number }).pictures ?? 0);
   await page.getByRole('link', { name: 'Investigate' }).click();
   await expect(station).toHaveCount(0);
+  // The frame is kept as the player leaves, but encoded a moment later, and until then there's deliberately
+  // none (held-frame.ts). A player is never back that fast; under load, this test could be.
+  await page.waitForFunction((before) => ((window as unknown as { pictures?: number }).pictures ?? 0) > before, pictures);
   // Every animation frame from the click until the new scene has drawn: what's in the station's place?
   const frames = await page.evaluate(async () => {
     const w = window as unknown as { draws: number };
