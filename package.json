@@ -10,6 +10,7 @@
     "typecheck": "react-router typegen && tsc",
     "test": "vitest run",
     "data:bookshop": "node tools/convert-bookshop.ts",
+    "data:sample": "node tools/sample-data.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
