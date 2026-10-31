@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures';
 
 test('browser fixture silences Web Audio and media elements', async ({ page }) => {
-  await page.goto('/?analytics-test=1');
+  await page.goto('/investigate?analytics-test=1');
   const safety = await page.evaluate(async () => {
     const context = new OfflineAudioContext(1, 128, 44100);
     const oscillator = context.createOscillator();

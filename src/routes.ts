@@ -7,6 +7,7 @@ import analyticsRoutes from "./platform/analytics/routes";
 import { queryRoutes } from "./query/routes";
 import resultRoutes from "./result/routes";
 import settingsRoutes from "./settings/routes";
+import shellRoutes from "./shell/routes";
 import stationRoutes from "./station/routes";
 
 // Each feature lists its own routes; this file only composes them.
@@ -16,4 +17,5 @@ export default [
   ...queryRoutes,
   ...assistantRoutes,
   ...analyticsRoutes,
+  ...shellRoutes,
 ] satisfies RouteConfig;

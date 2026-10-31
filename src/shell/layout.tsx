@@ -1,5 +1,5 @@
 import { gameSessionMiddleware } from "~/game/session.server";
-import { Outlet } from "react-router";
+import { Outlet, useFetcher } from "react-router";
 
 import type { Route } from "./+types/layout";
 import { Shell } from "./Shell";
@@ -13,8 +13,15 @@ export function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function ShellLayout({ loaderData }: Route.ComponentProps) {
+  const seen = useFetcher();
   return (
-    <Shell stationDate={loaderData.date} notifications={loaderData.alerts} track={track}>
+    <Shell
+      stationDate={loaderData.date}
+      notifications={loaderData.alerts}
+      standingOrder={loaderData.standingOrder}
+      onAlertSeen={() => seen.submit(null, { method: "post", action: "/alert/seen" }).catch(() => {})}
+      track={track}
+    >
       <Outlet />
     </Shell>
   );

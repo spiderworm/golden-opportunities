@@ -6,6 +6,7 @@ test('home page serves the station without browser errors', async ({ page }) => 
   const response = await page.goto('/?analytics-test=1');
   expect(response?.status()).toBe(200);
   await expect(page).toHaveTitle('Orbital Books');
+  await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   const station = page.getByRole('region', { name: 'The station' });
   await expect(station).toContainText('Ring C, Berth 14');
@@ -27,6 +28,7 @@ test('other screens never load the 3D station', async ({ page }) => {
 
 test('the station opens inside, then wherever the player left it', async ({ page }) => {
   await page.goto('/?analytics-test=1');
+  await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
   const station = page.getByRole('region', { name: 'The station' });
   const control = station.getByRole('button', { name: /Go inside|Step outside/ });
   const still = station.getByText("can't show the station in 3D");
@@ -61,6 +63,7 @@ test('coming back to the station shows its last frame until the scene draws agai
     }
   });
   await page.goto('/?analytics-test=1');
+  await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
   const station = page.getByRole('region', { name: 'The station' });
   const control = station.getByRole('button', { name: /Go inside|Step outside/ });
   const still = station.getByText("can't show the station in 3D");
@@ -93,4 +96,31 @@ test('coming back to the station shows its last frame until the scene draws agai
   expect(frames.filter(frame => frame === 'empty')).toEqual([]);
   expect(frames).toContain('held');
   await expect(station.locator('img')).toHaveCount(0);
+});
+
+test('on first arrival the Commerce Office sends its memo once; the standing order keeps it until the plan is in', async ({ page }) => {
+  await page.goto('/?analytics-test=1');
+  const transmission = page.getByRole('dialog', { name: 'Transmission from the Commerce Office' });
+  await expect(transmission).toBeVisible();
+  await expect(transmission).toContainText('Fourth-quarter revenue: $161,525. Third quarter: $274,036. Down 41%.');
+  await expect(transmission.getByRole('link', { name: 'Open the ledgers' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(transmission).toBeHidden();
+  // Seen once, it stays seen: the bell's alert is read...
+  await expect(page.getByRole('button', { name: 'Notifications', exact: true })).toBeVisible();
+
+  // ...it doesn't come back, and the order stays in its strip.
+  await page.reload();
+  const order = page.getByRole('complementary', { name: 'Standing order' });
+  await expect(order).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(transmission).toBeHidden();
+
+  await order.getByRole('button', { name: 'Read the memo' }).click();
+  await expect(transmission).toBeVisible();
+  await transmission.getByRole('link', { name: 'Open the ledgers' }).click();
+  await expect(page).toHaveURL(/\/investigate/);
+  await expect(transmission).toBeHidden();
+  await expect(order.getByRole('link', { name: 'Open the ledgers' })).toHaveCount(0);
+  await expect(order.getByRole('button', { name: 'Read the memo' })).toBeVisible();
 });
