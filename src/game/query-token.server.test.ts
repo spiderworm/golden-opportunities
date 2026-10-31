@@ -53,6 +53,11 @@ describe('server-owned query capabilities', () => {
     const fresh = issue(a.id);
     expect((await (await h(request(undefined, fresh.token))).json()).total).toBeGreaterThan(0);
   });
+  it('keeps the answer capability when the player marks the arrival alert seen', async () => {
+    const a = saves.create(); const cap = issue(a.id); const h = handle();
+    saves.markAlertSeen(a.id);
+    expect((await h(request(undefined, cap.token))).status).toBe(200);
+  });
   it('revokes and expires capabilities with bounded content-free errors', async () => {
     const save = saves.create(); const cap = issue(save.id); cap.revoke(); cap.revoke();
     const response = await handle()(request(undefined, cap.token));

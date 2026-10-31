@@ -25,6 +25,7 @@ function validate(save: GameSave, id: string): void {
     || !Number.isSafeInteger(save.revision) || save.revision < 0
     || (save.queryRevision !== undefined && (!Number.isSafeInteger(save.queryRevision) || save.queryRevision < 0 || save.queryRevision > save.revision))
     || (save.discoveryEvidence !== undefined && !validEvidence(save.discoveryEvidence))
+    || (save.alertSeen !== undefined && save.alertSeen !== true)
     || !Array.isArray(save.discoveries) || save.discoveries.length > 3
     || new Set(save.discoveries).size !== save.discoveries.length
     || !save.discoveries.every(d => ['A', 'B', 'C'].includes(d))
@@ -167,6 +168,18 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
         save.discoveryEvidence = merged;
         save.discoveries = [...new Set([...before, ...discoveriesFromBuckets(merged)])].sort();
         return { save: publish(id, save), before, oldEvidence };
+      });
+    },
+    /** Record that the opening transmission was seen. Not query data, so it never changes the query grant; idempotent. */
+    markAlertSeen(id: string): GameSave {
+      return locked(() => {
+        if (existsSync(file(id) + '.lock')) throw new SaveError('SAVE_BUSY');
+        const save = readUnlocked(id);
+        if (save.alertSeen) return save;
+        save.queryRevision = save.queryRevision ?? save.revision;
+        save.revision++;
+        save.alertSeen = true;
+        return publish(id, save);
       });
     },
     update(id: string, revision: number, change: (save: GameSave) => void): GameSave {
