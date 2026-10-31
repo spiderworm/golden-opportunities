@@ -16,9 +16,14 @@ describe("cutOff", () => {
     expect(track).toHaveBeenCalledWith("lazy_import_failed", { what: "music popup" });
 
     track.mockClear();
+    vi.useFakeTimers();
     listeners.beforeunload!();
     expect(cutOff("music settings")(failed)).toBeNull();
     expect(track).not.toHaveBeenCalled();
+    // a page that stayed after all (a download link) reports failures again
+    vi.advanceTimersByTime(3000);
+    expect(() => cutOff("music settings")(failed)).toThrow(failed);
+    vi.useRealTimers();
 
     listeners.pageshow!();
     expect(() => cutOff("charts")(failed)).toThrow(failed);
