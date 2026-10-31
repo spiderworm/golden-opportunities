@@ -10,7 +10,7 @@ import { claudeCodeAssistant, type ToolServer } from "./server/claudeCode.server
 import { fakeLookupAssistant } from "./server/fakeLookups.server.ts";
 import { queryToken } from "./server/queryToken.server.ts";
 import { AssistantUnavailable, type AssistantProvider } from "./server/provider.server.ts";
-import { orbitalToolServer } from "./tools/toolServer.server.ts";
+import { defaultQueryUrl, orbitalToolServer } from "./tools/toolServer.server.ts";
 import type { Route } from "./+types/route";
 
 // Content-free events only: what the player typed is recorded in the browser, held on the device.
@@ -31,7 +31,7 @@ function withQueryToken(request: Request, pins: boolean, build: (server: ToolSer
   try {
     const capability = queryToken(request);
     try {
-      const real = build(orbitalToolServer(capability.token, { pins }));
+      const real = build(orbitalToolServer(capability.token, { pins, queryUrl: defaultQueryUrl(process.env, request) }));
       return { name: real.name, async *ask(prompt, signal) {
         try {
           if (probe) {

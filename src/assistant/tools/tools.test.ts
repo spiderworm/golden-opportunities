@@ -115,6 +115,22 @@ describe("the query endpoint", () => {
     expect(defaultQueryUrl({ PORT: "evil.example" })).toBe("http://[::1]:5173/api/query");
     expect(() => queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: defaultQueryUrl({}) })).not.toThrow();
   });
+
+  it("without PORT, takes the port of the question's own loopback request, as `npm start` listens wherever 3000 is free", () => {
+    const asked = (url: string) => new Request(url, { method: "POST" });
+    expect(defaultQueryUrl({}, asked("http://localhost:3000/api/assistant"))).toBe("http://[::1]:3000/api/query");
+    expect(defaultQueryUrl({}, asked("http://localhost:3001/api/assistant"))).toBe("http://[::1]:3001/api/query");
+    expect(defaultQueryUrl({}, asked("http://[::1]:5173/api/assistant"))).toBe("http://[::1]:5173/api/query");
+    expect(defaultQueryUrl({}, asked("http://127.0.0.1:5187/api/assistant"))).toBe("http://127.0.0.1:5187/api/query");
+    expect(defaultQueryUrl({}, asked("http://localhost/api/assistant"))).toBe("http://[::1]:80/api/query");
+    // PORT and ORBITAL_QUERY_URL still win; a request that isn't loopback http never picks the port.
+    expect(defaultQueryUrl({ PORT: "4000" }, asked("http://localhost:3000/api/assistant"))).toBe("http://[::1]:4000/api/query");
+    expect(defaultQueryUrl({ ORBITAL_QUERY_URL: "http://127.0.0.1:9/api/query" }, asked("http://localhost:3000/"))).toBe("http://127.0.0.1:9/api/query");
+    for (const url of ["http://evil.example:3000/", "http://192.168.1.5:3000/", "https://localhost:3000/", "http://me.localhost:3000/"]) {
+      expect(defaultQueryUrl({}, asked(url)), url).toBe("http://[::1]:5173/api/query");
+    }
+    expect(() => queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: defaultQueryUrl({}, asked("http://localhost:3000/")) })).not.toThrow();
+  });
 });
 
 describe("calling tools against the app", () => {
