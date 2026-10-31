@@ -24,6 +24,6 @@ export function getStationState(request: Request): StationState {
         to: "/investigate",
       },
     ],
-    standingOrder: { seen, submitted: Boolean(save.completion) || save.played.length > 0 },
+    standingOrder: { seen, submitted: save.played.length > 0 },
   };
 }

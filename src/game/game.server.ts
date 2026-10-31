@@ -24,10 +24,10 @@ function failure(error: unknown): never {
 function current(request: Request) { return saves.read(resolveSaveId(request)); }
 /** Reads never simulate, reset, or create saves. Cookie-selected M1 outcome only. */
 export function getPlan(request: Request): Plan | null {
-  try { return current(request).completion?.outcome.plan ?? null; } catch (error) { return failure(error); }
+  try { return current(request).played.at(-1)?.outcome.plan ?? null; } catch (error) { return failure(error); }
 }
 export function getOutcome(request: Request): Outcome | null {
-  try { return current(request).completion?.outcome ?? null; } catch (error) { return failure(error); }
+  try { return current(request).played.at(-1)?.outcome ?? null; } catch (error) { return failure(error); }
 }
 /** Pure engine work precedes a short revision-checked transaction. Concurrent/repeat play returns 409. */
 export function submitPlan(request: Request, plan: Plan): { outcomeId: string } {
@@ -37,7 +37,7 @@ export function submitPlan(request: Request, plan: Plan): { outcomeId: string } 
     if (!isLocalBrowserRequest(request)) throw new Response('Same-origin local requests only.', { status: 403 });
     if (!isPlan(plan)) throw new Response('Choose up to two distinct levers.', { status: 400 });
     const save = current(request);
-    if (save.completion || save.played.length) throw new Response('This quarter has already been played.', { status: 409 });
+    if (save.played.length) throw new Response('This quarter has already been played.', { status: 409 });
     const canonical = structuredClone(plan);
     const result = simulateQuarter(canonical, save.seed, loadBookshop());
     const outcome: Outcome = { ...result.outcome, discoveries: [...save.discoveries] };
@@ -47,9 +47,8 @@ export function submitPlan(request: Request, plan: Plan): { outcomeId: string } 
       ({ id, sourceSheet, sourceRow, date, quarter, isbn, discount, itemId, orderId }));
     const outcomeId = randomUUID();
     saves.update(save.id, save.revision, draft => {
-      if (draft.completion || draft.played.length) throw new Response('This quarter has already been played.', { status: 409 });
-      draft.played = [{ period: '2194-Q1', sales }];
-      draft.completion = { outcomeId, outcome };
+      if (draft.played.length) throw new Response('This quarter has already been played.', { status: 409 });
+      draft.played = [{ period: '2194-Q1', sales, outcomeId, outcome }];
     });
     event('game_quarter_committed', { leverCount: canonical.levers.length, units: sales.length, durationMs: performance.now() - started });
     return { outcomeId };

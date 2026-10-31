@@ -45,7 +45,7 @@ describe('persisted quarter transaction', () => {
     expect(outcome.discoveries).toEqual(['A']);
     expect(getPlan(req)).toEqual(outcome.plan);
     const reopened = createSaveStore(path.join(directory, 'saves')).read(save.id);
-    expect(reopened.completion).toEqual({ outcomeId, outcome });
+    expect(reopened.played[0]).toMatchObject({ period: '2194-Q1', outcomeId, outcome });
     expect(reopened.revision).toBe(2);
     expect(reopened.played[0].sales).toHaveLength(outcome.totals.plan.units);
     expect(runQuery(query, queryViewForSave(reopened)).total).toBeCloseTo(outcome.totals.plan.revenue, 6);
@@ -96,12 +96,39 @@ describe('persisted quarter transaction', () => {
     expect(saves.read(save.id).revision).toBe(1);
   });
 
+  it('reads version 1 saves as per-quarter results, and writes them back as version 2', () => {
+    const save = saves.create(); const req = request(save.id);
+    const { outcomeId } = submitPlan(req, { levers: ['events'] });
+    const outcome = getOutcome(req)!;
+    const file = path.join(directory, 'saves', save.id + '.json');
+    const current = JSON.parse(readFileSync(file, 'utf8'));
+    const { outcomeId: _id, outcome: _outcome, ...quarter } = current.played[0];
+    const v1 = { ...current, version: 1, played: [quarter], completion: { outcomeId, outcome } };
+    writeFileSync(file, JSON.stringify(v1));
+    expect(saves.read(save.id).played[0]).toEqual({ ...quarter, outcomeId, outcome });
+    expect(getOutcome(req)).toEqual(outcome); expect(getPlan(req)).toEqual({ levers: ['events'] });
+    status(() => submitPlan(req, { levers: [] }), 409);
+    expect(JSON.parse(readFileSync(file, 'utf8')).version).toBe(1);
+    saves.update(save.id, v1.revision, () => {});
+    const written = JSON.parse(readFileSync(file, 'utf8'));
+    expect(written.version).toBe(2); expect(written.completion).toBeUndefined(); expect(written.played[0].outcomeId).toBe(outcomeId);
+
+    const unplayed = saves.create(); const unplayedFile = path.join(directory, 'saves', unplayed.id + '.json');
+    writeFileSync(unplayedFile, JSON.stringify({ ...unplayed, version: 1 }));
+    expect(saves.read(unplayed.id)).toEqual(unplayed);
+    // The game never wrote a quarter without its result, or a result without its quarter.
+    writeFileSync(unplayedFile, JSON.stringify({ ...v1, id: unplayed.id, completion: undefined }));
+    expect(() => saves.read(unplayed.id)).toThrow('INVALID_SAVE');
+    writeFileSync(unplayedFile, JSON.stringify({ ...v1, id: unplayed.id, played: [] }));
+    expect(() => saves.read(unplayed.id)).toThrow('INVALID_SAVE');
+  });
+
   it('fails closed on a corrupt persisted outcome', () => {
     const save = saves.create(); const req = request(save.id);
     submitPlan(req, { levers: [] });
     const file = path.join(directory, 'saves', save.id + '.json');
     const corrupted = JSON.parse(readFileSync(file, 'utf8'));
-    corrupted.completion.outcome.reportCard.plan.overall.score = 'untrusted';
+    corrupted.played[0].outcome.reportCard.plan.overall.score = 'untrusted';
     writeFileSync(file, JSON.stringify(corrupted));
     status(() => getOutcome(req), 500);
   });

@@ -3,13 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { RouterContextProvider } from 'react-router';
-import { loadBookshop } from '../bookshop/loader.server';
 import { runQuery } from '../query/run-query.server';
 
 vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }));
 const directory = mkdtempSync(path.join(os.tmpdir(), 'orbital-session-'));
 vi.stubEnv('ORBITAL_DATA_DIR', directory);
 const { saves, cookieSaveId, saveCookie, resolveSaveId, getGameSession, queryViewForSave, gameSessionMiddleware } = await import('./session.server');
+const { submitPlan } = await import('./game.server');
 afterAll(() => { rmSync(directory, { recursive: true, force: true }); vi.unstubAllEnvs(); });
 const requestFor = (id?: string) => new Request('http://localhost:5173/investigate', { headers: id ? { cookie: 'orbital_save=' + id } : {} });
 describe('cookie-selected game sessions', () => {
@@ -41,9 +41,7 @@ describe('cookie-selected game sessions', () => {
     const a = saves.create(); const b = saves.create();
     const query = { measure: 'revenue', by: [], filter: { quarter: ['2194-Q1'] } };
     expect(runQuery(query, queryViewForSave(a)).total).toBe(0);
-    const original = loadBookshop().sales[0];
-    const sale = { ...original, id: 'generated-1', orderId: 'generated-1', date: '2194-01-03', quarter: 1 };
-    saves.update(a.id, 0, s => { s.played.push({ period: '2194-Q1', sales: [sale] }); });
+    submitPlan(new Request('http://localhost/decide', { method: 'POST', headers: { origin: 'http://localhost', cookie: 'orbital_save=' + a.id } }), { levers: [] });
     const played = getGameSession(requestFor(a.id));
     expect(played.date).toBe('2194-04-01');
     expect(runQuery(query, played.queryView).total).toBeGreaterThan(0);

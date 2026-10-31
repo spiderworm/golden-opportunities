@@ -83,6 +83,13 @@ export function createTabs(key: string, o: TabsOptions = {}) {
       if (!locks || held) return true;
       return hold({ ifAvailable: true });
     },
+    /** the music once no tab has it, without asking any to stop (a tab
+     * that shows, as the one it took over from hides): false if none let go
+     * in time */
+    async claimWhenFree(): Promise<boolean> {
+      if (!locks || held) return true;
+      return hold({ signal: AbortSignal.timeout(timeoutMs) });
+    },
     /** take the music from any other tab: true once it's ours, false if
      * the tab that has it didn't let go in time */
     async claim(): Promise<boolean> {
@@ -92,7 +99,7 @@ export function createTabs(key: string, o: TabsOptions = {}) {
       channel!.postMessage("take");
       return hold({ signal: AbortSignal.timeout(timeoutMs) });
     },
-    /** this tab has stopped playing (the player paused it): let go */
+    /** this tab has stopped playing (the player paused it, or it's hidden): let go */
     release,
     /** another tab took the music: stop */
     onTaken(f: () => void) {

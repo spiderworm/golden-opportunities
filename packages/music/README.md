@@ -59,6 +59,8 @@ all games."). The plan, and why, is in `plans/music-player.md`.
      music doesn't start by itself; the player's play (or skip, or back) takes it from the other
      tab, carrying on where that one was; a tab that won't let go keeps it, and the pop-up, dock or
      panel says so. Where the browser can't tell (no Web Locks, another site), it just plays.
+     A tab paused out of sight lets go of the music, and the tab that shows carries on where the
+     last one was, unless the player paused it (with `remember`, in any tab).
    - `pauseWhenHidden`: the music pauses while the page is hidden (another tab, another desktop,
      the app put away), as a game's should, and that's `createMusic()`'s default. On a computer
      it's a backdrop, so the desktop player plays on behind other tabs, and pauses only on a touch
