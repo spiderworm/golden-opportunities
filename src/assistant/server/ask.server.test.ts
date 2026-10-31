@@ -36,6 +36,8 @@ describe("the prompt", () => {
     // Probe's Q2 red-team: a title with digits is filtered as given (Q1); no claims about the ledger a lookup didn't show (Q3).
     expect(RULES).toMatch(/In a lookup, use the player's value as given, digits and all: a title can start with a number or read like an address, and it is still a title\./);
     expect(RULES).toMatch(/Never say which periods or data the terminal holds or lacks unless a lookup showed it\. To see which periods it has, look up revenue by quarter\./);
+    // Q4: no visible working ("Retrying with those.", "Correction: ...").
+    expect(RULES).toMatch(/Don't narrate your working either: no "retrying", "correction" or checks of your own/);
     expect(RULES).not.toMatch(/compare order counts with order sizes/);
     expect(RULES).toMatch(/Never recommend, rank or judge/);
     expect(RULES).toMatch(/Never volunteer a pattern/);

@@ -119,6 +119,12 @@ export const CASES: Case[] = [
     checks: [noUnbacked, lookedUp, not(/address/i, "took the title for an address")],
   },
   {
+    id: "q2-no-working",
+    finding: "Q2 Q4",
+    question: "Compare units for 9803 North Millworks Road from March to April 2193, and for Nothing But Capers from April to May 2193.",
+    checks: [noUnbacked, atMostLookups(4), not(/\bretry|\bretrying|correction|titles match/i, "showed its working")],
+  },
+  {
     id: "q2-no-false-gap",
     finding: "Q2 Q3",
     question: "Did last year's picks add about the same number of extra copies whatever the title? Yes or no.",
