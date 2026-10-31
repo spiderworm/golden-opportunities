@@ -5,7 +5,7 @@ import type { BookshopTables } from "~/bookshop/types";
 import { OBSERVED_EXTRAS } from "./model";
 import { isQ2Outcome } from "./outcome-check";
 import { isQ2Plan } from "./plan";
-import { q2Candidates, simulateQ2 } from "./q2";
+import { q2Candidates, q2PlanProblem, simulateQ2 } from "./q2";
 import type { Q2LeverId, Q2Plan } from "./types";
 
 const data = joinBookshop(tables as BookshopTables);
@@ -64,6 +64,11 @@ describe("Q2 plans", () => {
     const twoFormats = candidates.find((c) => candidates.some((d) => d.bookId === c.bookId && d.isbn !== c.isbn))!;
     const other = candidates.find((d) => d.bookId === twoFormats.bookId && d.isbn !== twoFormats.isbn)!;
     expect(() => simulateQ2(plan([twoFormats.isbn, other.isbn, null]), 1, data)).toThrow(/same title/);
+    // The same checks, without throwing, for the game to answer with a 400.
+    expect(q2PlanProblem({ picks: [null, null], levers: [] }, data)).toBe("shape");
+    expect(q2PlanProblem(plan(["000", null, null]), data)).toBe("unknown-edition");
+    expect(q2PlanProblem(plan([twoFormats.isbn, other.isbn, null]), data)).toBe("same-title");
+    expect(q2PlanProblem(plan(QUIET, "events"), data)).toBeNull();
   });
 });
 
