@@ -39,10 +39,12 @@ describe("BossBubble", () => {
     expect(new Set(bosses.map((b) => b.tint)).size).toBe(bosses.length);
   });
 
-  it("gives every boss its own portrait, and each portrait is in public/bosses/", () => {
+  it("gives every boss its own portrait and full figure, each file in public/bosses/", () => {
     for (const [id, boss] of Object.entries(BOSSES)) {
       expect(boss.portrait).toBe(`/bosses/${id}.webp`);
       expect(existsSync(`public${boss.portrait}`)).toBe(true);
+      expect(boss.figure).toBe(`/bosses/full/${id}.webp`);
+      expect(existsSync(`public${boss.figure}`)).toBe(true);
     }
     expect(renderToString(<BossBubble boss="culture">CULTURE IS EXPENSIVE.</BossBubble>)).toContain('<img src="/bosses/culture.webp" alt=""');
   });
