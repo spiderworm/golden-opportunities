@@ -5,11 +5,14 @@
 // The probe is `claude auth status --json`: local, about 0.3 s, exit 0 when signed in and 1 when not (measured on
 // Claude Code 2.1.314). Its output includes the account's email, so only `loggedIn` is read and the rest is
 // dropped. A Claude Code without `auth status` falls back to `claude --version`: installed counts as ready, and a
-// real answer then finds out about sign-in. The result is cached: "ready" until an answer shows otherwise, and
+// real answer then finds out about sign-in. The probe runs the same binary, with the same environment, as a real
+// answer's spawn (claudeCommand, minimalEnv), so it can't report ready on the strength of something the real
+// run won't have, such as an API key in this process's environment (Probe, #67). The result is cached: "ready" until an answer shows otherwise, and
 // "offline" for a minute, so signing in starts working without a restart.
 
 import { execFile } from "node:child_process";
 import { ASSISTANT_NAME } from "../name.ts";
+import { claudeCommand, minimalEnv } from "./claudeCode.server.ts";
 
 /** What the player sees when Claude Code isn't installed, isn't signed in, or won't start (Goldy, M4). */
 export const OFFLINE = `${ASSISTANT_NAME}'s terminal is offline on this machine: it needs Claude Code installed and signed in.`;
@@ -40,8 +43,9 @@ function run(command: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs:
 }
 
 /** Asks Claude Code whether it's there and signed in. Never throws. */
-export async function probeAssistant({ command = "claude", env = process.env, timeoutMs = PROBE_TIMEOUT_MS }: ProbeOptions = {}): Promise<Availability> {
-  const status = await run(command, ["auth", "status", "--json"], env, timeoutMs);
+export async function probeAssistant({ env = process.env, command = claudeCommand(env), timeoutMs = PROBE_TIMEOUT_MS }: ProbeOptions = {}): Promise<Availability> {
+  const spawnEnv = minimalEnv(env);
+  const status = await run(command, ["auth", "status", "--json"], spawnEnv, timeoutMs);
   if (status.code === "ENOENT") return { state: "offline", reason: "missing" };
   let loggedIn: unknown;
   try {
@@ -51,7 +55,7 @@ export async function probeAssistant({ command = "claude", env = process.env, ti
   }
   if (loggedIn === true) return { state: "ready" };
   if (loggedIn === false) return { state: "offline", reason: "signed_out" };
-  const version = await run(command, ["--version"], env, timeoutMs);
+  const version = await run(command, ["--version"], spawnEnv, timeoutMs);
   if (version.code === "ENOENT") return { state: "offline", reason: "missing" };
   return version.code === 0 ? { state: "ready" } : { state: "offline", reason: "broken" };
 }
