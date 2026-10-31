@@ -1,4 +1,4 @@
-import { test as base, expect, type BrowserContext } from '@playwright/test';
+import { test as base, expect, type BrowserContext, type Page, type Request } from '@playwright/test';
 
 export async function prepareContext(context: BrowserContext, baseURL: string) {
   // Defense in depth: no test browser can deliver remote analytics.
@@ -47,6 +47,33 @@ export async function prepareContext(context: BrowserContext, baseURL: string) {
     document.addEventListener('volumechange', event => {
       if (event.target instanceof HTMLMediaElement) mute(event.target);
     }, true);
+  });
+}
+
+/**
+ * Collects a page's errors into `errors`, less one WebKit quirk. WebKit reports
+ * a same-origin fetch that a navigation cuts off as a page error ("Fetch API
+ * cannot load <url> due to access control checks."), even when the app
+ * catches it (e2e/game/notes.md). That one is skipped, and only while a
+ * main-frame navigation is in flight; every other error still counts.
+ */
+export function collectPageErrors(page: Page, baseURL: string, errors: string[]) {
+  const origin = new URL(baseURL).origin;
+  let navigating = 0;
+  const main = (request: Request) => request.isNavigationRequest() && request.frame() === page.mainFrame();
+  const settled = (request: Request) => {
+    if (main(request)) navigating = Math.max(0, navigating - 1);
+  };
+  page.on('request', request => {
+    if (main(request)) navigating++;
+  });
+  page.on('requestfinished', settled);
+  page.on('requestfailed', settled);
+  page.on('pageerror', error => {
+    // Playwright splits this message at its first colon, so read the stack's first line.
+    const cut = /^Fetch API cannot load (\S+) due to access control checks\.$/.exec((error.stack ?? '').split('\n')[0]!);
+    if (cut && navigating > 0 && new URL(cut[1]!).origin === origin) return;
+    errors.push(error.message);
   });
 }
 
