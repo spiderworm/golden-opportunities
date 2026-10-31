@@ -64,6 +64,13 @@ describe("the result screen", () => {
     expect(html).not.toMatch(/\d-</);
   });
 
+  it("signs every certificate with the issuer's small print", () => {
+    const { html, outcome } = render("repick", "events");
+    const certificates = outcome.reportCard.plan.certificates.length;
+    expect(certificates).toBeGreaterThan(0);
+    expect(html.match(/<li><span>[^<]+<\/span><small[^>]*>Issued by the Center for Shopkeepers Who Can&#x27;t Sell Good<\/small><\/li>/g)).toHaveLength(certificates);
+  });
+
   it("drops the comparison column when the plan was to hold course", () => {
     expect(render().html).not.toContain(`<th scope="col">If you had held course</th>`);
     expect(render("sale").html).toContain(`<th scope="col">If you had held course</th>`);

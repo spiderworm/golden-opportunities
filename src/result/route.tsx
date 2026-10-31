@@ -271,7 +271,10 @@ function ReportCard({ plan, holdCourse, holdingCourse, onBosses }: { plan: Card;
           </h4>
           <ul>
             {certificates.map((text) => (
-              <li key={text}>{text}</li>
+              <li key={text}>
+                <span>{text}</span>
+                <small className={styles.issuer}>{c.certificateIssuer}</small>
+              </li>
             ))}
           </ul>
         </section>
