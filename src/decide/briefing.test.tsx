@@ -28,7 +28,7 @@ describe("the bosses' brief (m1-copy section 3)", () => {
 
   it("carries every fact in the strips, as real text with the figures in bold", () => {
     const html = render();
-    const strips = [...html.matchAll(/<div id="[^"]+" class="[^"]*facts[^"]*"[^>]*>([\s\S]*?)<\/div><\/div><div class="[^"]*figure/g)].map((m) => text(m[1]!));
+    const strips = [...html.matchAll(/<div class="[^"]*facts[^"]*">([\s\S]*?)<\/div>/g)].map((m) => text(m[1]!));
     expect(strips).toHaveLength(5);
     const all = strips.join(" ");
     for (const fact of [
@@ -50,14 +50,16 @@ describe("the bosses' brief (m1-copy section 3)", () => {
   it("opens the Administrator's bubble first, and shows the others' teasers", () => {
     const html = render();
     expect([...html.matchAll(/aria-expanded="(true|false)"/g)].map((m) => m[1])).toEqual(["true", "false", "false", "false", "false"]);
-    // Each bubble is a button controlling its strip; the closed ones' strips are hidden, not gone.
+    // Each bubble is a button controlling its panel; the closed ones' panels are laid out but hidden.
     expect(html.match(/<button type="button"[^>]*aria-expanded="[^"]*" aria-controls="[^"]+"/g)).toHaveLength(5);
-    expect(html.match(/<div id="[^"]+" class="[^"]*facts[^"]*" hidden="">/g)).toHaveLength(4);
-    expect(html).toContain("WE CALL THIS TEAMWORK. MR. ZOOLANDER WOULD CALL IT ONE LOOK.");
-    for (const teaser of ["WE WILL GRADE YOU ON FOUR MEASURES.", "AUTHORS MAY BE INVITED.", "THE PREVIOUS MANAGER LEFT A SCHEDULE.", "SELECT UP TO TWO MOVES."]) {
+    const panels = [...html.matchAll(/<div id="[^"]+" class="[^"]*panel[^"]*"( data-open="true")?( aria-hidden="true")?/g)].map((m) => (m[1] ? "open" : m[2] ? "hidden" : "?"));
+    expect(panels).toEqual(["open", "hidden", "hidden", "hidden", "hidden"]);
+    const open = /<div id="[^"]+" class="[^"]*panel[^"]*" data-open="true"[^>]*>([\s\S]*?)<div id=/.exec(html)?.[1] ?? "";
+    expect(open).toContain("WE CALL THIS TEAMWORK. MR. ZOOLANDER WOULD CALL IT ONE LOOK.");
+    expect(open).not.toContain("THREE SEEMED LENIENT");
+    for (const teaser of ["ATTENTION, SHOPKEEPER. A NEW QUARTER.", "WE WILL GRADE YOU ON FOUR MEASURES.", "AUTHORS MAY BE INVITED.", "THE PREVIOUS MANAGER LEFT A SCHEDULE.", "SELECT UP TO TWO MOVES."]) {
       expect(html).toContain(`>${teaser}</span>`);
     }
-    expect(html).not.toContain("THREE SEEMED LENIENT");
     expect(html).toContain("Select a boss to hear more.");
   });
 

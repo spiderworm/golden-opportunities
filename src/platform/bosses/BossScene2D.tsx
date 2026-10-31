@@ -1,8 +1,8 @@
-import { useId, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 
 import { BossAvatar } from "./BossBubble";
 import { BOSSES } from "./bosses";
-import { SpeechBubble } from "./SpeechBubble";
+import { BossLayout } from "./BossLayout";
 import type { FocusHow, SceneBubble } from "./useBossFocus";
 import styles from "./BossScene2D.module.css";
 
@@ -14,29 +14,30 @@ export interface BossSceneProps {
 }
 
 /**
- * The bosses standing together in 2D, each under its speech bubble; the open one's column widens and
- * its boss steps forward. The fallback for the 3D scene, which takes the same props.
+ * The bosses in 2D, standing under their bubbles in BossLayout; the 3D scene's fallback. A boss is
+ * clickable like its bubble, which stays the one control (the figure is decoration for screen readers
+ * and the keyboard). The open boss steps forward by transform alone, so nothing around it moves.
  */
 export function BossScene2D({ bubbles, open, onSelect }: BossSceneProps) {
-  const id = useId();
-  return (
-    <ul className={styles.scene}>
+  const floor = (
+    <div className={styles.figures}>
       {bubbles.map((b, i) => {
         const { tint, portrait, figure } = BOSSES[b.boss];
         return (
-          <li
+          <div
             key={b.boss}
-            className={styles.member}
+            className={styles.figure}
+            data-boss={b.boss}
             data-open={i === open || undefined}
-            style={{ "--tint": tint, "--order": i } as CSSProperties}
+            aria-hidden="true"
+            style={{ "--tint": tint } as CSSProperties}
+            onClick={() => onSelect(i, "click")}
           >
-            <SpeechBubble bubble={b} open={i === open} id={`${id}-${i}`} onSelect={(how) => onSelect(i, how)} className={styles.bubble} />
-            <div className={styles.figure} aria-hidden="true">
-              {figure ? <img src={figure} alt="" /> : <BossAvatar portrait={portrait} />}
-            </div>
-          </li>
+            {figure ? <img src={figure} alt="" draggable={false} /> : <BossAvatar portrait={portrait} />}
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
+  return <BossLayout bubbles={bubbles} open={open} onSelect={onSelect} floor={floor} />;
 }
