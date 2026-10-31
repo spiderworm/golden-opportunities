@@ -1,9 +1,9 @@
-import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 
 import { track } from "~/platform/analytics/analytics.client";
 import type { StationViewpoint } from "./scene/StationScene";
-import { heldFrame } from "./held-frame";
+import { heldFrame, watchHeldFrame } from "./held-frame";
 import { StationPoster } from "./StationPoster";
 import { FIRST_VIEW, rememberedView, rememberView } from "./view-memory";
 import { canRenderWebGL2 } from "./webgl";
@@ -33,7 +33,7 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
   const [reducedMotion, setReducedMotion] = useState(false);
   const [view, setView] = useState<StationViewpoint>(FIRST_VIEW);
   const [ready, setReady] = useState(false);
-  const [held] = useState(heldFrame);
+  const held = useSyncExternalStore(watchHeldFrame, heldFrame, () => undefined);
   const [drawn, setDrawn] = useState(false);
   const hold = useRef<(() => void) | null>(null);
   const moving = useRef<{ to: StationViewpoint; trigger: string; started: number } | null>(null);
