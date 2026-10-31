@@ -134,8 +134,7 @@ result without its quarter, was never written by the game and fails as INVALID_S
 
 Two quarters (docs/design/q2.md). `progress.ts` reads the save alone: the quarter being planned
 is the first unplayed one, so a quarter can only be played in order and only once. Q1 stores
-M1's Outcome, and Q2 stores Sim's Q2 outcome with the game's discoveries (none until D, E and
-F are detected); the store checks each with its own validator, plus the units against its
+M1's Outcome, and Q2 stores Sim's Q2 outcome with the game's discoveries (D, E and F only); the store checks each with its own validator, plus the units against its
 lines. `submitQ2Plan` answers a plan Sim's `q2PlanProblem` refuses with a 400 naming the
 problem, before simulating. No Q1 state goes into Q2 except the ledgers' rows. Each quarter
 has its own Commerce Office memo: `alertsSeen` lists the quarters whose memo was seen, and the
@@ -144,8 +143,20 @@ old `alertSeen: true` means Q1's and folds into the list on the next mark. Play 
 new-games limit and replaces the cookie, and the old save expires unused. The half-year score
 is the mean of the two overall scores, rounded half up (`results.server.ts`).
 
-Content-free events: `discovery_found` with id A/B/C only, and `discovery_part_found` with
-A1/A2/C_partial only. Awards emit only after persistence succeeds. No query, filters, save
+Q2's discoveries (docs/design/q2.md section 6) follow the same pipeline and the same scopes,
+gathered only while Q2 is the quarter being planned (`recordEvidence` takes the quarter and
+writes nothing for any other). D is units by month for one busy and one quiet 2193 pick
+(`D_PICKS`), each seen in its pick month and three others, with the edition named by a title
+and format filter or a format breakdown. A month that the view also covers in 2194 mixes the
+years, so it counts only if the row names a 2193 quarter. Weekday and discount filters take a
+subset of an edition's sales and don't count. E is average rating by title, 20 titles in one
+view (fewer is E_partial). F is one accepted measure seen for 2193-Q1 and 2194-Q1 in one scope:
+by quarter, or two views that differ only by quarter. Only F reads 2194 rows. Witness scopes for
+A1, A2, D's busy and quiet picks, E and F survive the 64-scope bound. Q1's outcome keeps A to C
+and Q2's keeps D to F, so neither quarter's result shows the other's.
+
+Content-free events: `discovery_found` with id A to F only, and `discovery_part_found` with
+A1/A2/C_partial/D_partial/E_partial only. Awards emit only after persistence succeeds. No query, filters, save
 ID, token, title or result value is recorded. Analytics failure cannot undo a saved award.
 
 M1 evidence boundary (Goldy): a successful validated bounded individual lookup counts,

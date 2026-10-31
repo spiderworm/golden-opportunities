@@ -47,9 +47,9 @@ it('records Dewey evidence without ending its capability; play ends it and freez
     expect(vi.mocked(trackServer).mock.calls.filter(c => c[0] === 'discovery_found')).toEqual([['discovery_found', { id: 'C' }]]);
     submitPlan(new Request('http://localhost/decide', { method: 'POST', headers: { origin: 'http://localhost', cookie: 'orbital_save=' + save.id } }), { levers: [] });
     expect(() => saveForQueryToken(cap.token)).toThrow('That session ended');
-    const before = saves.read(save.id);
+    // Q1's outcome is frozen; the same view in Q2 shows Q1 2193 beside Q1 2194, which is Q2's F.
     await api(save.id, { measure: 'orders', by: ['weekday', 'quarter'] });
-    expect(saves.read(save.id)).toEqual(before);
+    expect(saves.read(save.id).discoveries).toEqual(['C', 'F']);
     expect(getOutcome(request(save.id))!.discoveries).toEqual(['C']);
   } finally { cap.revoke(); }
 });

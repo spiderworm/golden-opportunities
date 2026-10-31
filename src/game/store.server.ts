@@ -4,9 +4,9 @@ import path from 'node:path';
 import { withSaveLock, SaveLockBusy } from './lock.server.ts';
 import { isQuarterOutcome } from './outcome.ts';
 import type { GameSave } from './types';
-import { QUARTERS, isQuarterId, quarterMonths, quarterNumber } from './quarters.ts';
+import { QUARTERS, isQuarterId, quarterMonths, quarterNumber, type QuarterId } from './quarters.ts';
 import { alertsSeenOf, currentQuarter } from './progress.ts';
-import { EVIDENCE_KEYS, MAX_EVIDENCE_SCOPES, discoveriesFromBuckets, discoveryParts } from './discovery-evidence.ts';
+import { EVIDENCE_KEYS, MAX_EVIDENCE_SCOPES, discoveriesFromBuckets, q2DiscoveriesFromBuckets, witnessScopes } from './discovery-evidence.ts';
 
 const ID = /^[A-Za-z0-9_-]{43}$/;
 const MAX_BYTES = 16 * 1024 * 1024;
@@ -42,9 +42,9 @@ function validate(save: GameSave, id: string): void {
     || (save.alertSeen !== undefined && save.alertSeen !== true)
     || (save.alertsSeen !== undefined && (!Array.isArray(save.alertsSeen) || save.alertsSeen.length > QUARTERS.length
       || !save.alertsSeen.every((q, i, all) => isQuarterId(q) && (i === 0 || QUARTERS.indexOf(all[i - 1]!) < QUARTERS.indexOf(q)))))
-    || !Array.isArray(save.discoveries) || save.discoveries.length > 3
+    || !Array.isArray(save.discoveries) || save.discoveries.length > 6
     || new Set(save.discoveries).size !== save.discoveries.length
-    || !save.discoveries.every(d => ['A', 'B', 'C'].includes(d))
+    || !save.discoveries.every(d => ['A', 'B', 'C', 'D', 'E', 'F'].includes(d))
     || !Array.isArray(save.played) || save.played.length > QUARTERS.length) throw new SaveError('INVALID_SAVE');
   // Sale ids are unique across quarters, not just within one.
   const ids = new Set<string>();
@@ -163,28 +163,28 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
       });
     },
     /** Merge only allowlisted evidence under the same lock; never change the query grant. */
-    recordEvidence(id: string, queryRevision: number, evidence: Record<string, string[]>) {
+    recordEvidence(id: string, queryRevision: number, evidence: Record<string, string[]>, quarter: QuarterId = '2194-Q1') {
       if (!validEvidence(evidence)) throw new SaveError('INVALID_SAVE');
       return locked(() => {
         if (existsSync(file(id) + '.lock')) throw new SaveError('SAVE_BUSY');
         const save = readUnlocked(id);
         const before = [...save.discoveries]; const oldEvidence = structuredClone(save.discoveryEvidence ?? {});
-        if (save.played.length || (save.queryRevision ?? save.revision) !== queryRevision) return { save, before, oldEvidence };
+        // Only the quarter still being planned gathers evidence: a view from before its plan can't add after it.
+        if (currentQuarter(save) !== quarter || (save.queryRevision ?? save.revision) !== queryRevision) return { save, before, oldEvidence };
         const merged = structuredClone(oldEvidence);
         for (const [scope, keys] of Object.entries(evidence)) {
           const combined = [...new Set([...(merged[scope] ?? []), ...keys])].sort();
           delete merged[scope]; merged[scope] = combined;
         }
-        // A1/A2 are independent: retain a completed witness for each even if
-        // many later partial scopes arrive before the other part is found.
-        const scopes = Object.keys(merged);
-        const witnesses = new Set([scopes.find(k => discoveryParts(merged[k]).shape), scopes.find(k => discoveryParts(merged[k]).size)]);
+        // Parts are independent (A1/A2, D's busy and quiet picks): retain a completed witness for
+        // each even if many later partial scopes arrive before the other part is found.
+        const witnesses = witnessScopes(merged);
         while (Object.keys(merged).length > MAX_EVIDENCE_SCOPES) delete merged[Object.keys(merged).find(k => !witnesses.has(k))!];
         if (Object.keys(merged).length === Object.keys(oldEvidence).length && Object.entries(merged).every(([scope, keys]) => JSON.stringify(keys) === JSON.stringify(oldEvidence[scope]))) return { save, before, oldEvidence };
         save.queryRevision = save.queryRevision ?? save.revision;
         save.revision++;
         save.discoveryEvidence = merged;
-        save.discoveries = [...new Set([...before, ...discoveriesFromBuckets(merged)])].sort();
+        save.discoveries = [...new Set([...before, ...discoveriesFromBuckets(merged), ...q2DiscoveriesFromBuckets(merged)])].sort();
         return { save: publish(id, save), before, oldEvidence };
       });
     },

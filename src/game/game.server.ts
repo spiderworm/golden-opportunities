@@ -10,7 +10,7 @@ import { SaveError } from './store.server';
 import { isOutcome, isQuarterOutcome } from './outcome';
 import { currentQuarter as quarterOf, isFinished } from './progress';
 import type { QuarterId } from './quarters';
-import type { GameSave, PlayedQuarter, Q2GameOutcome } from './types';
+import { Q1_DISCOVERIES, Q2_DISCOVERIES, type GameSave, type PlayedQuarter, type Q2GameOutcome } from './types';
 import { isLocalBrowserRequest } from '../query/access.server';
 
 function event(name: string, props: Record<string, string | number | boolean>) {
@@ -73,7 +73,7 @@ export function submitPlan(request: Request, plan: Plan): { outcomeId: string } 
     if (quarterOf(save) !== '2194-Q1') throw alreadyPlayed();
     const canonical = structuredClone(plan);
     const result = simulateQuarter(canonical, save.seed, loadBookshop());
-    const outcome: Outcome = { ...result.outcome, discoveries: [...save.discoveries] };
+    const outcome: Outcome = { ...result.outcome, discoveries: Q1_DISCOVERIES.filter(d => save.discoveries.includes(d)) };
     if (!isOutcome(outcome) || JSON.stringify(outcome.plan) !== JSON.stringify(canonical)) throw new SaveError('INVALID_SAVE');
     const sales = visible(result.lines);
     const outcomeId = randomUUID();
@@ -103,8 +103,8 @@ export function submitQ2Plan(request: Request, plan: unknown): { outcomeId: stri
     const { picks, levers } = plan as Q2Plan;
     const canonical: Q2Plan = { picks: [...picks], levers: [...levers] };
     const result = simulateQ2(canonical, save.seed, data);
-    // Q1's discoveries stay on Q1's result; Q2's own (D, E, F) aren't detected yet.
-    const outcome: Q2GameOutcome = { ...result.outcome, discoveries: [] };
+    // Q1's discoveries stay on Q1's result; Q2's are its own.
+    const outcome: Q2GameOutcome = { ...result.outcome, discoveries: Q2_DISCOVERIES.filter(d => save.discoveries.includes(d)) };
     if (JSON.stringify(outcome.plan) !== JSON.stringify(canonical)) throw new SaveError('INVALID_SAVE');
     const sales = visible(result.lines);
     const outcomeId = randomUUID();
