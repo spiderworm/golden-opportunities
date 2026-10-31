@@ -99,6 +99,12 @@ boundary, documented rather than chased.
 - The full stop after a percent ref was lost in one of Probe's runs (X3). The renderer keeps punctuation that
   follows a ref, even when the ref is split across chunks (tested), so the model must have left it out.
 
+**What the filter caught is kept on this machine** (Probe's Q2 red-team, finding Q2): each withheld sentence is
+recorded as `assistant_sentence_withheld` (its text, cut at 1,000 characters, its length, and the question's
+kind), under the `agent_text` hold in `.data/analytics-server.json`. Held events are never sent; that's the
+hold that already keeps what players type. The browser and the sent events get only the count. It lets a
+red-team read whether the filter stopped advice, or caught a harmless word ("better").
+
 **Next step, if a real leak shows up:** no figures in prose at all. Dewey says what it looked up and points to
 the table under the reply. The same ban then applies with no refs. This replaces adding words to the denylist.
 
