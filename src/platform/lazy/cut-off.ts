@@ -7,13 +7,39 @@ import { track } from "~/platform/analytics/analytics.client";
 // so it lasts only a moment: a page really going never runs the timer (Chart).
 const STAYED_MS = 3000;
 let leaving = false;
+const goingListeners = new Set<() => void>();
+let stayedWaiters: (() => void)[] = [];
+const going = () => {
+  if (!leaving) for (const listener of goingListeners) listener();
+  leaving = true;
+};
+const stayed = () => {
+  leaving = false;
+  const waiters = stayedWaiters;
+  stayedWaiters = [];
+  for (const resolve of waiters) resolve();
+};
 if (typeof window !== "undefined") {
   addEventListener("beforeunload", () => {
-    leaving = true;
-    setTimeout(() => (leaving = false), STAYED_MS);
+    going();
+    setTimeout(stayed, STAYED_MS);
   });
-  addEventListener("pagehide", () => (leaving = true));
-  addEventListener("pageshow", () => (leaving = false));
+  addEventListener("pagehide", going);
+  addEventListener("pageshow", stayed);
+}
+
+/** Whether the page has started going (a reload or navigation), as far as can be told. */
+export const pageLeaving = () => leaving;
+
+/** Calls `listener` each time the page starts going; returns the unsubscribe. */
+export function onPageLeaving(listener: () => void): () => void {
+  goingListeners.add(listener);
+  return () => goingListeners.delete(listener);
+}
+
+/** Settles if a page that started going turns out to stay (a download, a mailto: link); a page really going never does. */
+export function whenStayed(): Promise<void> {
+  return new Promise((resolve) => stayedWaiters.push(resolve));
 }
 
 /**

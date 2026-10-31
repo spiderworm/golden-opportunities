@@ -1,6 +1,9 @@
 import { Crowd, init, NavMeshQuery, type CrowdAgent, type NavMesh } from "@recast-navigation/core";
 import { generateSoloNavMesh } from "@recast-navigation/generators";
 
+import { onPageLeaving } from "~/platform/lazy/cut-off";
+import { held } from "./loading";
+
 import { ROOM } from "./layout";
 import { SHELF_DEPTH, SHELF_UNITS } from "./shelves";
 
@@ -74,8 +77,27 @@ let built: Promise<Navigation> | undefined;
 export function navigation(): Promise<Navigation> {
   // In the browser, Recast's WebAssembly comes as its own file, fetched with the station's code and
   // compiled as it streams (its default build carries it inside its JavaScript, a third larger).
-  built ??= (typeof window === "undefined" ? init() : import("@recast-navigation/wasm/wasm").then((wasm) => init(wasm.default))).then(build);
+  built ??= (typeof window === "undefined" ? init() : held(() => cancelledAsThePageGoes(() => import("@recast-navigation/wasm/wasm").then((wasm) => init(wasm.default))))).then(build);
   return built;
+}
+
+/**
+ * Runs Recast's start-up with its WebAssembly's fetch cancelled as the page starts going. WebKit otherwise cuts that
+ * fetch off itself and reports it as a page error (and Recast then aborts with one of its own); the module fetches
+ * the file by its own URL, so its fetch is given the signal for the start-up's few moments, and nothing else's is.
+ */
+function cancelledAsThePageGoes<T>(start: () => Promise<T>): Promise<T> {
+  const cut = new AbortController();
+  const stop = onPageLeaving(() => cut.abort());
+  const fetch = globalThis.fetch;
+  globalThis.fetch = (input, init) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    return fetch(input, /recast-navigation[^/]*\.wasm/.test(url) ? { ...init, signal: cut.signal } : init);
+  };
+  return start().finally(() => {
+    globalThis.fetch = fetch;
+    stop();
+  });
 }
 
 function build(): Navigation {

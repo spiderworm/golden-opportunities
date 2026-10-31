@@ -1,6 +1,7 @@
-import { useGLTF } from "@react-three/drei";
 import { useMemo } from "react";
 import type { BufferGeometry, Mesh, MeshStandardMaterial } from "three";
+
+import { useStationModel } from "./loading";
 
 // The station's generated models (public/models/station/, made in Tripo from
 // concept pictures: provenance.json says how). Each static model is one mesh,
@@ -23,7 +24,7 @@ export const modelUrl = (name: StationModel) => `/models/station/${name}.glb`;
 
 /** The geometry and material of a static model, for instancing or placing as a plain mesh. */
 export function useModelParts(name: StationModel): { geometry: BufferGeometry; material: MeshStandardMaterial } {
-  const { scene } = useGLTF(modelUrl(name), false);
+  const { scene } = useStationModel(modelUrl(name));
   return useMemo(() => {
     let mesh: Mesh | undefined;
     scene.traverse((o) => {
