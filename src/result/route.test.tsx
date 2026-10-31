@@ -60,14 +60,15 @@ const QUIET: Q2Plan = { picks: [LAND_WATER_SKY_SPACE, null, null], levers: ["eve
 
 /** Q2's screen, from the real engine; the half-year review as the game would give it. */
 function renderQ2(plan: Q2Plan = QUIET, halfYear: ResultData["halfYear"] = null) {
-  const outcome = { ...simulateQ2(plan, 3, data).outcome, discoveries: ["F" as const] };
+  // The game records Q2's ids from #141's follow-up; the screen shows whatever the loader put into words.
+  const outcome = { ...simulateQ2(plan, 3, data).outcome, discoveries: [] };
   return show({
     quarter: "2194-Q2",
     outcome,
     sameQuarterLastYear: 164436.9,
     previousQuarter: 100_000,
     reference: [{ month: "01", revenue: 30_000 }, { month: "02", revenue: 32_000 }, { month: "03", revenue: 38_000 }],
-    discoveries: earnedDiscoveries(outcome.discoveries, "2194-Q2"),
+    discoveries: earnedDiscoveries(["F"], "2194-Q2"),
     next: null,
     canPlayAgain: halfYear !== null,
     halfYear,
