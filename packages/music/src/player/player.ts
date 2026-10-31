@@ -61,6 +61,12 @@ export type MusicOptions = {
    * another has the music doesn't start by itself, and the player's play
    * takes it from the other tab, or says it can't. */
   oneTab?: boolean | TabsOptions;
+  /** Pause while the page is hidden (another tab, another desktop, the app
+   * put away), and carry on when it's back: true, the default, as a game's
+   * music should. A web app whose music is a backdrop keeps playing behind
+   * other tabs with false, or decides each time the page hides with a
+   * function: Orbital Books keeps it on phones only (David, 31 Oct 2026). */
+  pauseWhenHidden?: boolean | (() => boolean);
 };
 
 /** The place saved for `remember`. */
@@ -116,8 +122,10 @@ export function createMusic(o: MusicOptions) {
   const listeners = new Set<(s: MusicState) => void>();
   const songListeners = new Set<(song: Song, cause: Cause) => void>();
 
+  const hidden = () =>
+    typeof document !== "undefined" && document.hidden && (typeof o.pauseWhenHidden === "function" ? o.pauseWhenHidden() : o.pauseWhenHidden !== false);
   const level = () => prefs.volume ** 2 * loudness; // squared, so the slider feels even
-  const audible = () => prefs.volume > 0 && !quiet && !paused && !yielded && started && !away.size && !(typeof document !== "undefined" && document.hidden);
+  const audible = () => prefs.volume > 0 && !quiet && !paused && !yielded && started && !away.size && !hidden();
   const state = (): MusicState => ({ song, playing: !deck.paused && !!song, volume: prefs.volume, quiet, elsewhere: yielded });
   const changed = () => listeners.forEach((f) => f(state()));
 
@@ -317,7 +325,7 @@ export function createMusic(o: MusicOptions) {
     };
     for (const g of gestures) addEventListener(g, start, true);
     deck.addEventListener("playing", () => gestures.forEach((g) => removeEventListener(g, start, true)), { once: true });
-    document.addEventListener("visibilitychange", () => (document.hidden ? deck.pause() : play()));
+    document.addEventListener("visibilitychange", () => (hidden() ? deck.pause() : play()));
   }
 
   const has = (list: string[], id: string) => list.includes(id);

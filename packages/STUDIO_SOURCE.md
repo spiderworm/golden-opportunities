@@ -3,6 +3,6 @@
 The folders here are copies of David's existing games-studio packages, not code written for Orbital Books.
 They're refreshed with `tools/sync-studio-packages.sh`; don't edit them here.
 
-- Source: games-studio, commit `0cfb113c9ee5c75b25a2b8bcf3787f7db4337d2d`
+- Source: games-studio, commit `8cfac6cb2b712b10c3505cc1bbde47803cb03ce6`
 - Packages: music analytics
-- Copied: 2026-10-31T05:20:44Z
+- Copied: 2026-10-31T13:30:20Z
