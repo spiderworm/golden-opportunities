@@ -154,8 +154,7 @@ export function monthsInScope(visibleQuarters: readonly string[], selectedQuarte
   const quarters = selectedQuarters.length ? visibleQuarters.filter((q) => selectedQuarters.includes(q)) : visibleQuarters;
   const months = new Set<string>();
   for (const quarter of quarters) {
-    const year = quarter.slice(0, 4);
-    const q = Number(quarter.slice(-1));
+    const year = quarter.slice(0, 4); const q = Number(quarter.slice(-1));
     for (let m = q * 3 - 2; m <= q * 3; m++) months.add(`${year}-${String(m).padStart(2, "0")}`);
   }
   return [...months].sort();
