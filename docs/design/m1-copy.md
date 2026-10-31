@@ -19,6 +19,8 @@ January 1, 2194
 
 Fourth-quarter revenue: $161,525. Third quarter: $274,036. **Down 41%.**
 
+Etaoin Shrdlu Press reports that the third Inspector Ryeslton mystery arrives on February 4.
+
 The Commerce Office expects a plan for the first quarter before the shuttle season ends. Your ledgers are on the console, and Dewey can help you read them there.
 
 Submit your plan when you are ready.
@@ -111,9 +113,9 @@ David's direction: the brief is delivered by the robot bosses in speech bubbles,
 | # | Speaker | Boss's line | Fact strip |
 | --- | --- | --- | --- |
 | 1 | The Station Administrator | `ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. YOUR SCORE WILL BE YOUR WEAKEST MEASURE. WE CALL THIS TEAMWORK. MR. ZOOLANDER WOULD CALL IT ONE LOOK.` | `Your plan runs from **January 1 to March 31, 2194**. Your score is your **lowest measure**: raise one by sinking another, and your score sinks with it.` |
-| 2 | The Commerce Office | `WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT. ALSO, BOOKS ARE NOT FREE. WE CHECKED.` | `You're graded on **Profit, Readers served, Happiness and Culture**. Each goal is **last year's first quarter plus 5%**. Profit is revenue minus what the books cost, and books cost the store **60% of their list price**.` |
+| 2 | The Commerce Office | `WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT. ALSO, BOOKS ARE NOT FREE. WE CHECKED.` | `You're graded on **Profit, Readers served, Happiness and Culture**. Each goal starts from **last year's first quarter**, adds the new Inspector Ryeslton volume's expected effect, then adds **5%**. Profit is revenue minus what the books cost, and books cost the store **60% of their list price**.` |
 | 3 | The Ministry of Culture | `AUTHORS MAY BE INVITED. AUTHORS REQUIRE A SHUTTLE FARE. CULTURE IS EXPENSIVE. PLEASE PURCHASE SOME ANYWAY.` | `An author night costs **$200**: the author's shuttle fare and the room.` |
-| 4 | The Readers' Guild survey drone | `THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. WE ASSUME THEY COULD NOT TURN LEFT.` | `Already scheduled, Book of the Month at **15% off** for the whole month: **January** The Mallemaroking (mass market paperback), **February** Rystwyth (hardcover), **March** Portmeirion (mass market paperback).` |
+| 4 | The Readers' Guild survey drone | `THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. WE ASSUME THEY COULD NOT TURN LEFT. ALSO, AN INSPECTOR ARRIVES IN FEBRUARY. THE DRONE IS INNOCENT.` | `Already scheduled, Book of the Month at **15% off** for the whole month: **January** The Mallemaroking (mass market paperback), **February** Rystwyth (hardcover), **March** Portmeirion (mass market paperback). New on **February 4**: the third Inspector Ryeslton mystery, *The Bourton Model Village Poisoning*, in hardcover at **$22.99**.` |
 | 5 | The Throughput Subcommittee | `SELECT UP TO TWO MOVES. SELECTING THREE IS NOT PERMITTED. WE HAVE TESTED THIS PERSONALLY.` | `Choose **up to two** moves, or none to hold course.` |
 
 Each boss speaks once.
@@ -200,14 +202,14 @@ The submit button stays `Submit plan`, so it matches the confirm step ("Submit t
 | Close-behind tag | `Close behind` |
 | Score with grade | `{score} ({grade})` |
 | Held-course comparison | `If you had held course: {score} ({grade})` |
-| Columns | `Measure`, `This quarter`, `Q1 2193`, `Goal`, `Score`, `If you had held course` |
+| Columns | `Measure`, `This quarter`, `Q1 2193 + new volume`, `Goal`, `Score`, `If you had held course` |
 | Measures | `Profit`, `Readers served`, `Happiness`, `Culture` |
 | Award tag | `Exceeds Requirements` |
 | Certificates heading | `Certificates` |
 | Exceeds Requirements certificate | `Exceeds Requirements: {Measure} beat its goal. Certificates don't change your score.` |
 | Well-Rounded Shop | `Well-Rounded Shop: every measure scored 80 or more.` |
 | Certificate issuer | `Issued by the Center for Shopkeepers Who Can't Sell Good` (small print under each certificate; decorative, and it carries no information) |
-| Note | `Each goal is Q1 2193 plus 5%. Matching last year scores 70 (C−). Meeting the goal scores 100 (A+).` |
+| Note | `Each goal is Q1 2193, plus the new volume's expected effect, plus 5%. Matching Q1 2193 plus the new volume scores 70 (C−). Meeting the goal scores 100 (A+).` |
 
 **Screen order (simple first).** The card shows, top to bottom:
 1. The overall score, with the explainer "Your overall score is your lowest measure."
@@ -263,6 +265,11 @@ Each lowest-measure line carries a small caption naming the speaker: the binding
 
 ### What happened
 
+Every plan opens with the new volume's sentence (see `m1-new-volume.md`):
+> The third Inspector Ryeslton mystery came out on February 4 and sold {copies} copies by March 31.
+
+With the sale, add: `{saleCopies} of them were 15% off in the sale.`
+
 Each move has its sentences, filled from the model. Holding course shows [A]. A plan with moves shows each move's sentences in the order re-pick, author nights, sale. In a two-move plan, drop each move's last sentence (its comparison with holding course) and end with the total:
 > Together, your two moves changed gross profit by {+/-}${amount} compared with holding course.
 
@@ -306,6 +313,8 @@ If revenue falls instead (that can only happen if the assumption is changed):
 | Assumed | `Each author night adds between 30 and 70 orders that day, at Q1's average order value of $13.96.` |
 | Assumed | `Each author night costs $200.` |
 | Assumed | `Readers at an author night enjoy the night out: those visits get 20 extra happiness points.` |
+| Assumed | `The third Inspector Ryeslton mystery sells 4.5 copies a day at full price: 85% of volume 2's first-quarter rate in 2193, the series' own drop from volume 1 to volume 2. It sells three times that in its first week and twice that in its second.` |
+| Assumed | `The goals count the new volume: each starts from what Q1 2193 plus the new volume would give if you held course.` |
 
 **Proposal:** show every line for every option, and highlight the lines the player's option used. The panel then teaches the whole model, not only the player's slice of it.
 

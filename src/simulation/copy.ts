@@ -3,6 +3,7 @@ import { has } from "./plan";
 import type { Assumption, HappenedFacts, LeverId, PickFacts, Plan, Q2Facts, Q2Plan } from "./types";
 import { EVENT_HAPPINESS } from "./measures";
 import { OBSERVED_EXTRAS } from "./model";
+import { RELEASE_RATE } from "./release";
 
 const money = (v: number) => `$${Math.round(Math.abs(v)).toLocaleString("en-US")}`;
 const cents = (v: number) => `$${Math.abs(v).toFixed(2)}`;
@@ -59,11 +60,21 @@ function moveSentences(facts: HappenedFacts): string[][] {
   return moves;
 }
 
-/** One move's sentences in full; two moves without their own comparisons, then the total. */
+/** Every Q1 plan opens with the new volume (m1-new-volume.md, "The result screen"). */
+function releaseSentences(release: HappenedFacts["release"]): string[] {
+  if (!release) return [];
+  const sentences = [`The third Inspector Ryeslton mystery came out on February 4 and sold ${about(release.copies)} copies by March 31.`];
+  if (release.saleCopies !== undefined) sentences.push(`${about(release.saleCopies)} of them were 15% off in the sale.`);
+  return sentences;
+}
+
+/** The new volume first; then one move's sentences in full, or two moves without their own comparisons, then the total. */
 export function happened(facts: HappenedFacts): string[] {
+  const release = releaseSentences(facts.release);
   const moves = moveSentences(facts);
-  if (moves.length < 2) return moves.flat();
+  if (moves.length < 2) return [...release, ...moves.flat()];
   return [
+    ...release,
     ...moves.flatMap((sentences) => sentences.slice(0, -1)),
     `Together, your two moves changed gross profit by ${signedMoney(facts.amount)} compared with holding course.`,
   ];
@@ -95,6 +106,21 @@ function rules(v: AssumptionValues, quarter: number): Rule[] {
       source: "setup",
       usedBy: null,
       text: `${q} 2194 repeats ${q} 2193: the same titles, months and weekday pattern, with small random day-to-day changes. Holding course uses the same random draws, so the comparison is fair.`,
+    },
+    {
+      id: "new-volume",
+      source: "assumed",
+      usedBy: null,
+      text:
+        quarter === 1
+          ? `The third Inspector Ryeslton mystery sells ${RELEASE_RATE.toFixed(1)} copies a day at full price: 85% of volume 2's first-quarter rate in 2193, the series' own drop from volume 1 to volume 2. It sells three times that in its first week and twice that in its second.`
+          : `The third Inspector Ryeslton mystery keeps selling ${RELEASE_RATE.toFixed(1)} copies a day at full price through Q2, its rate after the launch weeks.`,
+    },
+    {
+      id: "new-volume-goals",
+      source: "assumed",
+      usedBy: null,
+      text: `The goals count the new volume: each starts from what ${q} 2193 plus the new volume would give if you held course.`,
     },
     { id: "botm-price", source: "data", usedBy: picks, text: "A Book of the Month is 15% off for the whole month. In 2193, one title was featured each month." },
     {

@@ -13,7 +13,8 @@ export interface Item {
   template: DeepReadonly<SaleLine>;
 }
 
-export type OrderKind = "replay" | "pick-extra" | "event";
+/** "release": a copy of the new volume (release.ts). */
+export type OrderKind = "replay" | "pick-extra" | "event" | "release";
 
 export interface Order {
   /** YYYY-MM-DD */

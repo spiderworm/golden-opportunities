@@ -3,8 +3,10 @@ import tables from "~/bookshop/data.json";
 import { joinBookshop } from "~/bookshop/joins";
 import type { BookshopTables } from "~/bookshop/types";
 import { runQuery } from "~/query/run-query.server";
-import { baseline, eventWeeks, historyOf, OBSERVED_EXTRAS, quarterDays, replayedDay, unpromoted } from "./model";
-import { simulateQuarter } from "./simulate";
+import { ratingsOf } from "./measures";
+import { baseline, eventWeeks, historyOf, OBSERVED_EXTRAS, quarterDays, replayedDay, unpromoted, withRelease } from "./model";
+import { RELEASE, RELEASE_DAY } from "./release";
+import { prepare, releaseEffect, simulateQuarter } from "./simulate";
 import type { LeverId, Plan } from "./types";
 
 const data = joinBookshop(tables as BookshopTables);
@@ -111,7 +113,7 @@ describe("the replay", () => {
 
 describe("last year, measured with the same recipe (scoring.md, Audit's full-precision values)", () => {
   const card = simulateQuarter(HOLD, 1, data).outcome.reportCard.plan;
-  const lastYear = Object.fromEntries(card.measures.map((m) => [m.id, m.lastYear]));
+  const { lastYear, anchor } = prepare(data);
   const goal = Object.fromEntries(card.measures.map((m) => [m.id, m.goal]));
 
   it("matches Q1 2193", () => {
@@ -121,11 +123,24 @@ describe("last year, measured with the same recipe (scoring.md, Audit's full-pre
     expect(lastYear.culture).toBeCloseTo(17367.71412700332, 6);
   });
 
-  it("sets the M1 goals", () => {
-    expect(goal.profit).toBeCloseTo(39523.663, 3);
-    expect(goal.readers).toBe(7166.25);
-    expect(goal.happiness).toBeCloseTo(68.3241, 4);
-    expect(goal.culture).toBeCloseTo(18236.0998, 4);
+  it("anchors on Q1 2193 plus the new volume's expected effect, shown as the card's last year", () => {
+    const effect = releaseEffect(historyOf(data), ratingsOf(data));
+    for (const m of card.measures) {
+      expect(anchor[m.id]).toBe(lastYear[m.id] + effect[m.id]);
+      expect(m.lastYear).toBe(anchor[m.id]);
+    }
+    // m1-new-volume.md, "Scoring": about +$2.9k, +317 readers, -0.45 happiness, +308 culture.
+    expect(effect.profit).toBeCloseTo(2912.833, 3);
+    expect(effect.readers).toBeCloseTo(316.75, 9);
+    expect(effect.happiness).toBeCloseTo(-0.451051, 6);
+    expect(effect.culture).toBeCloseTo(308.299399, 6);
+  });
+
+  it("sets the M1 goals from the anchor", () => {
+    expect(goal.profit).toBeCloseTo(42582.1376, 4);
+    expect(goal.readers).toBeCloseTo(7498.8375, 9);
+    expect(goal.happiness).toBeCloseTo(67.8505, 4);
+    expect(goal.culture).toBeCloseTo(18559.8142, 4);
   });
 });
 
@@ -193,7 +208,43 @@ describe("the levers against holding course (m1-slice section 3)", SWEEP, () => 
   });
 });
 
-describe("the overall score, against Plot's calibration on seeds 1 to 20 (scoring.md)", SWEEP, () => {
+describe("the new volume (m1-new-volume.md)", SWEEP, () => {
+  it("sells about 313 copies by March 31, from February 4, at full price, one copy an order", () => {
+    const copies = Array.from({ length: 20 }, (_, i) => outcomeOf(HOLD, i + 1).facts.release!.copies);
+    expect(Math.min(...copies)).toBeGreaterThanOrEqual(305);
+    expect(Math.max(...copies)).toBeLessThanOrEqual(325);
+    expect(Math.abs(median(copies) - 313)).toBeLessThanOrEqual(2);
+    const lines = simulateQuarter(HOLD, 1, data).lines.filter((l) => l.isbn === RELEASE.edition.isbn);
+    expect(lines).toHaveLength(outcomeOf(HOLD, 1).facts.release!.copies);
+    expect(lines.every((l) => l.date >= RELEASE_DAY && l.discount === 0 && l.book.id === RELEASE.book.id && l.title === RELEASE.book.title)).toBe(true);
+    expect(new Set(lines.map((l) => l.orderId)).size).toBe(lines.length);
+  });
+
+  it("launches at three times its rate, then twice, then settles", () => {
+    const base = baseline(history, 2);
+    const release = withRelease(history, base, 2).slice(base.length);
+    expect(release.every((o) => o.kind === "release" && o.items.length === 1)).toBe(true);
+    // Copies per baseline order: a day's copies follow its share of the quarter's orders.
+    const rate = (from: string, to: string) =>
+      release.filter((o) => o.day >= from && o.day < to).length / base.filter((o) => o.day >= from && o.day < to).length;
+    const settled = rate("2194-02-18", "2194-04-01");
+    expect(rate("2194-02-04", "2194-02-11") / settled).toBeGreaterThan(2.4);
+    expect(rate("2194-02-11", "2194-02-18") / settled).toBeGreaterThan(1.6);
+    expect(settled * (base.length / 90)).toBeCloseTo(4.5, 0);
+    expect(release.some((o) => o.day < RELEASE_DAY)).toBe(false);
+  });
+
+  it("gives every plan the same release, and the sale takes 15% off all of it", () => {
+    const day = (p: Plan) => simulateQuarter(p, 6, data).lines.filter((l) => l.isbn === RELEASE.edition.isbn && l.date === "2194-02-04").length;
+    expect(day(plan("repick"))).toBe(day(HOLD));
+    const sale = outcomeOf(plan("sale"), 6).facts.release!;
+    expect(sale.saleCopies).toBe(sale.copies);
+    expect(sale.copies).toBeGreaterThan(outcomeOf(HOLD, 6).facts.release!.copies);
+    expect(outcomeOf(HOLD, 6).facts.release!.saleCopies).toBeUndefined();
+  });
+});
+
+describe("the overall score, against Plot's calibration on seeds 1 to 20 (scoring.md, with m1-new-volume.md's anchor)", SWEEP, () => {
   const seeds = Array.from({ length: 20 }, (_, i) => i + 1);
   const overall = (p: Plan) => seeds.map((seed) => outcomeOf(p, seed).reportCard.plan.overall);
   const scores = (p: Plan) => overall(p).map((o) => o.score);
@@ -214,8 +265,8 @@ describe("the overall score, against Plot's calibration on seeds 1 to 20 (scorin
     expect(Math.abs(median(scores(plan("repick"))) - 72)).toBeLessThanOrEqual(1);
   });
 
-  it("author nights: 69 to 89, median 72", () => {
-    within(scores(plan("events")), 69, 89);
+  it("author nights: 69 to 90, median 72", () => {
+    within(scores(plan("events")), 69, 90);
     expect(Math.abs(median(scores(plan("events"))) - 72)).toBeLessThanOrEqual(1);
   });
 
@@ -226,10 +277,10 @@ describe("the overall score, against Plot's calibration on seeds 1 to 20 (scorin
     expect(o.every((x) => x.binding.includes("happiness"))).toBe(true);
   });
 
-  it("any plan with the sale: 38 to 45, an F, bound by Profit", () => {
+  it("any plan with the sale: 35 to 42, an F, bound by Profit", () => {
     for (const p of [plan("sale"), plan("repick", "sale"), plan("events", "sale")]) {
       const o = overall(p);
-      within(o.map((x) => x.score), 38, 45);
+      within(o.map((x) => x.score), 35, 42);
       expect(o.every((x) => x.grade === "F" && x.binding.includes("profit"))).toBe(true);
     }
   });
@@ -252,7 +303,7 @@ describe("the result copy", SWEEP, () => {
 
   it("marks the rules the plan used, and only those", () => {
     const used = (p: Plan) => simulateQuarter(p, 1, data).outcome.assumptions.filter((a) => a.usedByPlan).map((a) => a.id);
-    const always = ["replay", "botm-price", "botm-extra", "no-cannibalization", "cost-of-goods"];
+    const always = ["replay", "new-volume", "new-volume-goals", "botm-price", "botm-extra", "no-cannibalization", "cost-of-goods"];
     expect(used(HOLD)).toEqual(always);
     expect(used(plan("events"))).toEqual([...always, "event-orders", "event-cost", "event-happiness"]);
     expect(used(plan("events", "sale"))).toEqual([...always, "sale-response", "event-orders", "event-cost", "event-happiness"]);
@@ -267,15 +318,18 @@ describe("the result copy", SWEEP, () => {
     expect(text).toContain("Readers at an author night enjoy the night out: those visits get 20 extra happiness points.");
   });
 
-  it("shows one move's sentences in full, and two moves' without their comparisons, then the total", () => {
+  it("opens with the new volume, then one move's sentences in full, or two moves' without their comparisons, then the total", () => {
     const one = simulateQuarter(plan("repick"), 1, data).outcome.happened;
-    expect(one).toHaveLength(3);
-    expect(one[2]).toMatch(/^Gross profit was [+-]\$[\d,]+ compared with holding course\.$/);
+    expect(one).toHaveLength(4);
+    expect(one[0]).toMatch(/^The third Inspector Ryeslton mystery came out on February 4 and sold \d+ copies by March 31\.$/);
+    expect(one[3]).toMatch(/^Gross profit was [+-]\$[\d,]+ compared with holding course\.$/);
     const two = simulateQuarter(plan("repick", "events"), 1, data).outcome.happened;
-    expect(two).toHaveLength(5);
-    expect(two[0]).toMatch(/^The three new picks/);
-    expect(two[2]).toMatch(/^The 12 author nights/);
-    expect(two[4]).toMatch(/^Together, your two moves changed gross profit by \+\$[\d,]+ compared with holding course\.$/);
-    expect(simulateQuarter(HOLD, 1, data).outcome.happened[0]).toBe("You kept the schedule.");
+    expect(two).toHaveLength(6);
+    expect(two[1]).toMatch(/^The three new picks/);
+    expect(two[3]).toMatch(/^The 12 author nights/);
+    expect(two[5]).toMatch(/^Together, your two moves changed gross profit by \+\$[\d,]+ compared with holding course\.$/);
+    expect(simulateQuarter(HOLD, 1, data).outcome.happened[1]).toBe("You kept the schedule.");
+    const sale = simulateQuarter(plan("sale"), 1, data).outcome.happened;
+    expect(sale[1]).toMatch(/^\d+ of them were 15% off in the sale\.$/);
   });
 });
