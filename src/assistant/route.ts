@@ -1,12 +1,14 @@
-// POST /api/assistant. Wires the real pieces together; the work is in server/ask.server.ts.
+// POST /api/assistant asks; GET says whether the assistant can answer on this machine. Wires the real pieces
+// together; the work is in server/ask.server.ts and server/availability.server.ts.
 
 import { SaveError } from "~/game/store.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import { getAssistant } from "./server/assistant.server.ts";
 import { ask, type ServerTrack } from "./server/ask.server.ts";
+import { assistantAvailability, OFFLINE, OFFLINE_HINT } from "./server/availability.server.ts";
 import { claudeCodeAssistant } from "./server/claudeCode.server.ts";
 import { queryToken } from "./server/queryToken.server.ts";
-import type { AssistantProvider } from "./server/provider.server.ts";
+import { AssistantUnavailable, type AssistantProvider } from "./server/provider.server.ts";
 import { orbitalToolServer } from "./tools/toolServer.server.ts";
 import type { Route } from "./+types/route";
 
@@ -27,7 +29,12 @@ function provider(request: Request, { pins }: { pins: boolean }): AssistantProvi
       try {
         const real = claudeCodeAssistant({ server: orbitalToolServer(capability.token, { pins }) });
         return { name: real.name, async *ask(prompt, signal) {
-          try { yield* real.ask(prompt, signal); } finally { capability.revoke(); }
+          try {
+            // Known offline (no Claude Code, signed out, failing to start): say so without spawning anything.
+            const availability = await assistantAvailability({ track });
+            if (availability.state === "offline") throw new AssistantUnavailable(`Claude Code is ${availability.reason}.`, availability.reason);
+            yield* real.ask(prompt, signal);
+          } finally { capability.revoke(); }
         } };
       } catch (error) { capability.revoke(); throw error; }
     } catch (e) {
@@ -40,4 +47,9 @@ function provider(request: Request, { pins }: { pins: boolean }): AssistantProvi
 
 export const action = ({ request }: Route.ActionArgs) => ask(request, options => provider(request, options), track);
 
-export const loader = () => Response.json({ error: "Use POST." }, { status: 405, headers: { allow: "POST", "cache-control": "no-store" } });
+/** Whether the panel can offer questions: { available: true }, or the fixed offline message and why. */
+export const loader = async () => {
+  const availability = await assistantAvailability({ track });
+  const body = availability.state === "ready" ? { available: true } : { available: false, reason: availability.reason, message: OFFLINE, hint: OFFLINE_HINT };
+  return Response.json(body, { headers: { "cache-control": "no-store" } });
+};
