@@ -29,12 +29,12 @@ The goal: "Analytics are complete, with an instance ID; agent text is held on th
 | Station and shell | `station_viewed`, `station_failed`, `station_frame_sample`, `camera_moved`, `boss_scene_failed`, `bubble_focused`, `menu_toggled`, `nav_selected`, `notifications_opened`, `notification_selected`, `alert_shown`, `alert_dismissed`, `alert_strip_clicked`, `settings_opened` |
 | Investigate | `investigate_loaded`, `investigate_measure_changed`, `investigate_regrouped`, `investigate_compare_toggled`, `investigate_filter_changed`, `investigate_filters_cleared`, `investigate_discount_filtered`, `investigate_drilldown`, `investigate_title_closed`, `investigate_table_toggled`, `investigate_plan_link`, `investigate_pin_added`, `investigate_pin_removed`, `investigate_pin_rejected`, `investigate_pin_failed` |
 | Queries (server) | `query_completed`, `query_failed`, `query_request_completed`, `query_request_failed` |
-| Dewey | `agent_asked` (**held**), `assistant_question_sent`, `assistant_reply_shown`, `assistant_answered`, `assistant_refused`, `assistant_limited`, `assistant_unavailable`, `assistant_offline_shown`, `assistant_pin_placed`, `assistant_lookup_pinned`, `assistant_conversation_restored`, `assistant_conversation_cleared` |
+| Dewey | `agent_asked` (**held**), `assistant_sentence_withheld` (**held**), `assistant_question_sent`, `assistant_reply_shown`, `assistant_answered`, `assistant_refused`, `assistant_limited`, `assistant_unavailable`, `assistant_offline_shown`, `assistant_pin_placed`, `assistant_lookup_pinned`, `assistant_conversation_restored`, `assistant_conversation_cleared` |
 | Game state (server) | `game_save_created`, `game_quarter_committed`, `game_quarter_failed` (both with `quarter`: Q1 or Q2), `game_query_session_started`, `game_query_session_revoked`, `discovery_found` (A to F), `discovery_part_found`, `discovery_record_deferred` |
 | Decide and results | `plan_move_toggled`, `plan_move_refused`, `plan_confirm_opened`, `plan_keep_investigating`, `plan_submitted`, `result_viewed`, `result_assumptions_opened`, `result_bosses_opened`, `result_continued` (Continue to Q2), `result_play_again` |
 | Music | `music_player_opened`, `music_paused`, `music_resumed`, `music_shuffle_set`, `music_volume_set`, `music_other_tab`, `music_manifest_skipped`, `song_started`, `song_ended`, `song_restarted`, `song_moved`, `song_hearted`, `song_unhearted`, `song_included`, `song_excluded` |
 
-**What they carry:** IDs from fixed lists, counts, lengths, durations, outcomes and codes. Only `agent_asked` carries text, and it's held. The new Inspector Ryeslton volume has no events of its own: it's data, which the player meets through Investigate and the results, whose events already cover it.
+**What they carry:** IDs from fixed lists, counts, lengths, durations, outcomes and codes. Only `agent_asked` and `assistant_sentence_withheld` carry text, and both are held. The new Inspector Ryeslton volume has no events of its own: it's data, which the player meets through Investigate and the results, whose events already cover it.
 
 **Not in use:** the kit's check-in (`checkin_shown`, `checkin`, `checkin_reason`), a one-tap "how's it going?". Nothing in the game starts it, so those events can't fire, and the page doesn't need to describe them. If it's ever turned on, the page will have to say that the game asks how it's going.
 
@@ -50,10 +50,12 @@ The page is Goldy's (#12). Goldy asked me to bring it up to date, so the edits a
 
 ## Held agent text
 
-`agent_asked` is the only event with text: the question as typed, from `src/assistant/ui/AssistantPanel.tsx`. It's tracked with `{ hold: "agent_text" }`.
+Two events carry text, and both are tracked with `{ hold: "agent_text" }`:
+- `agent_asked`: the question as typed, from `src/assistant/ui/AssistantPanel.tsx`.
+- `assistant_sentence_withheld` (#152's follow-up, Probe's Q2 red-team): a sentence of Dewey's reply that the figures gate withheld, cut at 1,000 characters, with its length and the question's kind, from `src/assistant/server/ask.server.ts`. The server's analytics keep it with their other held events in `.data/analytics-server.json`, which are never sent. The browser and the sent events get only the count.
 - **Where it's kept:** the analytics package keeps held events in a store of their own on the device, outside the log and the outbox (`packages/analytics/src/client/analytics.ts`, `track`).
 - **How it could leave:** only through `release("agent_text")`. That sends nothing while sharing is off, and **nothing in the app calls it**. The two `release()` calls in `src/assistant/server/ask.server.ts` release a concurrency slot, not analytics.
-- **On the server:** Dewey's events record only the question's length and a fixed kind (`open`, `advice` or `specific`, from `questionKind`), never its text.
+- **On the server:** apart from `assistant_sentence_withheld`, Dewey's events record only the question's length and a fixed kind (`open`, `advice` or `specific`, from `questionKind`), never its text.
 - **Tests:** the package's "held events stay on the device…" and "release waits while sharing is off; discard deletes unsent".
 
 ## The sharing switch
@@ -76,10 +78,10 @@ Settings' "Share play data" switch calls `setSharing(on)` (`src/platform/analyti
 - **Automation the server can't see:** if someone drives a browser against `npm start` or `npm run dev` without `ORBITAL_ANALYTICS=off`, the browser sends nothing, but the server still sends its own events (`game_save_created`, `query_*`, `assistant_*`). The server can't tell that its visitor is automated. Our own runs set the variable (`e2e/server.mjs`, and Sim's fresh-clone check), and `CLAUDE.md` documents it.
 - **One switch per copy:** the sharing switch is per browser, and it also switches off the server for the whole copy. One browser turning sharing off stops the server for everyone playing that copy, which errs on the side of not sending.
 
-## Ready for #152
+## Withheld sentences (done)
 
-Sage's #152, if David approves it, would also hold Dewey's withheld sentences under `agent_text`: sentences the figures gate didn't show. The page currently says only that "The questions you type to Dewey" stay on the computer. If #152 lands, that line should become:
+The privacy page's list of what stays on the computer now reads:
 
 > The questions you type to Dewey, and any sentence of Dewey's reply the game held back instead of showing you. These are kept on your computer and are **not** sent to us. If that ever changes, this page will be updated first, and the date above will change.
 
-The date line should change to the day it merges. Nothing else on the page needs to change: held events stay on the device whatever they hold. #152 should make this edit, since it's the change that makes it true.
+Nothing else on the page needed to change: held events stay on the device whatever they hold.

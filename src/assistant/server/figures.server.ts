@@ -299,8 +299,9 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity): 
  * Holds the reply a sentence at a time, renders its refs, and withholds any sentence whose prose has a figure
  * or direction of its own or whose refs this answer doesn't have, replacing a run of them with one note. Refs
  * are resolved when each sentence completes, so a ref cited before its lookup came back is withheld too.
+ * `onWithheld` gets each withheld sentence, cleaned, so the server can keep it on the device (Probe's Q2 red-team).
  */
-export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s) {
+export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s, onWithheld?: (sentence: string) => void) {
   let held = "";
   // Where each held chunk starts, and how many lookups had come back when it arrived.
   let stamps: { at: number; known: number }[] = [];
@@ -326,6 +327,8 @@ export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s
         continue;
       }
       withheld++;
+      // What the model wrote, for the device's held record only: it never reaches the browser.
+      onWithheld?.(clean(sentence.trim()));
       const trail = /\s*$/.exec(sentence)![0];
       if (noted) {
         // Dropped silently; right after the note, its break (a paragraph, say) is the one that follows.
