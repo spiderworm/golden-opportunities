@@ -159,7 +159,7 @@ it('runs the Decide and Result route loop against the same cookie-owned save', a
   const result = resultLoader(args as ResultRoute.LoaderArgs);
   expect(result.outcome.plan).toEqual({ levers: ['events'] });
   expect(result.reference).toHaveLength(3);
-  expect(result.lastQ1).toBeCloseTo(95245.8078, 4);
+  expect(result.sameQuarterLastYear).toBeCloseTo(95245.8078, 4);
   expect(result.outcome).not.toHaveProperty('seed');
 });
 

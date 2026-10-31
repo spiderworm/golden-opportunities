@@ -1,12 +1,13 @@
 import { Link } from "react-router";
 
 import { FactText } from "~/platform/bosses/facts";
-import { ALERT_COPY } from "./alert-copy";
+import { ALERT_COPY, type AlertCopy } from "./alert-copy";
 import styles from "./StandingOrder.module.css";
 
-const COPY = ALERT_COPY.strip;
 
 export interface StandingOrderProps {
+  /** Which quarter's order: Q1's unless given. */
+  copy?: AlertCopy["strip"];
   /** On Investigate, the ledgers are already open, so that link is left out. */
   onLedgers: boolean;
   onReadMemo: () => void;
@@ -14,7 +15,7 @@ export interface StandingOrderProps {
 }
 
 /** The Commerce Office's order, kept under the header until the plan is in. */
-export function StandingOrder({ onLedgers, onReadMemo, onOpenLedgers }: StandingOrderProps) {
+export function StandingOrder({ copy: COPY = ALERT_COPY.strip, onLedgers, onReadMemo, onOpenLedgers }: StandingOrderProps) {
   return (
     <aside className={styles.strip} aria-label="Standing order">
       <p className={styles.text}>

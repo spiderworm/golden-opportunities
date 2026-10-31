@@ -383,6 +383,19 @@ td .award {
   background: var(--color-panel-raised);
 }
 
+/* The way on: "Continue to Q2" after Q1, "Play again" after Q2. Used with .button, as the transmission's primary. */
+.primary {
+  border: 0;
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.primary:hover {
+  background: var(--color-accent);
+  filter: brightness(1.1);
+}
+
 .intro {
   margin: 0 0 16px;
   color: var(--color-text-muted);

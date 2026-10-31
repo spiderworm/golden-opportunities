@@ -1,75 +1,77 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, redirect } from "react-router";
+import { Form, Link, redirect } from "react-router";
 
-import { getOutcome } from "~/game/game.server";
-import { runQuery } from "~/query/run-query.server";
-import { getGameSession } from "~/game/session.server";
+import { isQuarterId } from "~/game/quarters";
+import { getResultData } from "~/game/results.server";
 import { track } from "~/platform/analytics/analytics.client";
 import { EChart } from "~/platform/charts/EChart";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
-import type { ReportCard as Card } from "~/simulation/types";
+import { MEASURE_IDS as MEASURE_ORDER, type ReportCard as Card } from "~/simulation/types";
 import {
   administratorLine,
   badgeText,
+  CONTINUE_TO_Q2,
   bossLine,
   certificateText,
   foundFooter,
   gradeText,
+  HALF_YEAR_COPY,
+  halfYearAdministratorLine,
+  halfYearScoreText,
   heldCourseText,
   lowestMeasureLines,
   lowestMeasureSpeakers,
   measureTexts,
   moneyShort,
+  q2SeasonNote,
+  QUARTER_COPY,
   RESULT_COPY as COPY,
   scoreText,
   seasonNote,
+  type ResultQuarter,
 } from "./copy";
 import { earnedDiscoveries, type EarnedDiscovery } from "./discoveries.server";
 import { OUTCOME_COLORS, outcomeOption } from "./outcome-chart";
+import { heldCourse, planSummary, type HalfYearData, type ResultData } from "./result-data";
 import styles from "./Result.module.css";
 
 export const handle: ShellHandle = { title: "Results", standingOrder: false };
 
 
-export function meta({}: Route.MetaArgs) {
-  return [{ title: "Q1 2194: the results | Orbital Books" }];
+export function meta({ loaderData }: Route.MetaArgs) {
+  return [{ title: `${QUARTER_COPY[loaderData?.quarter ?? "2194-Q1"].title} | Orbital Books` }];
 }
 
-export function loader({ request }: Route.LoaderArgs) {
-  const outcome = getOutcome(request);
-  if (!outcome) throw redirect("/decide");
-  // Last year, for the season note and the faint reference line.
-  const view = getGameSession(request).queryView;
-  const byQuarter = runQuery({ measure: "revenue", by: ["quarter"] }, view).rows;
-  const lastQ1 = byQuarter.find((r) => r.quarter === "2193-Q1")?.revenue ?? 0;
-  const lastQ4 = byQuarter.find((r) => r.quarter === "2193-Q4")?.revenue ?? 0;
-  const reference = runQuery({ measure: "revenue", by: ["month"], filter: { quarter: ["2193-Q4"] } }, view).rows.map((r) => ({
-    month: r.month ?? "",
-    revenue: r.revenue ?? 0,
-  }));
-  return { outcome, lastQ1, lastQ4, reference, discoveries: earnedDiscoveries(outcome.discoveries) };
+/** The latest played quarter, or `?quarter=2194-Q1` for an earlier one; a quarter not played yet goes to Decide. */
+export function loader({ request }: Route.LoaderArgs): ResultData {
+  const asked = new URL(request.url).searchParams.get("quarter");
+  const data = getResultData(request, isQuarterId(asked) ? asked : undefined);
+  if (!data) throw redirect("/decide");
+  return { ...data, discoveries: earnedDiscoveries(data.discoveries, data.quarter) };
 }
 
 export default function Result({ loaderData }: Route.ComponentProps) {
-  const { outcome, lastQ1, lastQ4, reference, discoveries } = loaderData;
+  const { quarter, outcome, sameQuarterLastYear, previousQuarter, reference, discoveries, next, canPlayAgain, halfYear } = loaderData;
+  const q = QUARTER_COPY[quarter];
   const [assumptionsOpen, setAssumptionsOpen] = useState(false);
   const assumptionsRef = useRef<HTMLElement>(null);
-  const holdingCourse = outcome.plan.levers.length === 0;
+  const holdingCourse = heldCourse(outcome);
   const { plan, holdCourse } = outcome.totals;
-  // A fixed vocabulary for analytics: "repick+events", or "hold".
-  const levers = outcome.plan.levers.join("+") || "hold";
+  const levers = planSummary(outcome);
   const overall = outcome.reportCard.plan.overall;
 
   useEffect(() => {
     track("result_viewed", {
+      quarter,
       levers,
       moves: outcome.plan.levers.length,
       overall: overall.score,
       binding: overall.binding.join("+"),
       discoveries: outcome.discoveries.length,
+      ...(halfYear ? { halfYear: halfYear.score } : {}),
     });
-  }, [levers, outcome.plan.levers.length, overall.score, overall.binding, outcome.discoveries.length]);
+  }, [quarter, levers, outcome.plan.levers.length, overall.score, overall.binding, outcome.discoveries.length, halfYear]);
 
   const option = useMemo(
     () =>
@@ -78,8 +80,10 @@ export default function Result({ loaderData }: Route.ComponentProps) {
         plan: outcome.monthly.map((m) => m.plan.revenue),
         holdCourse: outcome.monthly.map((m) => m.holdCourse.revenue),
         reference,
+        referenceLabel: q.reference,
+        referenceYear: quarter === "2194-Q1" ? "2193" : "2194",
       }),
-    [outcome, reference],
+    [outcome, reference, q.reference, quarter],
   );
 
   function openAssumptions() {
@@ -90,9 +94,10 @@ export default function Result({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className={styles.page}>
-      <h2 className={styles.title}>{COPY.title}</h2>
+      <h2 className={styles.title}>{q.title}</h2>
 
       <ReportCard
+        quarter={quarter}
         plan={outcome.reportCard.plan}
         holdCourse={outcome.reportCard.holdCourse}
         holdingCourse={holdingCourse}
@@ -113,11 +118,13 @@ export default function Result({ loaderData }: Route.ComponentProps) {
           <ul className={styles.legend} aria-label="Lines">
             <LegendItem color={OUTCOME_COLORS.plan} label={COPY.lines.plan} />
             <LegendItem color={OUTCOME_COLORS.holdCourse} label={COPY.lines.holdCourse} />
-            <LegendItem color={OUTCOME_COLORS.reference} label={COPY.lines.reference} />
+            <LegendItem color={OUTCOME_COLORS.reference} label={q.reference} />
           </ul>
         </header>
-        <EChart option={option} height={300} label={`${COPY.chartTitle}: ${COPY.lines.plan}, ${COPY.lines.holdCourse}, ${COPY.lines.reference}`} />
-        <p className={styles.note}>{seasonNote((1 - plan.revenue / lastQ4) * 100, lastQ1)}</p>
+        <EChart option={option} height={300} label={`${COPY.chartTitle}: ${COPY.lines.plan}, ${COPY.lines.holdCourse}, ${q.reference}`} />
+        <p className={styles.note}>
+          {quarter === "2194-Q1" ? seasonNote((1 - plan.revenue / previousQuarter) * 100, sameQuarterLastYear) : q2SeasonNote(plan.revenue, previousQuarter)}
+        </p>
       </section>
 
       <section className={styles.card} aria-label="What happened">
@@ -130,9 +137,17 @@ export default function Result({ loaderData }: Route.ComponentProps) {
           <button type="button" className={styles.button} onClick={openAssumptions} aria-expanded={assumptionsOpen} aria-controls="assumptions">
             {COPY.seeAssumptions}
           </button>
-          <Link to="/investigate" className={styles.button}>
-            {COPY.backToLedgers}
-          </Link>
+          {/* After Q2, the way back to the ledgers is under the half-year review. */}
+          {quarter === "2194-Q1" && (
+            <Link to="/investigate" className={styles.button}>
+              {COPY.backToLedgers}
+            </Link>
+          )}
+          {next === "2194-Q2" && (
+            <Link to="/" className={`${styles.button} ${styles.primary}`} onClick={() => track("result_continued", { to: next })}>
+              {CONTINUE_TO_Q2}
+            </Link>
+          )}
         </div>
       </section>
 
@@ -157,7 +172,72 @@ export default function Result({ loaderData }: Route.ComponentProps) {
           ))}
         </ul>
       </section>
+
+      {halfYear && <HalfYearReview review={halfYear} canPlayAgain={canPlayAgain} />}
     </div>
+  );
+}
+
+/** The game's last word (q2.md section 7): each quarter's scores, the half-year score, and a new game. */
+function HalfYearReview({ review, canPlayAgain }: { review: HalfYearData; canPlayAgain: boolean }) {
+  const c = COPY.reportCard;
+  return (
+    <section className={styles.card} aria-labelledby="half-year-heading">
+      <h3 id="half-year-heading" className={styles.cardTitle}>
+        {HALF_YEAR_COPY.heading}
+      </h3>
+      <div className={styles.tableWrap}>
+        <table className={styles.reportCard}>
+          <thead>
+            <tr>
+              <th scope="col">{HALF_YEAR_COPY.quarter}</th>
+              {MEASURE_ORDER.map((id) => (
+                <th key={id} scope="col">
+                  {c.measures[id]}
+                </th>
+              ))}
+              <th scope="col">{HALF_YEAR_COPY.overall}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {review.quarters.map((row) => (
+              <tr key={row.quarter}>
+                <th scope="row">{HALF_YEAR_COPY.quarters[row.quarter]}</th>
+                {MEASURE_ORDER.map((id) => {
+                  const m = row.measures.find((x) => x.id === id);
+                  return <td key={id}>{m ? scoreText(m.score, m.grade) : ""}</td>;
+                })}
+                <td>{scoreText(row.overall.score, row.overall.grade)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className={styles.overall}>
+        <div className={styles.score}>
+          <span className={styles.scoreLine}>{halfYearScoreText(review.score, review.grade)}</span>
+        </div>
+        <figure className={styles.lowest}>
+          <blockquote className={styles.lowestLines}>
+            <p>{halfYearAdministratorLine(review.score)}</p>
+          </blockquote>
+          <figcaption className={styles.boss}>{c.bosses.overall}</figcaption>
+        </figure>
+      </div>
+      <p className={styles.happened}>{HALF_YEAR_COPY.closing}</p>
+      <div className={styles.actions}>
+        {canPlayAgain && (
+          <Form method="post" action="/game/new" onSubmit={() => track("result_play_again", { halfYear: review.score })}>
+            <button type="submit" className={`${styles.button} ${styles.primary}`}>
+              {HALF_YEAR_COPY.playAgain}
+            </button>
+          </Form>
+        )}
+        <Link to="/investigate" className={styles.button}>
+          {HALF_YEAR_COPY.backToLedgers}
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -192,8 +272,9 @@ function LegendItem({ color, label }: { color: string; label: string }) {
  * overall score, the lowest measure's boss on it, the table with that row
  * marked, certificates, and the rest of the bosses tucked away.
  */
-function ReportCard({ plan, holdCourse, holdingCourse, onBosses }: { plan: Card; holdCourse: Card; holdingCourse: boolean; onBosses: (open: boolean) => void }) {
+function ReportCard({ quarter, plan, holdCourse, holdingCourse, onBosses }: { quarter: ResultQuarter; plan: Card; holdCourse: Card; holdingCourse: boolean; onBosses: (open: boolean) => void }) {
   const c = COPY.reportCard;
+  const q = QUARTER_COPY[quarter];
   const { overall } = plan;
   const certificates = plan.certificates.map(certificateText).filter(Boolean);
   return (
@@ -228,7 +309,7 @@ function ReportCard({ plan, holdCourse, holdingCourse, onBosses }: { plan: Card;
             <tr>
               <th scope="col">{c.columns.measure}</th>
               <th scope="col">{c.columns.result}</th>
-              <th scope="col">{c.columns.lastYear}</th>
+              <th scope="col">{q.lastYear}</th>
               <th scope="col">{c.columns.goal}</th>
               <th scope="col">{c.columns.score}</th>
               {!holdingCourse && <th scope="col">{c.columns.holdCourse}</th>}
@@ -262,7 +343,7 @@ function ReportCard({ plan, holdCourse, holdingCourse, onBosses }: { plan: Card;
           </tbody>
         </table>
       </div>
-      <p className={styles.note}>{c.goalsNote}</p>
+      <p className={styles.note}>{q.goalsNote}</p>
 
       {certificates.length > 0 && (
         <section className={styles.certificates} aria-labelledby="certificates-heading">

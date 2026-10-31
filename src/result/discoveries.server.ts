@@ -1,10 +1,14 @@
-// The discoveries' words (docs/design/m1-copy.md, section 6). Server-only: the
+// The discoveries' words (docs/design/m1-copy.md, section 6, for Q1; q2.md, section 6, for Q2). Server-only: the
 // found text is the answer, and the hint says where it is, so neither may ship
 // in the browser's code. The result loader sends each player only what they
 // have earned, and only after the quarter has played out.
-import type { DiscoveryId } from "~/simulation/types";
+import type { DiscoveryId as Q1DiscoveryId } from "~/simulation/types";
+import type { ResultQuarter } from "./copy";
 
-const DISCOVERIES: { id: DiscoveryId; found: string; notFound: string }[] = [
+/** A–C are Q1's, D–F Q2's. Q1's discoveries stay on Q1's screen: they don't carry over. */
+export type DiscoveryId = Q1DiscoveryId | "D" | "E" | "F";
+
+const Q1: { id: DiscoveryId; found: string; notFound: string }[] = [
   {
     id: "A",
     found: "The whole store slowed. Every genre fell by a similar share, and orders fell while order size held.",
@@ -18,6 +22,18 @@ const DISCOVERIES: { id: DiscoveryId; found: string; notFound: string }[] = [
   },
 ];
 
+const Q2: { id: DiscoveryId; found: string; notFound: string }[] = [
+  {
+    id: "D",
+    found: "A pick added about the same number of copies whether the title was busy or quiet. On a busy title, the discount mostly went on copies that would have sold anyway.",
+    notFound: "Look at last year's picks month by month: one that sells a lot, and one that doesn't.",
+  },
+  { id: "E", found: "Ratings differ a lot from title to title, and they aren't the same as sales.", notFound: "Look at the average rating, title by title." },
+  { id: "F", found: "You compared your first quarter with last year's.", notFound: "Put Q1 2193 and Q1 2194 side by side." },
+];
+
+const DISCOVERIES: Record<ResultQuarter, typeof Q1> = { "2194-Q1": Q1, "2194-Q2": Q2 };
+
 export interface EarnedDiscovery {
   id: DiscoveryId;
   found: boolean;
@@ -25,6 +41,7 @@ export interface EarnedDiscovery {
   text: string;
 }
 
-export function earnedDiscoveries(found: readonly DiscoveryId[]): EarnedDiscovery[] {
-  return DISCOVERIES.map((d) => (found.includes(d.id) ? { id: d.id, found: true, text: d.found } : { id: d.id, found: false, text: d.notFound }));
+/** The quarter's three discoveries, each as found or as where to look. */
+export function earnedDiscoveries(found: readonly DiscoveryId[], quarter: ResultQuarter = "2194-Q1"): EarnedDiscovery[] {
+  return DISCOVERIES[quarter].map((d) => (found.includes(d.id) ? { id: d.id, found: true, text: d.found } : { id: d.id, found: false, text: d.notFound }));
 }
