@@ -91,9 +91,20 @@ David's direction: the brief is delivered by the robot bosses in speech bubbles,
 
 **How the facts stay legible.** Every bubble has two parts:
 - **The boss's line:** capitals, in the same voice as the Result screen's boss lines. This is the joke.
-- **The fact strip:** one plain sentence-case line under the joke, on a lighter panel inside the bubble, with its key figures in bold. A player who reads only the fact strips gets the whole brief. Each fact appears exactly once, in one strip.
+- **The fact strip:** one plain sentence-case line under the joke, on a lighter panel inside the bubble, with its key figures in bold. A player who reads only the fact strips gets the whole brief.
 
-**Layout.** The heading `PLAN FOR Q1 2194`, then the bubbles stacked in the order below, all visible at once (no clicking through). A short staggered fade-in under one second is fine; with reduced motion, there's no animation. Each bubble carries its speaker's name as a caption, plus a portrait once Orbit's portraits exist. Then the moves.
+**Layout.** David's direction: "the robots in a scene together with speech bubbles that can be clicked to be focused, and that's when they're expanded for more info. When the page comes up, one of them is autofocused". The heading `PLAN FOR Q1 2194`, with a hint under it, then the five bosses standing together in one scene. Each bubble shows its teaser (below). Selecting a bubble, by click, Enter or Space, expands it to show the full boss line and then the fact strip, and collapses the others. On load, the Station Administrator's bubble is open: it carries the dates and the lowest-measure rule. Each bubble carries its speaker's name as a caption and its portrait. Screen readers get each bubble as a button with `aria-expanded`. With reduced motion, the bubbles open and close without animation.
+
+| Element | String |
+| --- | --- |
+| Hint, under the heading | `Select a boss to hear more.` |
+| Teaser: the Station Administrator | `ATTENTION, SHOPKEEPER. A NEW QUARTER.` |
+| Teaser: the Commerce Office | `WE WILL GRADE YOU ON FOUR MEASURES.` |
+| Teaser: the Ministry of Culture | `AUTHORS MAY BE INVITED.` |
+| Teaser: the Readers' Guild survey drone | `THE PREVIOUS MANAGER LEFT A SCHEDULE.` |
+| Teaser: the Throughput Subcommittee | `SELECT UP TO TWO MOVES.` |
+
+**Nothing the decision needs hides in a collapsed bubble.** The two rules that decide a plan are echoed beside the moves: the moves heading already says "choose up to two", and a rule line under it says the score is the lowest measure. The repick move names the scheduled picks it replaces. Each fact still appears once among the strips.
 
 | # | Speaker | Boss's line | Fact strip |
 | --- | --- | --- | --- |
@@ -103,7 +114,7 @@ David's direction: the brief is delivered by the robot bosses in speech bubbles,
 | 4 | The Readers' Guild survey drone | `THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. WE ASSUME THEY COULD NOT TURN LEFT.` | `Already scheduled, Book of the Month at **15% off** for the whole month: **January** The Mallemaroking (mass market paperback), **February** Rystwyth (hardcover), **March** Portmeirion (mass market paperback).` |
 | 5 | The Throughput Subcommittee | `SELECT UP TO TWO MOVES. SELECTING THREE IS NOT PERMITTED. WE HAVE TESTED THIS PERSONALLY.` | `Choose **up to two** moves below, or none to hold course.` |
 
-Each boss speaks once. Five bubbles, rather than seven, keep the moves near the top of the screen.
+Each boss speaks once.
 
 In bubble 4, the three picks may be set as a three-line list inside the strip if that scans better on screen.
 
@@ -116,13 +127,14 @@ In bubble 4, the three picks may be set as a three-line list inside the strip if
 
 Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events`, `sale`.
 
-- `Re-pick Book of the Month`: `Feature Kalakalal Avenue (January), Can I Be Honest? (February) and Who Did You Think You Were Kidding? (March), all in hardcover, instead of the scheduled picks.`
+- `Re-pick Book of the Month`: `Feature Kalakalal Avenue (January), Can I Be Honest? (February) and Who Did You Think You Were Kidding? (March), all in hardcover, instead of the scheduled picks (The Mallemaroking, Rystwyth and Portmeirion).`
 - `Weekday author nights`: `Host 12 author nights, one each week on a Tuesday, Wednesday or Thursday, at $200 each.`
 - `Station-wide sale`: `15% off every book, all quarter. The Book of the Month runs at the same 15%.`
 
 | Element | String |
 | --- | --- |
 | Moves heading | `Your moves (choose up to two)` |
+| Rule line, under the heading | `Your score is your **lowest measure**.` |
 | Nothing chosen | `Hold course: the schedule runs as it is.` |
 | Trying to choose a third | `You can choose up to two moves.` |
 
