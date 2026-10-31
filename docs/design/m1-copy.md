@@ -334,3 +334,15 @@ Footer: `{found} of 3 found.`
 **Decided (David):** when Dewey redirects a question, it offers the full menu above, word for word, in the same order every time. It never offers a subset chosen for the question, because a subset is a hint. Steering belongs to an explicit hint the player asks for, if one is added later.
 
 **Proposal:** Dewey offers no follow-up suggestions after a direct answer. Suggestions would volunteer where to look next.
+
+## 8. Phones
+
+There is no phone layout. David: "On phones? HEAVENS NO". A phone gets one scene instead of the game: a 3D animated robot reaches out of the screen and grabs the phone in its claw, then speaks in a boss bubble. Orbit builds the scene. **Proposal:** the robot is the Throughput Subcommittee, who already thinks the shop is built for ants (section 4).
+
+| Element | String |
+| --- | --- |
+| Boss line (bubble) | `WHAT IS THIS? A COMPUTER FOR ANTS? WE ARE CONFISCATING IT. MR. ZOOLANDER WOULD WANT IT AT LEAST THREE TIMES BIGGER.` |
+| Fact line (plain, under the bubble) | `Orbital Books needs a laptop or desktop computer. Open this page on one to play.` |
+| Scene's accessible name | `A robot reaches out of the screen and grabs your phone.` |
+
+The fact line is the only thing the player needs, so it stays plain and readable without the animation. With reduced motion, show the robot already holding the phone, with no reach.
