@@ -7,7 +7,7 @@ import { useRouteLoaderData } from "react-router";
 import type { WireEvent } from "../events.ts";
 import { track as platformTrack } from "~/platform/analytics/analytics.client";
 import { ASSISTANT_NAME as NAME } from "../name.ts";
-import type { ChartSpec } from "../tools/definitions.ts";
+import type { ChartSpec, LookupPin } from "../tools/definitions.ts";
 import { browserStorage, clearConversation, historyFor, INTERRUPTED, loadConversation, saveConversation } from "./conversation.ts";
 import { fetchStatus, type AssistantStatus } from "./status.ts";
 import { askAssistant } from "./stream.ts";
@@ -34,12 +34,18 @@ const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 export function AssistantPanel({
   track = platformTrack,
   onPin,
+  onPinLookup,
+  isPinned,
   fetcher,
   storage = browserStorage(),
   instance,
 }: {
   track?: PanelTrack;
   onPin?: (chart: ChartSpec) => boolean | void;
+  /** The player pinning a lookup shown here; no Pin buttons without it. The page can refuse one. */
+  onPinLookup?: (pin: LookupPin) => boolean | void;
+  /** Whether a lookup's pin is already on the page's board. */
+  isPinned?: (pin: LookupPin) => boolean;
   fetcher?: typeof fetch;
   /** Where the conversation is kept; injectable for tests. */
   storage?: Storage;
@@ -136,6 +142,13 @@ export function AssistantPanel({
     }
   }
 
+  /** The player's Pin on a lookup; returns whether the page took it. */
+  function pinLookup(pin: LookupPin): boolean {
+    const placed = onPinLookup?.(pin) !== false;
+    track("assistant_lookup_pinned", { kind: pin.kind, placed });
+    return placed;
+  }
+
   function startOver() {
     conversation.current++;
     abort.current?.abort();
@@ -169,7 +182,7 @@ export function AssistantPanel({
             {r.text && <p style={styles.answer}>{r.text}</p>}
             {r.state === "streaming" && !r.text && <p style={styles.muted}>Looking...</p>}
             {r.lookups.map((l, j) => (
-              <LookupView key={j} lookup={l} />
+              <LookupView key={j} lookup={l} pinning={onPinLookup && { onPin: pinLookup, isPinned }} />
             ))}
             {r.error && <p style={styles.error}>{r.error}</p>}
             {r.state === "stopped" && <p style={styles.muted}>Stopped.</p>}
@@ -207,7 +220,12 @@ export function AssistantPanel({
   );
 }
 
-function LookupView({ lookup }: { lookup: Lookup }) {
+interface Pinning {
+  onPin: (pin: LookupPin) => boolean;
+  isPinned?: (pin: LookupPin) => boolean;
+}
+
+export function LookupView({ lookup, pinning }: { lookup: Lookup; pinning?: Pinning }) {
   if (lookup.type === "lookup_failed") return <p style={styles.muted}>A lookup didn't work: {lookup.message}</p>;
   if (lookup.type === "pin") {
     return (
@@ -251,7 +269,22 @@ function LookupView({ lookup }: { lookup: Lookup }) {
       </div>
       {lookup.type === "data" && lookup.total !== null && lookup.columns.length > 1 && <p style={styles.muted}>Total: {number.format(lookup.total)}</p>}
       <p style={styles.source}>Source: {lookup.source}</p>
+      {pinning && lookup.pin && <PinButton pin={lookup.pin} pinning={pinning} />}
     </figure>
+  );
+}
+
+/** Pins a lookup to Investigate's board, where it runs again as the player's own query. */
+function PinButton({ pin, pinning }: { pin: LookupPin; pinning: Pinning }) {
+  const [refused, setRefused] = useState(false);
+  const pinned = pinning.isPinned?.(pin) ?? false;
+  return (
+    <div style={styles.pinRow}>
+      <button type="button" style={styles.quietButton} disabled={pinned} title={pinned ? "Already pinned" : "Pin this to Investigate, below"} aria-label={pinned ? `Pinned: ${pin.title}` : `Pin ${pin.title}`} onClick={() => setRefused(!pinning.onPin(pin))}>
+        {pinned ? "Pinned" : "Pin"}
+      </button>
+      {refused && !pinned && <span style={styles.muted}>Couldn't pin that.</span>}
+    </div>
   );
 }
 
@@ -274,6 +307,8 @@ const styles = {
   td: { padding: "2px 8px 2px 0" },
   num: { padding: "2px 8px 2px 0", textAlign: "right", fontVariantNumeric: "tabular-nums" },
   source: { margin: "6px 0 0", color: "var(--color-text-muted)", fontSize: 12 },
+  pinRow: { display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 },
+  quietButton: { padding: "2px 8px", background: "none", color: "var(--color-text)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-control)", cursor: "pointer", fontSize: 12 },
   form: { display: "flex", gap: 8 },
   input: { flex: 1, padding: "8px 10px", background: "var(--color-space)", color: "var(--color-text)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-control)" },
   button: { padding: "8px 14px", background: "var(--color-accent)", color: "var(--color-text)", border: "none", borderRadius: "var(--radius-control)", cursor: "pointer" },

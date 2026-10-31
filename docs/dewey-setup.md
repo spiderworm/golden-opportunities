@@ -39,7 +39,7 @@ If you sign in while the game is running, Dewey notices within a minute, or stra
 ## Without Claude Code
 
 - **The rest of the game** (the station, Investigate's dashboard, Decide, the results) works normally, and Dewey's panel says it's offline. The game never starts anything to ask Claude Code beyond `claude auth status` and `claude --version`.
-- **The fake provider:** to see the panel work without Claude Code, start the game with `ORBITAL_ASSISTANT_PROVIDER=fake npm run dev`. Dewey then gives a canned reply and never looks anything up.
+- **The fake provider:** to see the panel work without Claude Code, start the game with `ORBITAL_ASSISTANT_PROVIDER=fake npm run dev`. Dewey then gives a canned reply, with real lookups: revenue by quarter, and the latest quarter beside the quarter before it, by genre. Each lookup runs through the same tool code and POST /api/query as the real Dewey's, so its tables and Pin buttons work.
 
 ## What Dewey can reach
 
