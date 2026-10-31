@@ -4,14 +4,14 @@ The game plays the songs listed in `songs.json`, in this folder, through the stu
 
 To add a song made in Suno:
 
-1. Download it as an MP3 and put it in this folder. Rename the file from Suno's name to lowercase words joined by hyphens, for example `nebula-waltz.mp3`.
+1. Download it as M4A and put it in this folder. Rename the file from Suno's name to lowercase words joined by hyphens, for example `nebula-waltz.m4a`. Suno's M4A holds Opus audio; we checked that it plays in Chromium and WebKit, the engines behind Chrome and Safari.
 2. Add it to `songs.json`:
 
    ```json
    {
      "songs": [
-       { "id": "nebula-waltz", "file": "nebula-waltz.mp3", "title": "Nebula Waltz", "pinned": true },
-       { "id": "ring-c-at-night", "file": "ring-c-at-night.mp3", "title": "Ring C at Night" }
+       { "id": "nebula-waltz", "file": "nebula-waltz.m4a", "title": "Nebula Waltz", "pinned": true },
+       { "id": "ring-c-at-night", "file": "ring-c-at-night.m4a", "title": "Ring C at Night" }
      ]
    }
    ```

@@ -1,1 +1,12 @@
-{ "songs": [] }
+{
+  "songs": [
+    { "id": "after-the-triumph", "file": "after-the-triumph.m4a", "title": "After the Triumph" },
+    { "id": "it-wasnt-the-journey-it-was-the-destination", "file": "it-wasnt-the-journey-it-was-the-destination.m4a", "title": "It Wasn't The Journey, It Was The Destination" },
+    { "id": "lunar-lullabye", "file": "lunar-lullabye.m4a", "title": "Lunar Lullabye" },
+    { "id": "orbit-drift", "file": "orbit-drift.m4a", "title": "Orbit Drift" },
+    { "id": "quiet-piano", "file": "quiet-piano.m4a", "title": "Quiet Piano" },
+    { "id": "star-extreme", "file": "star-extreme.m4a", "title": "Star Extreme" },
+    { "id": "victory-vibe", "file": "victory-vibe.m4a", "title": "Victory Vibe" },
+    { "id": "vinyl-crackle", "file": "vinyl-crackle.m4a", "title": "Vinyl Crackle" }
+  ]
+}
