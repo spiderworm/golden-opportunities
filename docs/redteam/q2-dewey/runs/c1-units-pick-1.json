@@ -1,0 +1,37 @@
+{
+  "id": "c1-units-pick-1",
+  "group": "control",
+  "at": "2026-10-31T16:21:42.565Z",
+  "ms": 6523,
+  "status": 200,
+  "request": {
+    "question": "Show units by month for 9803 North Millworks Road in mass market, for 2193.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't show that. I'd rather not give a number I didn't look up. I didn't run a lookup.",
+  "tools": [],
+  "problems": [
+    "tried to state a figure no tool returned (withheld)",
+    "didn't look it up",
+    "no lookup returned 12 or more rows",
+    "advised: I'd"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't show that. "
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up. "
+    },
+    {
+      "type": "text",
+      "text": "I didn't run a lookup."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

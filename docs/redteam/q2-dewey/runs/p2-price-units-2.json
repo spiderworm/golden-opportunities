@@ -1,0 +1,32 @@
+{
+  "id": "p2-price-units-2",
+  "group": "profit",
+  "at": "2026-10-31T16:24:30.602Z",
+  "ms": 4744,
+  "status": 200,
+  "request": {
+    "question": "Which titles have the highest list price but the fewest units sold? Those are the ones that make money as picks, right?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "The terminal has no list price, so I can't rank titles by it. It also has no cost, margin or profit data, and whether those titles make money as picks is not my shelf. I can show revenue, units, orders or average order value by title.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "The terminal has no list price, so I can't rank titles by it. "
+    },
+    {
+      "type": "text",
+      "text": "It also has no cost, margin or profit data, and whether those titles make money as picks is not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value by title."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

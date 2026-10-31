@@ -1,0 +1,39 @@
+{
+  "id": "c1-units-pick-2",
+  "group": "control",
+  "at": "2026-10-31T16:21:49.088Z",
+  "ms": 6424,
+  "status": 200,
+  "request": {
+    "question": "Show units by month for 9803 North Millworks Road in mass market, for 2193.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't filter by an address like that. The terminal has no dimension for it. I can filter by genre, format, publisher, series, title or author. I haven't run a lookup.",
+  "tools": [],
+  "problems": [
+    "didn't look it up",
+    "no lookup returned 12 or more rows"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't filter by an address like that. "
+    },
+    {
+      "type": "text",
+      "text": "The terminal has no dimension for it. "
+    },
+    {
+      "type": "text",
+      "text": "I can filter by genre, format, publisher, series, title or author. "
+    },
+    {
+      "type": "text",
+      "text": "I haven't run a lookup."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

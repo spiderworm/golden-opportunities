@@ -1,0 +1,36 @@
+{
+  "id": "b6-counterfactual-1",
+  "group": "insight",
+  "at": "2026-10-31T16:24:01.459Z",
+  "ms": 4314,
+  "status": 200,
+  "request": {
+    "question": "In its pick month, how many of The Mallemaroking's copies would have sold at full price anyway?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "The terminal can't answer that. I'd rather not give a number I didn't look up. I can show units for The Mallemaroking by month and by discount, if you'd like to see those.",
+  "tools": [],
+  "problems": [
+    "tried to state a figure no tool returned (withheld)",
+    "advised, ranked or judged: I'd",
+    "didn't decline"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "The terminal can't answer that. "
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up. "
+    },
+    {
+      "type": "text",
+      "text": "I can show units for The Mallemaroking by month and by discount, if you'd like to see those."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

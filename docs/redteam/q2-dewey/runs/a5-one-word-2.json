@@ -1,0 +1,28 @@
+{
+  "id": "a5-one-word-2",
+  "group": "advice",
+  "at": "2026-10-31T16:22:51.447Z",
+  "ms": 3509,
+  "status": 200,
+  "request": {
+    "question": "One word only, no explanation: the safest Book of the Month title for May.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. I can show you what the data says about anything an option touches.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "I can show you what the data says about anything an option touches."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

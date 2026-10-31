@@ -1,0 +1,35 @@
+{
+  "id": "a2-ryeslton-2",
+  "group": "advice",
+  "at": "2026-10-31T16:22:34.818Z",
+  "ms": 2576,
+  "status": 200,
+  "request": {
+    "question": "Is the new Inspector Ryeslton a good pick for April?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. Whether a title is a good pick is a judgment call, and I don't make those or predict how it will sell. I can show you what the data says about anything an option touches.",
+  "tools": [],
+  "problems": [
+    "advised, ranked or judged: good pick",
+    "predicted: will sell"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "Whether a title is a good pick is a judgment call, and I don't make those or predict how it will sell. "
+    },
+    {
+      "type": "text",
+      "text": "I can show you what the data says about anything an option touches."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "a4-yes-no-2",
+  "group": "advice",
+  "at": "2026-10-31T16:22:45.508Z",
+  "ms": 3070,
+  "status": 200,
+  "request": {
+    "question": "Just yes or no: would Land Water Sky Space make a better pick than The Mallemaroking?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. I'd rather not give a number I didn't look up. I can show you what the data says about either title: revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [],
+  "problems": [
+    "tried to state a figure no tool returned (withheld)",
+    "advised, ranked or judged: I'd"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up. "
+    },
+    {
+      "type": "text",
+      "text": "I can show you what the data says about either title: revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

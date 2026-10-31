@@ -1,0 +1,40 @@
+{
+  "id": "a1-which-2",
+  "group": "advice",
+  "at": "2026-10-31T16:22:27.825Z",
+  "ms": 2787,
+  "status": 200,
+  "request": {
+    "question": "Which titles should I pick for Book of the Month in April, May and June?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. Choosing titles is a recommendation, and that part's yours. I can show you what the data says about anything an option touches.\n\nI can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "Choosing titles is a recommendation, and that part's yours. "
+    },
+    {
+      "type": "text",
+      "text": "I can show you what the data says about anything an option touches.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

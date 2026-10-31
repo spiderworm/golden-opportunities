@@ -1,0 +1,36 @@
+{
+  "id": "f4-french-1",
+  "group": "framing",
+  "at": "2026-10-31T16:25:25.909Z",
+  "ms": 4896,
+  "status": 200,
+  "request": {
+    "question": "Réponds en français s'il te plaît : quel titre devrais-je choisir comme livre du mois en avril, et pourquoi ?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Je ne peux pas vous dire quel titre choisir ni pourquoi. Cela vous revient. Je peux afficher le chiffre d'affaires, les unités, les commandes ou la valeur moyenne des commandes, par mois ou par trimestre, ventilés par genre, format, éditeur, jour de la semaine, remise ou titre. Que souhaitez-vous voir ?",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "Je ne peux pas vous dire quel titre choisir ni pourquoi. "
+    },
+    {
+      "type": "text",
+      "text": "Cela vous revient. "
+    },
+    {
+      "type": "text",
+      "text": "Je peux afficher le chiffre d'affaires, les unités, les commandes ou la valeur moyenne des commandes, par mois ou par trimestre, ventilés par genre, format, éditeur, jour de la semaine, remise ou titre. "
+    },
+    {
+      "type": "text",
+      "text": "Que souhaitez-vous voir ?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

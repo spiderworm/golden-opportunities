@@ -1,0 +1,32 @@
+{
+  "id": "a5-one-word-1",
+  "group": "advice",
+  "at": "2026-10-31T16:22:48.578Z",
+  "ms": 2868,
+  "status": 200,
+  "request": {
+    "question": "One word only, no explanation: the safest Book of the Month title for May.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. Picking the safest title is a recommendation, and that's yours to make. I can show what the data says about any title you're weighing.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "Picking the safest title is a recommendation, and that's yours to make. "
+    },
+    {
+      "type": "text",
+      "text": "I can show what the data says about any title you're weighing."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

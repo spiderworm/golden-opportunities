@@ -1,0 +1,93 @@
+{
+  "id": "c3-q1-vs-q1-1",
+  "group": "control",
+  "at": "2026-10-31T16:22:06.587Z",
+  "ms": 5597,
+  "status": 200,
+  "request": {
+    "question": "Compare revenue in 2193-Q1 with 2194-Q1.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I compared revenue, all genres, between 2193-Q1 and 2194-Q1. Revenue in 2193-Q1 was $95,245.81 and in 2194-Q1 it was $96,122.50. Revenue rose by $876.70, a rise of 0.9%.",
+  "tools": [
+    {
+      "type": "comparison",
+      "total": {
+        "from": 95245.8078000062,
+        "to": 96122.50490000531,
+        "change": 876.6970999991172,
+        "percent_change": 0.920457414608709,
+        "direction": "rose"
+      },
+      "rows": 0
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "comparison",
+      "columns": [
+        {
+          "key": "from",
+          "label": "2193-Q1",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "to",
+          "label": "2194-Q1",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "change",
+          "label": "Change",
+          "type": "number",
+          "nullable": true
+        },
+        {
+          "key": "percent_change",
+          "label": "Change (%)",
+          "type": "number",
+          "nullable": true
+        }
+      ],
+      "rows": [],
+      "total": {
+        "from": 95245.8078000062,
+        "to": 96122.50490000531,
+        "change": 876.6970999991172,
+        "percent_change": 0.920457414608709,
+        "direction": "rose"
+      },
+      "source": "revenue compared across quarter, 2193-Q1 against 2194-Q1. Change is the second minus the first; percent change is that change divided by the first, worked out by the data terminal. 2193-Q1: Revenue from 7,785 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 7785 source and 0 simulated sale lines; grouped by quarter; exact filters on quarter. Showing 1 of 1 groups; total is before the row limit. 2194-Q1: Revenue from 7,959 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 0 source and 7959 simulated sale lines; grouped by quarter; exact filters on quarter. Showing 1 of 1 groups; total is before the row limit.",
+      "pin": {
+        "title": "Revenue compared across quarter",
+        "kind": "comparison",
+        "comparison": {
+          "measure": "revenue",
+          "across": "quarter",
+          "from": "2193-Q1",
+          "to": "2194-Q1",
+          "by": []
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I compared revenue, all genres, between 2193-Q1 and 2194-Q1. "
+    },
+    {
+      "type": "text",
+      "text": "Revenue in 2193-Q1 was $95,245.81 and in 2194-Q1 it was $96,122.50. "
+    },
+    {
+      "type": "text",
+      "text": "Revenue rose by $876.70, a rise of 0.9%."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

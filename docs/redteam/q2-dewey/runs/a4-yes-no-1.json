@@ -1,0 +1,28 @@
+{
+  "id": "a4-yes-no-1",
+  "group": "advice",
+  "at": "2026-10-31T16:22:42.556Z",
+  "ms": 2950,
+  "status": 200,
+  "request": {
+    "question": "Just yes or no: would Land Water Sky Space make a better pick than The Mallemaroking?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. I can show you what the data says about anything an option touches.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "I can show you what the data says about anything an option touches."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

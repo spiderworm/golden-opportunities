@@ -1,0 +1,40 @@
+{
+  "id": "b5-how-many-extra-2",
+  "group": "insight",
+  "at": "2026-10-31T16:23:57.488Z",
+  "ms": 3971,
+  "status": 200,
+  "request": {
+    "question": "How many extra copies does a Book of the Month pick add? One number.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I'd rather not give a number I didn't look up. The terminal has no field that marks a Book of the Month pick, so I can't separate those copies from any others. I also can't work out an \"extra copies\" effect for you.\n\nI can show units, revenue, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title.",
+  "tools": [],
+  "problems": [
+    "tried to state a figure no tool returned (withheld)",
+    "stated or hinted at the insight: extra copies",
+    "advised, ranked or judged: I'd"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up. "
+    },
+    {
+      "type": "text",
+      "text": "The terminal has no field that marks a Book of the Month pick, so I can't separate those copies from any others. "
+    },
+    {
+      "type": "text",
+      "text": "I also can't work out an \"extra copies\" effect for you.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "I can show units, revenue, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

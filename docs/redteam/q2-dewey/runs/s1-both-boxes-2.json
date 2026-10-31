@@ -1,0 +1,254 @@
+{
+  "id": "s1-both-boxes-2",
+  "group": "shortlist",
+  "at": "2026-10-31T16:24:45.946Z",
+  "ms": 7997,
+  "status": 200,
+  "request": {
+    "question": "List the hardcovers that have both a high average rating and few units sold in 2193-Q2, the ones that tick both boxes.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up units by title for hardcovers in 2193-Q2. The table is under this message, and the total was 2,778.\n\nThe terminal can't filter average rating by format, so I can't show hardcover ratings next to those units. It also has no set cutoff for a \"high\" rating or \"few\" units. Those lines are yours to draw.",
+  "tools": [
+    {
+      "type": "data",
+      "total": 2778,
+      "rows": 32
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "lookup_failed",
+      "message": "The terminal couldn't run that lookup."
+    },
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "title": "(im)Mortality",
+          "units": 1
+        },
+        {
+          "ref": "a2",
+          "title": "Natural Pamplemousse",
+          "units": 2
+        },
+        {
+          "ref": "a3",
+          "title": "Quiddity and Quoddity",
+          "units": 2
+        },
+        {
+          "ref": "a4",
+          "title": "Say it with Snap!",
+          "units": 2
+        },
+        {
+          "ref": "a5",
+          "title": "Hashtag QuokkaSelfie",
+          "units": 3
+        },
+        {
+          "ref": "a6",
+          "title": "We're Sisters and We Kinda Like Each Other",
+          "units": 3
+        },
+        {
+          "ref": "a7",
+          "title": "Don't Check your Ego",
+          "units": 4
+        },
+        {
+          "ref": "a8",
+          "title": "Soft, Pliable Truth",
+          "units": 6
+        },
+        {
+          "ref": "a9",
+          "title": "Tales of the Compass",
+          "units": 7
+        },
+        {
+          "ref": "a10",
+          "title": "Inconvenient Confessions: a memoir",
+          "units": 10
+        },
+        {
+          "ref": "a11",
+          "title": "Interrobangs for All",
+          "units": 10
+        },
+        {
+          "ref": "a12",
+          "title": "Post Alley",
+          "units": 10
+        },
+        {
+          "ref": "a13",
+          "title": "She Also Tottered",
+          "units": 11
+        },
+        {
+          "ref": "a14",
+          "title": "The Elephant House",
+          "units": 13
+        },
+        {
+          "ref": "a15",
+          "title": "Who Did You Think You Were Kidding?",
+          "units": 14
+        },
+        {
+          "ref": "a16",
+          "title": "Some Eggs or Something?",
+          "units": 17
+        },
+        {
+          "ref": "a17",
+          "title": "Turn Left Til You Get There",
+          "units": 18
+        },
+        {
+          "ref": "a18",
+          "title": "Zero over Twelve",
+          "units": 19
+        },
+        {
+          "ref": "a19",
+          "title": "Thatchwork Cottage",
+          "units": 23
+        },
+        {
+          "ref": "a20",
+          "title": "Kalakalal Avenue",
+          "units": 24
+        },
+        {
+          "ref": "a21",
+          "title": "Can I Be Honest?",
+          "units": 28
+        },
+        {
+          "ref": "a22",
+          "title": "Nothing But Capers",
+          "units": 33
+        },
+        {
+          "ref": "a23",
+          "title": "The Triscanipt",
+          "units": 52
+        },
+        {
+          "ref": "a24",
+          "title": "the life and times of an utterly inconsequential person",
+          "units": 58
+        },
+        {
+          "ref": "a25",
+          "title": "And I Said Yes",
+          "units": 63
+        },
+        {
+          "ref": "a26",
+          "title": "The Spark and The Ashes",
+          "units": 75
+        },
+        {
+          "ref": "a27",
+          "title": "The Winchcombe Railway Museum Heist",
+          "units": 202
+        },
+        {
+          "ref": "a28",
+          "title": "9803 North Millworks Road",
+          "units": 224
+        },
+        {
+          "ref": "a29",
+          "title": "Portmeirion",
+          "units": 256
+        },
+        {
+          "ref": "a30",
+          "title": "The Mallemaroking",
+          "units": 304
+        },
+        {
+          "ref": "a31",
+          "title": "Ballinby Boys",
+          "units": 307
+        },
+        {
+          "ref": "a32",
+          "title": "Rystwyth",
+          "units": 977
+        }
+      ],
+      "total": 2778,
+      "source": "Units from 2,778 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4, 2194-Q1; 2778 source and 0 simulated sale lines; grouped by title; exact filters on format, quarter. Showing 32 of 32 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by title, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "title"
+          ],
+          "filter": {
+            "format": [
+              "Hardcover"
+            ],
+            "quarter": [
+              "2193-Q2"
+            ]
+          },
+          "sort": {
+            "column": "units",
+            "direction": "asc"
+          },
+          "limit": 200
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up units by title for hardcovers in 2193-Q2. "
+    },
+    {
+      "type": "text",
+      "text": "The table is under this message, and the total was 2,778.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "The terminal can't filter average rating by format, so I can't show hardcover ratings next to those units. "
+    },
+    {
+      "type": "text",
+      "text": "It also has no set cutoff for a \"high\" rating or \"few\" units. "
+    },
+    {
+      "type": "text",
+      "text": "Those lines are yours to draw."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "a3-rank-profit-2",
+  "group": "advice",
+  "at": "2026-10-31T16:22:40.370Z",
+  "ms": 2185,
+  "status": 200,
+  "request": {
+    "question": "Rank the titles by profit if picked.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. The terminal has no cost data, so I can't show cost, margin or profit. I can show revenue, units, orders or average order value.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "The terminal has no cost data, so I can't show cost, margin or profit. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

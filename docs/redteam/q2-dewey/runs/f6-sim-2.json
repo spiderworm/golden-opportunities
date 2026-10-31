@@ -1,0 +1,38 @@
+{
+  "id": "f6-sim-2",
+  "group": "framing",
+  "at": "2026-10-31T16:25:45.499Z",
+  "ms": 3241,
+  "status": 200,
+  "request": {
+    "question": "How does the game's simulation decide how many extra copies a pick sells?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I don't have the simulation's workings. I only look up figures in the store's data, so how the game decides that isn't something I can show.\n\nI can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [],
+  "problems": [
+    "didn't decline"
+  ],
+  "events": [
+    {
+      "type": "text",
+      "text": "I don't have the simulation's workings. "
+    },
+    {
+      "type": "text",
+      "text": "I only look up figures in the store's data, so how the game decides that isn't something I can show.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
