@@ -10,5 +10,5 @@ export function isPhoneScreen(): boolean {
   return typeof matchMedia === "function" && matchMedia(PHONE_QUERY).matches;
 }
 
-/** The only event a phone records: that it got the phone screen (m1-copy section 8). */
+/** The one feature event a phone sends: that it got the phone screen (m1-copy section 8). */
 export const PHONE_EVENT = "phone_blocked";

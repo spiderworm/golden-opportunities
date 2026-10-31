@@ -48,10 +48,13 @@ export function setAnalyticsGl(get: () => WebGLRenderingContext | null) {
 }
 
 /**
- * track() for browser code. A phone records only that it got the phone
- * screen: the game's pages mount once while the page hydrates, before the
- * phone screen takes over, and their events (station_viewed, say) would
- * describe a game the player never saw.
+ * track() for browser code. On a phone, the only event it sends is
+ * phone_blocked: the game's pages mount once while the page hydrates, before
+ * the phone screen takes over, and their events (station_viewed, say) would
+ * describe a game the player never saw. A phone still records what doesn't
+ * come through here: the analytics package's own instance and device events
+ * at start, and the server's game_save_created when the first load makes
+ * the browser's save.
  */
 export const track: Track = (event, props, options) => {
   if (event !== PHONE_EVENT && isPhoneScreen()) return;
