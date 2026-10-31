@@ -91,9 +91,9 @@ David's direction: the brief is delivered by the robot bosses in speech bubbles,
 
 **How the facts stay legible.** Every bubble has two parts:
 - **The boss's line:** capitals, in the same voice as the Result screen's boss lines. This is the joke.
-- **The fact strip:** one plain sentence-case line under the joke, on a lighter panel inside the bubble, with its key figures in bold. A player who reads only the fact strips gets the whole brief.
+- **The fact strip:** one plain sentence-case line on a lighter panel inside the bubble (above the joke in the jumbotron, see below), with its key figures in bold. A player who reads only the fact strips gets the whole brief.
 
-**Layout.** David's direction: "the robots in a scene together with speech bubbles that can be clicked to be focused, and that's when they're expanded for more info. When the page comes up, one of them is autofocused". The heading `PLAN FOR Q1 2194`, with a hint under it, then the five bosses standing together in one scene. Each boss stands in a fixed column under a small bubble holding its name and teaser (below). Selecting a bubble (click, Enter or Space) or clicking its robot opens that boss's panel under the scene: its name, the full boss line, then the fact strip. Only one panel is open at a time. Opening one moves nothing: the columns don't widen, and the panel area is always the size of the largest panel, so robots shift only when the window or the menu resizes the scene. On load, the Station Administrator's panel is open: it carries the dates and the lowest-measure rule. Screen readers get each bubble as a button with `aria-expanded`; the robots are decoration and take no tab stop. In a narrow scene, a bubble shows only the speaker's name, and the teaser stays in the button's accessible name. With reduced motion, nothing animates.
+**Layout.** David's direction: "the robots in a scene together with speech bubbles that can be clicked to be focused, and that's when they're expanded for more info. When the page comes up, one of them is autofocused". **The overhead jumbotron** (David's pick from six layouts, below). A banner hangs from the ceiling across the top of the scene, like a stadium screen. On its left is the briefing: the heading `PLAN FOR Q1 2194`, the hint, then the open boss's panel: its name, the fact strip, then the full boss line. Facts come first because the banner's panel can scroll at small sizes (about 170 px tall at 1280×720), and the facts must always be in view. The joke can wait one scroll. On its right are the moves, set as the requisition form below, and `Submit plan`. Under the banner, the five bosses stand large in a row. Each has a tag hanging over the floor above its head, holding its name and teaser; on windows under 820 px tall, a tag shows the name alone. Selecting a tag (click, Enter or Space) or clicking its robot shows that boss's panel in the banner. Only one panel shows at a time. Opening one moves nothing: the panel area keeps the banner's height whichever boss is open, and a long briefing scrolls inside it, so robots shift only when the window or the menu resizes the scene. On load, the Station Administrator's panel shows: it carries the dates and the lowest-measure rule. Screen readers get each tag as a button with `aria-expanded`; the robots are decoration and take no tab stop. In a narrow scene or a short window (under 820 px tall), a tag shows only the speaker's name, and the teaser stays in the button's accessible name. With reduced motion, nothing animates.
 
 **Two versions, same strings.** When WebGL 2 works, the scene is 3D, with animated robots (Orbit, from Tripo models). Otherwise it's this 2D scene. Both use the same layout and every string in this section.
 
@@ -132,6 +132,22 @@ Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events
 - `Re-pick Book of the Month`: `Feature Kalakalal Avenue (January), Can I Be Honest? (February) and Who Did You Think You Were Kidding? (March), all in hardcover, instead of the scheduled picks (The Mallemaroking, Rystwyth and Portmeirion).`
 - `Weekday author nights`: `Host 12 author nights, one each week on a Tuesday, Wednesday or Thursday, at $200 each.`
 - `Station-wide sale`: `15% off every book, all quarter. The Book of the Month runs at the same 15%.`
+
+**Key-figure tags.** In the compact move cards, a description shows two lines at rest, and the full text on hover, focus or tap (it's always in the DOM for screen readers). No figure the player needs may hide past line 2, so each move carries a short tag on its title line:
+
+| Move | Tag |
+| --- | --- |
+| `Re-pick Book of the Month` | `3 hardcovers` |
+| `Weekday author nights` | `$200 a night` |
+| `Station-wide sale` | `15% off` |
+
+Each compact card also has a small button that pins its full description open (for touch screens; hover and focus open it too):
+
+| Element | String |
+| --- | --- |
+| Button, closed | `More` |
+| Button, pinned open | `Less` |
+| Button's accessible name | `More about {move title}`, or `Less about {move title}` when pinned open, with `aria-expanded` carrying open or closed. The name starts with the visible word, so voice control can "click More" (WCAG 2.5.3, label in name) |
 
 | Element | String |
 | --- | --- |
