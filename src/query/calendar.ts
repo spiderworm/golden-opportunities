@@ -13,7 +13,7 @@ export function eligibleDays(query: Query, view: QueryView): CalendarDay[] {
     const end = Date.UTC(year, startMonth + 3, 1);
     for (let time = Date.UTC(year, startMonth, 1); time < end; time += 86_400_000) {
       const date = new Date(time);
-      const day: CalendarDay = { quarter: period, month: String(date.getUTCMonth() + 1).padStart(2, '0'), weekday: WEEKDAYS[date.getUTCDay()] };
+      const day: CalendarDay = { quarter: period, month: `${year}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`, weekday: WEEKDAYS[date.getUTCDay()] };
       if (CALENDAR_DIMENSIONS.every(key => !query.filter?.[key] || query.filter[key]!.includes(day[key]))) days.push(day);
     }
   }

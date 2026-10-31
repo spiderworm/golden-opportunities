@@ -1,5 +1,6 @@
 // What the player is asking, kept in the URL so every view can be shared,
 // bookmarked and undone with Back.
+import { yearMonth } from "~/query/months";
 import type { Dimension, Measure } from "~/query/types";
 
 export const CHART_MEASURES = [
@@ -69,7 +70,9 @@ export function canCompare(by: Grouping): boolean {
 export function parseState(params: URLSearchParams): InvestigateState {
   const filters: Filters = {};
   for (const dimension of FILTER_DIMENSIONS) {
-    const values = [...new Set(params.getAll(dimension))].filter((v) => v.length > 0 && v.length <= MAX_VALUE_LENGTH);
+    // Links from before months had a year ("month=04") still open, as 2193's.
+    const read = params.getAll(dimension).map((v) => (dimension === "month" ? yearMonth(v) : v));
+    const values = [...new Set(read)].filter((v) => v.length > 0 && v.length <= MAX_VALUE_LENGTH);
     if (values.length) filters[dimension] = values.slice(0, MAX_VALUES);
   }
   const by = oneOf(GROUPINGS, params.get("by"), DEFAULT_STATE.by);
@@ -146,13 +149,14 @@ export function filtersExcept(filters: Filters, dimensions: readonly Dimension[]
   return rest;
 }
 
-/** Months ("01" to "12") in the quarters in scope: the selected ones, or every visible one. */
+/** Months ("2193-01") in the quarters in scope: the selected ones, or every visible one. */
 export function monthsInScope(visibleQuarters: readonly string[], selectedQuarters: readonly string[] = []): string[] {
   const quarters = selectedQuarters.length ? visibleQuarters.filter((q) => selectedQuarters.includes(q)) : visibleQuarters;
   const months = new Set<string>();
   for (const quarter of quarters) {
+    const year = quarter.slice(0, 4);
     const q = Number(quarter.slice(-1));
-    for (let m = q * 3 - 2; m <= q * 3; m++) months.add(String(m).padStart(2, "0"));
+    for (let m = q * 3 - 2; m <= q * 3; m++) months.add(`${year}-${String(m).padStart(2, "0")}`);
   }
   return [...months].sort();
 }

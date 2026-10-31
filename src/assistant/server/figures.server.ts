@@ -128,10 +128,11 @@ export class Refs {
       const labels = (out.labels ?? {}) as Row;
       from = typeof labels.from === "string" ? labels.from : null;
       to = typeof labels.to === "string" ? labels.to : null;
-      if (args.across === "quarter") for (const p of [from, to]) if (p) period(p);
+      if (args.across === "quarter" || args.across === "month") for (const p of [from, to]) if (p) period(p);
     }
     // Period names come from returned rows, and one-value filters the data confirmed (below); never captions.
-    for (const row of rows) if (typeof row.quarter === "string") period(row.quarter);
+    // Months name their year ("2193-04"), so like quarters they are period names.
+    for (const row of rows) for (const key of ["quarter", "month"]) if (typeof row[key] === "string") period(row[key] as string);
     // A filter value is the model's, so it's a label only when it alone was asked for and the data had
     // something there (with several values, any one could be the one that matched).
     const filtered = new Map<string, string>();
@@ -141,6 +142,8 @@ export class Refs {
     }
     const quarter = filtered.get("quarter");
     if (quarter) period(quarter);
+    const month = filtered.get("month");
+    if (month) period(month);
     this.lookups.set(out.ref, {
       seq,
       complete: out.complete === true,
@@ -282,6 +285,7 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity): 
   const prose = folded
     .replace(REF, " ")
     .replace(/\b\d{4}-Q[1-4]\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
+    .replace(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
     .replace(/\bQ([1-4])\b/g, (q) => (refs.hasQuarter(q, known) ? " " : q))
     .replace(ALLOWED, " ");
   if (BANNED.test(prose)) return null;

@@ -27,6 +27,8 @@ export function validateQuery(input: unknown): Query {
     for (const [key, values] of Object.entries(input.filter)) {
       if (!dimension(key)) invalid('filter contains an unknown dimension.');
       if (!Array.isArray(values) || values.length < 1 || values.length > QUERY_LIMITS.filterValues || !values.every(v => typeof v === 'string' && v.length > 0 && v.length <= QUERY_LIMITS.filterValueLength)) invalid(`Each filter must have 1–${QUERY_LIMITS.filterValues} nonempty strings of at most ${QUERY_LIMITS.filterValueLength} characters.`);
+      // A month names its year ("2193-04"): a bare "04" would match nothing now that two years can be visible.
+      if (key === 'month' && !(values as string[]).every(v => /^\d{4}-(0[1-9]|1[0-2])$/.test(v))) invalid('Month filters are year and month, like 2193-04.');
       filter[key] = [...new Set(values as string[])];
     }
     result.filter = filter;

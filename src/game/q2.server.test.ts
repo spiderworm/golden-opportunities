@@ -87,7 +87,7 @@ describe('the second quarter', () => {
     submitPlan(req, { levers: ['repick', 'events'] });
     const q1 = getResultData(req)!;
     expect(q1).toMatchObject({ quarter: '2194-Q1', next: '2194-Q2', canPlayAgain: false, halfYear: null });
-    expect(q1.reference.map(r => r.month)).toEqual(['10', '11', '12']);
+    expect(q1.reference.map(r => r.month)).toEqual(['2193-10', '2193-11', '2193-12']);
     // Q4 2193 is the memo's $161,525.
     expect(Math.round(q1.previousQuarter)).toBe(161525); expect(q1.sameQuarterLastYear).toBeGreaterThan(0);
     expect(getResultData(req, '2194-Q2')).toBeNull();
@@ -98,7 +98,7 @@ describe('the second quarter', () => {
     const q1Outcome = getOutcome(req)!;
     expect(q2).toMatchObject({ next: null, canPlayAgain: true });
     expect(q2.previousQuarter).toBeCloseTo(q1Outcome.totals.plan.revenue, 6);
-    expect(q2.reference.map(r => r.month)).toEqual(['01', '02', '03']);
+    expect(q2.reference.map(r => r.month)).toEqual(['2194-01', '2194-02', '2194-03']);
     const scores = [q1Outcome.reportCard.plan.overall.score, q2.outcome.reportCard.plan.overall.score];
     expect(q2.halfYear).toMatchObject({ score: Math.floor((scores[0]! + scores[1]!) / 2 + 0.5) });
     expect(q2.halfYear!.quarters.map(q => [q.quarter, q.overall.score, q.measures.length])).toEqual([['2194-Q1', scores[0], 4], ['2194-Q2', scores[1], 4]]);
@@ -161,5 +161,18 @@ describe('the second quarter', () => {
     }
     writeFileSync(file, JSON.stringify({ ...good, alertsSeen: ['2194-Q2'] }));
     expect(saves.read(save.id).alertsSeen).toEqual(['2194-Q2']);
+  });
+
+  it("keeps each year's months apart once the player's 2194 joins the ledgers (Probe, #151)", () => {
+    const save = saves.create(); const req = request(save.id);
+    submitPlan(req, { levers: [] });
+    const view = getGameSession(req).queryView;
+    const rows = runQuery({ measure: 'units', by: ['month'] }, view).rows;
+    const units = (month: string) => rows.find(r => r.month === month)?.units;
+    const only = (quarter: string) => runQuery({ measure: 'units', by: [], filter: { quarter: [quarter], month: [`${quarter.slice(0, 4)}-01`] } }, view).total;
+    expect(rows.map(r => r.month).slice(0, 4)).toEqual(['2193-01', '2193-02', '2193-03', '2193-04']);
+    expect(units('2193-01')).toBe(only('2193-Q1')); expect(units('2194-01')).toBe(only('2194-Q1'));
+    expect(rows.at(-1)?.month).toBe('2194-03');
+    expect(() => runQuery({ measure: 'units', by: [], filter: { month: ['01'] } }, view)).toThrow('Month filters are year and month, like 2193-04.');
   });
 });

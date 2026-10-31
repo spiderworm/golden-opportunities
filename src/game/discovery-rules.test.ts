@@ -27,12 +27,12 @@ describe('discovery evidence from real returned workbook rows', () => {
   });
   it('requires all six months for monthly order-size evidence and rejects other measures', () => {
     expect(discoveryParts(evidence({ ...size, by: ['month'] })).size).toBe(true);
-    expect(discoveryParts(evidence({ ...size, by: ['month'], filter: { month: ['07', '12'] } })).size).toBe(false);
+    expect(discoveryParts(evidence({ ...size, by: ['month'], filter: { month: ['2193-07', '2193-12'] } })).size).toBe(false);
     expect(discoveryParts(evidence({ ...size, measure: 'avg_discount' })).size).toBe(false);
   });
   it('B requires every weekday and both quarters, including two month samples', () => {
     expect(discoveriesFromEvidence(evidence({ measure: 'orders_per_day', by: ['weekday', 'quarter'] }))).toEqual(['B']);
-    expect(discoveriesFromEvidence(evidence({ measure: 'orders', by: ['weekday', 'month'], filter: { month: ['07', '10'] } }))).toEqual(['B']);
+    expect(discoveriesFromEvidence(evidence({ measure: 'orders', by: ['weekday', 'month'], filter: { month: ['2193-07', '2193-10'] } }))).toEqual(['B']);
     expect(discoveriesFromEvidence(evidence({ measure: 'orders', by: ['weekday'], filter: { quarter: ['2193-Q3'] } }))).toEqual([]);
     expect(discoveriesFromEvidence(evidence({ measure: 'orders', by: ['weekday', 'quarter'], filter: { weekday: ['Monday', 'Saturday', 'Sunday'] } }))).toEqual([]);
     expect(discoveriesFromEvidence(evidence({ measure: 'avg_order_value', by: ['weekday', 'quarter'] }))).toEqual([]);
@@ -45,7 +45,7 @@ describe('discovery evidence from real returned workbook rows', () => {
     const december = evidence({ measure: 'revenue', by: ['month'], filter: { title: ['Hashtag QuokkaSelfie'], discount_rate: ['15%'] } });
     expect(discoveryParts(december)).toMatchObject({ months: 1, quokka: true });
     expect(discoveriesFromEvidence([...december, ...december, ...december])).toEqual([]);
-    const pieces = ['01', '02', '03'].flatMap(month => evidence({ measure: 'units', by: ['title', 'discount_rate'], filter: { month: [month] } }));
+    const pieces = ['2193-01', '2193-02', '2193-03'].flatMap(month => evidence({ measure: 'units', by: ['title', 'discount_rate'], filter: { month: [month] } }));
     expect(discoveriesFromEvidence(pieces)).toEqual(['C']);
   });
   it('never awards empty, truncated, hidden or simulated-period views', () => {

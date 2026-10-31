@@ -80,7 +80,7 @@ it('merges evidence from simultaneous snapshots without a lost update and defaul
   const cap = issueGameQueryToken(save.id);
   try {
     const a = getGameSession(request(save.id)); const b = getGameSession(request(save.id));
-    for (const [session, month] of [[a, '01'], [b, '02'], [a, '03']] as const) {
+    for (const [session, month] of [[a, '2193-01'], [b, '2193-02'], [a, '2193-03']] as const) {
       const query: Query = { measure: 'units', by: ['title'], filter: { month: [month], discount_rate: ['15%'] } };
       recordDiscoveries(session.save, session.queryView, [{ query, result: runQuery(query, session.queryView, () => {}) }]);
     }
@@ -117,7 +117,7 @@ it('does not combine Q3 and Q4 under different non-time filters', async () => {
 });
 it('combines C pairs across measures and title drilldowns and records partial evidence once', async () => {
   const save = saves.create();
-  for (const [measure, month, title] of [['units', '01', 'Thatchwork Cottage'], ['revenue', '02', 'The Seawitch Sings'], ['units', '03', 'Some Eggs or Something?']]) {
+  for (const [measure, month, title] of [['units', '2193-01', 'Thatchwork Cottage'], ['revenue', '2193-02', 'The Seawitch Sings'], ['units', '2193-03', 'Some Eggs or Something?']]) {
     expect((await api(save.id, { measure, by: ['month'], filter: { month: [month], title: [title], discount_rate: ['15%'] } })).status).toBe(200);
   }
   expect(saves.read(save.id).discoveries).toEqual(['C']);
