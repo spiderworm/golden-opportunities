@@ -85,6 +85,8 @@ export function navigation(): Promise<Navigation> {
  * Runs Recast's start-up with its WebAssembly's fetch cancelled as the page starts going. WebKit otherwise cuts that
  * fetch off itself and reports it as a page error (and Recast then aborts with one of its own); the module fetches
  * the file by its own URL, so its fetch is given the signal for the start-up's few moments, and nothing else's is.
+ * The page's fetch is swapped for those moments only, and put back when the start-up settles: it must stay that
+ * brief, and touch no other request.
  */
 function cancelledAsThePageGoes<T>(start: () => Promise<T>): Promise<T> {
   const cut = new AbortController();

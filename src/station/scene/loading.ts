@@ -15,7 +15,10 @@ import { onPageLeaving, pageLeaving, whenStayed } from "~/platform/lazy/cut-off"
 // R3F reports every error its scene throws, even one a boundary catches; if
 // the page stays after all (beforeunload also fires for a download), it loads
 // again. Any other failure is a failure, as before, and the next visit tries
-// afresh. Kept for the page's life, as drei's own cache was.
+// afresh: it still rejects inside the canvas, so R3F reports it as a page
+// error too, and the station shows its still picture. (Decide's 3D scene,
+// which has a 2D one to fall back on, keeps its real failures quiet.) Kept
+// for the page's life, as drei's own cache was.
 
 if (typeof window !== "undefined") onPageLeaving(() => DefaultLoadingManager.abort());
 
