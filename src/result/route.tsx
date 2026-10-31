@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Form, Link, redirect } from "react-router";
 
-import { getOutcome } from "~/game/game.server";
-import { runQuery } from "~/query/run-query.server";
-import { getGameSession } from "~/game/session.server";
+import { isQuarterId } from "~/game/quarters";
+import { getResultData } from "~/game/results.server";
 import { track } from "~/platform/analytics/analytics.client";
 import { EChart } from "~/platform/charts/EChart";
 import type { ShellHandle } from "~/shell/Shell";
@@ -44,29 +43,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `${QUARTER_COPY[loaderData?.quarter ?? "2194-Q1"].title} | Orbital Books` }];
 }
 
-// TODO(frank/q2-game-state): Frank's loader replaces this one, with the same shape for either quarter. Until
-// then it's Q1's, from today's game state.
+/** The latest played quarter, or `?quarter=2194-Q1` for an earlier one; a quarter not played yet goes to Decide. */
 export function loader({ request }: Route.LoaderArgs): ResultData {
-  const outcome = getOutcome(request);
-  if (!outcome) throw redirect("/decide");
-  // Last year, for the season note, and the quarter before, drawn faintly behind.
-  const view = getGameSession(request).queryView;
-  const byQuarter = runQuery({ measure: "revenue", by: ["quarter"] }, view).rows;
-  const reference = runQuery({ measure: "revenue", by: ["month"], filter: { quarter: ["2193-Q4"] } }, view).rows.map((r) => ({
-    month: r.month ?? "",
-    revenue: r.revenue ?? 0,
-  }));
-  return {
-    quarter: "2194-Q1",
-    outcome,
-    discoveries: earnedDiscoveries(outcome.discoveries),
-    sameQuarterLastYear: byQuarter.find((r) => r.quarter === "2193-Q1")?.revenue ?? 0,
-    previousQuarter: byQuarter.find((r) => r.quarter === "2193-Q4")?.revenue ?? 0,
-    reference,
-    next: null,
-    canPlayAgain: false,
-    halfYear: null,
-  };
+  const asked = new URL(request.url).searchParams.get("quarter");
+  const data = getResultData(request, isQuarterId(asked) ? asked : undefined);
+  if (!data) throw redirect("/decide");
+  return { ...data, discoveries: earnedDiscoveries(data.discoveries, data.quarter) };
 }
 
 export default function Result({ loaderData }: Route.ComponentProps) {
