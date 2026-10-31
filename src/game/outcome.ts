@@ -34,6 +34,6 @@ export function isOutcome(v: unknown): v is Outcome {
   if (!Array.isArray(v.happened) || v.happened.length > 32 || !v.happened.every(text)
     || !Array.isArray(v.discoveries) || v.discoveries.length > 3 || !v.discoveries.every(d => ['A', 'B', 'C'].includes(d))
     || new Set(v.discoveries).size !== v.discoveries.length || !record(v.facts) || !finite(v.facts.amount)) return false;
-  return Object.entries(v.facts).every(([key, value]) => key === 'amount' || (['holdCourse', 'repick', 'events', 'sale'].includes(key)
+  return Object.entries(v.facts).every(([key, value]) => key === 'amount' || (['release', 'holdCourse', 'repick', 'events', 'sale'].includes(key)
     && record(value) && Object.values(value).every(finite)));
 }

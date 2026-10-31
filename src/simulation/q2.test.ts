@@ -5,6 +5,7 @@ import type { BookshopTables } from "~/bookshop/types";
 import { OBSERVED_EXTRAS } from "./model";
 import { isQ2Outcome } from "./outcome-check";
 import { isQ2Plan } from "./plan";
+import { RELEASE } from "./release";
 import { q2Candidates, q2PlanProblem, simulateQ2 } from "./q2";
 import type { Q2LeverId, Q2Plan } from "./types";
 
@@ -41,8 +42,9 @@ describe("Q2 plans", () => {
       expect(isQ2Plan(bad)).toBe(false);
   });
 
-  it("offers every edition sold in 2193", () => {
-    expect(candidates).toHaveLength(new Set(data.saleLines.map((l) => l.isbn)).size);
+  it("offers every edition sold in 2193, and the new volume", () => {
+    expect(candidates).toHaveLength(new Set(data.saleLines.map((l) => l.isbn)).size + 1);
+    expect(candidates).toContainEqual({ isbn: RELEASE.edition.isbn, bookId: RELEASE.book.id, title: RELEASE.book.title, format: "Hardcover", listPrice: 22.99 });
     expect(candidates.map((c) => c.isbn)).toEqual([...new Set(candidates.map((c) => c.isbn))]);
   });
 
@@ -148,7 +150,32 @@ describe("Q2 copy", () => {
   });
 });
 
-// The bands in docs/design/q2.md section 8 (without the new volume, which isn't in the engine yet).
+describe("the new volume in Q2", SWEEP, () => {
+  it("keeps selling about 4.5 copies a day at full price, with no launch", () => {
+    const copies = Array.from({ length: 10 }, (_, i) => simulateQ2(HOLD, i + 1, data).lines.filter((l) => l.isbn === RELEASE.edition.isbn).length);
+    for (const c of copies) {
+      expect(c).toBeGreaterThan(390);
+      expect(c).toBeLessThan(430);
+    }
+  });
+
+  it("can be picked, and its copies that would sell anyway lose 15%", () => {
+    const { outcome } = simulateQ2(plan([RELEASE.edition.isbn, null, null]), 1, data);
+    expect(outcome.facts.picks[0]).toMatchObject({ isbn: RELEASE.edition.isbn, title: RELEASE.book.title, format: "Hardcover" });
+    expect(outcome.facts.picks[0]!.baseCopies).toBeGreaterThan(100);
+    expect(q2PlanProblem(plan([RELEASE.edition.isbn, null, null]), data)).toBeNull();
+  });
+
+  it("anchors each goal on Q2 2193 plus the volume's expected effect", () => {
+    const card = simulateQ2(HOLD, 1, data).outcome.reportCard.plan.measures;
+    const profit = card.find((m) => m.id === "profit")!;
+    // q2.md section 8: Q2 2193's $65,119, plus about $3,773.
+    expect(profit.lastYear).toBeCloseTo(68892.3926, 3);
+    expect(profit.goal).toBeCloseTo(72337.0122, 3);
+  });
+});
+
+// The bands in docs/design/q2.md section 8, with the new volume still selling and anchored.
 describe("Q2 calibration", SWEEP, () => {
   const seeds = Array.from({ length: 20 }, (_, i) => i + 1);
   const scores = (p: Q2Plan) => seeds.map((s) => simulateQ2(p, s, data).outcome.reportCard.plan.overall.score);
@@ -169,6 +196,9 @@ describe("Q2 calibration", SWEEP, () => {
     expect(median(quietNights)).toBeGreaterThanOrEqual(78);
     expect(Math.max(...quietNights)).toBeLessThan(87);
     expect(Math.max(...quietSale)).toBeLessThan(40);
+    // Volume 3 is the trap pick: in April, beside two quiet picks, it scores below three quiet picks.
+    const trap = scores(plan([RELEASE.edition.isbn, QUIET[1], QUIET[2]]));
+    expect(median(trap)).toBeLessThan(median(quiet) - 3);
   });
 
   it("makes quiet picks pay and bestseller picks lose money", () => {

@@ -3,6 +3,7 @@
 import type { BookshopData, DeepReadonly } from "~/bookshop/types";
 import type { MeasureId } from "./types";
 import type { Order } from "./orders";
+import { RELEASE } from "./release";
 
 export const COST_OF_GOODS = 0.6;
 export const EVENT_COST = 200;
@@ -32,9 +33,9 @@ export function ratingsOf(history: DeepReadonly<BookshopData>): Ratings {
   }
   const all = history.ratings.reduce((t, r) => t + r.rating, 0) / Math.max(1, history.ratings.length);
   const awards = new Map(history.joinedBooks.map((b) => [b.id, b.awards.length]));
-  // A guard only: every title sold in 2193 has ratings.
+  // A guard only: every title sold in 2193 has ratings. The new volume is rated like volume 2.
   const average = (bookId: string) => {
-    const s = sums.get(bookId);
+    const s = sums.get(bookId === RELEASE.book.id ? RELEASE.ratedLike : bookId);
     return s ? s.total / s.count : all;
   };
   return { average, culture: (bookId) => 1 + 9 * stretch(average(bookId)) + 3 * (awards.get(bookId) ?? 0) };

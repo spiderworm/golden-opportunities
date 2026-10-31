@@ -63,7 +63,7 @@ export interface MeasureScore {
   id: MeasureId;
   /** This quarter's value: dollars, orders, mean happiness (0 to 100) or culture points. */
   result: number;
-  /** The same quarter last year (Q1 2193). */
+  /** What scores 70: the same quarter last year (Q1 2193), plus the new volume's expected effect on holding course. */
   lastYear: number;
   goal: number;
   /** 0 to 100, an integer. */
@@ -107,6 +107,8 @@ export interface ReportCard {
 
 /** The numbers behind the "What happened" sentences (docs/design/m1-copy.md, section 4), one entry per move. */
 export interface HappenedFacts {
+  /** The new volume's copies sold under the plan; with the sale, how many were 15% off. Outcomes saved before the volume have none. */
+  release?: { copies: number; saleCopies?: number };
   /** Holding course only: the scheduled picks. */
   holdCourse?: { extra: number; baseCopies: number; discountCost: number; profit: number };
   repick?: { extra: number; baseCopies: number; discountCost: number };
