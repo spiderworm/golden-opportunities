@@ -2,9 +2,13 @@ import type { Outcome, Q2Outcome } from '../simulation/types';
 import type { Sale } from '../bookshop/types';
 import type { QuarterId } from './quarters';
 
-export type DiscoveryId = 'A' | 'B' | 'C';
-/** Q2's outcome with the discoveries the game records, as M1's Outcome has them. */
-export interface Q2GameOutcome extends Q2Outcome { discoveries: DiscoveryId[] }
+/** A to C are found in Q1, D to F in Q2 (docs/design/q2.md section 6). */
+export type DiscoveryId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+export type Q2DiscoveryId = 'D' | 'E' | 'F';
+export const Q1_DISCOVERIES = ['A', 'B', 'C'] as const;
+export const Q2_DISCOVERIES = ['D', 'E', 'F'] as const;
+/** Q2's outcome with the discoveries the game records, as M1's Outcome has them: Q2's own only. */
+export interface Q2GameOutcome extends Q2Outcome { discoveries: Q2DiscoveryId[] }
 /** A committed quarter: its visible sale lines and the result they produced, written together. */
 export type PlayedQuarter =
   | { period: '2194-Q1'; sales: Sale[]; outcomeId: string; outcome: Outcome }
