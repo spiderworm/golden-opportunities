@@ -1,7 +1,7 @@
+/* The page is the scene: the bosses' room, full width, with the plan in its banner. */
 .page {
   display: grid;
-  gap: 20px;
-  max-width: 1080px;
+  min-width: 0;
 }
 
 .visuallyHidden {
@@ -28,9 +28,17 @@
 }
 
 .hint {
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--color-text-subtle);
-  font-size: 13px;
+  font-size: 12.5px;
+}
+
+/* The plan's heading and its hint, on one line at the top of the banner. */
+.planHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
 }
 
 .bookTitle {
@@ -45,10 +53,10 @@
 .moves {
   position: relative;
   display: grid;
-  gap: 12px;
+  gap: 6px;
   min-width: 0;
-  margin: 10px 0 0;
-  padding: 20px 24px 14px;
+  margin: 0;
+  padding: 10px 12px 8px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background:
@@ -56,8 +64,7 @@
     linear-gradient(180deg, #1b2236, #171d2f);
   box-shadow:
     inset 3px 0 0 rgb(255 122 144 / 0.45),
-    inset -3px 0 0 rgb(255 122 144 / 0.45),
-    0 14px 34px rgb(0 0 0 / 0.35);
+    inset -3px 0 0 rgb(255 122 144 / 0.45);
 }
 
 /* Two binder clips over the top edge. */
@@ -87,22 +94,22 @@
   width: 100%;
   margin: 0;
   padding: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 /* Who issued the form, and its serial: top right, small and monospaced, out of the flow. */
+/* Who issued the form, and its serial: small and monospaced, in the foot beside Submit. */
 .formMeta {
-  position: absolute;
-  top: 16px;
-  right: 24px;
   display: grid;
   justify-items: end;
-  gap: 2px;
+  gap: 1px;
+  margin-left: auto;
   color: var(--color-text-subtle);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 10.5px;
+  font-size: 9.5px;
   letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
 .serial {
@@ -123,11 +130,11 @@
 /* The rule the choice turns on, under the title. */
 .rule {
   clear: both;
-  margin: 0 0 4px;
-  padding-bottom: 12px;
+  margin: 0;
+  padding-bottom: 6px;
   border-bottom: 1px solid rgb(255 255 255 / 0.08);
   color: var(--color-text-muted);
-  font-size: 14px;
+  font-size: 12.5px;
 }
 
 .rule strong {
@@ -136,11 +143,14 @@
 }
 
 .movesStatus {
-  min-height: 1.45em;
+  min-height: 1.4em;
   margin: 0;
+  overflow: hidden;
   color: var(--color-text-muted);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .movesStatus[data-warning] {
@@ -149,19 +159,37 @@
 }
 
 /* The form's small print. */
-.formFooter {
-  margin: -6px 0 0;
-  padding-top: 8px;
+/* The form's foot, one row of fixed height: what the plan is now and the small print (or why the plan didn't
+   go through), then Submit. */
+.formFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 6px;
   border-top: 1px solid rgb(255 255 255 / 0.08);
-  color: var(--color-text-subtle);
-  font-size: 12px;
-  letter-spacing: 0.02em;
 }
 
+.formNotes {
+  display: grid;
+  min-width: 0;
+}
+
+.formFooter {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-subtle);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The moves as rows (tick, title with the stamp under it, then the line), or as three boxes in a wide form. */
 .options {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -173,7 +201,9 @@
   display: grid;
   align-content: start;
   gap: 6px;
-  padding: 16px 18px 46px 48px;
+  grid-template-columns: 180px minmax(0, 1fr);
+  column-gap: 12px;
+  padding: 8px 10px 8px 36px;
   border: 1px solid rgb(255 255 255 / 0.12);
   border-radius: 6px;
   background:
@@ -193,9 +223,10 @@
 }
 
 .itemNumber {
+  display: none;
   position: absolute;
-  top: 10px;
-  right: 12px;
+  top: 8px;
+  right: 10px;
   color: var(--color-text-subtle);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 11px;
@@ -205,12 +236,12 @@
 /* The approval box: a square to tick, in the form's ink. */
 .option input {
   position: absolute;
-  top: 18px;
-  left: 16px;
+  top: 9px;
+  left: 10px;
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   margin: 0;
   border: 2px solid var(--color-accent-soft);
   border-radius: 3px;
@@ -253,28 +284,33 @@
   opacity: 0.45;
 }
 
+/* In a row, the title keeps room under it for the stamp, so stamping moves nothing. */
 .optionTitle {
-  font-size: 16px;
+  padding-bottom: 22px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.35;
 }
 
 .optionLine {
+  grid-row: 1 / span 2;
+  grid-column: 2;
   color: var(--color-text-muted);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 /* The bosses' rubber stamp, struck on a chosen move. */
 .stamp {
   position: absolute;
-  right: 14px;
-  bottom: 10px;
+  left: 36px;
+  bottom: 7px;
   padding: 3px 10px;
   border: 3px double var(--color-accent-soft);
   border-radius: 4px;
   color: var(--color-accent-soft);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
   transform: rotate(-7deg) scale(1.35);
@@ -288,9 +324,49 @@
   opacity: 0.9;
 }
 
-@media (max-width: 1000px) {
+/* A wide form (a big window): the moves as three boxes side by side, the stamp at each box's foot. */
+@container requisition (min-width: 760px) {
+  .options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .option {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    row-gap: 4px;
+    padding: 10px 12px 30px 36px;
+  }
+
+  .optionTitle {
+    padding-bottom: 0;
+  }
+
+  .optionLine {
+    grid-row: auto;
+    grid-column: auto;
+  }
+
+  .itemNumber {
+    display: block;
+  }
+
+  .stamp {
+    right: 10px;
+    left: auto;
+  }
+}
+
+/* A form under 640 px: the chrome steps aside, so the rule keeps one line; the stamp is smaller under its title. */
+@container requisition (max-width: 639px) {
   .formMeta {
     display: none;
+  }
+
+  .stamp {
+    padding: 1px 6px;
+    border-width: 2px;
+    font-size: 9.5px;
   }
 }
 
@@ -348,20 +424,36 @@
   background: var(--color-panel-raised);
 }
 
-.confirm {
+/* The form's half of the banner. The confirmation and the quarter playing out cover the form's boxes in
+   place, rather than adding to the page, so nothing moves. */
+.requisition {
+  position: relative;
+  container: requisition / inline-size;
+}
+
+.confirm,
+.cover {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
   display: grid;
-  gap: 14px;
-  padding: 20px 22px;
+  align-content: center;
+  gap: 12px;
+  padding: 16px 20px;
+  overflow: auto;
   border: 1px solid var(--color-accent);
-  border-radius: var(--radius-panel);
-  background: var(--color-panel-raised);
+  border-radius: 10px;
+  background: #161b2e;
 }
 
 .refused {
   margin: 0;
+  overflow: hidden;
   color: var(--color-down);
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .confirmMoves {
@@ -418,8 +510,7 @@
   }
 }
 
-@media (max-width: 1000px) {
-  .options {
-    grid-template-columns: minmax(0, 1fr);
-  }
+
+.formFoot .primary {
+  height: 38px;
 }

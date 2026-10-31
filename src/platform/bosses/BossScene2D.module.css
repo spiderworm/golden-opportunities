@@ -1,6 +1,10 @@
-/* The 2D bosses on the floor, one under each column. The open boss steps forward and glows in its tint:
-   transforms and filters only, on the image, so the figure's box (and everything else) never moves. */
+/* The 2D bosses on the floor, one under each column, as tall as the floor allows: every cutout at one height,
+   so the art's shared scale keeps their sizes, and the drone floats. The open boss steps forward and glows in
+   its tint: transforms and filters only, on the image, so the figure's box (and everything else) never moves. */
+/* Out of the flow, so the cutouts fill the floor rather than size it. */
 .figures {
+  position: absolute;
+  inset: 0;
   display: grid;
   grid-template-columns: repeat(var(--count, 5), minmax(0, 1fr));
   gap: var(--gap);
@@ -8,9 +12,10 @@
 
 .figure {
   display: grid;
+  grid-template-rows: minmax(0, 1fr);
   place-items: end center;
-  height: 150px;
-  padding-bottom: 10px;
+  height: 100%;
+  min-height: 0;
   cursor: pointer;
 }
 
@@ -19,41 +24,27 @@
   height: 96px;
   transform-origin: bottom center;
   transition: transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1), filter 240ms, opacity 240ms;
-  opacity: 0.72;
+  opacity: 0.78;
 }
 
-/* Every figure at one height: the art's shared scale keeps the bosses' sizes, and the drone floats. */
 .figure img {
   width: auto;
-  height: 138px;
+  max-width: 100%;
+  height: 90%;
+  object-fit: contain;
+  object-position: bottom center;
   user-select: none;
 }
 
 .figure:hover > * {
-  opacity: 0.92;
+  opacity: 0.94;
   transform: translateY(-3px);
 }
 
 .figure[data-open] > * {
   opacity: 1;
-  transform: scale(1.08);
+  transform: scale(1.06);
   filter: drop-shadow(0 0 14px var(--tint));
-}
-
-@container scene (max-width: 620px) {
-  .figure {
-    height: 118px;
-    padding-bottom: 10px;
-  }
-
-  .figure img {
-    height: 100px;
-  }
-
-  .figure > * {
-    width: 64px;
-    height: 64px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

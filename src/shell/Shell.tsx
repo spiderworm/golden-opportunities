@@ -16,6 +16,8 @@ export interface ShellHandle {
   title?: string | ((data: unknown) => string | undefined);
   /** False on the screens that deal with the plan itself, where the standing-order strip would only repeat them. */
   standingOrder?: false;
+  /** A page that is one full scene (Decide): the content area keeps only thin padding, so the scene can fill the window. */
+  bleed?: true;
 }
 
 export interface ShellProps {
@@ -36,7 +38,9 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
   const title = usePageTitle();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const stripHidden = useMatches().some((m) => (m.handle as ShellHandle | undefined)?.standingOrder === false);
+  const matches = useMatches();
+  const stripHidden = matches.some((m) => (m.handle as ShellHandle | undefined)?.standingOrder === false);
+  const bleed = matches.some((m) => (m.handle as ShellHandle | undefined)?.bleed);
   const [memoOpen, setMemoOpen] = useState(false);
   // Once per visit at most, even if recording it failed; the save keeps it to once per game.
   const arrived = useRef(false);
@@ -156,7 +160,9 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
             onOpenLedgers={() => track("alert_strip_clicked", { action: "ledgers" })}
           />
         )}
-        <main className={styles.content}>{children}</main>
+        <main className={styles.content} data-bleed={bleed || undefined}>
+          {children}
+        </main>
         {standingOrder && <Transmission open={memoOpen} onOpenLedgers={openLedgers} onLater={() => void closeMemo("later")} />}
       </div>
     </div>

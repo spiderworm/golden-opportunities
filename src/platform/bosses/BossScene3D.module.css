@@ -1,5 +1,5 @@
-/* The robots' floor in BossLayout: the 2D figures' height, so the layout and the moves below it sit where
-   they do in 2D. The canvas is see-through: the room behind it is the layout's. */
+/* The robots' floor in BossLayout: all of it, as the 2D figures fill it, so both scenes frame the bosses the
+   same. The canvas is see-through: the room behind it is the layout's. */
 .stage {
-  height: 150px;
+  height: 100%;
 }
