@@ -384,7 +384,7 @@ When the 3D station can't show, the Station screen shows a still picture of the 
 | When | Note |
 | --- | --- |
 | The browser has no WebGL 2 | `This device can't show the station in 3D, so here it is from the shuttle.` |
-| The scene's code or models didn't arrive, after one retry | `The station didn't load in 3D, so here it is from the shuttle.` |
+| Anything failed before the scene was up: its code didn't arrive (it's tried twice), a model didn't arrive (not retried), or it broke while starting | `The station didn't load in 3D, so here it is from the shuttle.` |
 | The scene was up, then broke | `The station stopped running in 3D, so here it is from the shuttle.` |
 
 All three end the same way, so only the cause changes. "In 3D" is there because the picture under the note *is* the station: a note saying "the station didn't load" would contradict it. No note guesses at a cause beyond these three, and none blames the player's connection.
