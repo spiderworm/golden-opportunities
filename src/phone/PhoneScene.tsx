@@ -21,12 +21,11 @@ import { BOSSES } from "~/platform/bosses/bosses";
 
 // The phone scene: the Throughput Subcommittee, the Decide robot made again
 // with real hands for this (public/models/phone/subcommittee.glb), walks up to
-// the glass, reaches up with one hand and grabs the phone by its bottom edge,
-// like the first version's claw (David: "grab at the bottom of the phone with
-// a single hand"), its fingers spread as wide as the phone is, then tugs at
-// it. The camera is the phone: it frames the robot to the screen's shape, and
-// keeps the robot's head in the band between the words above and below, so
-// nothing covers its face. Reduced motion: it's already holding the phone.
+// the glass and takes the phone at its bottom in one open hand, as a person
+// holds one: palm to the glass, fingers round one side and thumb round the
+// other, as wide as the phone is, then tugs at it. The camera is the phone:
+// it frames the robot to the screen's shape, and keeps the robot's head in the
+// band between the words above and below, so nothing covers its face. Reduced motion: it's already holding the phone.
 
 export interface PhoneSceneProps {
   reducedMotion: boolean;
@@ -35,11 +34,10 @@ export interface PhoneSceneProps {
   /** Called once the scene has drawn. */
   onDrawn?: () => void;
   /**
-   * The space the words leave the robot, as shares of the screen's height (top, bottom) and width (left, right):
-   * its head stays in it, and its hand takes the phone under it. Below the words on a phone held upright; beside
-   * them on one turned.
+   * Shares of the screen's height: the band the head stays in (top, bottom: from the bubble to the hand's room
+   * above the fact line), and where the hand holds the phone (hold: the fact line's top).
    */
-  zone: RefObject<{ top: number; bottom: number; left: number; right: number }>;
+  zone: RefObject<{ top: number; bottom: number; hold: number }>;
   /** Where the head is drawn, published on this element as data-head="x,y,width,height" (CSS px), for the tests. */
   head?: RefObject<HTMLElement | null>;
 }
@@ -55,26 +53,20 @@ const SHAKE = 0.5;
 const MAX_GROW = 1.8;
 const START = 4.2;
 const FOV = 50;
-/** The hand's span, index knuckle to pinky knuckle, and a finger's length, in the rig's units at scale 1. */
-const SPAN = 0.084;
-const FINGER = 0.09;
-/** How much of the screen's width the grip spans, and the most the hand grows to make it. */
-const GRIP = 0.55;
-const MAX_HAND = 2.2;
-/** The most a finger stands on screen, as a share of its height, and the most the fingers fan out (radians). */
-const FINGERS_TALL = 0.2;
-const MAX_FAN = 0.5;
-/** The hand's palm, wrist to knuckles, in the rig's units at scale 1; and how far in front of the head it takes hold. */
-const PALM = 0.1;
-/** Where the knuckles take hold: this far below the screen's middle, as a share of half its height (a little above its bottom edge). */
-const EDGE = 0.86;
+/** How wide the grip is, tip to tip, against the phone's width: past its sides, so they run off the screen. */
+const HOLD = 1.5;
+/** The thumb's joints: it swings across the palm about its knuckle's X (measured), and curls about Z. */
+const THUMB = 4;
+const THUMB_ACROSS = 2.9;
+const THUMB_CURL = [0.2, 0.5, 0.6];
+/** How far in front of the head the hand takes hold. */
 const REACH_OUT = 0.7;
 /** The nearest the hand comes to the glass. */
 const NEAREST = 0.32;
 /** Which way the finger joints curl toward the glass, about their Z (the rig's right hand, measured), and how far
-    each joint, knuckle to tip, hooks over the edge once it has hold. */
+    each joint, knuckle to tip, curls round the phone's side once it has hold. */
 const CURL = -1;
-const HOOK = [0.85, 0.75, 0.55];
+const FINGER_CURL = [0.5, 0.9, 0.7];
 /** The head's height (with its antenna) in metres, for keeping it within the band. */
 const HEAD_SIZE = 0.42;
 
@@ -109,9 +101,6 @@ interface Arm {
   /** Each finger's joints from the knuckle out (the thumb last), which curl round the phone's edge as it takes hold. */
   fingers: Bone[][];
 }
-
-/** The fingers fan out across the hand's Z, most for the outer ones: index, middle, ring, pinky, thumb. */
-const FAN = [1, 0.35, -0.35, -1, 1.6];
 
 function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps) {
   const model = useGLTF(MODEL, false);
@@ -207,11 +196,10 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     rig.headBone.getWorldPosition(work.headAt);
     const headMiddle = (work.headAt.y + HEIGHT) / 2;
     const middle = 1 - (zone.current.top + zone.current.bottom); // the band's middle, in NDC y
-    const across = zone.current.left + zone.current.right - 1; // and across, in NDC x
     const shake =
       holding > 0 && holding < SHAKE && !reducedMotion ? (1 - holding / SHAKE) * 0.012 : 0;
     cam.position.set(
-      across * work.headAt.z * tan * aspect + (Math.random() - 0.5) * shake,
+      (Math.random() - 0.5) * shake,
       headMiddle + middle * work.headAt.z * tan + (Math.random() - 0.5) * shake,
       -tug * 0.6,
     );
@@ -222,46 +210,76 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     );
     cam.updateMatrixWorld(true);
 
-    // One hand takes the phone by its bottom edge: it comes up from below, a little in front of the robot,
-    // under the middle of the screen, and its fingers reach up over the edge toward the glass and curl round it.
-    // The grip is as wide as the phone: the hand grows and its fingers fan until they span most of the screen's
-    // width at that distance, wider on a wide phone, narrower on a narrow one.
+    // One open hand takes the phone at the bottom of the picture, as a person holds one (David: "open up the
+    // hand, face the palm towards the camera, and have the fingers grip one side of the phone, and the thumb the
+    // other"): palm to the glass, fingers across to one side and curled round that edge, thumb across to the other
+    // and round it. Its palm fills the bottom of the picture and its fingers and thumb run off the phone's sides
+    // (David: "bring the palm of the hand closer to the camera. We don't need to see as much of the thumb or
+    // fingers"). It's sized to the phone's width, so the grip opens as wide as the phone is, as far as the room
+    // between the robot's head and the words along the bottom allows.
     const reach = reducedMotion ? 1 : ease(clamp01((t - REACH[0]) / (REACH[1] - REACH[0])));
     const close = reducedMotion ? 1 : ease(clamp01((t - REACH[1] + 0.3) / 0.3));
     const handsAt = Math.max(NEAREST, -work.headAt.z - REACH_OUT);
-    // The width it has to take hold of: the phone's, less the words' column beside it on a turned phone.
-    const wide = 2 * handsAt * tan * aspect * (zone.current.right - zone.current.left);
+    const wide = 2 * handsAt * tan * aspect;
     const arm = rig.arm;
-    // As wide as the phone: the hand's own span (index to pinky) grows toward GRIP of the screen's width, up to a
-    // point (its fingers grow with it), and the fingers fan out the rest of the way.
     const [shoulder] = arm.joints;
     shoulder.scale.setScalar(1);
     arm.hand.scale.setScalar(1);
     shoulder.updateMatrixWorld(true);
-    arm.hand.getWorldScale(work.v);
-    const unit = work.v.x;
-    const tall = 2 * handsAt * tan;
-    // Its fingers no longer than a share of the screen's height, so they never climb to the face...
-    const big = MathUtils.clamp(
-      Math.min((GRIP * wide) / (SPAN * unit), (FINGERS_TALL * tall) / (FINGER * unit)),
-      1,
-      MAX_HAND,
+
+    // The hand, posed as it is now, measured from the camera: how far its fingers and thumb reach to each side,
+    // and how tall it stands, at its own size.
+    const pose = (curl: number) => {
+      work.up.set(-1, 0.2, 0).normalize().transformDirection(cam.matrixWorld);
+      work.palm.set(0, 0, 1).transformDirection(cam.matrixWorld);
+      aim(arm.hand, work.up, work.palm, reach, work);
+      arm.fingers.forEach((joints, f) => {
+        joints.forEach((joint, n) => {
+          joint.quaternion.copy(rig.rest[f]![n]!);
+          if (f === THUMB) {
+            // Across the palm to the far side, then round that edge toward the glass.
+            if (n === 0) joint.rotateX(THUMB_ACROSS * reach);
+            joint.rotateZ(-THUMB_CURL[n]! * curl);
+          } else {
+            joint.rotateZ(CURL * FINGER_CURL[n]! * curl);
+          }
+        });
+      });
+      arm.hand.updateMatrixWorld(true);
+    };
+    const curl = 0.15 * reach + 0.85 * close;
+    pose(curl);
+    arm.hand.getWorldPosition(work.v);
+    const toCam = work.q.copy(cam.quaternion).invert();
+    let left = 0;
+    let right = 0;
+    let low = 0;
+    let high = 0;
+    for (const joints of arm.fingers) {
+      for (const joint of joints) {
+        const p = joint.getWorldPosition(work.w).sub(work.v).applyQuaternion(toCam);
+        left = Math.min(left, p.x);
+        right = Math.max(right, p.x);
+        low = Math.min(low, p.y);
+        high = Math.max(high, p.y);
+      }
+    }
+    // The middle of the palm, between the wrist and the middle finger's knuckle.
+    const palm = arm.fingers[1]![0]!.getWorldPosition(work.w)
+      .sub(work.v)
+      .applyQuaternion(toCam)
+      .multiplyScalar(0.5);
+    const span = Math.max(1e-3, right - left);
+    // Its top just under the head's band, and the middle of its palm no lower than the words along the bottom.
+    const top = handsAt * tan * (1 - 2 * zone.current.bottom);
+    const words = handsAt * tan * (1 - 2 * zone.current.hold);
+    // Its size: tip to tip past the phone's sides, unless its palm would then sink under the words.
+    const handSize = Math.max(
+      0.5,
+      Math.min((wide * HOLD) / span, (top - words) / Math.max(1e-3, high - palm.y)),
     );
-    // ...and fanned out as far as the rest of the phone's width asks, within what a hand can do.
-    const want = GRIP * wide;
-    const fan =
-      MathUtils.clamp(
-        Math.atan(Math.max(0, want - SPAN * unit * big) / (2 * FINGER * unit * big)),
-        0.06,
-        MAX_FAN,
-      ) * reach;
-    // The knuckles on the screen's bottom edge, at the glass, and the wrist a palm's length behind them, a little
-    // lower, so the back of the hand comes up into view and the fingers hook down over the edge toward the player.
-    work.target.set(
-      across * handsAt * tan * aspect,
-      -handsAt * tan * EDGE - 0.3 * PALM * unit * big,
-      -handsAt - PALM * unit * big,
-    );
+    // Where: its palm in the middle across, and its top under the head's band.
+    work.target.set(-palm.x * handSize, top - high * handSize, -handsAt);
     cam.localToWorld(work.target);
     const length =
       shoulder.getWorldPosition(work.v).distanceTo(arm.joints[1].getWorldPosition(work.w)) +
@@ -274,27 +292,17 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       handLight.current.position.copy(work.target);
       cam.worldToLocal(handLight.current.position);
       handLight.current.position.set(
-        0,
-        handLight.current.position.y + 0.25,
+        handLight.current.position.x,
+        handLight.current.position.y + 0.1,
         handLight.current.position.z + 0.45,
       );
       cam.localToWorld(handLight.current.position);
     }
     if (reach > 0) {
       reachFor(arm, work.target, reach, work);
-      // Fingers out toward the glass, palm down on the phone's edge, so the fingers hook down over it toward the player.
-      work.up.set(0, 0.25, 1).normalize().transformDirection(cam.matrixWorld);
-      work.palm.set(0, -1, 0).transformDirection(cam.matrixWorld);
-      aim(arm.hand, work.up, work.palm, reach, work);
-      arm.hand.scale.setScalar(1 + (big - 1) * reach);
-      arm.fingers.forEach((joints, f) => {
-        joints.forEach((joint, n) => {
-          joint.quaternion.copy(rig.rest[f]![n]!);
-          // The knuckle fans the finger out across the hand; every joint curls it round the edge, the tips most.
-          if (n === 0) joint.rotateX(FAN[f]! * fan);
-          joint.rotateZ(CURL * (0.25 * reach + HOOK[n]! * close));
-        });
-      });
+      pose(curl);
+      // The arm has grown; the hand makes up the rest of its size.
+      arm.hand.scale.setScalar(1 + (handSize / grow - 1) * reach);
       arm.hand.updateMatrixWorld(true);
     }
 
