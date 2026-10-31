@@ -74,7 +74,9 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
   let shown = false;
   let full: { el: HTMLElement; dispose: () => void } | null = null;
   // a tap on the dock before any song has started is the gesture that
-  // starts the music (player.ts): its play button mustn't then pause it
+  // starts the music (player.ts): its play button mustn't then pause it.
+  // Not when the tap won't start it: the player paused it (a reload keeps
+  // that), or it's playing in another tab (the button is Pause)
   let begun = false;
   let starting = false;
 
@@ -189,7 +191,10 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     if (d === "heart" && song) music.setHearted(song.id, !music.hearted(song.id), where);
     linger(TOUCHED_MS);
   });
-  const pressed = () => (starting = !begun);
+  const pressed = () => {
+    const s = music.state();
+    starting = !begun && !s.paused && !s.playing;
+  };
   el.addEventListener("pointerdown", pressed);
   el.addEventListener("keydown", pressed);
   const escape = (e: KeyboardEvent) => e.key === "Escape" && closeFull();
