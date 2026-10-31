@@ -87,6 +87,8 @@ export class Refs {
   private readonly lookups = new Map<string, Lookup>();
   /** Period names, with the lookup that first returned each. */
   private readonly periods = new Map<string, number>();
+  /** Titles the data returned (folded), with the lookup that first returned each: see knownTitles. */
+  private readonly titles = new Map<string, number>();
 
   /** How many lookups have come back: stamp text with it when it arrives. */
   get known(): number {
@@ -97,6 +99,15 @@ export class Refs {
   hasPeriod(name: string, known: number): boolean {
     const seq = this.periods.get(name);
     return seq !== undefined && seq < known;
+  }
+  /**
+   * Titles the data returned before text stamped `known`, longest first. A title is the data's own string, so it
+   * may be named in prose even with digits in it ("9803 North Millworks Road", Probe's Q2 red-team); only an
+   * exact title from this answer's lookups, and only one with words in it, so a made-up or bare-number "title"
+   * can't carry a figure.
+   */
+  knownTitles(known: number): string[] {
+    return [...this.titles].filter(([, seq]) => seq < known).map(([t]) => t).sort((a, b) => b.length - a.length);
   }
   hasQuarter(quarter: string, known: number): boolean {
     return [...this.periods].some(([name, seq]) => seq < known && name.endsWith(`-${quarter}`));
@@ -120,6 +131,10 @@ export class Refs {
     const period = (name: string) => {
       if (!this.periods.has(name)) this.periods.set(name, seq);
     };
+    const title = (name: string) => {
+      const folded = fold(name).trim();
+      if (/\p{L}{3}/u.test(folded) && !this.titles.has(folded)) this.titles.set(folded, seq);
+    };
     const dims = Array.isArray(args.by) ? (args.by as unknown[]).filter((d): d is string => typeof d === "string") : [];
     let from: string | null = null;
     let to: string | null = null;
@@ -129,10 +144,12 @@ export class Refs {
       from = typeof labels.from === "string" ? labels.from : null;
       to = typeof labels.to === "string" ? labels.to : null;
       if (args.across === "quarter" || args.across === "month") for (const p of [from, to]) if (p) period(p);
+      if (args.across === "title") for (const t of [from, to]) if (t) title(t);
     }
     // Period names come from returned rows, and one-value filters the data confirmed (below); never captions.
     // Months name their year ("2193-04"), so like quarters they are period names.
     for (const row of rows) for (const key of ["quarter", "month"]) if (typeof row[key] === "string") period(row[key] as string);
+    for (const row of rows) if (typeof row.title === "string") title(row.title);
     // A filter value is the model's, so it's a label only when it alone was asked for and the data had
     // something there (with several values, any one could be the one that matched).
     const filtered = new Map<string, string>();
@@ -144,6 +161,8 @@ export class Refs {
     if (quarter) period(quarter);
     const month = filtered.get("month");
     if (month) period(month);
+    const named = filtered.get("title");
+    if (named) title(named);
     this.lookups.set(out.ref, {
       seq,
       complete: out.complete === true,
@@ -266,6 +285,7 @@ const REF = /\{\{([^{}]{1,40})\}\}/g;
 
 /** Text as it will be read: compatibility forms ("７", "½") folded to plain ones before any check. */
 const fold = (text: string) => text.normalize("NFKC");
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * Renders a sentence's refs and checks its own prose; null if it must be withheld. `known` is how many lookups
@@ -282,8 +302,10 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity): 
     return text ?? "";
   });
   if (bad) return null;
-  const prose = folded
-    .replace(REF, " ")
+  // Titles the data returned, exactly and whole, are the data's words, not the model's: cleared before the ban.
+  let prose = folded.replace(REF, " ");
+  for (const title of refs.knownTitles(known)) prose = prose.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(title)}(?![\\p{L}\\p{N}])`, "gu"), " ");
+  prose = prose
     .replace(/\b\d{4}-Q[1-4]\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
     .replace(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
     .replace(/\bQ([1-4])\b/g, (q) => (refs.hasQuarter(q, known) ? " " : q))
