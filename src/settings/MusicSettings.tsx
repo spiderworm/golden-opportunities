@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Music } from "@tellim/music/player";
 
 import { cutOff } from "~/platform/lazy/cut-off";
+import { isPhoneScreen } from "~/platform/phone";
 
 import styles from "./Settings.module.css";
 
@@ -11,6 +12,8 @@ export function MusicSettings({ load }: { load?: () => Promise<Music | null> }) 
   const holder = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    // No music on a phone (David): it gets the phone screen, and the game only mounts there for a moment.
+    if (isPhoneScreen()) return;
     let live = true;
     const get = load ?? (() => import("~/platform/music/music.client").then(({ loadMusic }) => loadMusic(), cutOff("music settings")));
     void get().then((m) => live && setMusic(m));

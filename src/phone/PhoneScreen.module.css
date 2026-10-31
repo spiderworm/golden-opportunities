@@ -16,7 +16,11 @@
     margin: 0;
     padding: max(16px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
     overflow: hidden;
-    background: radial-gradient(ellipse at 50% 35%, var(--color-panel-raised), var(--color-space) 80%);
+    /* The bosses' room (public/bosses/backdrop), dimmed; a hidden element's background is never fetched. */
+    background:
+      linear-gradient(rgb(12 16 30 / 0.45), rgb(12 16 30 / 0.45)),
+      url("/bosses/backdrop-1200.webp") center 72% / cover no-repeat,
+      var(--color-space);
     color: var(--color-text);
   }
 
