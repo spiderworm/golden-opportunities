@@ -51,7 +51,7 @@ describe('server save persistence', () => {
     expect(() => store.read('x'.repeat(43))).toThrow('MISSING_SAVE');
     writeFileSync(path.join(dir, a.id + '.json'), '{');
     expect(() => store.read(a.id)).toThrow('INVALID_SAVE');
-    writeFileSync(path.join(dir, a.id + '.json'), JSON.stringify({ ...a, version: 2 }));
+    writeFileSync(path.join(dir, a.id + '.json'), JSON.stringify({ ...a, version: 3 }));
     expect(() => store.read(a.id)).toThrow('INVALID_SAVE');
   });
 });

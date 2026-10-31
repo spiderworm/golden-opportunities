@@ -59,7 +59,7 @@ export function loader({ request }: Route.LoaderArgs) {
     by: state.by,
     filters: Object.keys(state.filters).length,
   });
-  return { state, ...investigation, planned: session.save.completion !== undefined };
+  return { state, ...investigation, planned: session.save.played.length > 0 };
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {

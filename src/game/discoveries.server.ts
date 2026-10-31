@@ -11,7 +11,7 @@ import { QueryError } from '../query/errors';
 export interface ObservedQuery { query: Query; result: QueryResult }
 /** Caller supplies server-authorized state and queries actually shown, never request claims. */
 export function recordDiscoveries(save: GameSave, view: QueryView, observed: readonly ObservedQuery[]): void {
-  if (save.completion || save.played.length) return;
+  if (save.played.length) return;
   const evidence: Record<string, string[]> = {};
   for (const { query, result } of observed) for (const key of evidenceFromQuery(query, view, result)) {
     const promotion = key.startsWith('c:');
