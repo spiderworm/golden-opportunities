@@ -147,7 +147,7 @@ Each compact card also has a small button that pins its full description open (f
 | --- | --- |
 | Button, closed | `More` |
 | Button, pinned open | `Less` |
-| Button's accessible name | `Full description: {move title}`, with `aria-expanded` carrying open or closed |
+| Button's accessible name | `More about {move title}`, or `Less about {move title}` when pinned open, with `aria-expanded` carrying open or closed. The name starts with the visible word, so voice control can "click More" (WCAG 2.5.3, label in name) |
 
 | Element | String |
 | --- | --- |
