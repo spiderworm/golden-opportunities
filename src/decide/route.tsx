@@ -9,11 +9,12 @@ import { trackServer } from "~/platform/analytics/analytics.server";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
 import { BossBubble } from "~/platform/bosses/BossBubble";
-import { DECIDE_COPY as COPY, MOVES, type BriefingBubble, type FactLine } from "./copy";
+import { FactText } from "~/platform/bosses/facts";
+import { DECIDE_COPY as COPY, MOVES, type BriefingBubble } from "./copy";
 import { PlanRefused, readPlan } from "./read-plan.server";
 import styles from "./Decide.module.css";
 
-export const handle: ShellHandle = { title: "Decisions" };
+export const handle: ShellHandle = { title: "Decisions", standingOrder: false };
 
 const MONTH_MS = 900;
 
@@ -219,10 +220,6 @@ function Facts({ bubble }: { bubble: BriefingBubble }) {
       )}
     </>
   );
-}
-
-function FactText({ line }: { line: FactLine }) {
-  return line.map((part, i) => (typeof part === "string" ? part : <strong key={i}>{part.strong}</strong>));
 }
 
 /** January... February... March..., then the quarter closes and the results open. */

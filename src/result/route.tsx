@@ -29,7 +29,7 @@ import { earnedDiscoveries, type EarnedDiscovery } from "./discoveries.server";
 import { OUTCOME_COLORS, outcomeOption } from "./outcome-chart";
 import styles from "./Result.module.css";
 
-export const handle: ShellHandle = { title: "Results" };
+export const handle: ShellHandle = { title: "Results", standingOrder: false };
 
 
 export function meta({}: Route.MetaArgs) {
