@@ -55,5 +55,55 @@
       "sha256": "cc35200805e54cb874ee037eb9e4e3218f54c472858f9089347de10ea2c57b70",
       "bytes": 6352
     }
+  },
+  "figures": {
+    "about": "Full-body cutouts of the same five robots for Decide's 2D boss scene (Chart's BossScene2D, bosses.ts `figure`), and the concepts their 3D models are made from, so the 2D and 3D scenes match. Transparent WebP, all 512 px tall on one shared scale with the feet on the bottom edge: a shorter boss has empty space above it and the drone floats, so they can be drawn at one height.",
+    "date": "2026-10-30",
+    "by": "Orbit, in David's Tripo account",
+    "credits": "none (Tripo's free image allowance)",
+    "processed": "research/station-assets/boss-figures.py: background found as the color connected to the edges (a chroma key for the green one), made transparent with a soft edge, cropped, and scaled to its boss's share of 512 px (Administrator 1.0, Ministry 0.9, Subcommittee 0.86, Commerce Office 0.74, drone 0.34, floating 0.36 up); webp quality 88. It reproduces these files byte for byte from Tripo's PNGs.",
+    "bosses": {
+      "overall": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 9:16, one image, with the boss's portrait (research/station-assets/bosses/overall.jpg) as the reference image",
+        "prompt": "Full-body picture of the same robot character as in the reference image: keep its design, colors, materials and face exactly the same. The Station Administrator: a tall thin robot built into a desk-shaped chassis, with one large round glowing orange lens for a face and a mechanical arm holding a clipboard; stiff, slightly too formal posture. Show the whole robot standing on its base or feet, from the top of its head down to the bottom of its base, turned slightly three-quarter toward the viewer's right. Centered, with a small margin, nothing touching or cut off at the edges. Same stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces. Body in dark navy and violet, with one bright orange accent. Plain flat solid light grey background, no gradient, no floor, no ground shadow, no text, no letters, no logo.",
+        "source": "research/station-assets/boss-figures/overall.jpg (downscaled to 640 from Tripo's 768 x 1376 PNG)",
+        "file": "public/bosses/full/overall.webp",
+        "sha256": "0e805c91e46d8dff6ac96fe9abd1a730445d67c9c6196b5787133e2692ee5efe",
+        "bytes": 27542
+      },
+      "profit": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 9:16, one image, with the boss's portrait (research/station-assets/bosses/profit.jpg) as the reference image",
+        "prompt": "Full-body picture of ONE of the robots in the reference image (the front one only, no copies behind it): keep its design, colors, materials and face exactly the same. The Commerce Office: a stout grey filing-cabinet robot with drawer handles on its body, a speaker grille for a mouth and one bright green status light for an eye, short sturdy legs or a wheeled base. Show the whole robot standing, from the top of its head down to its feet, turned slightly three-quarter toward the viewer's right. Centered, with a small margin, nothing touching or cut off at the edges. Same stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces. Body in grey, dark navy and violet, with one bright green accent. Plain flat solid light grey background, no gradient, no floor, no ground shadow, no text, no letters, no logo.",
+        "source": "research/station-assets/boss-figures/profit.jpg (downscaled to 640 from Tripo's 768 x 1376 PNG)",
+        "file": "public/bosses/full/profit.webp",
+        "sha256": "b84844b8ae605994509a8e805dd7edb2c9c5c520a8b52d747dcb925967b5d633",
+        "bytes": 20152
+      },
+      "culture": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 9:16, one image, with the boss's portrait (research/station-assets/bosses/culture.jpg) as the reference image",
+        "prompt": "Full-body picture of the same robot character as in the reference image: keep its design, colors, materials and face exactly the same. The Ministry of Culture: an ornate robot whose head is a white marble classical bust with a dignified expression, wearing an amber-gold monocle, its navy robot body and shoulders trimmed in amber, holding a tiny rolled scroll in one small mechanical hand, standing on two slim robot legs. Show the whole robot standing, from the top of its head down to its feet, facing the viewer straight on. Centered, with a small margin, nothing touching or cut off at the edges. Same stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces. Body in dark navy and violet, with one bright amber accent. Plain flat solid light grey background, no gradient, no floor, no ground shadow, no text, no letters, no logo.",
+        "source": "research/station-assets/boss-figures/culture.jpg (the grey concept, downscaled to 640 from Tripo's 768 x 1376 PNG)",
+        "file": "public/bosses/full/culture.webp",
+        "sha256": "b7a17a96030fb38bed04dc6556a75c1edd01aa630807eca6fbc752f7cbbab0eb",
+        "bytes": 22148,
+        "cutout": "Its marble head shares the grey background's color in places, so the cutout is made from a copy of the concept redrawn on chroma green: the same tool, with the grey concept as the reference image and the prompt \"Recreate the reference image exactly: the same robot, same pose, same framing, same size and position in the frame, same lighting and colors. Change only the background: replace the light grey background with a plain flat solid pure bright green (#00FF00) chroma-key background, perfectly even, no gradient, no shadow, no floor. Nothing else changes.\" (research/station-assets/boss-figures/culture-green.jpg)."
+      },
+      "happiness": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 1:1, one image, with the boss's portrait (research/station-assets/bosses/happiness.jpg) as the reference image",
+        "prompt": "Full picture of the same robot character as in the reference image: keep its design, colors, materials and face exactly the same. The Readers' Guild survey drone: a small round hovering drone with one big swiveling camera eye glowing pink, tiny propeller rings, holding a clipboard in a little arm, with a five-star rating dial with pink stars on its front. Show the whole drone hovering in the air, turned slightly three-quarter toward the viewer's left. Centered, with a generous margin, nothing touching or cut off at the edges. Same stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces. Body in dark navy and violet, with one bright pink accent. Plain flat solid light grey background, no gradient, no floor, no ground shadow, no text, no letters, no logo.",
+        "source": "research/station-assets/boss-figures/happiness.jpg (downscaled to 640 from Tripo's 1024 x 1024 PNG)",
+        "file": "public/bosses/full/happiness.webp",
+        "sha256": "c34b07c85c2b067e864100cb6b91667933163cfed7267adfbd929d081893c9b1",
+        "bytes": 12892
+      },
+      "readers": {
+        "tool": "Tripo Studio's image generator, model Nano Banana 2 (Gemini), 9:16, one image, with the boss's portrait (research/station-assets/bosses/readers.jpg) as the reference image",
+        "prompt": "Full-body picture of the same robot character as in the reference image: keep its design, colors, materials and face exactly the same. The Throughput Subcommittee: a robot shaped like a turnstile, with three metal turnstile arms as its shoulders and arms, a boxy head with two small square eyes, a glowing blue digital counter screen on its chest, and a sturdy turnstile post for a body ending in two short robot legs with big flat feet. Show the whole robot standing, from the top of its head down to its feet, turned slightly three-quarter toward the viewer's left. Centered, with a small margin, nothing touching or cut off at the edges. Same stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces. Body in dark navy and violet, with one bright blue accent. Plain flat solid light grey background, no gradient, no floor, no ground shadow, no text, no letters, no logo.",
+        "source": "research/station-assets/boss-figures/readers.jpg (downscaled to 640 from Tripo's 768 x 1376 PNG)",
+        "file": "public/bosses/full/readers.webp",
+        "sha256": "0b37c0060fe03d191d6194f4e4d6d66659c5d212952eb690db02ccde5bd097ae",
+        "bytes": 27638
+      }
+    }
   }
 }
