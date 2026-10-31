@@ -14,7 +14,7 @@ import { MetricTiles } from "./MetricTiles";
 import { runQuery } from "~/query/run-query.server";
 import { recordDiscoveries, type ObservedQuery } from "~/game/discoveries.server";
 import { getGameSession } from "~/game/session.server";
-import { getPlan } from "~/game/game.server";
+import { QueryError } from "~/query/errors";
 import {
   DEFAULT_STATE,
   filtersExcept,
@@ -45,17 +45,21 @@ export function loader({ request }: Route.LoaderArgs) {
   const session = getGameSession(request);
   const observed: ObservedQuery[] = [];
   const investigation = investigate(state, runQuery, session.queryView, (query, result) => observed.push({ query, result }));
-  // Normalized controls, not an arbitrary URL flag: the default page earns nothing.
-  const intentional = state.measure !== DEFAULT_STATE.measure || state.by !== DEFAULT_STATE.by
-    || state.compare || Object.keys(state.filters).length > 0;
-  if (intentional) recordDiscoveries(session.save, session.queryView, observed);
+  // The observer includes only panels whose query differs from that panel's default.
+  try {
+    recordDiscoveries(session.save, session.queryView, observed);
+  } catch (error) {
+    if (!(error instanceof QueryError) || error.code !== 'RATE_LIMITED') throw error;
+    // Evidence is best effort under contention; the loaded ledgers remain usable.
+    try { trackServer('discovery_record_deferred', { code: 'SAVE_BUSY' }); } catch { /* Rendering is independent of telemetry. */ }
+  }
   trackServer("investigate_loaded", {
     durationMs: Math.round(performance.now() - started),
     measure: state.measure,
     by: state.by,
     filters: Object.keys(state.filters).length,
   });
-  return { state, ...investigation, planned: getPlan(request) !== null };
+  return { state, ...investigation, planned: session.save.completion !== undefined };
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {
