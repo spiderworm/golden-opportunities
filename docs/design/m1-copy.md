@@ -113,7 +113,7 @@ David's direction: the brief is delivered by the robot bosses in speech bubbles,
 | # | Speaker | Boss's line | Fact strip |
 | --- | --- | --- | --- |
 | 1 | The Station Administrator | `ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. YOUR SCORE WILL BE YOUR WEAKEST MEASURE. WE CALL THIS TEAMWORK. MR. ZOOLANDER WOULD CALL IT ONE LOOK.` | `Your plan runs from **January 1 to March 31, 2194**. Your score is your **lowest measure**: raise one by sinking another, and your score sinks with it.` |
-| 2 | The Commerce Office | `WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT. ALSO, BOOKS ARE NOT FREE. WE CHECKED.` | `You're graded on **Profit, Readers served, Happiness and Culture**. Each goal starts from **last year's first quarter**, adds what the new Inspector Ryeslton volume is expected to sell, then adds **5%**. Profit is revenue minus what the books cost, and books cost the store **60% of their list price**.` |
+| 2 | The Commerce Office | `WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT. ALSO, BOOKS ARE NOT FREE. WE CHECKED.` | `You're graded on **Profit, Readers served, Happiness and Culture**. Each goal starts from **last year's first quarter**, adds the new Inspector Ryeslton volume's expected effect, then adds **5%**. Profit is revenue minus what the books cost, and books cost the store **60% of their list price**.` |
 | 3 | The Ministry of Culture | `AUTHORS MAY BE INVITED. AUTHORS REQUIRE A SHUTTLE FARE. CULTURE IS EXPENSIVE. PLEASE PURCHASE SOME ANYWAY.` | `An author night costs **$200**: the author's shuttle fare and the room.` |
 | 4 | The Readers' Guild survey drone | `THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. WE ASSUME THEY COULD NOT TURN LEFT. ALSO, AN INSPECTOR ARRIVES IN FEBRUARY. THE DRONE IS INNOCENT.` | `Already scheduled, Book of the Month at **15% off** for the whole month: **January** The Mallemaroking (mass market paperback), **February** Rystwyth (hardcover), **March** Portmeirion (mass market paperback). New on **February 4**: the third Inspector Ryeslton mystery, *The Bourton Model Village Poisoning*, in hardcover at **$22.99**.` |
 | 5 | The Throughput Subcommittee | `SELECT UP TO TWO MOVES. SELECTING THREE IS NOT PERMITTED. WE HAVE TESTED THIS PERSONALLY.` | `Choose **up to two** moves, or none to hold course.` |
@@ -209,7 +209,7 @@ The submit button stays `Submit plan`, so it matches the confirm step ("Submit t
 | Exceeds Requirements certificate | `Exceeds Requirements: {Measure} beat its goal. Certificates don't change your score.` |
 | Well-Rounded Shop | `Well-Rounded Shop: every measure scored 80 or more.` |
 | Certificate issuer | `Issued by the Center for Shopkeepers Who Can't Sell Good` (small print under each certificate; decorative, and it carries no information) |
-| Note | `Each goal is Q1 2193, plus the new volume's expected sales, plus 5%. Matching Q1 2193 plus the new volume scores 70 (C−). Meeting the goal scores 100 (A+).` |
+| Note | `Each goal is Q1 2193, plus the new volume's expected effect, plus 5%. Matching Q1 2193 plus the new volume scores 70 (C−). Meeting the goal scores 100 (A+).` |
 
 **Screen order (simple first).** The card shows, top to bottom:
 1. The overall score, with the explainer "Your overall score is your lowest measure."
