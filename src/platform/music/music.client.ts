@@ -6,8 +6,11 @@
 // by song id, never title.
 //
 // It carries on after a reload, a closed tab or a crash (remember), and
-// plays in one tab at a time (oneTab) (David, 30 Oct 2026).
-import { createMusic, type Music } from "@tellim/music/player";
+// plays in one tab at a time (oneTab) (David, 30 Oct 2026), and keeps playing
+// behind other tabs and desktops on a computer, though not on a tablet
+// (David, 31 Oct 2026): the desktop player's defaults.
+import { createDesktopMusic } from "@tellim/music/desktop";
+import type { Music } from "@tellim/music/player";
 import "@tellim/music/music.css";
 
 import { track } from "~/platform/analytics/analytics.client";
@@ -32,7 +35,7 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
     if (manifest.skipped) track("music_manifest_skipped", { skipped: manifest.skipped });
     if (!manifest.songs.length) return null;
     // Through Web Audio, so the saved volume holds from the first note (audio-context.ts).
-    return createMusic({ key: "orbital-books", base: "/music/", songs: manifest.songs, track, context: musicContext, remember: true, oneTab: true });
+    return createDesktopMusic({ key: "orbital-books", base: "/music/", songs: manifest.songs, track, context: musicContext });
   })();
   return loading;
 }
