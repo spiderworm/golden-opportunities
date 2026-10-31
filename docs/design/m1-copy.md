@@ -376,3 +376,15 @@ There is no phone layout. David: "On phones? HEAVENS NO". A phone gets one scene
 | Accessible name, still picture | `A robot glares at your phone.` |
 
 The fact line is the only thing the player needs, so it stays plain and readable without the animation. With reduced motion, show the robot already holding the phone, with no reach. The still picture (no WebGL 2, the scene failed, or the 3D code is still loading) shows the robot standing, so it takes the still picture's name. The bubble appears when the claw closes, or 2.5 seconds after the screen comes up, whichever is first; over the still picture, it appears at once.
+
+## 9. Station screen: the still picture's note
+
+When the 3D station can't show, the Station screen shows a still picture of the station from the shuttle, with one plain note saying why. Only a missing WebGL 2 is the device's fault, so only that note mentions the device. (David's M4 Pro MacBook once got the device note when the scene's code hadn't arrived; see the collaboration log, 31 Oct.)
+
+| When | Note |
+| --- | --- |
+| The browser has no WebGL 2 | `This device can't show the station in 3D, so here it is from the shuttle.` |
+| The scene's code or models didn't arrive, after one retry | `The station didn't load in 3D, so here it is from the shuttle.` |
+| The scene was up, then broke | `The station stopped running in 3D, so here it is from the shuttle.` |
+
+All three end the same way, so only the cause changes. "In 3D" is there because the picture under the note *is* the station: a note saying "the station didn't load" would contradict it. No note guesses at a cause beyond these three, and none blames the player's connection.
