@@ -133,6 +133,14 @@ Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events
 - `Weekday author nights`: `Host 12 author nights, one each week on a Tuesday, Wednesday or Thursday, at $200 each.`
 - `Station-wide sale`: `15% off every book, all quarter. The Book of the Month runs at the same 15%.`
 
+**Key-figure tags.** In the compact move cards, a description shows two lines at rest, and the full text on hover, focus or tap (it's always in the DOM for screen readers). No figure the player needs may hide past line 2, so each move carries a short tag on its title line:
+
+| Move | Tag |
+| --- | --- |
+| `Re-pick Book of the Month` | `3 hardcovers` |
+| `Weekday author nights` | `$200 a night` |
+| `Station-wide sale` | `15% off` |
+
 | Element | String |
 | --- | --- |
 | Moves heading | `Your moves (choose up to two)` |
