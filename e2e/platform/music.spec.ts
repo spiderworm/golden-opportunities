@@ -23,6 +23,17 @@ test('with no songs listed, the music UI stays hidden', async ({ page }) => {
 });
 
 test('with songs listed, the first tap starts the music: the pop-up names it, and Settings has the panel', async ({ page }) => {
+  await page.addInitScript(() => {
+    const Context = window.AudioContext;
+    const made: AudioContext[] = [];
+    (window as unknown as { __musicContexts: AudioContext[] }).__musicContexts = made;
+    window.AudioContext = class extends Context {
+      constructor(options?: AudioContextOptions) {
+        super(options);
+        made.push(this);
+      }
+    };
+  });
   await page.route('**/music/songs.json', route =>
     route.fulfill({ json: { songs: [{ id: 'test-silence', file: 'test-silence.wav', title: 'Test Silence' }] } }));
   await page.route('**/music/test-silence.wav', route =>
@@ -31,12 +42,14 @@ test('with songs listed, the first tap starts the music: the pop-up names it, an
   // Nothing plays before a gesture.
   await page.waitForTimeout(800);
   await expect(page.locator('.music-popup.on')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as unknown as { __musicContexts: AudioContext[] }).__musicContexts.length)).toBe(0);
   await page.mouse.click(5, 5);
   const popup = page.locator('.music-popup.on');
   await expect(popup).toBeVisible();
   await expect(popup).toContainText('Test Silence');
-  // The page's own audio is muted by the fixture, whatever the player does.
-  expect(await page.evaluate(() => [...document.querySelectorAll('audio')].every(a => a.muted))).toBe(true);
+  // The music plays through Web Audio, made on that tap; the fixture sends every
+  // Web Audio output to a silent gain node and mutes media elements.
+  expect(await page.evaluate(() => (window as unknown as { __musicContexts: AudioContext[] }).__musicContexts.map(c => c.state))).toEqual(['running']);
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('region', { name: 'Music' }).locator('.music-panel')).toBeVisible();
 });
