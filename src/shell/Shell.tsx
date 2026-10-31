@@ -1,30 +1,73 @@
-import { useState, type ReactNode } from "react";
-import { NavLink, useMatches } from "react-router";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { NavLink, useLocation, useMatches, useNavigate } from "react-router";
 
 import { Icon } from "./icons";
 import { MusicPopup } from "./MusicPopup";
 import { navItems } from "./nav";
 import { NotificationsBell, type StationNotification } from "./NotificationsBell";
 import { formatStationDate } from "./station-date";
+import { StandingOrder } from "./StandingOrder";
+import { Transmission } from "./Transmission";
 import type { Track } from "~/platform/analytics/track";
 import styles from "./Shell.module.css";
 
 /** Routes name their page in the header with `handle = { title }`, fixed or from their loader data. */
 export interface ShellHandle {
   title?: string | ((data: unknown) => string | undefined);
+  /** False on the screens that deal with the plan itself, where the standing-order strip would only repeat them. */
+  standingOrder?: false;
 }
 
 export interface ShellProps {
   /** The in-game date, as YYYY-MM-DD. */
   stationDate: string;
   notifications: StationNotification[];
+  /** The Commerce Office's standing order: its transmission plays once, on first arrival at the station, and its strip stays until the plan is in. */
+  standingOrder?: { seen: boolean; submitted: boolean };
+  /** Records that the transmission was seen, opened or put off, so it doesn't play again; settles once the shell has reloaded. */
+  onAlertSeen?: () => Promise<void>;
   track: Track;
   children: ReactNode;
 }
 
-export function Shell({ stationDate, notifications, track, children }: ShellProps) {
+export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, track, children }: ShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const title = usePageTitle();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const stripHidden = useMatches().some((m) => (m.handle as ShellHandle | undefined)?.standingOrder === false);
+  const [memoOpen, setMemoOpen] = useState(false);
+  // Once per visit at most, even if recording it failed; the save keeps it to once per game.
+  const arrived = useRef(false);
+  const pending = standingOrder && !standingOrder.submitted;
+
+  useEffect(() => {
+    if (!pending || standingOrder.seen || arrived.current || pathname !== "/") return;
+    arrived.current = true;
+    setMemoOpen(true);
+    track("alert_shown", { via: "arrival" });
+  }, [pending, standingOrder?.seen, pathname, track]);
+
+  function closeMemo(action: "open" | "later") {
+    setMemoOpen(false);
+    track("alert_dismissed", { action });
+    return standingOrder?.seen ? undefined : onAlertSeen?.();
+  }
+
+  // The ledgers wait for the seen flag to land: a navigation racing it would reload the shell
+  // before the save changed, and leave the bell unread (WebKit did, in the M1 e2e).
+  function openLedgers(event: MouseEvent<HTMLAnchorElement>) {
+    const saving = closeMemo("open");
+    if (!saving || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    void saving.finally(() => navigate("/investigate"));
+  }
+
+  function readMemo() {
+    track("alert_strip_clicked", { action: "memo" });
+    setMemoOpen(true);
+    track("alert_shown", { via: "strip" });
+  }
 
   function toggleMenu() {
     setCollapsed(!collapsed);
@@ -100,7 +143,15 @@ export function Shell({ stationDate, notifications, track, children }: ShellProp
             <NotificationsBell notifications={notifications} track={track} />
           </div>
         </header>
+        {pending && !stripHidden && (
+          <StandingOrder
+            onLedgers={pathname === "/investigate"}
+            onReadMemo={readMemo}
+            onOpenLedgers={() => track("alert_strip_clicked", { action: "ledgers" })}
+          />
+        )}
         <main className={styles.content}>{children}</main>
+        {standingOrder && <Transmission open={memoOpen} onOpenLedgers={openLedgers} onLater={() => void closeMemo("later")} />}
       </div>
     </div>
   );

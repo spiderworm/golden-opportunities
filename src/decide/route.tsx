@@ -10,12 +10,13 @@ import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
 import { BossBriefing } from "~/platform/bosses/BossBriefing";
 import type { BossId } from "~/platform/bosses/bosses";
+import { FactText } from "~/platform/bosses/facts";
 import type { FocusHow, SceneMode } from "~/platform/bosses/useBossFocus";
-import { DECIDE_COPY as COPY, MOVES, type BriefingBubble, type FactLine } from "./copy";
+import { DECIDE_COPY as COPY, MOVES, type BriefingBubble } from "./copy";
 import { PlanRefused, readPlan } from "./read-plan.server";
 import styles from "./Decide.module.css";
 
-export const handle: ShellHandle = { title: "Decisions" };
+export const handle: ShellHandle = { title: "Decisions", standingOrder: false };
 
 const MONTH_MS = 900;
 
@@ -228,10 +229,6 @@ function Facts({ bubble }: { bubble: BriefingBubble }) {
       )}
     </>
   );
-}
-
-function FactText({ line }: { line: FactLine }) {
-  return line.map((part, i) => (typeof part === "string" ? part : <strong key={i}>{part.strong}</strong>));
 }
 
 /** January... February... March..., then the quarter closes and the results open. */

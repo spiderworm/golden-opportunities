@@ -58,3 +58,14 @@ export function submitPlan(request: Request, plan: Plan): { outcomeId: string } 
     return failure(error);
   }
 }
+/** The opening transmission has been seen (opened or put off): the bell's alert is read, and the transmission doesn't return. Idempotent. */
+export function markAlertSeen(request: Request): void {
+  try {
+    if (request.method !== 'POST') throw new Response('Use POST.', { status: 405, headers: { Allow: 'POST', 'Cache-Control': 'no-store' } });
+    if (!isLocalBrowserRequest(request)) throw new Response('Same-origin local requests only.', { status: 403 });
+    // Not query data: Frank's write keeps queryRevision, so Dewey's answer in flight isn't cut off.
+    saves.markAlertSeen(resolveSaveId(request));
+  } catch (error) {
+    return failure(error);
+  }
+}
