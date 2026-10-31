@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 import { NavLink, useLocation, useMatches, useNavigate } from "react-router";
 
 import { Icon } from "./icons";
-import { MusicPopup } from "./MusicPopup";
+import { MusicDock } from "./MusicDock";
 import { navItems } from "./nav";
 import { NotificationsBell, type StationNotification } from "./NotificationsBell";
 import { formatStationDate } from "./station-date";
@@ -32,6 +32,7 @@ export interface ShellProps {
 
 export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, track, children }: ShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const musicLayer = useRef<HTMLDivElement>(null);
   const title = usePageTitle();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -127,11 +128,13 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
               </li>
             ))}
           </ul>
+          <MusicDock collapsed={collapsed} layer={musicLayer} />
         </nav>
       </aside>
 
       <div className={styles.main}>
-        <MusicPopup />
+        {/* The full player floats over the page from here; the dock is in the menu. */}
+        <div ref={musicLayer} className={styles.musicLayer} />
         <header className={styles.header}>
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.headerTools}>

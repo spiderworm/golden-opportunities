@@ -24,7 +24,7 @@ if (typeof window !== "undefined") {
  * imports afresh. Any other failure (a missing chunk, a module that throws)
  * is recorded and rethrown, so it still shows as a page error.
  */
-export function cutOff(what: "music popup" | "music settings" | "music panel" | "charts") {
+export function cutOff(what: "music dock" | "music settings" | "music panel" | "charts") {
   return (error: unknown): null => {
     if (leaving) return null;
     track("lazy_import_failed", { what });
