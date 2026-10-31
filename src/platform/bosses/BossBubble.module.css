@@ -1,0 +1,119 @@
+/* A boss speaking: the portrait at the left, its name, then the bubble pointing at it. */
+.boss {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-areas:
+    "avatar name"
+    "avatar bubble";
+  align-items: start;
+  /* In a grid of bubbles, extra height stays below, not between the name and its bubble. */
+  align-content: start;
+  align-self: start;
+  gap: 6px 16px;
+  margin: 0;
+  animation: enter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  /* Seven bubbles in under a second (m1-copy section 3). */
+  animation-delay: calc(var(--order, 0) * 90ms);
+}
+
+.avatar {
+  grid-area: avatar;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 2px solid var(--tint);
+  border-radius: 18px;
+  background: var(--color-panel-raised);
+  color: var(--tint);
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.face {
+  width: 44px;
+  height: 44px;
+}
+
+.bubble {
+  position: relative;
+  grid-area: bubble;
+  margin: 0;
+  padding: 14px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-panel);
+}
+
+.line {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+
+/* The plain facts: sentence case, lighter, set apart from the joke. */
+.facts {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-panel-raised);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.facts strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.facts p,
+.facts ul {
+  margin: 0;
+}
+
+.facts ul {
+  padding-left: 18px;
+}
+
+/* The tail, pointing at the speaker. */
+.bubble::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  left: -7px;
+  width: 12px;
+  height: 12px;
+  border-bottom: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  background: var(--color-panel);
+  transform: rotate(45deg);
+}
+
+.name {
+  grid-area: name;
+  padding-left: 4px;
+  color: var(--tint);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boss {
+    animation: none;
+  }
+}
