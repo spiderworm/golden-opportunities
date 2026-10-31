@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { data, Link, redirect, useFetcher, useNavigate, type ShouldRevalidateFunctionArgs } from "react-router";
 
-import { getPlan, submitPlan } from "~/game-stub/game.server";
+import { getPlan, submitPlan } from "~/game/game.server";
 import { planOf } from "~/simulation/plan";
 import { MAX_LEVERS, type LeverId, type Plan } from "~/simulation/types";
 import { track } from "~/platform/analytics/analytics.client";
@@ -35,16 +35,33 @@ export function shouldRevalidate({ formMethod, defaultShouldRevalidate }: Should
 /** For analytics: the moves by name, a fixed vocabulary ("repick+events", "hold"). */
 const planLabel = (levers: readonly LeverId[]) => levers.join("+") || "hold";
 
+/** Whether the save holds a plan, asked again after a refusal; false if the save can't be read. */
+function hasPlan(request: Request): boolean {
+  try {
+    return getPlan(request) !== null;
+  } catch {
+    return false;
+  }
+}
+
 export async function action({ request }: Route.ActionArgs) {
   let plan: Plan;
   try {
     plan = await readPlan(request);
   } catch (error) {
-    if (error instanceof PlanRefused) return data({ ok: false as const }, { status: error.status });
+    if (error instanceof PlanRefused) return data({ ok: false as const, played: false }, { status: error.status });
     throw error;
   }
-  if (getPlan(request)) return data({ ok: false as const }, { status: 409 });
-  submitPlan(request, plan);
+  try {
+    if (getPlan(request)) return data({ ok: false as const, played: true }, { status: 409 });
+    submitPlan(request, plan);
+  } catch (error) {
+    // The game refuses with a Response: a lost race to play, a busy or changed save, no
+    // save, or storage trouble. The player goes to the results only if a plan is
+    // really in (a 409 can also mean a busy save); otherwise back to choosing.
+    if (error instanceof Response) return data({ ok: false as const, played: hasPlan(request) }, { status: error.status });
+    throw error;
+  }
   trackServer("plan_submitted", { levers: planLabel(plan.levers), moves: plan.levers.length });
   return { ok: true as const };
 }
@@ -54,6 +71,7 @@ type Step = "choose" | "confirm" | "playing";
 export default function Decide() {
   const [chosen, setChosen] = useState<LeverId[]>([]);
   const [tooMany, setTooMany] = useState(false);
+  const [refused, setRefused] = useState(false);
   const [step, setStep] = useState<Step>("choose");
   // In LEVER_IDS order, whatever order they were ticked in.
   const plan = planOf(chosen) ?? { levers: [] };
@@ -74,10 +92,18 @@ export default function Decide() {
   }
   const fetcher = useFetcher<typeof action>();
 
-  // A plan the server refused (already submitted, or not a valid plan) goes back to choosing.
+  const navigate = useNavigate();
+
+  // A plan the server refused goes back to choosing; if the quarter has already
+  // been played (say, from another tab), its results are what's left to see.
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data?.ok === false) setStep("choose");
-  }, [fetcher.state, fetcher.data]);
+    if (fetcher.state !== "idle" || fetcher.data?.ok !== false) return;
+    if (fetcher.data.played) navigate("/result");
+    else {
+      setStep("choose");
+      setRefused(true);
+    }
+  }, [fetcher.state, fetcher.data, navigate]);
 
   return (
     <div className={styles.page}>
@@ -148,11 +174,17 @@ export default function Decide() {
             onClick={() => {
               setStep("confirm");
               setTooMany(false);
+              setRefused(false);
               track("plan_confirm_opened", { levers: planLabel(plan.levers), moves: plan.levers.length });
             }}
           >
             {COPY.submit}
           </button>
+          {refused && (
+            <p className={styles.refused} role="alert">
+              {COPY.notSubmitted}
+            </p>
+          )}
         </div>
       )}
 

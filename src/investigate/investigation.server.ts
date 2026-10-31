@@ -1,7 +1,7 @@
 // Turns the player's question (InvestigateState) into the queries the screen
 // draws, and returns only those results to the browser.
 import type { Query, QueryResult, QueryView } from "~/query/types";
-import { filtersExcept, TILE_MEASURES, type Filters, type InvestigateState, type TileMeasure } from "./state";
+import { DEFAULT_STATE, filtersExcept, TILE_MEASURES, type Filters, type InvestigateState, type TileMeasure } from "./state";
 
 export type RunQuery = (query: Query, view: QueryView) => QueryResult;
 
@@ -75,7 +75,23 @@ function withFilter(filters: Filters): Pick<Query, "filter"> {
   return Object.keys(filters).length ? { filter: filters } : {};
 }
 
-export function investigate(state: InvestigateState, runQuery: RunQuery, view: QueryView): Investigation {
+function chartQuery(state: InvestigateState): Query {
+  const by = state.compare ? ([state.by, 'quarter'] as const) : ([state.by] as const);
+  return { measure: state.measure, by, ...withFilter(filtersExcept(state.filters, [state.by])) };
+}
+function heatmapQuery(state: InvestigateState): Query {
+  return { measure: state.measure, by: ['weekday', 'month'], ...withFilter(filtersExcept(state.filters, ['weekday', 'month'])) };
+}
+
+export function investigate(state: InvestigateState, runQuery: RunQuery, view: QueryView,
+  observe?: (query: Query, result: QueryResult) => void): Investigation {
+  const displayed: { query: Query; result: QueryResult }[] = [];
+  const rendered = (query: Query, defaultQuery?: Query) => {
+    const result = runQuery(query, view);
+    // A change to another panel does not make this panel's default view intentional.
+    if (!defaultQuery || JSON.stringify(query) !== JSON.stringify(defaultQuery)) displayed.push({ query, result });
+    return result;
+  };
   const run = (query: Query) => runQuery(query, view);
   const option = (dimension: keyof FilterOptions) => values(run({ measure: "units", by: [dimension] }), dimension);
   const options: FilterOptions = {
@@ -92,21 +108,17 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
     buildTile(measure, run({ measure, by: ["quarter"], ...tileFilter }), options.quarter, state.filters),
   );
 
-  const chartBy = state.compare ? ([state.by, "quarter"] as const) : ([state.by] as const);
-  const chart = run({ measure: state.measure, by: chartBy, ...withFilter(filtersExcept(state.filters, [state.by])) });
-  const heatmap = run({
-    measure: state.measure,
-    by: ["weekday", "month"],
-    ...withFilter(filtersExcept(state.filters, ["weekday", "month"])),
-  });
+  const chart = rendered(chartQuery(state), chartQuery(DEFAULT_STATE));
+  const heatmap = rendered(heatmapQuery(state), heatmapQuery(DEFAULT_STATE));
 
   const title = state.filters.title?.length === 1 ? state.filters.title[0]! : null;
   const titleView = title
     ? {
         title,
-        result: run({ measure: state.measure, by: ["month"], ...withFilter(filtersExcept(state.filters, ["month"])) }),
+        result: rendered({ measure: state.measure, by: ["month"], ...withFilter(filtersExcept(state.filters, ["month"])) }),
       }
     : null;
 
+  for (const { query, result } of displayed) observe?.(query, result);
   return { tiles, chart, heatmap, titleView, options };
 }

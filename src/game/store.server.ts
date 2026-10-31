@@ -2,7 +2,9 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync, unlinkSync, statSync, readdirSync, utimesSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { withSaveLock, SaveLockBusy } from './lock.server.ts';
+import { isOutcome } from './outcome.ts';
 import type { GameSave } from './types';
+import { EVIDENCE_KEYS, MAX_EVIDENCE_SCOPES, discoveriesFromBuckets, discoveryParts } from './discovery-evidence.ts';
 
 const ID = /^[A-Za-z0-9_-]{43}$/;
 const MAX_BYTES = 16 * 1024 * 1024;
@@ -11,14 +13,26 @@ export class SaveError extends Error {
   readonly code: 'MISSING_SAVE' | 'INVALID_SAVE' | 'SAVE_BUSY' | 'STALE_SAVE' | 'SAVE_CAPACITY';
   constructor(code: SaveError['code']) { super(code); this.code = code; }
 }
+function validEvidence(value: unknown): value is Record<string, string[]> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    && Object.keys(value).length <= MAX_EVIDENCE_SCOPES && Object.entries(value).every(([scope, keys]) =>
+      /^[a-f0-9]{64}$/.test(scope) && Array.isArray(keys) && keys.length <= EVIDENCE_KEYS.size
+      && new Set(keys).size === keys.length && keys.every(k => EVIDENCE_KEYS.has(k)));
+}
 function validate(save: GameSave, id: string): void {
   if (!save || save.version !== 1 || save.id !== id || !isSaveId(id)
     || !Number.isSafeInteger(save.seed) || save.seed < 0 || save.seed > 0xffffffff
     || !Number.isSafeInteger(save.revision) || save.revision < 0
+    || (save.queryRevision !== undefined && (!Number.isSafeInteger(save.queryRevision) || save.queryRevision < 0 || save.queryRevision > save.revision))
+    || (save.discoveryEvidence !== undefined && !validEvidence(save.discoveryEvidence))
     || !Array.isArray(save.discoveries) || save.discoveries.length > 3
     || new Set(save.discoveries).size !== save.discoveries.length
     || !save.discoveries.every(d => ['A', 'B', 'C'].includes(d))
     || !Array.isArray(save.played) || save.played.length > 1) throw new SaveError('INVALID_SAVE');
+  if (save.completion !== undefined && (!save.completion || typeof save.completion.outcomeId !== 'string'
+    || !/^[a-f0-9-]{36}$/.test(save.completion.outcomeId) || !isOutcome(save.completion.outcome)
+    || save.played.length !== 1 || !Array.isArray(save.played[0]?.sales)
+    || save.completion.outcome.totals.plan.units !== save.played[0].sales.length)) throw new SaveError('INVALID_SAVE');
   for (const quarter of save.played) {
     if (quarter.period !== '2194-Q1' || !Array.isArray(quarter.sales) || quarter.sales.length > 100_000) throw new SaveError('INVALID_SAVE');
     const ids = new Set<string>();
@@ -101,6 +115,20 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
     if (Buffer.byteLength(json) > MAX_BYTES) throw new SaveError('INVALID_SAVE');
     return json;
   };
+  const publish = (id: string, save: GameSave): GameSave => {
+    const target = file(id);
+    assertOwned();
+    const json = encode(save);
+    // Reserve the full temporary file, not just growth, to bound peak bytes too.
+    makeRoom(0, Buffer.byteLength(json), id);
+    const temporary = target + '.' + randomBytes(8).toString('hex') + '.tmp';
+    try {
+      assertOwned();
+      writeFileSync(temporary, json, { flag: 'wx', mode: 0o600 }); touch(temporary);
+      assertOwned();
+      renameSync(temporary, target); return save;
+    } finally { remove(temporary); }
+  };
   return {
     read(id: string): GameSave {
       file(id);
@@ -108,11 +136,37 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
     },
     create(): GameSave {
       return locked(() => {
-        const save: GameSave = { version: 1, id: randomBytes(32).toString('base64url'), seed: randomBytes(4).readUInt32LE(), revision: 0, discoveries: [], played: [] };
+        const save: GameSave = { version: 1, id: randomBytes(32).toString('base64url'), seed: randomBytes(4).readUInt32LE(), revision: 0, queryRevision: 0, discoveries: [], played: [] };
         const json = encode(save); makeRoom(1, Buffer.byteLength(json));
         assertOwned();
         writeFileSync(file(save.id), json, { flag: 'wx', mode: 0o600 }); touch(file(save.id));
         return save;
+      });
+    },
+    /** Merge only allowlisted evidence under the same lock; never change the query grant. */
+    recordEvidence(id: string, queryRevision: number, evidence: Record<string, string[]>) {
+      if (!validEvidence(evidence)) throw new SaveError('INVALID_SAVE');
+      return locked(() => {
+        if (existsSync(file(id) + '.lock')) throw new SaveError('SAVE_BUSY');
+        const save = readUnlocked(id);
+        const before = [...save.discoveries]; const oldEvidence = structuredClone(save.discoveryEvidence ?? {});
+        if (save.completion || save.played.length || (save.queryRevision ?? save.revision) !== queryRevision) return { save, before, oldEvidence };
+        const merged = structuredClone(oldEvidence);
+        for (const [scope, keys] of Object.entries(evidence)) {
+          const combined = [...new Set([...(merged[scope] ?? []), ...keys])].sort();
+          delete merged[scope]; merged[scope] = combined;
+        }
+        // A1/A2 are independent: retain a completed witness for each even if
+        // many later partial scopes arrive before the other part is found.
+        const scopes = Object.keys(merged);
+        const witnesses = new Set([scopes.find(k => discoveryParts(merged[k]).shape), scopes.find(k => discoveryParts(merged[k]).size)]);
+        while (Object.keys(merged).length > MAX_EVIDENCE_SCOPES) delete merged[Object.keys(merged).find(k => !witnesses.has(k))!];
+        if (Object.keys(merged).length === Object.keys(oldEvidence).length && Object.entries(merged).every(([scope, keys]) => JSON.stringify(keys) === JSON.stringify(oldEvidence[scope]))) return { save, before, oldEvidence };
+        save.queryRevision = save.queryRevision ?? save.revision;
+        save.revision++;
+        save.discoveryEvidence = merged;
+        save.discoveries = [...new Set([...before, ...discoveriesFromBuckets(merged)])].sort();
+        return { save: publish(id, save), before, oldEvidence };
       });
     },
     update(id: string, revision: number, change: (save: GameSave) => void): GameSave {
@@ -121,19 +175,10 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
         if (existsSync(target + '.lock')) throw new SaveError('SAVE_BUSY');
         const save = readUnlocked(id);
         if (save.revision !== revision) throw new SaveError('STALE_SAVE');
-        change(save); save.revision = revision + 1;
+        const queryRevision = save.queryRevision ?? save.revision;
+        change(save); save.revision = revision + 1; save.queryRevision = queryRevision + 1;
         if (save.id !== id) throw new SaveError('INVALID_SAVE');
-        assertOwned();
-        const json = encode(save);
-        // Reserve the full temporary file, not just growth, to bound peak bytes too.
-        makeRoom(0, Buffer.byteLength(json), id);
-        const temporary = target + '.' + randomBytes(8).toString('hex') + '.tmp';
-        try {
-          assertOwned();
-          writeFileSync(temporary, json, { flag: 'wx', mode: 0o600 }); touch(temporary);
-          assertOwned();
-          renameSync(temporary, target); return save;
-        } finally { remove(temporary); }
+        return publish(id, save);
       });
     },
   };

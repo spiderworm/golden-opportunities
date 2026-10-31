@@ -39,8 +39,30 @@ without deleting them. Orphaned atomic-write temporary files are removed under t
 
 Sale facts persist in normalized Sale form and rejoin the unchanged workbook catalog
 when serving a view; generated labels cannot replace catalog facts. Counterfactual lines
-never belong in played[]. The simulation integration will atomically store the selected
-plan, outcome and actual facts together. The store is server-only, not a mutation API.
+never belong in played[].
+
+`game.server.ts` implements synchronous submitPlan(request, plan), getPlan(request), and
+getOutcome(request). Decide and Result now use these functions; the in-memory game stub
+is removed. An existing cookie-owned save is required. No endpoint accepts a save ID,
+seed, revision or view in its body. Submission requires local same-origin POST and the
+engine's canonical plan (zero to two distinct levers). The route bounds and validates the
+form body before calling it.
+
+The engine uses the save's uint32 seed outside the short storage lock. One revision-checked
+atomic write persists the canonical plan, report card, assumptions, discoveries snapshot,
+outcome ID, and actual sale facts together. A concurrent or repeated submission returns
+409 without overwriting the winner. Failed simulation or persistence leaves the player's
+quarter unplayed. Reads never re-simulate: the recorded outcome survives restarts and
+later scoring changes. Persisted outcomes are validated before use by the Result screen.
+The quarter advances to April 1 and becomes query-visible only after commit; an unrelated
+save remains in January. Discoveries use the existing server-owned list; this slice does
+not introduce discovery detection. The same-seed counterfactual's metrics are displayed,
+but its lines never become visible facts.
+
+Commit/failure analytics contain only lever count, unit count, duration and a fixed error
+code. No save ID, seed, outcome, token or player text is recorded. Save-bound query API and
+assistant capabilities are implemented separately in PR #52; these screens and Investigate
+already use the server-derived session view.
 
 ## Query access
 
@@ -51,18 +73,62 @@ The child receives it only through ORBITAL_QUERY_TOKEN; request Host and bodies 
 a token destination or save. The configured endpoint stays loopback-only in the tool server.
 
 Capabilities expire after three minutes, are revoked after provider cleanup, and bind the
-save revision at issuance. A changed revision ends the capability, so compare_data cannot
+query revision at issuance. A changed query revision ends the capability, so compare_data cannot
 combine successful calls across a quarter transition. Invalidated tokens return
 SESSION_ENDED/401 with fixed content-free text. Issuance is capped at four per save and
 64 globally. No capability can fall back to baseline history or choose another save.
 No token, save identifier or query content enters telemetry. The startup global bearer
 has been removed. isLocalBrowserRequest is exported by query/access.server.ts for reuse.
 
-Decide/Result retain their stub until the simulation integration atomically stores actual
-facts and the outcome. Browser and agent query access is ready for those committed facts.
-
 The capability boundary is between local HTTP callers and server-owned save state. It
 is not isolation from code running as the same OS user, which can inspect private
 application files/processes. No public token-minting endpoint exists. Authorization
 is repeated after body arrival, immediately before synchronous query execution, so
 revocation, expiry or revision changes during a slow body cannot produce a response.
+
+
+## Discovery detection
+
+The agreed rule table is in m1-slice section 5 (PR #58). Only successful, nonempty,
+untruncated 2193 views count before play. `/api/query` observes the validated query after
+result serialization; pins and Dewey use the same path. Investigate observes the chart,
+heatmap and title detail only when that panel's query differs from its own default.
+Changing only the main chart grouping never credits the unchanged default heatmap.
+If recording evidence is busy, Investigate skips that write and renders its existing
+session snapshot; a later visit can retry. It emits discovery_record_deferred with
+SAVE_BUSY only, without save or query content. Filter
+option queries never count. The existing tiles contain no AOV or qualifying category
+breakdown, so cannot earn these discoveries. There is no browser claim endpoint.
+
+A1 and B accumulate the same categories across matching measures, non-time breakdowns,
+and non-time filters. A2 needs both quarters or all six July–December months, with matching
+filters. A1 and A2 are independent. C pools nonzero 15% title-month observations across
+views and measures; three distinct months earn it. One or two are partial only. A rate
+filter without month/title evidence does not qualify. Returned-row coverage is required;
+`QueryResult.truncated` prevents awards for limited results without parsing source prose.
+
+Only fixed evidence keys are persisted, in at most 64 SHA-256 scope buckets. Scopes hash
+canonical comparison filters; neither those filters nor title text enter analytics. The
+oldest stored scopes are discarded when the bound is reached, except completed A1/A2
+witnesses. Earned discoveries remain. All evidence shares the existing per-save/global byte budgets and expiry. Atomic
+union under the store lock prevents simultaneous tabs or comparison calls losing evidence.
+Duplicate evidence does not write. Reads after plan commit cannot add discoveries or alter
+the outcome's frozen discovery snapshot.
+
+`revision` advances on every persisted change. `queryRevision` is the query data/view
+version: the dedicated discovery-only operation preserves it, and all other updates bump
+it. Every data/view change must go through the latter path; no caller can opt out. Legacy
+saves default it to revision. Thus discovery metadata cannot cut off the answer which
+found it, while play still invalidates all pre-play capabilities. A stale query snapshot
+cannot add evidence after a data/view change. There is no in-place save migration.
+
+Content-free events: `discovery_found` with id A/B/C only, and `discovery_part_found` with
+A1/A2/C_partial only. Awards emit only after persistence succeeds. No query, filters, save
+ID, token, title or result value is recorded. Analytics failure cannot undo a saved award.
+
+M1 evidence boundary (Goldy): a successful validated bounded individual lookup counts,
+not confirmed browser rendering or a completed Dewey answer. If compare_data's first
+lookup succeeds and its second fails, the first can already contribute evidence although
+the comparison is withheld. This is intentional for M1. Stronger whole-answer semantics
+would require staging evidence and committing it through Sage's answer lifecycle; that
+is a follow-up, not an implicit promise of this endpoint.

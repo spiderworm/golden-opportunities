@@ -175,6 +175,20 @@ describe("the process", () => {
     expect(existsSync(cwd)).toBe(false);
   });
 
+  it("tells Claude Code missing, signed out and failing to start apart (M4)", async () => {
+    const kindOf = async (provider: { ask: (p: { system: string; message: string }, s: AbortSignal) => AsyncIterable<unknown> }) => {
+      try {
+        for await (const _ of provider.ask({ system: "s", message: "m" }, new AbortController().signal));
+        return "answered";
+      } catch (e) {
+        return (e as AssistantUnavailable).kind;
+      }
+    };
+    expect(await kindOf(run("signed-out").provider)).toBe("signed_out");
+    expect(await kindOf(run("crash").provider)).toBe("broken");
+    expect(await kindOf(claudeCodeAssistant({ command: path.join(dir, "no-such-claude"), server }))).toBe("missing");
+  });
+
   it("is killed when it takes too long, and says so", async () => {
     const { provider, report } = run("hang", { timeoutMs: 300 });
     await expect(collect(provider.ask(prompt, new AbortController().signal))).rejects.toThrow(/longer than 0.3 seconds/);

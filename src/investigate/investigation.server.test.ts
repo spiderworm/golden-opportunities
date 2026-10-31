@@ -92,3 +92,15 @@ describe("change", () => {
     expect(change("units", 5, 0)).toBeNull();
   });
 });
+
+it('observes only panels whose queries actually differ from their own default', () => {
+  const observed: Query[] = [];
+  const observe = (query: Query) => observed.push(query);
+  investigate(DEFAULT_STATE, runQuery, view, observe);
+  expect(observed).toEqual([]);
+  investigate({ ...DEFAULT_STATE, by: 'format' }, runQuery, view, observe);
+  expect(observed.map(q => q.by)).toEqual([['format']]);
+  observed.length = 0;
+  investigate({ ...DEFAULT_STATE, measure: 'orders_per_day' }, runQuery, view, observe);
+  expect(observed.map(q => q.by)).toEqual([['month'], ['weekday', 'month']]);
+});

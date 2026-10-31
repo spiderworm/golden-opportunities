@@ -3,6 +3,7 @@ import type { WireEvent } from "../events.ts";
 import { readLines } from "../ui/stream.ts";
 import { fakeAssistant, resetLimitsForTests } from "./assistant.server.ts";
 import { ask, checkDoor, LOOKUP_FAILED, readAsk, Refused, SESSION_ENDED, TIMED_OUT, toWire, UNAVAILABLE } from "./ask.server.ts";
+import { assistantAvailability, OFFLINE, resetAvailabilityForTests } from "./availability.server.ts";
 import { WITHHELD } from "./figures.server.ts";
 import { buildPrompt, questionKind, RULES } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
@@ -227,6 +228,20 @@ describe("answering", () => {
     release();
     await reading;
     expect((await ask(post({ question: "c" }), () => fakeAssistant(), () => {})).status).toBe(200);
+  });
+
+  it("says Dewey is offline, in fixed words, when Claude Code is missing, signed out or failing, and remembers it (M4)", async () => {
+    for (const kind of ["missing", "signed_out", "broken"] as const) {
+      resetAvailabilityForTests();
+      const tracked: [string, unknown][] = [];
+      const offline: AssistantProvider = { name: "x", async *ask() { throw new AssistantUnavailable("Not logged in · Please run /login for someone@example.com", kind); } };
+      const out = await events(await ask(post({ question: "q" }), () => offline, (e, p) => tracked.push([e, p])));
+      expect(out.at(-1)).toEqual({ type: "error", message: OFFLINE });
+      expect(tracked).toContainEqual(["assistant_unavailable", { reason: kind, when: "answer" }]);
+      expect(JSON.stringify(tracked)).not.toMatch(/example|login/);
+      expect(await assistantAvailability({ env: {} })).toEqual({ state: "offline", reason: kind });
+    }
+    resetAvailabilityForTests();
   });
 
   it("ends with an error event the player can read, and frees the slot", async () => {

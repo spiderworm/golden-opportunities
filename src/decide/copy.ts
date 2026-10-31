@@ -27,6 +27,8 @@ export const DECIDE_COPY = {
   holdCourse: "Hold course: the schedule runs as it is.",
   tooMany: "You can choose up to two moves.",
   submit: "Submit plan",
+  /** Chart's proposal, pending Plot: the plan didn't go in (a busy save, storage trouble). */
+  notSubmitted: "Your plan didn't go through. Please submit it again.",
   confirm: "Submit this plan? It runs for the whole quarter and can't be changed.",
   confirmSubmit: "Submit",
   keepInvestigating: "Keep investigating",

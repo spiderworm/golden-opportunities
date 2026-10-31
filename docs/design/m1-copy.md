@@ -27,26 +27,29 @@ Button: `Open the ledgers`
 
 ## 2. Investigation screen
 
+These are the strings Chart will apply to the Investigate screen in a follow-up. They fit the screen's layout as built: its controls, breakdown list and filters. The build still shows earlier placeholders ("By", "All" or "All sales", "Clear all", "Click a bar to filter the screen to it.", the page title "Investigate"), and has no decision link or share line in its tooltip yet. Until the follow-up lands, the build is the thing to change, not this table.
+
 | Element | String |
 | --- | --- |
-| Screen title | `Ledgers: 2193` |
+| Screen title | `Ledgers: 2193` before the quarter is played; `Ledgers: 2193 and Q1 2194` after |
+| Sidebar item | `Investigate` |
 | Metric control label | `Show` |
-| Metrics | `Revenue`, `Units sold`, `Orders`, `Average order value` |
-| Time control | `By month`, `By quarter` |
+| Metrics | `Revenue`, `Units sold`, `Orders`, `Orders per day`, `Average order value`, `Average discount` |
 | Breakdown control label | `Break down by` |
-| Breakdowns | `Nothing`, `Genre`, `Format`, `Publisher`, `Weekday`, `Discount`, `Title` |
-| Filter control label | `Only show` |
-| Quarter filter | `All quarters`, `Q1`, `Q2`, `Q3`, `Q4` |
-| Genre filter | `All genres`, then the genre names exactly as they appear in the data |
-| Discount filter | `Any price`, `Full price`, `{rate}% off` |
+| Breakdowns | `Quarter`, `Month`, `Weekday`, `Genre`, `Format`, `Publisher`, `Discount`, `Title`. There's no "Nothing" option, because the tiles already show the totals. |
+| Filter bar label | `Only show` |
+| Quarter filter | `All quarters`, then `Q1 2193` and so on. The year is always shown, because Q1 2194 appears after play. |
+| Genre, format and publisher filters | `All genres`, `All formats`, `All publishers`, then the names exactly as they appear in the data |
+| Discount filter | `Any price`, `Full price`, `Any discount`, then `{rate}% off` for each rate |
 | Discount breakdown labels | `Full price`, `{rate}% off` |
-| Drilldown hint (tooltip) | `Click to look closer` |
-| Breadcrumb back | `Back to {previous view}` |
+| Drilldown hint (under the chart, and in the tooltip) | `Click to look closer`; on a bar that's already selected, `Click to clear` |
 | Clear filters | `Clear filters` |
 | Empty view | `No sales match these filters.` |
-| Tooltip | `{segment}: {value}` then, on a second line, `{share}% of {period}` |
+| Tooltip (bar charts) | `{segment}: {value}` then, on a second line, `{share}% of {period}`. In "Compare quarters" mode, `{period}` is that bar's quarter. The share line appears only when the bars make up the whole period (an additive measure, with no filters other than the quarter and the breakdown's own), so a percentage is never misleading. |
 | Unknown book group | `Unknown title` |
-| Go to decision | `Write the plan` |
+| Go to decision | `Write the plan` before the plan is in; `See the results` after |
+
+"Any discount" stays because it is neutral: it lists every discounted sale together, without singling out a rate.
 
 ## 3. Decision screen
 

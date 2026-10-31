@@ -1,4 +1,4 @@
-import { useLocation, useNavigation, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigation, useSearchParams } from "react-router";
 
 import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
 import type { ShellHandle } from "~/shell/Shell";
@@ -6,13 +6,15 @@ import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { Route } from "./+types/route";
 import { FilterBar } from "./FilterBar";
-import { DIMENSION_LABELS, MEASURE_LABELS } from "./format";
+import { DIMENSION_LABELS, ledgersTitle, MEASURE_LABELS } from "./format";
 import { Heatmap } from "./Heatmap";
 import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
 import { runQuery } from "~/query/run-query.server";
+import { recordDiscoveries, type ObservedQuery } from "~/game/discoveries.server";
 import { getGameSession } from "~/game/session.server";
+import { QueryError } from "~/query/errors";
 import {
   DEFAULT_STATE,
   filtersExcept,
@@ -30,7 +32,7 @@ import { usePins } from "./pins/usePins";
 import { TitleView } from "./TitleView";
 import styles from "./Investigate.module.css";
 
-export const handle: ShellHandle = { title: "Investigate" };
+export const handle: ShellHandle = { title: ledgersTitle };
 
 
 export function meta({}: Route.MetaArgs) {
@@ -40,19 +42,28 @@ export function meta({}: Route.MetaArgs) {
 export function loader({ request }: Route.LoaderArgs) {
   const started = performance.now();
   const state = parseState(new URL(request.url).searchParams);
-  // The server decides what the player can see; Frank's game state will resolve it per save.
-  const investigation = investigate(state, runQuery, getGameSession(request).queryView);
+  const session = getGameSession(request);
+  const observed: ObservedQuery[] = [];
+  const investigation = investigate(state, runQuery, session.queryView, (query, result) => observed.push({ query, result }));
+  // The observer includes only panels whose query differs from that panel's default.
+  try {
+    recordDiscoveries(session.save, session.queryView, observed);
+  } catch (error) {
+    if (!(error instanceof QueryError) || error.code !== 'RATE_LIMITED') throw error;
+    // Evidence is best effort under contention; the loaded ledgers remain usable.
+    try { trackServer('discovery_record_deferred', { code: 'SAVE_BUSY' }); } catch { /* Rendering is independent of telemetry. */ }
+  }
   trackServer("investigate_loaded", {
     durationMs: Math.round(performance.now() - started),
     measure: state.measure,
     by: state.by,
     filters: Object.keys(state.filters).length,
   });
-  return { state, ...investigation };
+  return { state, ...investigation, planned: session.save.completion !== undefined };
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {
-  const { state, tiles, chart, heatmap, titleView, options } = loaderData;
+  const { state, tiles, chart, heatmap, titleView, options, planned } = loaderData;
   const [, setSearchParams] = useSearchParams();
   const navigation = useNavigation();
   const location = useLocation();
@@ -68,6 +79,15 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   return (
     <div className={styles.layout}>
       <div className={styles.page} data-refreshing={refreshing || undefined} aria-busy={refreshing}>
+        <div className={styles.pageActions}>
+          <Link
+            to={planned ? "/result" : "/decide"}
+            className={styles.planLink}
+            onClick={() => track("investigate_plan_link", { to: planned ? "result" : "decide" })}
+          >
+            {planned ? "See the results" : "Write the plan"}
+          </Link>
+        </div>
         <FilterBar
           filters={state.filters}
           options={options}

@@ -62,21 +62,26 @@ export default function StationScene(props: StationSceneProps) {
       <color attach="background" args={["#03050d"]} />
       <ambientLight intensity={0.6} color="#8c93c8" />
       <directionalLight ref={sun} position={SUN_DIRECTION.clone().multiplyScalar(300).toArray()} intensity={SUN_INTENSITY} color="#fff3e2" />
-      <Sky />
+      <Suspense fallback={null}>
+        <Sky />
+      </Suspense>
       <Spinner station={station} />
       <group ref={station} rotation={[0, STATION_START_ANGLE, 0]}>
-        <Exterior glow={levels.glow} />
-        <group position={BERTH_ORIGIN}>
-          <Interior title={props.featuredTitle} glow={levels.glow} alert={props.alert} shop={shop} />
-          <Shoppers count={levels.shoppers} shop={shop} />
-          <Robots shop={shop} />
-          <DustMotes />
-          <Suspense fallback={null}>
+        {/* The generated models load as the scene starts; everything waits for them together. */}
+        <Suspense fallback={null}>
+          <Exterior glow={levels.glow} />
+          <group position={BERTH_ORIGIN}>
+            <Interior title={props.featuredTitle} glow={levels.glow} alert={props.alert} shop={shop} />
+            <Shoppers count={levels.shoppers} shop={shop} />
+            <Robots shop={shop} />
+            <DustMotes />
             <Props />
-          </Suspense>
-        </group>
+          </group>
+        </Suspense>
       </group>
-      <Shuttles count={levels.shuttles} />
+      <Suspense fallback={null}>
+        <Shuttles count={levels.shuttles} />
+      </Suspense>
       <CameraRig station={station} sun={sun} view={props.view} instant={props.reducedMotion} onSettled={(view) => {
           settled.current = view;
           props.onSettled(view);
