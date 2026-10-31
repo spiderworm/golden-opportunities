@@ -1,6 +1,7 @@
 /* The 2D bosses on the floor, one under each column, as tall as the floor allows: every cutout at one height,
-   so the art's shared scale keeps their sizes, and the drone floats. The open boss steps forward and glows in
-   its tint: transforms and filters only, on the image, so the figure's box (and everything else) never moves. */
+   so the art's shared scale keeps their sizes, and the drone floats. No boss is ever wider than its column
+   (Goldy, 31 Oct). The open boss steps forward and glows in its tint: transforms and filters on the image, and
+   its own cap, so the figure's box (and everything else) never moves. */
 /* Out of the flow, so the cutouts fill the floor rather than size it. */
 .figures {
   position: absolute;
@@ -23,7 +24,7 @@
   width: 96px;
   height: 96px;
   transform-origin: bottom center;
-  transition: transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1), filter 240ms, opacity 240ms;
+  transition: transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1), max-width 240ms cubic-bezier(0.2, 0.7, 0.2, 1), filter 240ms, opacity 240ms;
   opacity: 0.78;
 }
 
@@ -45,6 +46,11 @@
   opacity: 1;
   transform: scale(1.06);
   filter: drop-shadow(0 0 14px var(--tint));
+}
+
+/* Stepping forward stops at the column's edge: a boss already as wide as its column glows but doesn't grow. */
+.figure[data-open] img {
+  max-width: calc(100% / 1.06);
 }
 
 @media (prefers-reduced-motion: reduce) {
