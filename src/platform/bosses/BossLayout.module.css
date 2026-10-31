@@ -158,9 +158,9 @@
   background: var(--color-panel);
   visibility: hidden;
   opacity: 0;
-  transition: opacity 200ms, visibility 0s 200ms;
 }
 
+/* Only the opening panel fades in; the closing one goes at once, so two never overlap. */
 .panel[data-open] {
   visibility: visible;
   opacity: 1;

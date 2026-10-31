@@ -34,6 +34,8 @@ export function BossLayout({ bubbles, open, onSelect, floor, columnRef }: BossLa
                   data-open={i === open || undefined}
                   aria-expanded={i === open}
                   aria-controls={`${id}-${i}`}
+                  // The open panel comes after all five buttons; this reads it out from its own button.
+                  aria-describedby={i === open ? `${id}-${i}` : undefined}
                   // Enter and Space click a button with no pointer: detail is 0.
                   onClick={(event) => onSelect(i, event.detail === 0 ? "key" : "click")}
                 >
