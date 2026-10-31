@@ -9,6 +9,7 @@ all games."). The plan, and why, is in `plans/music-player.md`.
 | `src/queue/` | The order: pinned songs first, once each open; with Shuffle off, the rest in the player's dragged order; with it on (the default), shuffled each open, new songs at the front of the first shuffle; never the same song twice running; exclusions read as each song is picked. |
 | `src/prefs/` | What the player chose, kept on the device: volume, excluded, hearted, their order, Shuffle, and the songs known (so an update's songs are New). |
 | `src/player/` | `createMusic()`: streams the songs through one `<audio>`, through Web Audio when the game gives its context (and its effects), starts on the first touch, pauses out of sight, skips a song that won't load, and sends every choice to the game's `track()`. |
+| `src/player/desktop.ts` | `createDesktopMusic()`: `createMusic()` with a computer's web app defaults (`desktopDefaults`), each overridable: `remember`, `oneTab`, and playing on behind other tabs (paused when hidden only on a touch screen). |
 | `src/tabs/` | `createTabs()`, for `oneTab`: the tab that has the music holds a Web Lock (gone with the tab, even a crashed one); a tab asks it over a BroadcastChannel to stop. |
 | `src/ui/popup.ts` | `createPopup()`: as a song starts, a pill: back, pause, the song's name, heart, next. Tapping the name opens the full player where the pill was (volume, the song playing, the playlist); a tap outside, Escape or the close button shuts it. The game places the pill and says when it must wait; `full(open)` tells it the full player opened, e.g. to pause. `dispose()` when the page or component that holds it goes. |
 | `src/ui/dock.ts` | `createDock(music, root, { layer })`: the pill kept for good in a place of the game's own (Orbital Books' sidebar): the name above back, pause, heart and next; "Music" and a play button before the first song. Its name opens the full player over `layer` (a fixed layer over the page), where the dock is. `compact(true)` keeps only pause / play, for a collapsed sidebar. `dispose()` when it goes. |
@@ -48,13 +49,21 @@ all games."). The plan, and why, is in `plans/music-player.md`.
    behind the lock screen after an update, so feed it Capacitor's `App` state too.
    Where sound needs no tap (the native app), `music.start()` once the game is seen; otherwise
    the first touch starts it.
-6. Optional, for a web game (Orbital Books): `remember: true` carries on after a reload, a closed
-   tab or a crash (the song, the place in it, the queue, a pause the player chose; a session older
-   than 6 hours, or `{ maxAgeMs }`, starts afresh, pinned songs first again). `oneTab: true` plays in
-   one of the game's tabs at a time: a tab opened while another has the music doesn't start by
-   itself; the player's play (or skip, or back) takes it from the other tab, carrying on where that
-   one was; a tab that won't let go keeps it, and the pop-up, dock or panel says so. Where the
-   browser can't tell (no Web Locks, another site), it just plays.
+6. For a web app made for a computer (Orbital Books), make it with `createDesktopMusic()` from
+   `@tellim/music/desktop` instead of `createMusic()`: the same options, with three on by default
+   (`desktopDefaults`). Any you give win.
+   - `remember: true` carries on after a reload, a closed tab or a crash (the song, the place in
+     it, the queue, a pause the player chose; a session older than 6 hours, or `{ maxAgeMs }`,
+     starts afresh, pinned songs first again).
+   - `oneTab: true` plays in one of the app's tabs at a time: a tab opened while another has the
+     music doesn't start by itself; the player's play (or skip, or back) takes it from the other
+     tab, carrying on where that one was; a tab that won't let go keeps it, and the pop-up, dock or
+     panel says so. Where the browser can't tell (no Web Locks, another site), it just plays.
+   - `pauseWhenHidden`: the music pauses while the page is hidden (another tab, another desktop,
+     the app put away), as a game's should, and that's `createMusic()`'s default. On a computer
+     it's a backdrop, so the desktop player plays on behind other tabs, and pauses only on a touch
+     screen (a tablet), where putting the browser away should stop it. `false` or a function asked
+     each time the page hides decides for yourself.
 7. Delete the game's old music code (Waddleberg `src/audio/music.ts` and `src/hud/song-toast.ts`,
    Pizza `src/feel/music.ts`'s playlist; Pizza keeps its focus muffle as `effects`).
 
