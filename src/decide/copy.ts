@@ -22,7 +22,7 @@ export const DECIDE_COPY = {
   briefing: [
     {
       boss: "overall",
-      line: "ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. YOUR SCORE WILL BE YOUR WEAKEST MEASURE. WE CALL THIS TEAMWORK.",
+      line: "ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. YOUR SCORE WILL BE YOUR WEAKEST MEASURE. WE CALL THIS TEAMWORK. MR. ZOOLANDER WOULD CALL IT ONE LOOK.",
       facts: [
         "Your plan runs from ",
         { strong: "January 1 to March 31, 2194" },
@@ -51,7 +51,7 @@ export const DECIDE_COPY = {
     },
     {
       boss: "happiness",
-      line: "THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. THE DRONE DOES NOT SPECULATE.",
+      line: "THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. WE ASSUME THEY COULD NOT TURN LEFT.",
       facts: ["Already scheduled, Book of the Month at ", { strong: "15% off" }, " for the whole month:"],
       picks: true,
     },
