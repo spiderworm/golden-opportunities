@@ -131,8 +131,12 @@ describe("Q2 copy", () => {
     expect(simulateQ2(HOLD, 1, data).outcome.happened).toEqual(["You left the calendar empty: no Book of the Month in April, May or June."]);
     const picks = simulateQ2(plan(QUIET), 1, data).outcome.happened;
     expect(picks).toHaveLength(4);
-    expect(picks[0]).toMatch(/^In April, Land Water Sky Space sold about \d+ extra copies; the discount on \d+ copies that would have sold anyway cost \$[\d,]+\.$/);
     expect(picks[3]).toMatch(/^Gross profit was [+-]\$[\d,]+ compared with holding course\.$/);
+    // Land Water Sky Space sold none in Q2 2193, so nothing would have sold anyway.
+    expect(picks[0]).toMatch(/^In April, Land Water Sky Space sold about \d+ extra copies\. None would have sold without the pick, so every discounted copy was an extra sale\.$/);
+    expect(picks[2]).toMatch(/^In June, Kalakalal Avenue sold about \d+ extra copies; the discount on \d+ cop(y|ies) that would have sold anyway cost \$[\d,]+\.$/);
+    const sellers = simulateQ2(plan(BESTSELLERS), 1, data).outcome.happened;
+    expect(sellers[0]).toMatch(/^In April, The Mallemaroking sold about \d+ extra copies; the discount on [\d,]+ copies that would have sold anyway cost \$[\d,]+\.$/);
     const two = simulateQ2(plan(QUIET, "events"), 1, data).outcome.happened;
     expect(two.at(-1)).toMatch(/^Together, your two moves changed gross profit by/);
     expect(two.filter((s) => s.startsWith("Gross profit"))).toHaveLength(0);
