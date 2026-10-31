@@ -1,6 +1,6 @@
 # M1: a new volume comes out (design draft)
 
-Status: **draft for David's approval.** David on new releases during the quarter: "New book releases seems too exciting to pass up tbh". Given the 3 November deadline, this is the cheap version Goldy recommended: one generated release in the simulated Q1 2194, using the existing levers and no new systems. Figures come from `src/bookshop/data.json`. Everything marked **Generated** is scenario fiction, not data.
+Status: **decided (David, October 31, 2026):** he approved `q2.md` ("127 LGTM"), whose decision 5 ships this volume in Q1 and keeps it selling in Q2, with the goal anchor below. David on new releases during the quarter: "New book releases seems too exciting to pass up tbh". Given the 3 November deadline, this is the cheap version Goldy recommended: one generated release in the simulated Q1 2194, using the existing levers and no new systems. Figures come from `src/bookshop/data.json`. Everything marked **Generated** is scenario fiction, not data.
 
 ## The release
 
