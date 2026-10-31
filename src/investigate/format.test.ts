@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDimensionValue, ledgersTitle, MEASURE_LABELS, periodLabel } from "./format";
+import { formatDimensionShort, formatDimensionValue, ledgersTitle, MEASURE_LABELS, periodLabel } from "./format";
 
 describe("Plot's Investigate words (m1-copy section 2)", () => {
   it("names a span of quarters as the ledgers' title does", () => {
@@ -22,5 +22,14 @@ describe("the ledgers' title", () => {
     expect(ledgersTitle(undefined)).toBe("Investigate");
     expect(ledgersTitle(null)).toBe("Investigate");
     expect(ledgersTitle({ options: { quarter: [] } })).toBe("Investigate");
+  });
+});
+
+describe("month labels", () => {
+  it("name the year in full, and in short whenever both years are in view", () => {
+    expect(formatDimensionValue("month", "2194-01")).toBe("Jan 2194");
+    expect(formatDimensionShort("month", "2193-03", ["2193-01", "2193-02", "2193-03"])).toBe("Mar");
+    expect(formatDimensionShort("month", "2193-03", ["2193-03", "2194-03"])).toBe("Mar 2193");
+    expect(formatDimensionShort("month", "2194-03", ["2193-03", "2194-03"])).toBe("Mar 2194");
   });
 });

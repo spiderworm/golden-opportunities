@@ -17,23 +17,23 @@ function result(rows: QueryResult["rows"], by: ("month" | "genre" | "quarter")[]
 
 describe("categoryModel", () => {
   it("shows a month in scope with no sales as zero", () => {
-    const model = categoryModel(result([{ month: "02", units: 5 }], ["month"]), "month", null, ["01", "02", "03"]);
-    expect(model.categories).toEqual(["01", "02", "03"]);
+    const model = categoryModel(result([{ month: "2193-02", units: 5 }], ["month"]), "month", null, ["2193-01", "2193-02", "2193-03"]);
+    expect(model.categories).toEqual(["2193-01", "2193-02", "2193-03"]);
     expect(model.series[0]!.values).toEqual([0, 5, 0]);
   });
 
   it("leaves averages empty where nothing sold", () => {
-    const model = categoryModel(result([{ month: "02", avg_order_value: 14 }], ["month"], "avg_order_value"), "month", null, ["01", "02"]);
+    const model = categoryModel(result([{ month: "2193-02", avg_order_value: 14 }], ["month"], "avg_order_value"), "month", null, ["2193-01", "2193-02"]);
     expect(model.series[0]!.values).toEqual([null, 14]);
   });
 
   // Audit's case: a pin filtered to March got zero bars for every other month.
   it("doesn't invent months a pin filtered out", () => {
-    const pin: Pin = { id: "p", pinnedBy: "dewey", title: "March", kind: "bar", query: { measure: "units", by: ["month"], filter: { month: ["03"] } } };
+    const pin: Pin = { id: "p", pinnedBy: "dewey", title: "March", kind: "bar", query: { measure: "units", by: ["month"], filter: { month: ["2193-03"] } } };
     const months = pinMonths(pin, QUARTERS);
-    expect(months).toEqual(["03"]);
-    const model = categoryModel(result([{ month: "03", units: 9 }], ["month"]), "month", null, months);
-    expect(model.categories).toEqual(["03"]);
+    expect(months).toEqual(["2193-03"]);
+    const model = categoryModel(result([{ month: "2193-03", units: 9 }], ["month"]), "month", null, months);
+    expect(model.categories).toEqual(["2193-03"]);
     expect(model.series[0]!.values).toEqual([9]);
   });
 
@@ -52,8 +52,8 @@ describe("categoryModel", () => {
   });
 
   it("doesn't pad a truncated month axis with months that may be missing", () => {
-    const model = categoryModel(result([{ month: "01", units: 1 }, { month: "02", units: 2 }], ["month"]), "month", null, ["01", "02", "03"], { limit: 2 });
-    expect(model.categories).toEqual(["01", "02"]);
+    const model = categoryModel(result([{ month: "2193-01", units: 1 }, { month: "2193-02", units: 2 }], ["month"]), "month", null, ["2193-01", "2193-02", "2193-03"], { limit: 2 });
+    expect(model.categories).toEqual(["2193-01", "2193-02"]);
   });
 });
 

@@ -26,9 +26,10 @@ const query: Query = { measure: 'revenue', by: ['quarter'] };
 ## Dimensions and sorting
 
 - quarter: full calendar period (`2193-Q1`), not a sheet label.
-- month: two-digit calendar month (`01`–`12`), across visible years. Checkouts
-  use the same month values but have no year. Use quarter as a second grouping
-  dimension for multi-year sales comparisons when needed.
+- month: year and month (`2193-04`), so a month of 2193 and the same month of
+  the player's 2194 are separate rows. Month filters must name the year; a bare
+  `04` is refused. Checkouts have no year in the data: the snapshot came with
+  the 2193 workbook, so their months are 2193's (`2193-04`).
 - weekday: `Monday` through `Sunday`, computed from the sale's calendar date
   without a timezone shift. Default sorting follows this weekday order.
 - genre, format, publisher, series, title, author: source labels, with author

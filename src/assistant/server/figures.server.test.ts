@@ -181,3 +181,12 @@ describe("the sentence gate", () => {
 it("scrubDeep hides a secret in every string, keys included", () => {
   expect(scrubDeep({ type: "pin", chart: { title: "code abc123" }, list: ["abc123"], abc123: 1 }, "abc123")).toEqual({ type: "pin", chart: { title: "code [hidden]" }, list: ["[hidden]"], "[hidden]": 1 });
 });
+
+describe("months name their year, so like quarters they are period names", () => {
+  const byMonth = ["query_data", { measure: "units", by: ["month"], filter: { quarter: ["2194-Q1"] } }, { ref: "m", complete: true, columns: [], rows: [{ ref: "m1", month: "2194-01", units: 2597 }, { ref: "m2", month: "2194-02", units: 2364 }], total: 4961, source: SOURCE }] as const;
+  it("a month a lookup returned may be named in prose; one it didn't is withheld", () => {
+    const r = refs(byMonth);
+    expect(say("In 2194-01, units were {{m1}}.", r)).toBe("In 2194-01, units were 2,597.");
+    expect(say("In 2193-01, units were {{m1}}.", r)).toBe(WITHHELD);
+  });
+});

@@ -31,7 +31,7 @@ function saleFact(sale: DeepReadonly<SaleLine>, measure: Measure, periods: Set<s
   // Nothing about a hidden sale enters the result, total, provenance, or grouping.
   if (!periods.has(quarter)) return null;
   if (!Number.isFinite(sale.listPrice) || !Number.isFinite(sale.discount) || sale.listPrice < 0 || sale.discount < 0 || sale.discount > 1) throw new QueryError('INVALID_VIEW', 'A visible sale has an invalid price or discount.');
-  return { dimensions: { ...bookDimensions(sale.book), quarter, month: sale.date.slice(5, 7), weekday: WEEKDAYS[date.getUTCDay()],
+  return { dimensions: { ...bookDimensions(sale.book), quarter, month: sale.date.slice(0, 7), weekday: WEEKDAYS[date.getUTCDay()],
     format: sale.format, publisher: sale.publisher.name, discounted: sale.discount > 0 ? 'yes' : 'no', discount_rate: `${Number((sale.discount * 100).toFixed(8))}%` },
     value: (measure === 'revenue' || measure === 'avg_order_value') ? sale.listPrice * (1 - sale.discount) : measure === 'avg_discount' ? sale.discount : 1,
     orderId: sale.orderId, simulated };
@@ -42,7 +42,9 @@ function* facts(query: Query, view: QueryView): Generator<Fact> {
   if (query.measure === 'avg_rating') {
     for (const rating of data.joinedRatings) yield { dimensions: bookDimensions(rating.book), value: rating.rating };
   } else if (query.measure === 'checkouts') {
-    for (const checkout of data.joinedCheckouts) yield { dimensions: { ...bookDimensions(checkout.book), month: String(checkout.month).padStart(2, '0') }, value: checkout.count };
+    // The checkout snapshot has a month but no year (Checkout.year is null). It came with the 2193 workbook, before
+    // any 2194 sale, so its months are 2193's: the same keys as 2193's sales, never mixed with the player's 2194.
+    for (const checkout of data.joinedCheckouts) yield { dimensions: { ...bookDimensions(checkout.book), month: `2193-${String(checkout.month).padStart(2, '0')}` }, value: checkout.count };
   } else {
     const periods = new Set<string>(view.periods);
     for (const sale of data.saleLines) { const fact = saleFact(sale, query.measure, periods, false); if (fact) yield fact; }

@@ -147,8 +147,8 @@ Q2's discoveries (docs/design/q2.md section 6) follow the same pipeline and the 
 gathered only while Q2 is the quarter being planned (`recordEvidence` takes the quarter and
 writes nothing for any other). D is units by month for one busy and one quiet 2193 pick
 (`D_PICKS`), each seen in its pick month and three others, with the edition named by a title
-and format filter or a format breakdown. A month that the view also covers in 2194 mixes the
-years, so it counts only if the row names a 2193 quarter. Weekday and discount filters take a
+and format filter or a format breakdown. Month keys name their year ("2193-04"), so only
+2193's months count. Weekday and discount filters take a
 subset of an edition's sales and don't count. E is average rating by title, 20 titles in one
 view (fewer is E_partial). F is one accepted measure seen for 2193-Q1 and 2194-Q1 in one scope:
 by quarter, or two views that differ only by quarter. Only F reads 2194 rows. Witness scopes for

@@ -34,14 +34,14 @@ describe("investigate state", () => {
   });
 
   it("selects a heatmap cell, and clears it when clicked again", () => {
-    const cell = toggleCell(DEFAULT_STATE, "Monday", "03");
-    expect(cell.filters).toEqual({ weekday: ["Monday"], month: ["03"] });
-    expect(toggleCell(cell, "Monday", "03").filters).toEqual({});
-    expect(toggleCell(cell, "Friday", "03").filters).toEqual({ weekday: ["Friday"], month: ["03"] });
+    const cell = toggleCell(DEFAULT_STATE, "Monday", "2193-03");
+    expect(cell.filters).toEqual({ weekday: ["Monday"], month: ["2193-03"] });
+    expect(toggleCell(cell, "Monday", "2193-03").filters).toEqual({});
+    expect(toggleCell(cell, "Friday", "2193-03").filters).toEqual({ weekday: ["Friday"], month: ["2193-03"] });
   });
 
   it("leaves out a view's own dimensions", () => {
-    expect(filtersExcept({ genre: ["Fiction"], month: ["03"] }, ["genre"])).toEqual({ month: ["03"] });
+    expect(filtersExcept({ genre: ["Fiction"], month: ["2193-03"] }, ["genre"])).toEqual({ month: ["2193-03"] });
   });
 
   it("keeps the discount filter to one choice", () => {
@@ -59,6 +59,8 @@ describe("investigate state", () => {
   it("lists the months in the quarters in scope", () => {
     const visible = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
     expect(monthsInScope(visible)).toHaveLength(12);
-    expect(monthsInScope(visible, ["2193-Q4", "2193-Q1"])).toEqual(["01", "02", "03", "10", "11", "12"]);
+    expect(parseState(new URLSearchParams("month=04&month=2194-02&month=13")).filters.month).toEqual(["2193-04", "2194-02", "13"]);
+    expect(monthsInScope(["2193-Q1", "2194-Q1"])).toEqual(["2193-01", "2193-02", "2193-03", "2194-01", "2194-02", "2194-03"]);
+    expect(monthsInScope(visible, ["2193-Q4", "2193-Q1"])).toEqual(["2193-01", "2193-02", "2193-03", "2193-10", "2193-11", "2193-12"]);
   });
 });

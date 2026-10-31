@@ -27,14 +27,18 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
   discount_rate: "Discount",
 };
 
-/** How a dimension value reads on screen: "2193-Q4" as "Q4 2193", "03" as "Mar". */
+/** How a dimension value reads on screen: "2193-Q4" as "Q4 2193", "2193-03" as "Mar 2193". */
 export function formatDimensionValue(dimension: Dimension, value: string | null | undefined): string {
   if (value === null || value === undefined) return dimension === "title" ? "Unknown title" : "Unknown";
   if (dimension === "quarter") {
     const match = /^(\d+)-(Q[1-4])$/.exec(value);
     return match ? `${match[2]} ${match[1]}` : value;
   }
-  if (dimension === "month") return MONTHS[Number(value) - 1] ?? value;
+  if (dimension === "month") {
+    const match = /^(\d{4})-(\d{2})$/.exec(value);
+    const name = match ? MONTHS[Number(match[2]) - 1] : undefined;
+    return match && name ? `${name} ${match[1]}` : value;
+  }
   if (dimension === "discounted") return value === "yes" ? "Any discount" : "Full price";
   if (dimension === "discount_rate") return parseFloat(value) === 0 ? "Full price" : `${value} off`;
   return value;
@@ -68,8 +72,13 @@ export function ledgersTitle(data: unknown): string {
 export const ADDITIVE: readonly Measure[] = ["revenue", "units", "orders"];
 
 /** Short form for axes and tight spaces: "Q4" rather than "Q4 2193". */
-export function formatDimensionShort(dimension: Dimension, value: string | null | undefined): string {
+export function formatDimensionShort(dimension: Dimension, value: string | null | undefined, among: readonly string[] = []): string {
   if (dimension === "quarter" && value) return value.replace(/^\d+-/, "");
+  // "Mar", or "Mar 2193" when the months beside it span more than one year.
+  if (dimension === "month" && value) {
+    const full = formatDimensionValue(dimension, value);
+    return new Set(among.map((m) => m.slice(0, 4))).size > 1 ? full : full.replace(/ \d{4}$/, "");
+  }
   if (dimension === "weekday" && value) return value.slice(0, 3);
   return formatDimensionValue(dimension, value);
 }

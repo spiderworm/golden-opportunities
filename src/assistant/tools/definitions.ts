@@ -240,7 +240,7 @@ export function describeData() {
       `Group by up to ${QUERY_LIMITS.dimensions} dimensions. Filters are exact, case-sensitive matches; group by a dimension first to see its values.`,
       `At most ${QUERY_LIMITS.rows} rows per query. The total covers every matching fact, before grouping or the row limit.`,
       "Only the periods the player can see are included; asking for others returns nothing.",
-      "Labels: quarter like 2193-Q4; month 01 to 12; weekday Monday to Sunday; discounted yes or no; discount_rate a percent like 0% or 15%. Filter with these exactly; no need to look them up first.",
+      "Labels: quarter like 2193-Q4; month as year and month, like 2193-04 (each year's months are separate); weekday Monday to Sunday; discounted yes or no; discount_rate a percent like 0% or 15%. Filter with these exactly; no need to look them up first.",
     ],
   };
 }

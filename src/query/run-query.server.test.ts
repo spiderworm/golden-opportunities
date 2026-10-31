@@ -36,7 +36,7 @@ describe('querying the source at its actual fact grain', () => {
     expect(ratings.source).toContain('no observed year');
     const checkouts = run({ measure: 'checkouts', by: ['month'] });
     expect(checkouts.total).toBe(13533);
-    expect(checkouts.rows.map(row => row.month)).toEqual(Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')));
+    expect(checkouts.rows.map(row => row.month)).toEqual(Array.from({ length: 12 }, (_, i) => `2193-${String(i + 1).padStart(2, '0')}`));
     expect(checkouts.source).toContain('668 visible matching book/month checkout rows');
   });
   it('filters exact discount rates and retains an independent total before top-N', () => {
@@ -46,9 +46,9 @@ describe('querying the source at its actual fact grain', () => {
     expect(limited.rows[0].quarter).toBe('2193-Q3');
     expect(limited.total).toBeCloseTo(695243.6112, 4);
     expect(limited.source).toContain('Showing 1 of 4 groups');
-    const result = run({ measure: 'units', by: ['discount_rate', 'month'], filter: { discount_rate: ['15%'], month: ['01', '02'] } });
+    const result = run({ measure: 'units', by: ['discount_rate', 'month'], filter: { discount_rate: ['15%'], month: ['2193-01', '2193-02'] } });
     expect(result.rows).toHaveLength(2);
-    expect(result.rows.every(row => row.discount_rate === '15%' && ['01', '02'].includes(row.month!))).toBe(true);
+    expect(result.rows.every(row => row.discount_rate === '15%' && ['2193-01', '2193-02'].includes(row.month!))).toBe(true);
   });
   it('uses calendar exposure, including zero-sale days, for daily order comparisons', () => {
     expect(run({ measure: 'orders_per_day', by: [] }, q1).total).toBeCloseTo(6825 / 90, 10);
@@ -59,7 +59,7 @@ describe('querying the source at its actual fact grain', () => {
     [52, 53, 52, 52, 52, 52, 52].forEach((days, i) => expect(daily.rows[i].orders_per_day).toBeCloseTo(counts.rows[i].orders! / days, 10));
     expect(run({ measure: 'orders_per_day', by: [], filter: { title: ['No matching book'] } }, q1).total).toBe(0);
     expect(run({ measure: 'orders_per_day', by: [], filter: { quarter: ['2193-Q4'] } }, q1).total).toBeNull();
-    expect(run({ measure: 'orders_per_day', by: [], filter: { month: ['02'] } }, q1).source).toContain('28 days');
+    expect(run({ measure: 'orders_per_day', by: [], filter: { month: ['2193-02'] } }, q1).source).toContain('28 days');
   });
   it('counts an order spanning groups once globally, with revenue per order computed independently', () => {
     const view: QueryView = { periods: ['2194-Q1'], includeUndated: false, simulatedSales: [sale({ format: 'Hardcover' }), sale({ id: 'sim:2', format: 'Paperback' })] };

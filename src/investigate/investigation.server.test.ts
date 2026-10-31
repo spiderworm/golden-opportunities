@@ -56,7 +56,7 @@ describe("the title view", () => {
   it("appears for exactly one title, by month, ignoring its own month filter", () => {
     expect(investigate(DEFAULT_STATE, runQuery, view).titleView).toBeNull();
     const title = "Hashtag QuokkaSelfie";
-    const drilled = investigate({ ...DEFAULT_STATE, filters: { title: [title], month: ["12"] } }, runQuery, view);
+    const drilled = investigate({ ...DEFAULT_STATE, filters: { title: [title], month: ["2193-12"] } }, runQuery, view);
     expect(drilled.titleView?.title).toBe(title);
     expect(drilled.titleView?.result.rows.length).toBe(12);
     const twoTitles = investigate({ ...DEFAULT_STATE, filters: { title: [title, "The Thing Is"] } }, runQuery, view);
@@ -72,12 +72,12 @@ describe("buildTile", () => {
   });
 
   it("reports the quarter a month filter allows, and won't compare across it", () => {
-    expect(buildTile("units", byQuarter, quarters, { quarter: ["2193-Q3", "2193-Q4"], month: ["09"] })).toMatchObject({
+    expect(buildTile("units", byQuarter, quarters, { quarter: ["2193-Q3", "2193-Q4"], month: ["2193-09"] })).toMatchObject({
       quarter: "2193-Q3",
       previousQuarter: null,
       value: 9,
     });
-    expect(buildTile("units", byQuarter, quarters, { month: ["03", "06"] })).toMatchObject({ quarter: "2193-Q2", previousQuarter: "2193-Q1", value: 0 });
+    expect(buildTile("units", byQuarter, quarters, { month: ["2193-03", "2193-06"] })).toMatchObject({ quarter: "2193-Q2", previousQuarter: "2193-Q1", value: 0 });
   });
 
   it("has nothing to compare the first quarter with", () => {
