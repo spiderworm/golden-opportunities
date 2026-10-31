@@ -52,6 +52,8 @@
 }
 
 .menu {
+  display: flex;
+  flex-direction: column;
   width: 224px;
   padding: 28px 14px;
   overflow: hidden;
@@ -82,10 +84,14 @@
   white-space: nowrap;
 }
 
+/* On a short window the list scrolls; the music below it stays put. */
 .menuList {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -204,7 +210,17 @@ a.menuItem:hover {
   }
 }
 
-/* The music's pop-up and full player float over the page; the layer itself lets clicks through. */
+/* The music, docked at the bottom of the menu (MusicDock). */
+.musicDock {
+  flex: none;
+  margin-top: 12px;
+}
+
+.musicDock:empty {
+  margin-top: 0;
+}
+
+/* The full player floats over the page; the layer itself lets clicks through. */
 .musicLayer {
   position: fixed;
   inset: 0;
