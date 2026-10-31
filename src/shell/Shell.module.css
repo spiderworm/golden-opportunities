@@ -212,6 +212,19 @@ a.menuItem:hover {
   padding: 20px 36px 40px;
 }
 
+/* A page that is one full scene (Decide): a slim header and thin padding, so the scene gets the window. */
+.main[data-bleed] .header {
+  padding: 12px 24px 4px;
+}
+
+.main[data-bleed] .title {
+  font-size: 22px;
+}
+
+.main[data-bleed] .content {
+  padding: 6px 24px 12px;
+}
+
 @media (max-width: 1200px) {
   .stationDateLabel {
     display: none;

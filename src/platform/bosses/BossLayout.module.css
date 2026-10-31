@@ -1,21 +1,27 @@
-/* The briefing's fixed layout: a room with five equal columns (teaser bubbles over the floor the bosses
-   stand on), then the open boss's panel. Nothing here changes size when a bubble opens; it follows only
-   the scene's own width (a container, so the menu collapsing counts as much as the window). */
+/* The briefing's layout, the scene as the page (David's layout 2): a room filling the window under the
+   header, a frosted banner across its top (the open boss's briefing, then the page's form), five equal
+   columns of teaser tags, and the floor taking the rest, where the bosses stand. Sizes depend only on the
+   scene's own size (a container), so opening a tag or ticking a move moves nothing. */
 .scene {
-  --pad: 20px;
+  --pad: 18px;
   --gap: 14px;
+  /* The room fills the window under the shell's header; a short window keeps a usable minimum. */
+  --scene-height: max(520px, calc(100dvh - 92px));
+  /* The space kept over the tallest boss's head for the tags (Orbit's 3D camera reads it too). */
+  --robot-headroom: 52px;
   container: scene / inline-size;
-  display: grid;
-  gap: 12px;
 }
 
 /* A room a robot would love (David: "a nice, dreary, background that a robot would love but has no
    humanity in it"): Orbit's backdrop (#99), the same room the 3D bosses stand in, its floor line at 72%
    kept under the bosses' feet. A scrim keeps the bubbles and the bosses standing out from it. */
 .room {
+  /* The floor's row takes what the banner and tags leave, so the bosses have a definite height to fill. */
   display: grid;
-  gap: 14px;
-  padding: 16px var(--pad) 0;
+  grid-template-rows: auto minmax(220px, 1fr);
+  gap: 10px;
+  min-height: var(--scene-height);
+  padding: 12px var(--pad) 0;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-panel);
@@ -25,7 +31,37 @@
     #141824;
 }
 
+/* The banner, hung from the ceiling: frosted dark glass over the room, with a scrim so its text keeps AA. */
+.banner {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 8fr);
+  align-items: stretch;
+  gap: 16px;
+  padding: 12px 14px 14px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 16px;
+  background: rgb(13 17 31 / 0.78);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  backdrop-filter: blur(10px) saturate(1.1);
+}
+
+/* The briefing: the heading, then the open boss's panel filling the banner's height (the form sets it). */
+.briefing {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.form {
+  min-width: 0;
+}
+
+/* The tags hang over the top of the floor, above the bosses' heads (the floor keeps --robot-headroom clear). */
 .cast {
+  z-index: 1;
+  grid-area: 2 / 1;
+  align-self: start;
   display: grid;
   grid-template-columns: repeat(var(--count, 5), minmax(0, 1fr));
   gap: var(--gap);
@@ -46,8 +82,8 @@
   position: relative;
   display: grid;
   align-content: start;
-  gap: 6px;
-  padding: 11px 13px;
+  gap: 3px;
+  padding: 7px 10px;
   border: 1px solid var(--color-border);
   border-radius: 14px;
   background: var(--color-panel);
@@ -95,16 +131,35 @@
 
 .name {
   color: var(--tint);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 
 .teaserLine {
   color: var(--color-text-muted);
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: 0.02em;
+}
+
+/* On a short window the tags show the speaker only, to leave the bosses their height; the teaser stays in the
+   button's accessible name. */
+@media (min-height: 820px) {
+  .scene {
+    --robot-headroom: 92px;
+  }
+}
+
+@media (max-height: 819px) {
+  .teaserLine {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 .teaser[data-open] .teaserLine,
@@ -112,43 +167,43 @@
   color: var(--color-text);
 }
 
+/* The floor takes the rest of the room: the bosses (2D figures or the 3D canvas) fill it. */
 .floor {
+  grid-area: 2 / 1;
   position: relative;
+  min-height: 0;
 }
 
 /* The open boss's panel, under the floor, its tail up at its column. */
+/* The open boss's briefing. Every panel is laid out in the same cell, so the box is always the tallest one's
+   size, whichever is open. */
 .panels {
   position: relative;
-  display: grid;
-  margin: 0 var(--pad);
-}
-
-.panels::before {
-  content: "";
-  position: absolute;
-  z-index: 1;
-  top: -7px;
-  left: calc((100% + var(--gap)) * (var(--open, 0) + 0.5) / var(--count, 5) - var(--gap) / 2 - 7px);
-  width: 14px;
-  height: 14px;
-  border-top: 1px solid var(--color-border);
-  border-left: 1px solid var(--color-border);
-  background: var(--color-panel);
-  transform: rotate(45deg);
-  transition: left 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  min-height: 140px;
 }
 
 .panel {
-  grid-area: 1 / 1;
+  position: absolute;
+  inset: 0;
   display: grid;
-  gap: 12px;
+  gap: 6px;
   align-content: start;
-  padding: 16px 18px;
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  background: var(--color-panel);
+  padding-left: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-left: 3px solid var(--tint);
   visibility: hidden;
   opacity: 0;
+}
+
+.panel:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* More below: the panel's foot fades, as a hint to scroll. */
+.panel[data-more] {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
 }
 
 /* Only the opening panel fades in; the closing one goes at once, so two never overlap. */
@@ -156,12 +211,6 @@
   visibility: visible;
   opacity: 1;
   transition: opacity 200ms;
-}
-
-.speech {
-  display: grid;
-  gap: 6px;
-  align-content: start;
 }
 
 .speaker {
@@ -173,18 +222,18 @@
 
 .line {
   margin: 0;
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 600;
   line-height: 1.5;
   letter-spacing: 0.02em;
 }
 
 .facts {
-  padding: 10px 14px;
+  padding: 8px 10px;
   border-radius: 10px;
   background: var(--color-panel-raised);
   color: var(--color-text-muted);
-  font-size: 14px;
+  font-size: 12.5px;
   line-height: 1.5;
 }
 
@@ -202,12 +251,30 @@
   padding-left: 18px;
 }
 
-/* With room, the line and its facts sit side by side, which keeps the panel short. */
-@container scene (min-width: 760px) {
+/* A narrow scene: the banner stacks (the briefing, then the form), and the room grows to hold it. */
+@container scene (max-width: 760px) {
+  .room {
+    height: auto;
+    min-height: var(--scene-height);
+  }
+
+  .banner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .panels {
+    min-height: 0;
+    display: grid;
+  }
+
   .panel {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-    gap: 18px;
+    position: static;
+    grid-area: 1 / 1;
+    overflow: visible;
+  }
+
+  .floor {
+    min-height: 260px;
   }
 }
 
@@ -226,8 +293,7 @@
     hyphens: auto;
   }
 
-  /* Too narrow for the capitals: the bubble shows its speaker, and the panel below starts with the
-     full line. The teaser stays in the button's name for screen readers. */
+  /* Too narrow for the capitals: the tag shows its speaker, and the briefing starts with the full line. The teaser stays in the button's name for screen readers. */
   .teaserLine {
     position: absolute;
     width: 1px;
@@ -252,7 +318,6 @@
 
   .teaser,
   .teaser::after,
-  .panels::before,
   .panel,
   .panel[data-open] {
     transition: none;

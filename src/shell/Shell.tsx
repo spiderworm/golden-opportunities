@@ -16,6 +16,8 @@ export interface ShellHandle {
   title?: string | ((data: unknown) => string | undefined);
   /** False on the screens that deal with the plan itself, where the standing-order strip would only repeat them. */
   standingOrder?: false;
+  /** A page that is one full scene (Decide): the content area keeps only thin padding, so the scene can fill the window. */
+  bleed?: true;
 }
 
 export interface ShellProps {
@@ -36,7 +38,9 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
   const title = usePageTitle();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const stripHidden = useMatches().some((m) => (m.handle as ShellHandle | undefined)?.standingOrder === false);
+  const matches = useMatches();
+  const stripHidden = matches.some((m) => (m.handle as ShellHandle | undefined)?.standingOrder === false);
+  const bleed = matches.some((m) => (m.handle as ShellHandle | undefined)?.bleed);
   const [memoOpen, setMemoOpen] = useState(false);
   // Once per visit at most, even if recording it failed; the save keeps it to once per game.
   const arrived = useRef(false);
@@ -135,7 +139,7 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
         </div>
       </aside>
 
-      <div className={styles.main}>
+      <div className={styles.main} data-bleed={bleed || undefined}>
         {/* The full player floats over the page from here; the dock is in the menu. */}
         <div ref={musicLayer} className={styles.musicLayer} />
         <header className={styles.header}>
