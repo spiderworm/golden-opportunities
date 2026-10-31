@@ -10,12 +10,13 @@ function strip(html: string) {
   return start < 0 ? "" : html.slice(start, html.indexOf("</aside>", start));
 }
 
-function renderAt(path: string, standingOrder = { seen: false, submitted: false }) {
+type Order = { seen: boolean; submitted: boolean; quarter?: "2194-Q1" | "2194-Q2" | null };
+function renderAt(path: string, standingOrder: Order = { seen: false, submitted: false }, q1?: { score: number; grade: "D"; binding: ["culture"] }) {
   const Stub = createRoutesStub([
     {
       path: "/",
       Component: () => (
-        <Shell stationDate="2194-01-01" notifications={[]} standingOrder={standingOrder} track={() => {}}>
+        <Shell stationDate="2194-01-01" notifications={[]} standingOrder={standingOrder} q1={q1} track={() => {}}>
           <p>page</p>
         </Shell>
       ),
@@ -64,5 +65,21 @@ describe("the standing order", () => {
     // The joke stays in the boss's line; the memo's facts are plain.
     const memo = html.slice(html.indexOf("LARKSPUR"));
     expect(memo).not.toContain("ZOOLANDER");
+  });
+
+  it("after Q1, carries Q2's order and memo, which quotes Q1's report card", () => {
+    const html = renderAt("/", { seen: false, submitted: false, quarter: "2194-Q2" }, { score: 66, grade: "D", binding: ["culture"] });
+    expect(strip(html)).toContain("Standing order from the Commerce Office: the Book of the Month calendar for Q2 is empty. Submit your picks and a plan for Q2 2194.");
+    expect(strip(html)).toContain("Standing order: Q2 picks needed. Plan due for Q2 2194.");
+    expect(html).toContain("THE FIRST QUARTER HAS BEEN FILED.");
+    expect(html).toContain("April 1, 2194");
+    expect(html).toContain("First-quarter overall score: 66 (D). Lowest measure: Culture.");
+    expect(html).not.toContain("41%");
+    // Q2's plan is in: no order, and no memo.
+    expect(renderAt("/", { seen: true, submitted: true, quarter: "2194-Q2" }, { score: 66, grade: "D", binding: ["culture"] })).not.toContain('aria-label="Standing order"');
+    // Without Q1's card to quote, Q2's memo isn't shown at all, never Q1's in its place.
+    const blind = renderAt("/", { seen: false, submitted: false, quarter: "2194-Q2" });
+    expect(blind).not.toContain('aria-label="Standing order"');
+    expect(blind).not.toContain("<dialog");
   });
 });
