@@ -109,7 +109,8 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
   );
 
   const chart = rendered(chartQuery(state), chartQuery(DEFAULT_STATE));
-  const heatmap = rendered(heatmapQuery(state), heatmapQuery(DEFAULT_STATE));
+  // Always-visible context, never discovery evidence (m1-slice section 5).
+  const heatmap = run(heatmapQuery(state));
 
   const title = state.filters.title?.length === 1 ? state.filters.title[0]! : null;
   const titleView = title

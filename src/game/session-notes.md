@@ -91,9 +91,11 @@ revocation, expiry or revision changes during a slow body cannot produce a respo
 
 The agreed rule table is in m1-slice section 5 (PR #58). Only successful, nonempty,
 untruncated 2193 views count before play. `/api/query` observes the validated query after
-result serialization; pins and Dewey use the same path. Investigate observes the chart,
-heatmap and title detail only when that panel's query differs from its own default.
-Changing only the main chart grouping never credits the unchanged default heatmap.
+result serialization; pins and Dewey use the same path. Investigate observes the chart
+and title detail only when that panel's query differs from its own default.
+The heatmap never supplies discovery evidence, even after measure or filter changes
+(PR #63). B requires an explicit weekday chart comparison or a qualifying API lookup
+(including Dewey and pins).
 If recording evidence is busy, Investigate skips that write and renders its existing
 session snapshot; a later visit can retry. It emits discovery_record_deferred with
 SAVE_BUSY only, without save or query content. Filter

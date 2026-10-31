@@ -102,5 +102,8 @@ it('observes only panels whose queries actually differ from their own default', 
   expect(observed.map(q => q.by)).toEqual([['format']]);
   observed.length = 0;
   investigate({ ...DEFAULT_STATE, measure: 'orders_per_day' }, runQuery, view, observe);
-  expect(observed.map(q => q.by)).toEqual([['month'], ['weekday', 'month']]);
+  expect(observed.map(q => q.by)).toEqual([['month']]);
+  observed.length = 0;
+  investigate({ ...DEFAULT_STATE, filters: { title: ['Hashtag QuokkaSelfie'], discount_rate: ['15%'] } }, runQuery, view, observe);
+  expect(observed.map(q => q.by)).toEqual([['month'], ['month']]);
 });
