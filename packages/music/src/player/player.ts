@@ -9,15 +9,21 @@
 // Audio, so the game can put its own effects after it (Pizza's muffle while
 // cutting) and the volume is a gain node; without one, the element's own
 // volume.
+//
+// A game may have it carry on after a reload, a closed tab or a crash
+// (`remember`), and play in one of its tabs at a time (`oneTab`, ../tabs);
+// Orbital Books does both (David, 30 Oct 2026).
 
-import { createQueue, type Song } from "../queue/queue.ts";
+import { createQueue, type QueuePlace, type Song } from "../queue/queue.ts";
+import { createTabs, type TabsOptions } from "../tabs/tabs.ts";
 import { loadPrefs, meetSongs, ordered, savePrefs, type Prefs } from "../prefs/prefs.ts";
 
 export type { Song };
 type Props = Record<string, string | number | boolean>;
 
-/** Why a song started: by itself, or the player's skip or back. */
-export type Cause = "auto" | "skip" | "back";
+/** Why a song started: by itself, the player's skip or back, or carried on
+ * from before a reload (`remember`). */
+export type Cause = "auto" | "skip" | "back" | "restored";
 /** Where the player did it: the pop-up, the dock (the pop-up kept in a
  * game's sidebar) or the Settings panel. */
 export type Where = "popup" | "dock" | "settings";
@@ -46,7 +52,20 @@ export type MusicOptions = {
   /** a save that failed (the game's own report) */
   saveFailed?: (key: string, error: unknown) => void;
   storage?: Pick<Storage, "getItem" | "setItem">;
+  /** Carry on after a reload, a closed tab or a crash: the song, the place
+   * in it, the queue, and a pause the player chose. A session last saved
+   * longer ago than `maxAgeMs` (true: 6 hours) starts afresh, as an app
+   * opening does: the pinned songs first again. */
+  remember?: boolean | { maxAgeMs: number };
+  /** Play in one of the game's tabs at a time (../tabs): a tab opened while
+   * another has the music doesn't start by itself, and the player's play
+   * takes it from the other tab, or says it can't. */
+  oneTab?: boolean | TabsOptions;
 };
+
+/** The place saved for `remember`. */
+type Session = { at: number; id: string; t: number; paused: boolean; place: QueuePlace };
+const SIX_HOURS = 6 * 60 * 60 * 1000;
 
 export type MusicState = {
   song: Song | null;
@@ -54,6 +73,8 @@ export type MusicState = {
   volume: number;
   /** the game has hushed it (setQuiet) */
   quiet: boolean;
+  /** another tab of the game has the music (oneTab): play takes it */
+  elsewhere: boolean;
 };
 
 export function createMusic(o: MusicOptions) {
@@ -72,6 +93,7 @@ export function createMusic(o: MusicOptions) {
     order: () => ordered(prefs, ids),
     shuffled: () => prefs.shuffle,
   });
+  const tabs = o.oneTab && typeof window !== "undefined" ? createTabs(o.key, typeof o.oneTab === "object" ? o.oneTab : {}) : null;
   const deck = new Audio();
   deck.preload = "auto";
   let wired: { gain: GainNode } | null = null;
@@ -81,6 +103,8 @@ export function createMusic(o: MusicOptions) {
   let loaded = false; // the deck has the current song's file
   let started = false; // the player has touched the page
   let paused = false; // the player paused it
+  let yielded = false; // another tab has the music (oneTab): only the player's play takes it
+  let resumeAt = 0; // seconds into the song restored (remember)
   let quiet = false; // the game hushed it
   // Why the game is away, by reason: no sound starts while any is set.
   // Visibility alone misses some: after an update, Android relaunches the
@@ -93,8 +117,8 @@ export function createMusic(o: MusicOptions) {
   const songListeners = new Set<(song: Song, cause: Cause) => void>();
 
   const level = () => prefs.volume ** 2 * loudness; // squared, so the slider feels even
-  const audible = () => prefs.volume > 0 && !quiet && !paused && started && !away.size && !(typeof document !== "undefined" && document.hidden);
-  const state = (): MusicState => ({ song, playing: !deck.paused && !!song, volume: prefs.volume, quiet });
+  const audible = () => prefs.volume > 0 && !quiet && !paused && !yielded && started && !away.size && !(typeof document !== "undefined" && document.hidden);
+  const state = (): MusicState => ({ song, playing: !deck.paused && !!song, volume: prefs.volume, quiet, elsewhere: yielded });
   const changed = () => listeners.forEach((f) => f(state()));
 
   function wire() {
@@ -122,13 +146,104 @@ export function createMusic(o: MusicOptions) {
   // play (or carry on with) the current song, if it may be heard
   function play() {
     if (!audible() || wait) return;
+    // one tab at a time: not if another has it; take it if it's free (in
+    // this same tap: the lock follows, and if another tab won after all, stop)
+    if (tabs && !tabs.mine()) {
+      if (tabs.elsewhere()) return yieldTo("held_back");
+      void tabs.claimIfFree().then((ok) => ok || yieldTo("held_back"));
+    }
     if (!song) return advance("auto", o.leadMs ?? 0);
     wire();
     if (!loaded) {
       deck.src = o.base + song.file;
       loaded = true;
+      if (resumeAt) {
+        const at = resumeAt;
+        deck.addEventListener("loadedmetadata", () => (deck.currentTime = at), { once: true });
+      }
+      resumeAt = 0;
     }
     deck.play().catch(() => {});
+  }
+
+  // another tab has the music: stop, and wait for the player's own play
+  function yieldTo(why: "held_back" | "taken") {
+    if (yielded) return;
+    yielded = true;
+    deck.pause();
+    track("music_other_tab", { action: why });
+    changed();
+  }
+  tabs?.onTaken(() => {
+    remember(); // the place, as this tab leaves it
+    yieldTo("taken");
+  });
+
+  // remember: where it is, saved by the tab that has the music
+  const rememberFor = o.remember ? (typeof o.remember === "object" ? o.remember.maxAgeMs : SIX_HOURS) : 0;
+  const sessionKey = `${o.key}.music.session`;
+  function remember() {
+    if (!rememberFor || !song || (tabs && !tabs.mine() && !paused)) return;
+    const s: Session = { at: Date.now(), id: song.id, t: Math.round(deck.currentTime || resumeAt), paused, place: queue.place() };
+    try {
+      store?.setItem(sessionKey, JSON.stringify(s));
+    } catch (error) {
+      o.saveFailed?.(sessionKey, error);
+    }
+  }
+  // carry on from the place saved (on load, and from the tab whose music
+  // this one takes: it saves its place as it lets go)
+  function restore() {
+    try {
+      const s = JSON.parse(store?.getItem(sessionKey) ?? "null") as Session | null;
+      if (s && Date.now() - s.at < rememberFor && o.songs.some((x) => x.id === s.id)) {
+        queue.resume(s.place);
+        if (queue.current()?.id === s.id) {
+          song = queue.current();
+          cause = "restored";
+          announced = null;
+          loaded = false;
+          resumeAt = Math.max(0, Number(s.t) || 0);
+          paused = s.paused === true;
+        }
+      }
+    } catch {}
+  }
+  if (rememberFor) {
+    restore();
+    let last = 0;
+    deck.addEventListener("timeupdate", () => {
+      if (Date.now() - last < 5000) return;
+      last = Date.now();
+      remember();
+    });
+    if (typeof addEventListener !== "undefined") addEventListener("pagehide", remember);
+  }
+
+  // the player's own play (or skip, or back): take the music from another
+  // tab first; false if it wouldn't let go
+  async function take(): Promise<boolean> {
+    if (!tabs || tabs.mine()) return true;
+    const was = yielded || tabs.elsewhere();
+    if (!(await tabs.claim())) {
+      track("music_other_tab", { action: "blocked" });
+      blockedListeners.forEach((f) => f());
+      return false;
+    }
+    if (was) track("music_other_tab", { action: "took_over" });
+    yielded = false;
+    // carry on where the other tab was, if this one hasn't played yet
+    if (was && rememberFor && (!loaded || deck.paused)) {
+      restore();
+      paused = false;
+    }
+    return true;
+  }
+  const blockedListeners = new Set<() => void>();
+  // do it now, or once the music is taken from another tab
+  function withMusic(f: () => void): Promise<boolean> {
+    if (!tabs || tabs.mine()) return (f(), Promise.resolve(true));
+    return take().then((ok) => (ok && f(), ok));
   }
 
   /** the end of the current song, for analytics */
@@ -178,6 +293,7 @@ export function createMusic(o: MusicOptions) {
       save();
     }
     track("song_started", { id: song.id, pinned: !!song.pinned, index: queue.count(), cause, ...(by ? { where: by } : {}) });
+    remember();
     songListeners.forEach((f) => f(song!, cause));
   });
   deck.addEventListener("pause", changed);
@@ -226,32 +342,50 @@ export function createMusic(o: MusicOptions) {
       paused = true;
       deck.pause();
       track("music_paused", { id: song.id, where });
+      remember();
+      tabs?.release();
       changed();
     },
-    resume(where: Where) {
-      if (!paused) return;
-      paused = false;
-      if (song) track("music_resumed", { id: song.id, where });
-      play();
-      changed();
+    /** the player's play: after their pause, or with another tab's music
+     * (oneTab), which it takes; false if that tab wouldn't let go */
+    resume(where: Where): Promise<boolean> {
+      if (!paused && !yielded) return Promise.resolve(true);
+      return withMusic(() => {
+        started = true;
+        if (paused && song) track("music_resumed", { id: song.id, where });
+        paused = false;
+        play();
+        remember();
+        changed();
+      });
     },
-    skip(where: Where) {
-      finish("skipped");
-      paused = false;
-      advance("skip", 0, undefined, where);
+    skip(where: Where): Promise<boolean> {
+      return withMusic(() => {
+        finish("skipped");
+        paused = false;
+        advance("skip", 0, undefined, where);
+      });
     },
     /** more than 3 s in: the song from the top; else the one before */
-    back(where: Where) {
-      paused = false;
-      if (song && (deck.currentTime > 3 || queue.count() < 2)) {
-        track("song_restarted", { id: song.id, at_s: Math.round(deck.currentTime), where });
-        deck.currentTime = 0;
-        play();
-        changed();
-        return;
-      }
-      finish("back");
-      advance("back", 0, undefined, where);
+    back(where: Where): Promise<boolean> {
+      return withMusic(() => {
+        paused = false;
+        if (song && (deck.currentTime > 3 || queue.count() < 2)) {
+          track("song_restarted", { id: song.id, at_s: Math.round(deck.currentTime), where });
+          deck.currentTime = 0;
+          play();
+          changed();
+          return;
+        }
+        finish("back");
+        advance("back", 0, undefined, where);
+      });
+    },
+    /** another tab wouldn't let go of the music when the player asked (oneTab):
+     * the pop-up and panel say so */
+    onBlocked(f: () => void) {
+      blockedListeners.add(f);
+      return () => void blockedListeners.delete(f);
     },
 
     /** the music volume, 0 (Mute) to 1: the game's music volume setting */

@@ -42,3 +42,25 @@ test("at full volume it's the loudness, and Mute is silent", () => {
   m.setVolume(0);
   assert.equal(FakeAudio.made.at(-1)!.volume, 0);
 });
+
+test("remember: after a reload it carries on with the same song, and a pause the player chose holds", () => {
+  const m = new Map<string, string>();
+  const storage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  const list = ["a", "b", "c", "d"].map((id) => ({ id, file: id + ".mp3", title: id.toUpperCase() }));
+  const first = createMusic({ key: "r", songs: list, base: "", storage, remember: true });
+  first.start();
+  const playing = first.state().song!.id;
+  FakeAudio.made.at(-1)!.currentTime = 42;
+  first.pause("dock");
+
+  const again = createMusic({ key: "r", songs: list, base: "", storage, remember: true });
+  assert.equal(again.state().song?.id, playing);
+  again.start(); // a tap: but the player paused it
+  assert.equal(FakeAudio.made.at(-1)!.src, "");
+  assert.equal(JSON.parse(m.get("r.music.session")!).t, 42);
+
+  // an old session starts afresh
+  m.set("r.music.session", JSON.stringify({ ...JSON.parse(m.get("r.music.session")!), at: Date.now() - 7 * 3600_000 }));
+  const later = createMusic({ key: "r", songs: list, base: "", storage, remember: true });
+  assert.equal(later.state().song, null);
+});

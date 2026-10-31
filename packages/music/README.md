@@ -9,6 +9,7 @@ all games."). The plan, and why, is in `plans/music-player.md`.
 | `src/queue/` | The order: pinned songs first, once each open; with Shuffle off, the rest in the player's dragged order; with it on (the default), shuffled each open, new songs at the front of the first shuffle; never the same song twice running; exclusions read as each song is picked. |
 | `src/prefs/` | What the player chose, kept on the device: volume, excluded, hearted, their order, Shuffle, and the songs known (so an update's songs are New). |
 | `src/player/` | `createMusic()`: streams the songs through one `<audio>`, through Web Audio when the game gives its context (and its effects), starts on the first touch, pauses out of sight, skips a song that won't load, and sends every choice to the game's `track()`. |
+| `src/tabs/` | `createTabs()`, for `oneTab`: the tab that has the music holds a Web Lock (gone with the tab, even a crashed one); a tab asks it over a BroadcastChannel to stop. |
 | `src/ui/popup.ts` | `createPopup()`: as a song starts, a pill: back, pause, the song's name, heart, next. Tapping the name opens the full player where the pill was (volume, the song playing, the playlist); a tap outside, Escape or the close button shuts it. The game places the pill and says when it must wait; `full(open)` tells it the full player opened, e.g. to pause. `dispose()` when the page or component that holds it goes. |
 | `src/ui/dock.ts` | `createDock(music, root, { layer })`: the pill kept for good in a place of the game's own (Orbital Books' sidebar): the name above back, pause, heart and next; "Music" and a play button before the first song. Its name opens the full player over `layer` (a fixed layer over the page), where the dock is. `compact(true)` keeps only pause / play, for a collapsed sidebar. `dispose()` when it goes. |
 | `src/ui/panel.ts` | `createMusicPanel()`: for Settings. The music volume (this is the game's music volume setting), the song playing, and a Playlist row that opens the playlist in its place. |
@@ -47,18 +48,27 @@ all games."). The plan, and why, is in `plans/music-player.md`.
    behind the lock screen after an update, so feed it Capacitor's `App` state too.
    Where sound needs no tap (the native app), `music.start()` once the game is seen; otherwise
    the first touch starts it.
-6. Delete the game's old music code (Waddleberg `src/audio/music.ts` and `src/hud/song-toast.ts`,
+6. Optional, for a web game (Orbital Books): `remember: true` carries on after a reload, a closed
+   tab or a crash (the song, the place in it, the queue, a pause the player chose; a session older
+   than 6 hours, or `{ maxAgeMs }`, starts afresh, pinned songs first again). `oneTab: true` plays in
+   one of the game's tabs at a time: a tab opened while another has the music doesn't start by
+   itself; the player's play (or skip, or back) takes it from the other tab, carrying on where that
+   one was; a tab that won't let go keeps it, and the pop-up, dock or panel says so. Where the
+   browser can't tell (no Web Locks, another site), it just plays.
+7. Delete the game's old music code (Waddleberg `src/audio/music.ts` and `src/hud/song-toast.ts`,
    Pizza `src/feel/music.ts`'s playlist; Pizza keeps its focus muffle as `effects`).
 
 ## Analytics
 
 All through the game's `track()`:
-`song_started {id, pinned, index, cause: auto|skip|back, where?}`,
+`song_started {id, pinned, index, cause: auto|skip|back|restored, where?}`,
 `song_ended {id, how: finished|skipped|back, at_s, length_s}`, `song_restarted {id, at_s, where}`,
 `music_paused` / `music_resumed {id, where}`, `song_excluded` / `song_included {id, pinned, where}`,
 `song_hearted` / `song_unhearted {id, where}`, `song_moved {id, from, to, where}`, `music_shuffle_set {on, where}`,
 `music_player_opened {from}` (the full player from the pop-up or dock, or the playlist in Settings),
 `music_volume_set {level, where}` (once the slider is let go). `where` is `popup`, `dock` or `settings`.
+With `oneTab`, `music_other_tab {action}`: `held_back` (another tab has it, so this one didn't start),
+`taken` (another tab took it), `took_over` (this tab took it), `blocked` (the other tab wouldn't let go).
 
 ## Tests
 

@@ -124,3 +124,19 @@ test("prefs: the order keeps the player's songs where they put them, new ones af
   assert.deepEqual(ordered({ ...p, order: ["c", "gone", "a"] }, ["a", "b", "c"]), ["c", "a", "b"]);
   assert.equal(p.shuffle, true);
 });
+
+test("a saved place carries on: the same song, the pinned ones still spent, the same round", async () => {
+  const { createQueue } = await import("./queue.ts");
+  const list = [{ id: "theme", file: "", title: "", pinned: true }, ...["a", "b", "c", "d"].map((id) => ({ id, file: "", title: "" }))];
+  const first = createQueue(list, { excluded: () => false });
+  first.next();
+  first.next();
+  first.next();
+  const place = JSON.parse(JSON.stringify(first.place()));
+  const again = createQueue(list, { excluded: () => false });
+  again.resume(place);
+  assert.equal(again.current()?.id, first.current()?.id);
+  const rest = [again.next()!.id, again.next()!.id];
+  assert.deepEqual(rest, [first.next()!.id, first.next()!.id]);
+  assert.ok(!rest.includes("theme"));
+});

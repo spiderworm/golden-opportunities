@@ -39,12 +39,22 @@
 /* The dock (dock.ts): the pill kept in the game's place for it, the name
    on its own row above the controls so it fits a sidebar. Compact, only
    pause / play. */
-.music-popup.music-dock { position: static; transform: none; transition: none; max-width: none;
+.music-popup.music-dock { position: relative; inset: auto; transform: none; transition: none; max-width: none;
   display: grid; grid-template-columns: repeat(4, 1fr); justify-items: center; box-shadow: none; border-radius: 16px; }
 .music-dock > .music-popup-name { grid-column: 1 / -1; order: -1; justify-self: stretch; }
 .music-dock > [data-do]:disabled { opacity: 0.4; cursor: default; }
 .music-dock.music-compact { grid-template-columns: 1fr; border-radius: 22px; }
 .music-dock.music-compact > :not([data-do="play"]) { display: none; }
+
+/* Another tab wouldn't let go of the music: a note over the pill, or under
+   the song in the full player and Settings. */
+.music-notice { margin: 0; color: var(--music-fg); font-size: 13px; line-height: 18px; }
+.music-notice[hidden] { display: none; }
+.music-popup > .music-notice, .music-notice.music-floating { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); min-width: 220px; padding: 8px 12px; box-sizing: border-box;
+  background: var(--music-bg); border: 1px solid var(--music-border); border-radius: 12px; }
+.music-notice.music-floating { right: auto; width: 260px; z-index: 7; }
+.music-now { flex-wrap: wrap; }
+.music-now > .music-notice { flex-basis: 100%; color: var(--music-muted); }
 
 /* The full player, opened from the pop-up where it was (popup.ts sets its
    place and height); its body scrolls. */

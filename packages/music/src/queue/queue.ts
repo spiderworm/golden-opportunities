@@ -36,6 +36,9 @@ export type QueueOptions = {
   shuffled?: () => boolean;
 };
 
+/** Where the queue is, to carry on from after a reload (the player's `remember`). */
+export type QueuePlace = { played: string[]; ahead: string[]; pinned: string[]; round: string[]; rounds: number };
+
 export function shuffle<T>(items: T[], random = Math.random): T[] {
   const a = [...items];
   for (let i = a.length - 1; i > 0; i--) {
@@ -117,5 +120,17 @@ export function createQueue(songs: Song[], o: QueueOptions) {
     current: (): Song | null => (played.length ? byId.get(played.at(-1)!)! : null),
     /** how many songs have started this session (counting the one playing) */
     count: () => played.length,
+    /** where it is now, to save */
+    place: (): QueuePlace => ({ played: played.slice(-50), ahead: [...ahead], pinned: [...pinned], round: [...round], rounds }),
+    /** carry on from a saved place: the last song played is the one playing.
+     * Songs the game no longer has are dropped. */
+    resume(p: QueuePlace) {
+      const known = (ids: unknown) => (Array.isArray(ids) ? ids.filter((id): id is string => byId.has(id)) : []);
+      played.splice(0, played.length, ...known(p.played));
+      ahead.splice(0, ahead.length, ...known(p.ahead));
+      pinned.splice(0, pinned.length, ...known(p.pinned).filter((id) => byId.get(id)!.pinned));
+      round = known(p.round);
+      rounds = Number.isInteger(p.rounds) ? p.rounds : 1;
+    },
   };
 }

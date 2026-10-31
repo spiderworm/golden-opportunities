@@ -17,7 +17,7 @@
 
 import type { Music, Song, Where } from "../player/player.ts";
 import { icons } from "./icons.ts";
-import { fullName, heartButton, nowPlaying, playButton, playlist, volume } from "./parts.ts";
+import { fullName, heartButton, nowPlaying, otherTabNotice, playButton, playlist, volume } from "./parts.ts";
 
 export type PopupHost = {
   /** a card or moment the pop-up mustn't cover is up */
@@ -59,6 +59,16 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
   const el = all[all.length - 1];
   const button = (d: string) => el.querySelector<HTMLButtonElement>(`[data-do="${d}"]`)!;
   const named = fullName(el.querySelector(".music-popup-name")!, el.querySelector(".music-title")!);
+  // the dock's note floats over the page, by it (a sidebar would clip it)
+  const said = docked
+    ? otherTabNotice(layer, doc, (note) => {
+        const at = el.getBoundingClientRect();
+        const box = layer.getBoundingClientRect();
+        note.style.left = `${at.left - box.left}px`;
+        note.classList.add("music-floating");
+        note.style.bottom = `${box.bottom - at.top + 6}px`;
+      })
+    : otherTabNotice(el, doc);
   let waiting = false;
   let timer = 0;
   let shown = false;
@@ -171,10 +181,11 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     const d = t.closest<HTMLElement>("[data-do]")?.dataset.do;
     const song = music.state().song;
     if (!d) return;
-    if (d === "play" && starting) return;
-    if (d === "back") music.back(where);
-    if (d === "skip") music.skip(where);
-    if (d === "play") music.state().playing ? music.pause(where) : music.resume(where);
+    // (unless another tab has the music: then this play is the player's own, and takes it)
+    if (d === "play" && starting && !music.state().elsewhere) return;
+    if (d === "back") void music.back(where).then(said);
+    if (d === "skip") void music.skip(where).then(said);
+    if (d === "play") music.state().playing ? music.pause(where) : void music.resume(where).then(said);
     if (d === "heart" && song) music.setHearted(song.id, !music.hearted(song.id), where);
     linger(TOUCHED_MS);
   });
@@ -216,6 +227,7 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
       offState();
       doc.removeEventListener("keydown", escape);
       doc.removeEventListener("visibilitychange", away);
+      said.note.remove();
       el.remove();
     },
   };
