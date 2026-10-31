@@ -107,3 +107,23 @@ test("without Web Locks, nothing is known: it just plays", async () => {
   assert.equal(t.elsewhere(), false);
   assert.equal(await t.claim(), true);
 });
+
+test("a tab that shows gets the music once the hidden one lets go, without taking it", async () => {
+  const b = browser();
+  const one = b.tab();
+  const two = b.tab();
+  let stopped = false;
+  one.onTaken(() => (stopped = true));
+  await one.claimIfFree();
+  await tick();
+  const waiting = two.claimWhenFree();
+  one.release(); // hidden: it lets go
+  assert.equal(await waiting, true);
+  assert.equal(stopped, false);
+  assert.equal(two.mine(), true);
+
+  // one playing on out of sight keeps it
+  const three = b.tab();
+  assert.equal(await three.claimWhenFree(), false);
+  assert.equal(two.mine(), true);
+});
