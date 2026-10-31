@@ -2,12 +2,13 @@
 // browser and only if public/music/songs.json lists any songs. Shared by the
 // shell's pop-up and the Settings panel. It starts on the player's first tap
 // or key press (the package waits for one), plays nothing at volume 0 (the
-// player's own saved choice), and reports through the platform's track,
+// player's own saved choice, applied from the first note), and reports through the platform's track,
 // by song id, never title.
 import { createMusic, type Music } from "@tellim/music/player";
 import "@tellim/music/music.css";
 
 import { track } from "~/platform/analytics/analytics.client";
+import { musicContext } from "./audio-context";
 import { MANIFEST_URL, parseManifest } from "./manifest";
 
 let loading: Promise<Music | null> | undefined;
@@ -25,7 +26,8 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
     }
     if (manifest.skipped) track("music_manifest_skipped", { skipped: manifest.skipped });
     if (!manifest.songs.length) return null;
-    return createMusic({ key: "orbital-books", base: "/music/", songs: manifest.songs, track });
+    // Through Web Audio, so the saved volume holds from the first note (audio-context.ts).
+    return createMusic({ key: "orbital-books", base: "/music/", songs: manifest.songs, track, context: musicContext });
   })();
   return loading;
 }
