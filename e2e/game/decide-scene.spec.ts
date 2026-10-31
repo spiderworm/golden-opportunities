@@ -27,7 +27,7 @@ test('the bosses brief the plan together: the Administrator first, then whicheve
   await drone.focus();
   await page.keyboard.press('Enter');
   await expect(drone).toHaveAttribute('aria-expanded', 'true');
-  await expect(scene.getByText('Portmeirion')).toBeVisible();
+  await expect(scene.getByText('Portmeirion', { exact: true })).toBeVisible();
   // Safari moves between buttons with Option+Tab; plain Tab skips them by default.
   await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
   await expect(throughput).toBeFocused();
@@ -64,7 +64,8 @@ test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
   });
   await page.goto('/decide?analytics-test=1');
   const scene = page.getByRole('region', { name: 'PLAN FOR Q1 2194' });
-  const bubbles = scene.getByRole('button');
+  // The tags: the scene's region also holds the form's Submit.
+  const bubbles = scene.locator('button[aria-controls]');
   await expect(bubbles).toHaveCount(5);
   await expect(scene.getByText('January 1 to March 31, 2194')).toBeVisible();
   await expect(scene.locator('[data-boss]')).toHaveCount(5);
@@ -78,7 +79,7 @@ test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
   const layout = () => page.evaluate(() => ({
     robots: [...document.querySelectorAll('[data-boss]')].map(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }),
     bubbles: [...document.querySelectorAll('[aria-controls]')].map(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }),
-    moves: (document.querySelector('fieldset') as HTMLElement).offsetTop,
+    form: (({ x, y, width, height }) => [x, y, width, height])((document.querySelector('fieldset') as HTMLElement).getBoundingClientRect()),
   }));
   await page.waitForTimeout(800); // the scene's entrance
   const before = await layout();
@@ -87,6 +88,11 @@ test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
     await expect(bubbles.nth(i)).toHaveAttribute('aria-expanded', 'true');
     expect(await layout()).toEqual(before);
   }
+  // Nor does ticking moves: the stamp's space is kept, and the plan's status line keeps its height.
+  await page.getByRole('checkbox', { name: /Re-pick Book of the Month/ }).check();
+  await page.getByRole('checkbox', { name: /Weekday author nights/ }).check();
+  await expect(page.getByRole('checkbox', { name: /Weekday author nights/ })).toBeChecked();
+  expect(await layout()).toEqual(before);
 });
 
 test('a bubble focused in the 2D scene stays focused when the 3D scene takes over', async ({ page }) => {
@@ -114,7 +120,8 @@ test('in 3D, a robot opens its bubble when clicked, and opening bubbles moves no
   const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
   test.skip(!webgl, 'no WebGL 2 here: the 2D test covers it');
   const scene = page.getByRole('region', { name: 'PLAN FOR Q1 2194' });
-  const bubbles = scene.getByRole('button');
+  // The tags: the scene's region also holds the form's Submit.
+  const bubbles = scene.locator('button[aria-controls]');
   // The stage says where each robot stands on the page (x, y of its feet, in px) once they're in.
   const stage = scene.locator('[data-robots]');
   await expect(stage).toHaveAttribute('data-robots', /^\d+,\d+(,\d+,\d+){4}$/, { timeout: 30_000 });
@@ -123,7 +130,7 @@ test('in 3D, a robot opens its bubble when clicked, and opening bubbles moves no
     robots: document.querySelector<HTMLElement>('[data-robots]')!.dataset.robots,
     stage: (({ x, y, width, height }) => [x, y, width, height])(document.querySelector('[data-robots]')!.getBoundingClientRect()),
     bubbles: [...document.querySelectorAll('[aria-controls]')].map(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }),
-    moves: (document.querySelector('fieldset') as HTMLElement).offsetTop,
+    form: (({ x, y, width, height }) => [x, y, width, height])((document.querySelector('fieldset') as HTMLElement).getBoundingClientRect()),
   }));
   await page.waitForTimeout(800); // the scene's entrance
   const before = await layout();

@@ -212,6 +212,10 @@ a.menuItem:hover {
   padding: 20px 36px 40px;
 }
 
+.content[data-bleed] {
+  padding: 8px 24px 14px;
+}
+
 @media (max-width: 1200px) {
   .stationDateLabel {
     display: none;

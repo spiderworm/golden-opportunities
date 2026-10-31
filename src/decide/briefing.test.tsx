@@ -65,7 +65,7 @@ describe("the bosses' brief (m1-copy section 3)", () => {
 
   it("keeps the rules the choice turns on beside the moves", () => {
     const html = render();
-    expect(html).toMatch(/<legend[^>]*>Your moves \(choose up to two\)<\/legend><div[^>]*aria-hidden="true">[\s\S]*?<\/div><p id="moves-rule"[^>]*>Your score is your <strong>lowest measure<\/strong>: Profit, Readers served, Happiness or Culture\.<\/p>/);
+    expect(html).toMatch(/<legend[^>]*>Your moves \(choose up to two\)<\/legend><p id="moves-rule"[^>]*>Your score is your <strong>lowest measure<\/strong>: Profit, Readers served, Happiness or Culture\.<\/p>/);
     expect(html).toContain('aria-describedby="moves-rule moves-status"');
     expect(html).toContain("instead of the scheduled picks (The Mallemaroking, Rystwyth and Portmeirion).");
   });
@@ -77,7 +77,18 @@ describe("the bosses' brief (m1-copy section 3)", () => {
     // One stamp per move, decoration only: the checkbox carries the choice.
     expect(html.match(/<span class="[^"]*stamp[^"]*" aria-hidden="true">REQUISITIONED<\/span>/g)).toHaveLength(3);
     expect(html.match(/<input type="checkbox" name="levers"/g)).toHaveLength(3);
-    expect(html).toContain(">Two moves maximum. Filed requisitions are final.</p></fieldset>");
+    // Its foot: the plan's status and the small print, the form's chrome, then Submit, in one row.
+    expect(html).toMatch(/<p id="moves-status"[^>]*>[^<]*<\/p><p class="[^"]*formFooter[^"]*">Two moves maximum\. Filed requisitions are final\.<\/p><\/div><div class="[^"]*formMeta[^"]*" aria-hidden="true">[\s\S]*?LKS-2194-Q1-0002<\/span><\/div><button type="button"[^>]*>Submit plan<\/button><\/div><\/fieldset>/);
+  });
+
+  it("hangs the plan in the banner over the bosses: heading and briefing first, then the form, then the tags", () => {
+    const html = render();
+    const at = (s: string) => html.indexOf(s);
+    expect(at('id="plan-heading"')).toBeGreaterThan(-1);
+    expect(at('id="plan-heading"')).toBeLessThan(at("The Station Administrator</p>"));
+    expect(at("The Station Administrator</p>")).toBeLessThan(at("<fieldset"));
+    expect(at("</fieldset>")).toBeLessThan(at("aria-expanded="));
+    expect(at("aria-expanded=")).toBeLessThan(at('data-boss="overall"'));
   });
 
   it("drops the old brief", () => {

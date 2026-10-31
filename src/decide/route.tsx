@@ -9,6 +9,7 @@ import { trackServer } from "~/platform/analytics/analytics.server";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
 import { BossBriefing } from "~/platform/bosses/BossBriefing";
+import { BossBanner } from "~/platform/bosses/BossLayout";
 import type { BossId } from "~/platform/bosses/bosses";
 import { FactText } from "~/platform/bosses/facts";
 import type { FocusHow, SceneMode } from "~/platform/bosses/useBossFocus";
@@ -16,7 +17,7 @@ import { DECIDE_COPY as COPY, MOVES, type BriefingBubble } from "./copy";
 import { PlanRefused, readPlan } from "./read-plan.server";
 import styles from "./Decide.module.css";
 
-export const handle: ShellHandle = { title: "Decisions", standingOrder: false };
+export const handle: ShellHandle = { title: "Decisions", standingOrder: false, bleed: true };
 
 const MONTH_MS = 900;
 
@@ -109,115 +110,127 @@ export default function Decide() {
     }
   }, [fetcher.state, fetcher.data, navigate]);
 
+  // The page's half of the banner (David's layout 2): the plan's heading, then the requisition form. The
+  // confirmation and the quarter playing out cover the form's boxes in place, so nothing moves.
+  const heading = (
+    <div className={styles.planHeading}>
+      <h2 id="plan-heading" className={styles.memoHeading}>
+        {COPY.heading}
+      </h2>
+      <p className={styles.hint}>{COPY.hint}</p>
+    </div>
+  );
+  const form = (
+    <div className={styles.requisition}>
+          <fieldset className={styles.moves} disabled={step !== "choose"} aria-describedby="moves-rule moves-status">
+            <legend className={styles.movesHeading}>{COPY.movesHeading}</legend>
+            <p id="moves-rule" className={styles.rule}>
+              <FactText line={COPY.rule} />
+            </p>
+            <div className={styles.options}>
+              {MOVES.map((m, i) => {
+                const selected = chosen.includes(m.id);
+                return (
+                  <label key={m.id} className={styles.option} data-selected={selected || undefined}>
+                    <span className={styles.itemNumber} aria-hidden="true">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <input type="checkbox" name="levers" value={m.id} checked={selected} onChange={() => toggle(m.id)} />
+                    <span className={styles.optionTitle}>{m.title}</span>
+                    <span className={styles.optionLine}>{m.line}</span>
+                    {/* The bosses' stamp on a chosen move: its space is always kept, so stamping moves nothing. */}
+                    <span className={styles.stamp} aria-hidden="true">
+                      {COPY.form.stamp}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className={styles.formFoot}>
+              <div className={styles.formNotes}>
+                {/* What the plan is now, said in words: holding course, or a third move refused. */}
+                <p id="moves-status" className={styles.movesStatus} role="status" data-warning={tooMany || undefined}>
+                  {tooMany ? COPY.tooMany : chosen.length === 0 ? COPY.holdCourse : ""}
+                </p>
+                {refused ? (
+                  <p className={styles.refused} role="alert">
+                    {COPY.notSubmitted}
+                  </p>
+                ) : (
+                  <p className={styles.formFooter}>{COPY.form.footer}</p>
+                )}
+              </div>
+              {/* The form's chrome: who issued it and its serial. Decoration; the legend names the form. */}
+              <div className={styles.formMeta} aria-hidden="true">
+                {COPY.form.issuer.map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
+                <span className={styles.serial}>
+                  <span className={styles.barcode} />
+                  {COPY.form.serial}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={styles.primary}
+                onClick={() => {
+                  setStep("confirm");
+                  setTooMany(false);
+                  setRefused(false);
+                  track("plan_confirm_opened", { levers: planLabel(plan.levers), moves: plan.levers.length });
+                }}
+              >
+                {COPY.submit}
+              </button>
+            </div>
+          </fieldset>
+          {step === "confirm" && (
+            <div className={styles.confirm} role="alertdialog" aria-labelledby="confirm-text" aria-describedby="confirm-moves">
+              {/* The plan being committed, named: the moves' own titles, or holding course. */}
+              <ul id="confirm-moves" className={styles.confirmMoves}>
+                {chosenMoves.length === 0 ? <li>{COPY.holdCourse}</li> : chosenMoves.map((m) => <li key={m.id}>{m.title}</li>)}
+              </ul>
+              <p id="confirm-text" className={styles.confirmText}>
+                {COPY.confirm}
+              </p>
+              <div className={styles.actions}>
+                <button
+                  type="button"
+                  className={styles.primary}
+                  autoFocus
+                  onClick={() => {
+                    setStep("playing");
+                    fetcher.submit({ levers: plan.levers.join(",") }, { method: "post" });
+                  }}
+                >
+                  {COPY.confirmSubmit}
+                </button>
+                <Link
+                  to="/investigate"
+                  className={styles.secondary}
+                  onClick={() => track("plan_keep_investigating", { levers: planLabel(plan.levers), moves: plan.levers.length })}
+                >
+                  {COPY.keepInvestigating}
+                </Link>
+              </div>
+            </div>
+          )}
+      {step === "playing" && (
+        <div className={styles.cover}>
+          <PlayOut done={fetcher.state === "idle" && fetcher.data?.ok === true} />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className={styles.page}>
-      {/* The brief, from the bosses together (m1-copy section 3): one bubble open at a time, the Administrator's first. */}
+      {/* The brief, from the bosses together (m1-copy section 3), and the plan, in one scene. */}
       <section className={styles.briefing} aria-labelledby="plan-heading">
-        <div>
-          <h2 id="plan-heading" className={styles.memoHeading}>
-            {COPY.heading}
-          </h2>
-          <p className={styles.hint}>{COPY.hint}</p>
-        </div>
-        <BossBriefing bubbles={SCENE} onFocus={onBubbleFocused} />
+        <BossBanner.Provider value={{ heading, form }}>
+          <BossBriefing bubbles={SCENE} onFocus={onBubbleFocused} />
+        </BossBanner.Provider>
       </section>
-
-      <fieldset className={styles.moves} disabled={step !== "choose"} aria-describedby="moves-rule moves-status">
-        <legend className={styles.movesHeading}>{COPY.movesHeading}</legend>
-        {/* The form's chrome: who issued it and its serial. Decoration; the legend names the form. */}
-        <div className={styles.formMeta} aria-hidden="true">
-          {COPY.form.issuer.map((line) => (
-            <span key={line}>{line}</span>
-          ))}
-          <span className={styles.serial}>
-            <span className={styles.barcode} />
-            {COPY.form.serial}
-          </span>
-        </div>
-        <p id="moves-rule" className={styles.rule}>
-          <FactText line={COPY.rule} />
-        </p>
-        <div className={styles.options}>
-          {MOVES.map((m, i) => {
-            const selected = chosen.includes(m.id);
-            return (
-              <label key={m.id} className={styles.option} data-selected={selected || undefined}>
-                <span className={styles.itemNumber} aria-hidden="true">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <input type="checkbox" name="levers" value={m.id} checked={selected} onChange={() => toggle(m.id)} />
-                <span className={styles.optionTitle}>{m.title}</span>
-                <span className={styles.optionLine}>{m.line}</span>
-                {/* The bosses' stamp on a chosen move: its space is always kept, so stamping moves nothing. */}
-                <span className={styles.stamp} aria-hidden="true">
-                  {COPY.form.stamp}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-        {/* What the plan is now, said in words: holding course, or a third move refused. */}
-        <p id="moves-status" className={styles.movesStatus} role="status" data-warning={tooMany || undefined}>
-          {tooMany ? COPY.tooMany : chosen.length === 0 ? COPY.holdCourse : ""}
-        </p>
-        <p className={styles.formFooter}>{COPY.form.footer}</p>
-      </fieldset>
-
-      {step === "choose" && (
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.primary}
-            onClick={() => {
-              setStep("confirm");
-              setTooMany(false);
-              setRefused(false);
-              track("plan_confirm_opened", { levers: planLabel(plan.levers), moves: plan.levers.length });
-            }}
-          >
-            {COPY.submit}
-          </button>
-          {refused && (
-            <p className={styles.refused} role="alert">
-              {COPY.notSubmitted}
-            </p>
-          )}
-        </div>
-      )}
-
-      {step === "confirm" && (
-        <div className={styles.confirm} role="alertdialog" aria-labelledby="confirm-text" aria-describedby="confirm-moves">
-          {/* The plan being committed, named: the moves' own titles, or holding course. */}
-          <ul id="confirm-moves" className={styles.confirmMoves}>
-            {chosenMoves.length === 0 ? <li>{COPY.holdCourse}</li> : chosenMoves.map((m) => <li key={m.id}>{m.title}</li>)}
-          </ul>
-          <p id="confirm-text" className={styles.confirmText}>
-            {COPY.confirm}
-          </p>
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.primary}
-              autoFocus
-              onClick={() => {
-                setStep("playing");
-                fetcher.submit({ levers: plan.levers.join(",") }, { method: "post" });
-              }}
-            >
-              {COPY.confirmSubmit}
-            </button>
-            <Link
-              to="/investigate"
-              className={styles.secondary}
-              onClick={() => track("plan_keep_investigating", { levers: planLabel(plan.levers), moves: plan.levers.length })}
-            >
-              {COPY.keepInvestigating}
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {step === "playing" && <PlayOut done={fetcher.state === "idle" && fetcher.data?.ok === true} />}
     </div>
   );
 }
