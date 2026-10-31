@@ -23,10 +23,26 @@ test('other screens never load the 3D station', async ({ page }) => {
   await page.goto('/investigate?analytics-test=1');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await page.waitForLoadState('networkidle');
-  expect(scripts.filter(path => /StationScene|\/three\/|@react-three/.test(path))).toEqual([]);
+  expect(scripts.filter(path => /StationScene|\/three\/|@react-three|recast/.test(path))).toEqual([]);
+});
+
+test('the station fetches its navigation as WebAssembly, not the larger JavaScript build of it', async ({ page }) => {
+  const fetched: string[] = [];
+  page.on('request', request => fetched.push(new URL(request.url()).pathname));
+  await page.goto('/?analytics-test=1');
+  await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
+  const station = page.getByRole('region', { name: 'The station' });
+  const still = station.getByText("can't show the station in 3D");
+  await expect(station.getByRole('button', { name: /Go inside|Step outside/ }).or(still)).toBeVisible({ timeout: 15_000 });
+  test.skip(await still.isVisible(), 'no WebGL 2 here: no 3D station');
+  await expect(station).toHaveAttribute('data-drawn', 'true', { timeout: 30_000 });
+  expect(fetched.filter(path => /recast.*\.wasm$/.test(path))).toHaveLength(1);
+  expect(fetched.filter(path => /wasm-compat/.test(path))).toEqual([]);
 });
 
 test('the station opens inside, then wherever the player left it', async ({ page }) => {
+  // Three scene loads (first visit and two reloads): under a full run's load they can pass 30 s.
+  test.setTimeout(60_000);
   await page.goto('/?analytics-test=1');
   await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
   const station = page.getByRole('region', { name: 'The station' });

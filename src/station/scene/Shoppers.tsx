@@ -1,37 +1,25 @@
 import { useGLTF } from "@react-three/drei";
+import type { CrowdAgent } from "@recast-navigation/core";
 import { useFrame } from "@react-three/fiber";
-import { useMemo } from "react";
+import { use, useMemo } from "react";
 import { AnimationMixer, Box3, Group, Quaternion, Vector3, type AnimationClip, type Mesh, type MeshStandardMaterial } from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import type { Bookshop } from "./bookshop";
 import { setWalking, startIdling, type Figure } from "./figures";
 import { modelUrl } from "./models";
+import { addShopper, KEEPER, navigation, pickSpot, SPOTS } from "./navigation";
 import { kept } from "./world";
 import { MAX_SHOPPERS } from "../scene-params";
 
 // Browsing customers: four generated, rigged residents with walk and idle
 // motions, shared out among the shoppers. Each walks between browsing spots
-// and stops at each for a while. Figure 0 is the keeper behind the counter;
+// and stops at each for a while: round the counter, shelves and tables, and
+// round each other, steered by the shop's navigation crowd (navigation.ts);
+// a spot is one shopper's at a time. Figure 0 is the keeper behind the counter;
 // the rest come and go with the shop's busyness. Now and then a shopper walks off with a book and sets
 // it down wherever they stop next, or leaves one leaning; the robots tidy up.
 
-/** Where a shopper stands to browse, and which way they face (radians about Y, 0 = +z). */
-const SPOTS: [x: number, z: number, facing: number][] = [
-  [-6.6, -3.6, -Math.PI / 2],
-  [-6.6, -1.4, -Math.PI / 2],
-  [-6.6, 1.0, -Math.PI / 2],
-  [-6.6, 2.8, -Math.PI / 2],
-  [-4.6, -4.3, Math.PI],
-  [-1.6, -4.3, Math.PI],
-  [1.2, -4.3, Math.PI],
-  [-1.5, 1.2, 0],
-  [-0.2, 3.4, -Math.PI / 2],
-  [-3.6, 4.6, 0],
-  [5.1, 1.0, -Math.PI / 2],
-];
-const KEEPER: [number, number, number] = [3.1, 0.2, Math.PI / 2];
-const SPEED = 0.8;
 /** The chance a shopper leaving a spot takes a book with them, and that they leave one leaning. */
 const TAKE_CHANCE = 0.35;
 const LEAN_CHANCE = 0.25;
@@ -43,27 +31,17 @@ const KEEPER_VARIANT = 3;
 const HEIGHT = 1.7;
 
 
+/** A shopper: the spot they're at or heading for (theirs alone), and their place in the crowd. */
 interface Walker {
-  from: number;
-  to: number;
-  /** Seconds spent walking to `to`, then browsing there. */
-  walk: number;
-  browse: number;
-  started: number;
+  spot: number;
+  /** Their agent in the navigation crowd, while they're in the shop. */
+  agent: CrowdAgent | null;
+  /** When they'll move on, once they're browsing (scene seconds); null while walking. */
+  browseUntil: number | null;
   /** The stray book they're holding (a bookshop slot), or -1. */
   carrying: number;
-}
-
-const randomSpot = (not: number) => {
-  let next = not;
-  while (next === not) next = Math.floor(Math.random() * SPOTS.length);
-  return next;
-};
-
-function plan(from: number, to: number, now: number): Walker {
-  const [ax, az] = SPOTS[from]!;
-  const [bx, bz] = SPOTS[to]!;
-  return { from, to, walk: Math.hypot(bx - ax, bz - az) / SPEED, browse: 3 + Math.random() * 6, started: now, carrying: -1 };
+  /** Which way they face, turning smoothly. */
+  heading: number;
 }
 
 /** The keeper and the shoppers, each a clone of a variant's rigged model with its own motions. */
@@ -102,17 +80,24 @@ export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
   const variants = useGLTF(VARIANTS.map(modelUrl), false);
   // The residents and where they're headed outlive the canvas (see world.ts).
   const figures = useMemo(() => kept("shoppers", () => makeFigures(variants)), [variants]);
+  // Everyone walks the shop's navigation mesh, in one crowd, round the fixtures and each other.
+  const { crowd } = use(navigation());
   const walkers = useMemo(
     () =>
       kept("walkers", () =>
-        Array.from({ length: MAX_SHOPPERS }, (_, i) => {
-          const from = i % SPOTS.length;
+        Array.from({ length: MAX_SHOPPERS }, (_, i): Walker => ({
+          spot: i % SPOTS.length,
+          agent: null,
           // Start partway through browsing, so they don't all move at once.
-          return { ...plan(from, from, 0), browse: Math.random() * 6 };
-        }),
+          browseUntil: Math.random() * 6,
+          carrying: -1,
+          heading: SPOTS[i % SPOTS.length]![2],
+        })),
       ),
     [],
   );
+  // Each spot is one shopper's at a time: whoever's at it or on the way.
+  const claimed = useMemo(() => kept("claimed spots", () => new Set<number>()), []);
   const hand = useMemo(() => ({ at: new Vector3(), turn: new Quaternion() }), []);
 
   useFrame(({ clock }, frameDelta) => {
@@ -123,44 +108,61 @@ export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
     keeper.root.rotation.set(0, KEEPER[2] + Math.sin(now * 0.4) * 0.3, 0);
     keeper.mixer.update(delta);
     for (let i = 0; i < count; i++) {
-      let w = walkers[i]!;
-      if (now - w.started > w.walk + w.browse) {
-        const [sx, sz] = SPOTS[w.to]!;
-        const next = plan(w.to, randomSpot(w.to), now);
-        if (Math.random() < TAKE_CHANCE) next.carrying = shop.take(sx, sz);
-        if (Math.random() < LEAN_CHANCE) shop.lean(sx, sz);
-        w = walkers[i] = next;
+      const w = walkers[i]!;
+      if (!w.agent) {
+        // Coming in: at their own spot, or a free one if someone else has it.
+        if (claimed.has(w.spot)) w.spot = pickSpot(w.spot, claimed);
+        claimed.add(w.spot);
+        w.agent = addShopper(crowd, w.spot);
       }
-      const t = Math.min(1, (now - w.started) / Math.max(w.walk, 0.001));
-      const [ax, az] = SPOTS[w.from]!;
-      const [bx, bz, facing] = SPOTS[w.to]!;
-      const walking = t < 1;
-      const heading = Math.atan2(bx - ax, bz - az);
+      const at = w.agent.position();
+      const [sx, sz, facing] = SPOTS[w.spot]!;
+      const there = Math.hypot(at.x - sx, at.z - sz) < 0.2;
+      if (there && w.browseUntil === null) {
+        // Arrived: put down whatever they brought, and browse a while.
+        w.browseUntil = now + 3 + Math.random() * 6;
+        if (w.carrying >= 0) shop.setDown(w.carrying, sx, sz, w.heading);
+        w.carrying = -1;
+      } else if (there && w.browseUntil !== null && now > w.browseUntil) {
+        // Moving on, to a spot nobody else has, perhaps with a book, perhaps leaving one leaning.
+        if (Math.random() < TAKE_CHANCE) w.carrying = shop.take(sx, sz);
+        if (Math.random() < LEAN_CHANCE) shop.lean(sx, sz);
+        claimed.delete(w.spot);
+        w.spot = pickSpot(w.spot, claimed);
+        claimed.add(w.spot);
+        const [tx, tz] = SPOTS[w.spot]!;
+        w.agent.requestMoveTarget({ x: tx, y: 0, z: tz });
+        w.browseUntil = null;
+      }
+      const velocity = w.agent.velocity();
+      const walking = Math.hypot(velocity.x, velocity.z) > 0.15;
+      const want = walking ? Math.atan2(velocity.x, velocity.z) : facing;
+      w.heading += Math.atan2(Math.sin(want - w.heading), Math.cos(want - w.heading)) * Math.min(1, delta * 6);
       const f = figures[i + 1]!;
       f.root.visible = true;
-      f.root.position.set(ax + (bx - ax) * t, 0, az + (bz - az) * t);
-      f.root.rotation.set(0, walking ? heading : facing, 0);
+      f.root.position.set(at.x, 0, at.z);
+      f.root.rotation.set(0, w.heading, 0);
       setWalking(f, walking);
       f.mixer.update(delta);
       if (w.carrying >= 0) {
-        if (walking) {
-          hand.at.set(f.root.position.x + Math.sin(heading) * 0.3, 0.95, f.root.position.z + Math.cos(heading) * 0.3);
-          shop.hold(w.carrying, hand.at, hand.turn.setFromAxisAngle(Y_AXIS, heading));
-        } else {
-          shop.setDown(w.carrying, bx, bz, heading);
-          w.carrying = -1;
-        }
+        hand.at.set(at.x + Math.sin(w.heading) * 0.3, 0.95, at.z + Math.cos(w.heading) * 0.3);
+        shop.hold(w.carrying, hand.at, hand.turn.setFromAxisAngle(Y_AXIS, w.heading));
       }
     }
-    // Anyone who has left the shop puts down what they were holding.
+    // Anyone who has left the shop puts down what they were holding, and gives up their spot.
     for (let i = count; i < MAX_SHOPPERS; i++) {
       figures[i + 1]!.root.visible = false;
       const w = walkers[i]!;
-      if (w.carrying < 0) continue;
-      const [bx, bz, facing] = SPOTS[w.to]!;
-      shop.setDown(w.carrying, bx, bz, facing);
+      if (!w.agent) continue;
+      const at = w.agent.position();
+      if (w.carrying >= 0) shop.setDown(w.carrying, at.x, at.z, w.heading);
       w.carrying = -1;
+      crowd.removeAgent(w.agent);
+      w.agent = null;
+      claimed.delete(w.spot);
     }
+    // The crowd steps no further than the frame does (the scene's 0.1 s cap).
+    crowd.update(delta);
   });
 
   return (
