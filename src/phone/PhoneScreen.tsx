@@ -18,12 +18,14 @@ import { sizeBucket } from "./phone";
 import styles from "./PhoneScreen.module.css";
 
 // What a phone gets instead of the game (m1-copy section 8): the Throughput
-// Subcommittee reaches out of the screen, grabs the phone in its claw, and
+// Subcommittee walks up, grabs the phone by its bottom edge in one hand, and
 // says what it thinks of it: the same Tripo robot as on Decide. It's always in the page, and its stylesheet
 // shows it only on a phone, so a phone never sees the game's pages flash up
 // before the scripts run. The 3D scene loads only once the browser has said
 // this is a phone that can draw it; otherwise the boss stands still.
 const PhoneScene = lazy(() => import("./PhoneScene"));
+/** The bottom of the screen, kept for the robot's hand: a share of its height. */
+const HAND_ROOM = 0.24;
 
 export function PhoneScreen({
   active,
@@ -34,7 +36,7 @@ export function PhoneScreen({
   const [reducedMotion, setReducedMotion] = useState(false);
   // Whether the 3D scene has drawn: until then the still picture is what's there, and its name is right.
   const [drawn, setDrawn] = useState(false);
-  // The boss speaks at once over the still picture; in 3D, when the claw closes or after 2.5 s,
+  // The boss speaks at once over the still picture; in 3D, when the hand closes or after 2.5 s,
   // whichever is first. Once it has spoken, it stays spoken (m1-copy section 8).
   const [speaking, setSpeaking] = useState(true);
   const speak = useCallback(() => setSpeaking(true), []);
@@ -52,23 +54,25 @@ export function PhoneScreen({
     return () => clearTimeout(soon);
   }, [active, speak]);
 
-  // The band between the bubble and the fact line, where the robot's head is kept (shares of the height).
-  const bubble = useRef<HTMLDivElement>(null);
+  // The space the words (the bubble, then the fact line) leave the robot, above the hand at the bottom: below
+  // them on a phone held upright, beside them on one turned (shares of the height and width).
   const fact = useRef<HTMLParagraphElement>(null);
   const sceneBox = useRef<HTMLDivElement>(null);
-  const zone = useRef({ top: 0.3, bottom: 0.82 });
+  const zone = useRef({ top: 0.4, bottom: 1 - HAND_ROOM, left: 0, right: 1 });
   useEffect(() => {
     if (!active) return;
     const measure = () => {
       const high = innerHeight || 1;
-      zone.current = {
-        top: (bubble.current?.getBoundingClientRect().bottom ?? high * 0.3) / high,
-        bottom: (fact.current?.getBoundingClientRect().top ?? high * 0.82) / high,
-      };
+      const wide = innerWidth || 1;
+      const words = fact.current?.getBoundingClientRect();
+      zone.current =
+        words && words.left > wide * 0.3
+          ? { top: 0.04, bottom: 1 - HAND_ROOM, left: 0, right: (words.left - 8) / wide }
+          : { top: (words?.bottom ?? high * 0.4) / high, bottom: 1 - HAND_ROOM, left: 0, right: 1 };
     };
     measure();
     const resized = new ResizeObserver(measure);
-    for (const el of [bubble.current, fact.current]) if (el) resized.observe(el);
+    if (fact.current) resized.observe(fact.current);
     addEventListener("resize", measure);
     return () => {
       resized.disconnect();
@@ -101,7 +105,7 @@ export function PhoneScreen({
           still
         )}
       </div>
-      <div ref={bubble} className={styles.speech} data-speaking={speaking || undefined}>
+      <div className={styles.speech} data-speaking={speaking || undefined}>
         <BossBubble boss="readers">{PHONE_COPY.line}</BossBubble>
       </div>
       <p ref={fact} className={styles.fact}>
