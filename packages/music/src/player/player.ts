@@ -113,6 +113,10 @@ export function createMusic(o: MusicOptions) {
     if (wired) wired.gain.gain.setTargetAtTime(level(), wired.gain.context.currentTime, 0.05);
     else deck.volume = Math.min(1, level());
   }
+  // the player's level from the start: without Web Audio (or before it's
+  // wired), the element plays at its own volume, 1 until told otherwise
+  // (Audit, via Goldy, 30 Oct 2026)
+  setLevel();
 
   // play (or carry on with) the current song, if it may be heard
   function play() {

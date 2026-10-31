@@ -1,0 +1,44 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+// a stand-in for <audio>: only what the player touches
+class FakeAudio {
+  static made: FakeAudio[] = [];
+  volume = 1;
+  preload = "";
+  paused = true;
+  currentTime = 0;
+  duration = 0;
+  src = "";
+  constructor() {
+    FakeAudio.made.push(this);
+  }
+  addEventListener() {}
+  removeAttribute() {}
+  pause() {}
+  play() {
+    return Promise.resolve();
+  }
+}
+(globalThis as any).Audio = FakeAudio;
+const { createMusic } = await import("./player.ts");
+
+const store = (saved: object) => {
+  const m = new Map([["t.music", JSON.stringify(saved)]]);
+  return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+};
+const songs = [{ id: "a", file: "a.mp3", title: "A" }];
+
+test("without Web Audio, the element starts at the player's level, not full volume", () => {
+  createMusic({ key: "t", songs, base: "", storage: store({ volume: 0.2 }) });
+  const deck = FakeAudio.made.at(-1)!;
+  assert.ok(Math.abs(deck.volume - 0.2 ** 2 * 0.55) < 1e-9, String(deck.volume));
+});
+
+test("at full volume it's the loudness, and Mute is silent", () => {
+  createMusic({ key: "t", songs, base: "", storage: store({ volume: 1 }), loudness: 0.5 });
+  assert.equal(FakeAudio.made.at(-1)!.volume, 0.5);
+  const m = createMusic({ key: "t", songs, base: "", storage: store({ volume: 0.6 }) });
+  m.setVolume(0);
+  assert.equal(FakeAudio.made.at(-1)!.volume, 0);
+});
