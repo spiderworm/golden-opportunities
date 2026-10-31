@@ -28,9 +28,9 @@ describe('server save persistence', () => {
   it('marks the alert seen once, keeping the query revision, and refuses any other seen value', () => {
     const { store, dir } = fixture(); const a = store.create();
     const seen = store.markAlertSeen(a.id);
-    expect(seen).toMatchObject({ alertSeen: true, revision: 1, queryRevision: 0 });
+    expect(seen).toMatchObject({ alertsSeen: ['2194-Q1'], revision: 1, queryRevision: 0 });
     expect(store.markAlertSeen(a.id).revision).toBe(1);
-    expect(store.update(a.id, 1, () => {})).toMatchObject({ alertSeen: true, revision: 2, queryRevision: 1 });
+    expect(store.update(a.id, 1, () => {})).toMatchObject({ alertsSeen: ['2194-Q1'], revision: 2, queryRevision: 1 });
     writeFileSync(path.join(dir, a.id + '.json.lock'), '');
     expect(() => store.markAlertSeen(store.create().id)).not.toThrow();
     expect(() => store.markAlertSeen(a.id)).toThrow('SAVE_BUSY');

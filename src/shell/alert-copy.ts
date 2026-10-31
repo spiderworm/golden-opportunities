@@ -28,3 +28,5 @@ export const ALERT_COPY = {
     detail: "Find out what happened, then submit a plan for Q1 2194.",
   },
 } as const;
+
+export const Q2_ALERT_COPY = { bell: { title: "The Q2 Book of the Month calendar is empty", detail: "Choose the picks, then submit a plan for Q2 2194." } } as const;
