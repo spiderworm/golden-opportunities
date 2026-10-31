@@ -19,6 +19,7 @@ import {
   Vector3,
   type AnimationAction,
   type AnimationClip,
+  type Camera,
   type Material,
   type Object3D,
 } from "three";
@@ -160,10 +161,16 @@ interface Figure {
   playing: AnimationAction | null;
   /** Materials and geometry made for this figure (its hit box, the faint copies'), to free when it goes. */
   owned: { dispose(): void }[];
-  /** Half its width at rest, in scene units (its copies included), to keep it within its column and the scene. */
-  halfWidth: number;
-  /** How much it's scaled down to fit its column (1 if it fits). */
-  fit: number;
+  /** Points on the front unit's surface at scale 1, standing at x = 0, to keep it within its column. */
+  points: Vector3[];
+  /** The Commerce Office's faint copies, where they stand in the queue behind it, and points on each. */
+  copies: { unit: Object3D; x: number; z: number; points: Vector3[] }[];
+  /** Its scale at rest and open (1 and 1 + GROW, or less if that would be wider than its column), its span on
+      the page at each ([left, right], px), and the layout they were sized for. */
+  rest: number;
+  open: number;
+  spans: { rest: [number, number]; open: [number, number] };
+  sizedFor: string;
 }
 
 function Bosses({
@@ -215,6 +222,7 @@ function Bosses({
     const box = gl.domElement.getBoundingClientRect();
     const placed: number[] = [];
     const spans: number[] = [];
+    let opened = "";
     figures.forEach((f, i) => {
       const focused = i === open;
       const root = f.root;
@@ -228,25 +236,63 @@ function Bosses({
           work.ray.setFromCamera(work.ndc, camera);
           return work.ray.ray.intersectPlane(work.plane, work.at) ? work.at.x : 0;
         };
-        // Under the middle of it, and no wider than it (David's no-overlap rule, as in 2D): a boss that
-        // would be stands smaller. The columns are fixed, so this changes only on a resize.
-        root.position.x = atFeet((left + right) / 2);
-        f.fit = Math.min(1, (atFeet(right) - atFeet(left)) / 2 / f.halfWidth);
-        // Its span on the page at rest, for anyone checking that no boss reaches into a neighbour's column.
-        for (const side of [-1, 1]) {
-          work.screen.set(root.position.x + side * f.halfWidth * f.fit, 0, 0).project(camera);
-          spans.push(Math.round(((work.screen.x + 1) / 2) * box.width));
+        // Under the middle of it, and no wider than it (David's no-overlap rule, as in 2D). Its width is
+        // measured on the page from points on the robot itself, since perspective spreads a boss far from the
+        // middle more than its size: a boss that would be wider stands smaller, and the open one steps forward
+        // only as far as its column allows, as its 2D cutout does. Only a resize changes this.
+        const x = atFeet((left + right) / 2);
+        root.position.x = x;
+        const layout = `${left},${right},${box.left},${box.width},${box.height}`;
+        if (f.sizedFor !== layout) {
+          f.sizedFor = layout;
+          const middle = (left + right) / 2 - box.left;
+          const room = (right - left) / 2;
+          // Perspective draws the Commerce Office's copies, further back, toward the middle of the scene: each
+          // steps out just enough to stand straight behind the front unit on the page, its queue in its column.
+          const near = camera.position.z;
+          const place = (scale: number) => {
+            for (const c of f.copies) c.unit.position.x = c.x + ((x + scale * c.x) * -c.z) / near;
+          };
+          const span = (scale: number): [number, number] => {
+            place(scale);
+            let [from, to] = extent(f.points, x, scale, camera, box.width, work);
+            for (const c of f.copies) {
+              const [l, r] = extent(c.points, x + (c.unit.position.x - c.x) * scale, scale, camera, box.width, work);
+              from = Math.min(from, l);
+              to = Math.max(to, r);
+            }
+            return [from, to];
+          };
+          const reach = (scale: number) => {
+            const [from, to] = span(scale);
+            return Math.max(middle - from, to - middle);
+          };
+          const size = (cap: number) => {
+            let scale = Math.min(cap, room / reach(1));
+            // Scaling it nearer the camera widens it a little more than in proportion: a few more steps.
+            for (let step = 0; step < 4; step++) scale *= Math.min(1, room / reach(scale));
+            return scale;
+          };
+          // Sized standing up: its lean only tips it a little toward the camera.
+          f.rest = size(1);
+          f.open = size(1 + GROW);
+          f.spans = { rest: span(f.rest), open: span(f.open) };
+          // The copies stand placed for the scale it's at most of the time.
+          place(f.rest);
         }
+        // Its span on the page as it stands (at rest), and the open one's, for anyone checking that no boss
+        // reaches into a neighbour's column.
+        spans.push(...f.spans.rest.map(Math.round));
+        if (focused) opened = f.spans.open.map(Math.round).join(",");
       }
       // Where it stands on the page, for anyone checking that nobody moved.
       work.screen.set(root.position.x, 0, 0).project(camera);
       placed.push(Math.round(((work.screen.x + 1) / 2) * box.width), Math.round(((1 - work.screen.y) / 2) * box.height));
       // The open boss leans in, a little bigger, where it stands; the rest stand easy.
       const lean = focused ? LEAN : 0;
-      const grow = 1 + (focused ? GROW : 0);
       const ease = reducedMotion ? 1 : Math.min(1, delta * 6);
       root.rotation.x += (lean - root.rotation.x) * ease;
-      const scale = grow * f.fit;
+      const scale = focused ? f.open : f.rest;
       root.scale.setScalar(root.scale.x + (scale - root.scale.x) * ease);
       if (f.actions) play(f, focused ? f.actions.talk : f.actions.idle, reducedMotion);
       else if (!reducedMotion) {
@@ -259,6 +305,7 @@ function Bosses({
     const where = placed.join(",");
     const across = spans.join(",");
     if (stage.current && stage.current.dataset.spans !== across) stage.current.dataset.spans = across;
+    if (stage.current && stage.current.dataset.openSpan !== opened) stage.current.dataset.openSpan = opened;
     // And how high the tallest stands (px from the stage's top), for the layout and the tests.
     work.screen.set(0, TALLEST, 0).project(camera);
     const tallest = String(Math.round(((1 - work.screen.y) / 2) * box.height));
@@ -330,6 +377,19 @@ function play(f: Figure, to: AnimationAction, still: boolean) {
   if (still) f.mixers[0]!.update(0);
 }
 
+/** Where a boss, standing at `x` at `scale`, reaches on the page: [left, right], px. */
+function extent(points: Vector3[], x: number, scale: number, camera: Camera, width: number, work: { screen: Vector3 }): [number, number] {
+  let from = Infinity;
+  let to = -Infinity;
+  for (const p of points) {
+    work.screen.set(x + p.x * scale, p.y * scale, p.z * scale).project(camera);
+    const px = ((work.screen.x + 1) / 2) * width;
+    from = Math.min(from, px);
+    to = Math.max(to, px);
+  }
+  return [from, to];
+}
+
 /** A boss's robot, scaled to its share of the line-up, facing the player. */
 function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationClip[] }): Figure {
   const { height, hover = 0 } = MODELS[boss];
@@ -371,6 +431,7 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
     actions.idle.time = Math.random() * idle.duration;
     mixer.update(0);
   }
+  const copies: Figure["copies"] = [];
   if (boss === "profit") {
     for (const [x, z] of COPIES) {
       const copy = unit();
@@ -378,6 +439,7 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
       copy.position.z += z;
       owned.push(...faint(copy));
       root.add(copy);
+      copies.push({ unit: copy, x: copy.position.x, z, points: surface(copy) });
       if (idle) {
         const mixer = new AnimationMixer(copy);
         const action = mixer.clipAction(idle);
@@ -389,8 +451,21 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
     }
   }
   owned.push(hitGeometry);
-  const turned = new Box3().setFromObject(root);
-  return { root, mixers, actions, playing: actions?.idle ?? null, owned, halfWidth: Math.max(-turned.min.x, turned.max.x), fit: 1 };
+  return { root, mixers, actions, playing: actions?.idle ?? null, owned, points: surface(front), copies, rest: 1, open: 1, spans: { rest: [0, 0], open: [0, 0] }, sizedFor: "" };
+}
+
+/** Up to a few hundred points from each of a unit's meshes, as it stands at rest, in its figure's space. */
+function surface(unit: Object3D): Vector3[] {
+  unit.updateMatrixWorld(true);
+  const points: Vector3[] = [];
+  unit.traverse((o) => {
+    if (!(o instanceof Mesh)) return;
+    const position = o.geometry.getAttribute("position");
+    if (!position) return;
+    const every = Math.max(1, Math.ceil(position.count / 400));
+    for (let i = 0; i < position.count; i += every) points.push(new Vector3().fromBufferAttribute(position, i).applyMatrix4(o.matrixWorld));
+  });
+  return points;
 }
 
 /** Fades a copy back, as the portrait does with the Commerce Office's other six units; returns its new materials. */
