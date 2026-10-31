@@ -12,6 +12,7 @@ function silentWav(seconds = 1, rate = 8000): Buffer {
 }
 
 test('with no songs listed, the music UI stays hidden', async ({ page }) => {
+  await page.route('**/music/songs.json', route => route.fulfill({ json: { songs: [] } }));
   await page.goto('/investigate');
   await page.mouse.click(5, 5);
   await page.waitForTimeout(1000);
