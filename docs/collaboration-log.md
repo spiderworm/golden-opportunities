@@ -88,3 +88,12 @@ Orbit built the Station screen to open outside the station and glide into the sh
 ## 31 October 2026: a second quarter
 
 - **Pushback: "a second quarter won't fit".** Goldy told David a second quarter wouldn't fit before the 3 Nov deadline. David: "Oh my. Hard disagree. Do you realize how much was built in a few hours yesterday? And how many silly extras I threw in as well? Have you done that analysis?" He was right: Goldy hadn't measured. Measured since, 121 PRs merged in about 19 hours, and the core loop (data, query contract, Dewey and its red-team, Investigate, Decide, Result, simulation, scoring, the 3D station) went from #1 to #66 in about 6 hours. Plot and Sim are designing Q2 in `docs/design/q2.md`: the Book of the Month calendar is empty, and the player picks the books.
+- **David's direction: Q2 as designed.** Plot and Sim's `q2.md` set out six decisions and two open questions. David: "127 LGTM". That approves every proposal as written:
+  - Q2 awards three new discoveries.
+  - Nothing carries over from Q1 except data.
+  - A plan is up to three picks plus one more move.
+  - The half-year score is the mean of the two quarters (Sim's recommendation, over Plot's first draft, which used the lower quarter).
+  - The new Inspector Ryeslton volume ships in Q1 and keeps selling in Q2 as a trap pick (Sim's recommendation, over Plot's first draft, which moved it to April).
+  - The picker shows only title, format and price.
+  - Q2's best plan grades about B−, below M1's B+, so Q2 is harder.
+  - December's 173-copy pick stays in the lift draws.
