@@ -57,7 +57,7 @@ The release adds orders, profit and culture to every plan, holding course includ
 With unchanged goals, author nights alone outscores the strong plan, and holding course beats re-pick. The release's profit covers the nights' $2,400 in costs, and its full-price orders pull the happiness average down.
 
 **Proposal: the goals count the release.** Each measure's anchor (what scores 70) is last year's Q1 plus the release's expected effect on a quarter of holding course. The goal is that anchor plus the usual stretch.
-- **Expected effect** is the mean, over a fixed set of seeds (101 to 120, never the player's seed), of holding course with the release minus holding course without it. Sim computes it the same way. On those seeds it is profit +$2,889, readers +314, culture +308 and happiness −0.45.
+- **Expected effect** is the mean, over a fixed set of seeds (101 to 120, independent of the player's seed), of holding course with the release minus holding course without it. Sim computes it the same way. On those seeds it is profit +$2,889, readers +314, culture +308 and happiness −0.45.
 - **Goals, approximately:** profit $42,558 (was $39,524), readers served 7,496 (was 7,166), happiness 67.85 (was 68.32) and culture 18,560 (was 18,236).
 - **Calibration holds.** Every band in the table above matches the current one to within a point or two. Re-pick plus author nights is still the strong plan, and the sale still fails, a little harder.
 
