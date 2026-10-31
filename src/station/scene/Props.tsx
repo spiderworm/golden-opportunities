@@ -1,6 +1,7 @@
-import { useGLTF } from "@react-three/drei";
 import { useMemo } from "react";
 import { Box3, Vector3, type Object3D } from "three";
+
+import { useStationModels } from "./loading";
 
 // The studio's Tripo models (public/models/, provenance.json beside them),
 // each scaled to a real-world height and stood on the floor.
@@ -47,12 +48,8 @@ function Placed({ placement, source }: { placement: Placement; source: Object3D 
 }
 
 export function Props() {
-  const loaded = {
-    armchair: useGLTF(url("armchair"), false).scene,
-    globe: useGLTF(url("globe"), false).scene,
-    hourglass: useGLTF(url("hourglass"), false).scene,
-    rocket: useGLTF(url("rocket"), false).scene,
-  };
+  const [armchair, globe, hourglass, rocket] = useStationModels((["armchair", "globe", "hourglass", "rocket"] as const).map(url));
+  const loaded = { armchair: armchair!.scene, globe: globe!.scene, hourglass: hourglass!.scene, rocket: rocket!.scene };
   return (
     <>
       {PLACEMENTS.map((p, i) => (

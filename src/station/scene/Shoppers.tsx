@@ -1,4 +1,3 @@
-import { useGLTF } from "@react-three/drei";
 import type { CrowdAgent } from "@recast-navigation/core";
 import { useFrame } from "@react-three/fiber";
 import { use, useMemo } from "react";
@@ -7,6 +6,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 
 import type { Bookshop } from "./bookshop";
 import { setWalking, startIdling, type Figure } from "./figures";
+import { useStationModels } from "./loading";
 import { modelUrl } from "./models";
 import { addShopper, KEEPER, navigation, pickSpot, SPOTS } from "./navigation";
 import { kept } from "./world";
@@ -77,7 +77,7 @@ function makeFigures(variants: { scene: Group; animations: AnimationClip[] }[]):
 }
 
 export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
-  const variants = useGLTF(VARIANTS.map(modelUrl), false);
+  const variants = useStationModels(VARIANTS.map(modelUrl));
   // The residents and where they're headed outlive the canvas (see world.ts).
   const figures = useMemo(() => kept("shoppers", () => makeFigures(variants)), [variants]);
   // Everyone walks the shop's navigation mesh, in one crowd, round the fixtures and each other.
