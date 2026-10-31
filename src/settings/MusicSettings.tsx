@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Music } from "@tellim/music/player";
 
+import { ignoreCutOff } from "~/platform/music/cut-off";
+
 import styles from "./Settings.module.css";
 
 /** The music panel: the volume (down to mute), the song playing and the playlist. Absent with no songs. */
@@ -11,7 +13,7 @@ export function MusicSettings({ load }: { load?: () => Promise<Music | null> }) 
   useEffect(() => {
     let live = true;
     const get = load ?? (() => import("~/platform/music/music.client").then(({ loadMusic }) => loadMusic()));
-    void get().then((m) => live && setMusic(m));
+    void get().then((m) => live && setMusic(m), ignoreCutOff);
     return () => {
       live = false;
     };
@@ -25,7 +27,7 @@ export function MusicSettings({ load }: { load?: () => Promise<Music | null> }) 
       if (!live || !holder.current) return;
       panel = createMusicPanel(music);
       holder.current.append(panel.el);
-    });
+    }, ignoreCutOff);
     return () => {
       live = false;
       panel?.dispose();
