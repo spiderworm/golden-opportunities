@@ -1,6 +1,7 @@
 .DS_Store
 .env
-/node_modules/
+# No trailing slash: a scratch checkout's node_modules is a symlink, which "/node_modules/" doesn't match.
+/node_modules
 
 # React Router
 /.react-router/
