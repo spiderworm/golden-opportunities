@@ -6,6 +6,7 @@ import { MusicDock } from "./MusicDock";
 import { navItems } from "./nav";
 import { NotificationsBell, type StationNotification } from "./NotificationsBell";
 import { formatStationDate } from "./station-date";
+import { ALERT_COPY, q2AlertCopy, type FirstQuarter } from "./alert-copy";
 import { StandingOrder } from "./StandingOrder";
 import { Transmission } from "./Transmission";
 import type { Track } from "~/platform/analytics/track";
@@ -24,15 +25,20 @@ export interface ShellProps {
   /** The in-game date, as YYYY-MM-DD. */
   stationDate: string;
   notifications: StationNotification[];
-  /** The Commerce Office's standing order: its transmission plays once, on first arrival at the station, and its strip stays until the plan is in. */
-  standingOrder?: { seen: boolean; submitted: boolean };
+  /**
+   * The Commerce Office's standing order for the quarter being planned: its transmission plays once, on
+   * first arrival at the station, and its strip stays until the plan is in. Q1's memo unless `quarter` says Q2.
+   */
+  standingOrder?: { seen: boolean; submitted: boolean; quarter?: "2194-Q1" | "2194-Q2" | null };
+  /** Q1's report card, which Q2's memo quotes. */
+  q1?: FirstQuarter | null;
   /** Records that the transmission was seen, opened or put off, so it doesn't play again; settles once the shell has reloaded. */
   onAlertSeen?: () => Promise<void>;
   track: Track;
   children: ReactNode;
 }
 
-export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, track, children }: ShellProps) {
+export function Shell({ stationDate, notifications, standingOrder, q1, onAlertSeen, track, children }: ShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const musicLayer = useRef<HTMLDivElement>(null);
   const title = usePageTitle();
@@ -42,20 +48,23 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
   const stripHidden = matches.some((m) => (m.handle as ShellHandle | undefined)?.standingOrder === false);
   const bleed = matches.some((m) => (m.handle as ShellHandle | undefined)?.bleed);
   const [memoOpen, setMemoOpen] = useState(false);
-  // Once per visit at most, even if recording it failed; the save keeps it to once per game.
-  const arrived = useRef(false);
-  const pending = standingOrder && !standingOrder.submitted;
+  // Each quarter's memo (q2.md section 2): Q2's quotes Q1's report card, so it waits for it.
+  const quarter = standingOrder?.quarter ?? "2194-Q1";
+  const copy = quarter === "2194-Q2" ? (q1 ? q2AlertCopy(q1) : null) : ALERT_COPY;
+  // Once per quarter per visit at most, even if recording it failed; the save keeps it to once per game.
+  const arrived = useRef<string | null>(null);
+  const pending = standingOrder && !standingOrder.submitted && copy !== null;
 
   useEffect(() => {
-    if (!pending || standingOrder.seen || arrived.current || pathname !== "/") return;
-    arrived.current = true;
+    if (!pending || standingOrder.seen || arrived.current === quarter || pathname !== "/") return;
+    arrived.current = quarter;
     setMemoOpen(true);
-    track("alert_shown", { via: "arrival" });
-  }, [pending, standingOrder?.seen, pathname, track]);
+    track("alert_shown", { via: "arrival", quarter });
+  }, [pending, standingOrder?.seen, quarter, pathname, track]);
 
   function closeMemo(action: "open" | "later") {
     setMemoOpen(false);
-    track("alert_dismissed", { action });
+    track("alert_dismissed", { action, quarter });
     return standingOrder?.seen ? undefined : onAlertSeen?.();
   }
 
@@ -69,9 +78,9 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
   }
 
   function readMemo() {
-    track("alert_strip_clicked", { action: "memo" });
+    track("alert_strip_clicked", { action: "memo", quarter });
     setMemoOpen(true);
-    track("alert_shown", { via: "strip" });
+    track("alert_shown", { via: "strip", quarter });
   }
 
   function toggleMenu() {
@@ -155,13 +164,14 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
         </header>
         {pending && !stripHidden && (
           <StandingOrder
+            copy={copy.strip}
             onLedgers={pathname === "/investigate"}
             onReadMemo={readMemo}
-            onOpenLedgers={() => track("alert_strip_clicked", { action: "ledgers" })}
+            onOpenLedgers={() => track("alert_strip_clicked", { action: "ledgers", quarter })}
           />
         )}
         <main className={styles.content}>{children}</main>
-        {standingOrder && <Transmission open={memoOpen} onOpenLedgers={openLedgers} onLater={() => void closeMemo("later")} />}
+        {standingOrder && copy && <Transmission open={memoOpen} copy={copy.transmission} onOpenLedgers={openLedgers} onLater={() => void closeMemo("later")} />}
       </div>
     </div>
   );
