@@ -68,3 +68,40 @@ test('with songs listed, the dock waits in the menu, the first tap starts the mu
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('region', { name: 'Music' }).locator('.music-panel')).toBeVisible();
 });
+
+test('one tab at a time, and a reload carries on: a second tab waits, its play takes over, a pause holds', async ({ context }) => {
+  const thirty = silentWav(30); // long enough that no song ends mid-test
+  await context.route('**/music/songs.json', route =>
+    route.fulfill({ json: { songs: [{ id: 'test-silence', file: 'test-silence.wav', title: 'Test Silence' }] } }));
+  await context.route('**/music/test-silence.wav', route => route.fulfill({ body: thirty, contentType: 'audio/wav' }));
+  const play = (page: import('@playwright/test').Page) => page.locator('.music-dock [data-do="play"]');
+
+  const first = await context.newPage();
+  await first.goto('/investigate');
+  await expect(first.locator('.music-dock')).toContainText('Music'); // loaded: a tap now starts it
+  await first.mouse.click(5, 5);
+  await expect(play(first)).toHaveAttribute('aria-label', 'Pause');
+
+  // A second tab doesn't start by itself while the first has the music.
+  const second = await context.newPage();
+  await second.goto('/investigate');
+  await expect(second.locator('.music-dock')).toContainText('Test Silence');
+  await second.mouse.click(5, 5);
+  await second.waitForTimeout(500);
+  await expect(play(second)).toHaveAttribute('aria-label', 'Play');
+  await expect(play(first)).toHaveAttribute('aria-label', 'Pause');
+
+  // Its own play takes the music: the first tab stops.
+  await play(second).click();
+  await expect(play(second)).toHaveAttribute('aria-label', 'Pause');
+  await expect(play(first)).toHaveAttribute('aria-label', 'Play');
+
+  // A pause the player chose holds through a reload; a tap doesn't undo it.
+  await play(second).click();
+  await expect(play(second)).toHaveAttribute('aria-label', 'Play');
+  await second.reload();
+  await expect(second.locator('.music-dock')).toContainText('Test Silence');
+  await second.mouse.click(5, 5);
+  await second.waitForTimeout(500);
+  await expect(play(second)).toHaveAttribute('aria-label', 'Play');
+});
