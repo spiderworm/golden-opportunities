@@ -50,24 +50,25 @@ export function ordersOf(lines: readonly DeepReadonly<SaleLine>[]): Order[] {
   return [...byId.values()];
 }
 
-/** Sale lines in the query layer's shape, numbered by day, then by order. */
-export function linesOf(orders: readonly Order[], year: number): SimulatedLine[] {
+/** Sale lines in the query layer's shape, numbered by day, then by order. Ids after Q1 name their quarter. */
+export function linesOf(orders: readonly Order[], year: number, quarter = 1): SimulatedLine[] {
+  const [tag, short] = quarter === 1 ? [`${year}`, `${year}`] : [`${year}-q${quarter}`, `${year}Q${quarter}`];
   const sorted = orders.map((order, index) => ({ order, index })).sort((a, b) => (a.order.day < b.order.day ? -1 : a.order.day > b.order.day ? 1 : a.index - b.index));
   const lines: SimulatedLine[] = [];
   sorted.forEach(({ order }, o) => {
-    const orderId = `S${year}-${String(o + 1).padStart(6, "0")}`;
+    const orderId = `S${short}-${String(o + 1).padStart(6, "0")}`;
     for (const item of order.items) {
       const n = lines.length + 1;
       const month = Number(order.day.slice(5, 7));
       lines.push({
         ...item.template,
-        id: `sim-${year}:${n}`,
+        id: `sim-${tag}:${n}`,
         sourceSheet: "simulation",
         sourceRow: n,
         date: order.day,
         quarter: Math.floor((month - 1) / 3) + 1,
         discount: item.discount,
-        itemId: `I${year}-${String(n).padStart(6, "0")}`,
+        itemId: `I${short}-${String(n).padStart(6, "0")}`,
         orderId,
         revenue: item.listPrice * (1 - item.discount),
       });
