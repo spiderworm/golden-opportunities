@@ -53,6 +53,9 @@
 .moves {
   position: relative;
   display: grid;
+  /* One column as wide as the form, whatever its unwrapped lines (the status, the footer) would take: a status
+     that clears must not widen or narrow the cards. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   min-width: 0;
   margin: 0;
@@ -142,7 +145,10 @@
   font-weight: 600;
 }
 
+/* The plan's status says what the plan is now; the small print beside it gives way first. */
 .movesStatus {
+  flex: none;
+  max-width: 100%;
   margin: 0;
   overflow: hidden;
   color: var(--color-text-muted);
@@ -363,6 +369,59 @@
 }
 
 /* The chrome needs a wide form; under 820 px it steps aside rather than crowd the foot. */
+/* Q2's form (q2.md section 5): the Book of the Month calendar beside the one more move, its two cards side
+   by side, so the form is no taller than Q1's three cards. */
+.q2Body {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.oneMore {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.sectionLabel {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+}
+
+/* Narrower cards than Q1's: the title and key figure only (the whole line still describes the checkbox,
+   and opens over the scene on hover, focus or "More", wider than the card), and a smaller stamp. */
+.oneMore .optionLine {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.oneMore .stamp {
+  padding: 1px 5px;
+  border-width: 2px;
+  font-size: 9px;
+  transform: rotate(-7deg) scale(1.15);
+}
+
+.oneMore .option:last-child .popover {
+  left: auto;
+  width: max(100%, 260px);
+}
+
+.oneMore .option:nth-child(2) .popover {
+  right: auto;
+  width: max(100%, 260px);
+}
+
 @container requisition (max-width: 819px) {
   .formMeta {
     display: none;
@@ -379,9 +438,10 @@
   }
 }
 
-/* A narrow form (a narrow window): the cards stack. */
+/* A narrow form (a narrow window): the cards stack, and Q2's calendar goes above its one more move. */
 @container requisition (max-width: 420px) {
-  .options {
+  .options,
+  .q2Body {
     grid-template-columns: minmax(0, 1fr);
   }
 }
