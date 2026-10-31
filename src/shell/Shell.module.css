@@ -84,6 +84,14 @@
   white-space: nowrap;
 }
 
+/* The menu's landmark: brand, heading and list, over the music. */
+.menuNav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 /* On a short window the list scrolls; the music below it stays put. */
 .menuList {
   display: flex;
