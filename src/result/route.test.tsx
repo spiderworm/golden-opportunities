@@ -126,6 +126,10 @@ describe("the result screen", () => {
     expect(text(html)).toContain("Back to the ledgers");
     // Once Q2 has started, Q1's screen is still there, without it, and nothing replaces it (q2.md, #139).
     expect(show({ ...base, next: null })).not.toContain("Continue to Q2");
+    // Not even the half-year review, which the game gives every quarter's data once both are played.
+    const after = show({ ...base, next: null, canPlayAgain: true, halfYear: { quarters: [], score: 76, grade: "C+" } });
+    expect(after).not.toContain("Half-year review");
+    expect(after).not.toContain("Play again");
   });
 });
 
