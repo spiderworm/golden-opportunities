@@ -1,5 +1,6 @@
 // Runs the Q2 attempts against a dev server with the real provider, one answer at a time:
-//   node run.mjs <base url> [--repeat n] [--q2] [case-id ...]
+//   COOKIE='orbital_save=<id>' node run.mjs <base url> [--repeat n] [--q2] [case-id ...]
+// COOKIE is the save's cookie (Dewey answers only within a game); for --q2, a save whose Q1 is played.
 // Logs each request, every NDJSON event and the reply to $RUNS/<id>[-n].json (default ../runs), prints each
 // reply and its problems, and exits 1 if any case failed. Cases marked `needs: "q2"` run only with --q2.
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -22,7 +23,7 @@ for (const c of CASES.filter((c) => (!args.length || args.includes(c.id)) && (q2
     const started = Date.now();
     const res = await fetch(`${base}/api/assistant`, {
       method: "POST",
-      headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin" },
+      headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", ...(process.env.COOKIE ? { cookie: process.env.COOKIE } : {}) },
       body: JSON.stringify(request),
     });
     const raw = await res.text();
