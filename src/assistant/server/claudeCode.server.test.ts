@@ -175,6 +175,17 @@ describe("the process", () => {
     expect(existsSync(cwd)).toBe(false);
   });
 
+  it("never starts for a signal already aborted (Audit, #67)", async () => {
+    // Its own report file: if the fake ever started, it would write one.
+    const { provider, report } = run("pre-aborted");
+    const abort = new AbortController();
+    abort.abort();
+    const events = [];
+    for await (const e of provider.ask({ system: "s", message: "m" }, abort.signal)) events.push(e);
+    expect(events).toEqual([]);
+    expect(() => report()).toThrow(/ENOENT/);
+  });
+
   it("tells Claude Code missing, signed out and failing to start apart (M4)", async () => {
     const kindOf = async (provider: { ask: (p: { system: string; message: string }, s: AbortSignal) => AsyncIterable<unknown> }) => {
       try {

@@ -181,6 +181,8 @@ export function claudeCodeAssistant({
   return {
     name: "claude-code",
     async *ask(prompt, signal) {
+      // An answer cancelled before it started never starts: the abort listener below would never fire for it.
+      if (signal.aborted) return;
       const cwd = mkdtempSync(path.join(tmpdir(), "orbital-assistant-"));
       // Its own process group, so stopping it also stops what it started (our MCP server, anything else).
       const child = spawn(command, claudeArgs(prompt, model, server), { cwd, env: minimalEnv(process.env, server.env), stdio: ["pipe", "pipe", "pipe"], detached: true });
