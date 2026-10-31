@@ -75,14 +75,14 @@ Due **3 November 2026**, with no extension: "no need to extend as it turns out" 
 - **Hosting:** local only for now; to be decided later. (David, 30 Oct)
 - **A reviewer can clone the repo, follow the instructions, and play.** Sim checked this from a fresh clone of `main`; the findings, and README suggestions for David, are in `docs/fresh-clone-check.md`. (Goldy's M4 item, #154, 31 Oct) Its two blocking findings are fixed (#157), and a second pass covers the real Dewey under `npm start` and the Q2 loop.
 - **The real Dewey works under `npm start`,** not only under `npm run dev`. The built server starts Dewey's tool server from `src/`, so `npm start` runs from the repo. `npm start` listens on port 3000 unless `PORT` says otherwise, and fails if 3000 is busy, and a dev server that moves off 5173 still reaches its own lookups. (Frank, #150 and #157, from Sim's check, 31 Oct)
-- **Every month is a year and a month** (`2193-04`, `2194-04`), so 2193's and 2194's months never share a row in a chart, a table or Dewey's lookups. A bare month filter is refused. (Probe's Q2 red-team; Frank's fix at the source, as Goldy asked, #153, 31 Oct)
+- **Every month is a year and a month** (`2193-04`, `2194-04`), so 2193's and 2194's months never share a row in a chart, a table or Dewey's lookups. A bare month filter is refused. (Probe's Q2 red-team, finding Q5, #151; Frank's fix at the source, as Goldy asked, #153, 31 Oct)
 - **Every copy of the app generates an instance ID** and sends it with its analytics, like a device ID. Local runs send everything too. How exposed this leaves David to abuse is still to be discussed. (David, 30 Oct)
 - **What players type to the agent is kept on the device, not sent,** so it can be delivered later if David decides to. The final decision is deferred. Every other event is sent. (David, 30 Oct) Whether Dewey's own withheld sentences are kept the same way is open (Sage's #152).
 - **Analytics** use the studio's `@tellim/analytics` and **send to the studio's server.** (David, 30 Oct) That brings these requirements (Annie, 30 Oct):
   - a privacy page, modelled on Waddleberg's `privacy.html`;
   - an in-game switch to turn sharing off, with the install id shown;
   - `game: "orbital-books"`, plus `version`, `platform: "web"`, a build id and the WebGL context.
-- **`docs/analytics.md` lists every event and checks the promises:** each event is described on the privacy page, held agent text never leaves the device, the sharing switch stops the browser and the server, automated browsers never send, and `.data/instance.json` is git-ignored. (Frank, for Goldy's M4 check, #159, 31 Oct)
+- **`docs/analytics.md` lists every event and checks the promises:** each event is described on the privacy page, held agent text never leaves the device, the sharing switch stops the browser and the server, automated browsers never send (the server's own events need `ORBITAL_ANALYTICS=off`, which the e2e server sets), and `.data/instance.json` is git-ignored. (Frank, for Goldy's M4 check, #159, 31 Oct)
 - **How We Build applies** (`~/Documents/how-we-build.md`): vertical slices, code organised by feature, analytics in every feature from the start.
 
 ## Process
