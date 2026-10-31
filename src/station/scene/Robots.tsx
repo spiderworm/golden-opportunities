@@ -2,32 +2,25 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import {
   AdditiveBlending,
-  CapsuleGeometry,
-  CircleGeometry,
   ConeGeometry,
-  CylinderGeometry,
   DoubleSide,
   Matrix4,
   MeshBasicMaterial,
-  MeshStandardMaterial,
   Object3D,
   Quaternion,
-  SphereGeometry,
-  TorusGeometry,
   Vector3,
   type InstancedMesh,
 } from "three";
 
 import { Bookshop } from "./bookshop";
-import { box, merged } from "./geometry";
 import { ROOM, smoothstep } from "./layout";
+import { selfLit, useModelParts } from "./models";
 import { SHELF_HEIGHT, SHELF_UNITS } from "./shelves";
 
 // The shop's little flying robots. They float above the shoppers' heads and
 // keep the place tidy: they fetch books left lying about and slide them back
 // into their gaps, straighten books left leaning, dust the shelf tops,
 // polish the window, and rest in their corners when there's nothing to do.
-// Drawn in code until a robot model arrives.
 
 export const ROBOTS = 3;
 /** Each robot crosses the room at its own height, so they never meet. */
@@ -39,8 +32,8 @@ const GRIP = 0.33;
 /** The window's inside face, less a little room for the robot. */
 const GLASS_Z = ROOM.depth / 2 - 0.4;
 const DOWN = new Vector3(0, -1, 0);
-/** Drawn a little larger than life, so they read from the camera's corner. */
-const SIZE = 1.35;
+/** The model is a unit tall; a robot is a little under half a meter, so it reads from the camera's corner. */
+const SIZE = 0.46;
 const HIDDEN = new Matrix4().makeScale(0, 0, 0);
 
 /** One stretch of a chore: fly to `to`, then stay there for `hold` seconds. */
@@ -77,36 +70,25 @@ function route(from: Vector3, to: Vector3, cruise: number, last: Partial<Leg> = 
   ];
 }
 
-function robotGeometry() {
-  return {
-    shell: merged([
-      new SphereGeometry(0.17, 20, 14).scale(1, 0.78, 1),
-      new CylinderGeometry(0.03, 0.04, 0.08, 10).translate(0, 0.15, 0),
-      box(-0.09, -0.15, 0.02, 0.025, 0.1, 0.025),
-      box(0.09, -0.15, 0.02, 0.025, 0.1, 0.025),
-    ]),
-    glow: merged([
-      new CapsuleGeometry(0.035, 0.12, 4, 8).rotateZ(Math.PI / 2).translate(0, 0.02, 0.145),
-      new TorusGeometry(0.21, 0.014, 8, 36).rotateX(Math.PI / 2).translate(0, 0.17, 0),
-      new CircleGeometry(0.06, 16).rotateX(Math.PI / 2).translate(0, -0.13, 0),
-    ]),
-    // Its tip at the robot, opening along -y.
-    beam: new ConeGeometry(0.22, 0.75, 20, 1, true).translate(0, -0.375, 0),
-  };
-}
-
 export function Robots({ shop }: { shop: Bookshop }) {
-  const shells = useRef<InstancedMesh>(null);
-  const glows = useRef<InstancedMesh>(null);
+  const bodies = useRef<InstancedMesh>(null);
   const beams = useRef<InstancedMesh>(null);
-  const geometry = useMemo(robotGeometry, []);
+  const model = useModelParts("robot");
+  const geometry = useMemo(
+    () => ({
+      // The model stands on y = 0; a robot hovers about its middle.
+      body: model.geometry.clone().translate(0, -0.5, 0),
+      // Its tip at the robot, opening along -y.
+      beam: new ConeGeometry(0.22, 0.75, 20, 1, true).translate(0, -0.375, 0),
+    }),
+    [model],
+  );
   const materials = useMemo(
     () => ({
-      shell: new MeshStandardMaterial({ color: "#eef0f8", metalness: 0.2, roughness: 0.35, emissive: "#4a5280", emissiveIntensity: 0.6 }),
-      glow: new MeshBasicMaterial({ color: "#9fe6ff", toneMapped: false }),
+      body: selfLit(model.material, 0.45),
       beam: new MeshBasicMaterial({ color: "#9fe6ff", transparent: true, opacity: 0.16, blending: AdditiveBlending, depthWrite: false, side: DoubleSide }),
     }),
-    [],
+    [model],
   );
   useEffect(
     () => () => {
@@ -295,8 +277,7 @@ export function Robots({ shop }: { shop: Bookshop }) {
       dummy.rotation.set(robot.tilt, robot.yaw, Math.sin(t * 1.3 + i) * 0.04, "YXZ");
       dummy.scale.setScalar(SIZE);
       dummy.updateMatrix();
-      shells.current?.setMatrixAt(i, dummy.matrix);
-      glows.current?.setMatrixAt(i, dummy.matrix);
+      bodies.current?.setMatrixAt(i, dummy.matrix);
       if (robot.carrying >= 0) shop.hold(robot.carrying, v.copy(dummy.position).setY(dummy.position.y - GRIP), Bookshop.flat(robot.yaw, q));
       if (robot.beam) {
         dummy.quaternion.setFromUnitVectors(DOWN, robot.beam);
@@ -308,15 +289,13 @@ export function Robots({ shop }: { shop: Bookshop }) {
         beams.current?.setMatrixAt(i, HIDDEN);
       }
     });
-    for (const mesh of [shells.current, glows.current, beams.current]) if (mesh) mesh.instanceMatrix.needsUpdate = true;
-    const pulse = 0.85 + 0.15 * Math.sin(t * 3);
-    materials.glow.color.setRGB(0.62 * pulse, 0.9 * pulse, 1 * pulse);
+    for (const mesh of [bodies.current, beams.current]) if (mesh) mesh.instanceMatrix.needsUpdate = true;
+    materials.body.emissiveIntensity = 0.4 + 0.08 * Math.sin(t * 3);
   });
 
   return (
     <>
-      <instancedMesh ref={shells} args={[geometry.shell, materials.shell, ROBOTS]} frustumCulled={false} />
-      <instancedMesh ref={glows} args={[geometry.glow, materials.glow, ROBOTS]} frustumCulled={false} />
+      <instancedMesh ref={bodies} args={[geometry.body, materials.body, ROBOTS]} frustumCulled={false} />
       <instancedMesh ref={beams} args={[geometry.beam, materials.beam, ROBOTS]} frustumCulled={false} />
     </>
   );

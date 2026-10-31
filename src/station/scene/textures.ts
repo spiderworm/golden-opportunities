@@ -89,21 +89,3 @@ export function glowTexture(): CanvasTexture {
     ctx.fillRect(0, 0, 128, 128);
   });
 }
-
-/** Solar panel cells: a dark blue grid that catches the light. */
-export function solarTexture(): CanvasTexture {
-  return canvasTexture(256, 256, (ctx) => {
-    ctx.fillStyle = "#0e1a3d";
-    ctx.fillRect(0, 0, 256, 256);
-    ctx.strokeStyle = "#5a76c9";
-    ctx.lineWidth = 2;
-    for (let i = 0; i <= 256; i += 32) {
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, 256);
-      ctx.moveTo(0, i);
-      ctx.lineTo(256, i);
-      ctx.stroke();
-    }
-  });
-}

@@ -1,6 +1,6 @@
 import { Color, Matrix4, Quaternion, Vector3, type InstancedMesh } from "three";
 
-import { BOARDS, SHELF_DEPTH, SHELF_UNITS } from "./shelves";
+import { BAYS, BOARDS, SHELF_BACK, SHELF_UNITS } from "./shelves";
 
 // The books in the shop, and the ones out of place. Shoppers take books off
 // the shelves and set them down wherever they happen to be; the shop's
@@ -48,8 +48,8 @@ const BOOK_COLORS = ["#7a2e3b", "#2f4f7a", "#2e6b5a", "#c08a3e", "#5b3d7a", "#d9
 export const SURFACES: [x: number, y: number, z: number][] = [
   [-6.4, 0.64, 3.0], // the reading nook's side table
   [-2.05, 0.9, 2.0], // the featured book's plinth
-  [3.75, 1.06, -1.55], // the counter, either side of the console
-  [4.2, 1.06, 0.6],
+  [3.75, 1.06, -1.45], // the counter, either side of the console
+  [4.2, 1.06, -0.35],
 ];
 /** How far a shopper will go out of their way to set a book on a surface instead of the floor. */
 const SURFACE_REACH = 2.2;
@@ -71,29 +71,31 @@ function shelfBooks(): ShelfBook[] {
   for (const unit of SHELF_UNITS) {
     const frame = new Matrix4().makeRotationY(unit.facing).setPosition(unit.x, 0, unit.z);
     BOARDS.slice(0, 4).forEach((y, board) => {
-      let x = -unit.width / 2 + 0.12;
-      const end = unit.width / 2 - 0.12;
-      while (x < end) {
-        const width = 0.06 + random() * 0.08;
-        if (x + width > end) break;
-        if (random() < 0.05) {
-          x += 0.25; // a gap where something sold
-          continue;
+      for (const [from, end] of BAYS) {
+        let x = from;
+        while (x < end) {
+          const width = 0.06 + random() * 0.08;
+          if (x + width > end) break;
+          if (random() < 0.05) {
+            x += 0.25; // a gap where something sold
+            continue;
+          }
+          // Short enough to clear the board above.
+          const height = 0.4 + random() * 0.22;
+          const depth = 0.3 + random() * 0.08;
+          const lean = random() < 0.06 ? LEAN : 0;
+          const color = new Color(BOOK_COLORS[Math.floor(random() * BOOK_COLORS.length)]!).offsetHSL(0, 0, (random() - 0.5) * 0.12);
+          books.push({
+            unit: frame,
+            local: new Vector3(x + width / 2, y + height / 2, SHELF_BACK + 0.02 + depth / 2),
+            size: new Vector3(width, height, depth),
+            facing: unit.facing,
+            lean,
+            color,
+            board,
+          });
+          x += width + 0.004;
         }
-        const height = 0.46 + random() * 0.3;
-        const depth = 0.34 + random() * 0.14;
-        const lean = random() < 0.06 ? LEAN : 0;
-        const color = new Color(BOOK_COLORS[Math.floor(random() * BOOK_COLORS.length)]!).offsetHSL(0, 0, (random() - 0.5) * 0.12);
-        books.push({
-          unit: frame,
-          local: new Vector3(x + width / 2, y + height / 2, -SHELF_DEPTH / 2 + 0.06 + depth / 2),
-          size: new Vector3(width, height, depth),
-          facing: unit.facing,
-          lean,
-          color,
-          board,
-        });
-        x += width + 0.004;
       }
     });
   }
