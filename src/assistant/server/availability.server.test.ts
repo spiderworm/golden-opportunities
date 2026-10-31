@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { assistantAvailability, markOffline, probeAssistant, resetAvailabilityForTests, type Availability } from "./availability.server.ts";
 
 const fake = fileURLToPath(new URL("./fixtures/fake-claude-auth.mjs", import.meta.url));
-const probe = (mode: string, timeoutMs?: number) => probeAssistant({ command: fake, env: { PATH: process.env.PATH, FAKE_AUTH: mode }, timeoutMs });
+const probe = (mode: string, timeoutMs?: number, extra: NodeJS.ProcessEnv = {}) => probeAssistant({ env: { PATH: process.env.PATH, ORBITAL_ASSISTANT_CLAUDE: fake, CLAUDE_CONFIG_DIR: `/config/${mode}`, ...extra }, timeoutMs });
 
 afterEach(resetAvailabilityForTests);
 
@@ -18,6 +18,13 @@ describe("probing Claude Code (M4: a reviewer may not have it)", () => {
     expect(await probe("out")).toEqual({ state: "offline", reason: "signed_out" });
     expect(await probe("dead")).toEqual({ state: "offline", reason: "broken" });
     expect(await probe("hang", 300)).toEqual({ state: "offline", reason: "broken" });
+  });
+
+  it("probes the same binary, with the same environment, as a real answer (Probe, #67)", async () => {
+    // ORBITAL_ASSISTANT_CLAUDE picks the binary (the probe() helper sets it to the fixture).
+    expect(await probe("in")).toEqual({ state: "ready" });
+    // An API key in this process's environment doesn't reach a real answer, so it can't make the probe ready.
+    expect(await probe("key", undefined, { ANTHROPIC_API_KEY: "sk-test" })).toEqual({ state: "offline", reason: "signed_out" });
   });
 
   it("treats a Claude Code without `auth status` as ready if it runs; a real answer then finds out about sign-in", async () => {

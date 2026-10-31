@@ -69,6 +69,9 @@ export function claudeArgs(prompt: AssistantPrompt, model: string, server: ToolS
 }
 
 /** Only what claude needs to find its sign-in and run, plus our server's secrets: nothing else of the app's. */
+/** The Claude Code binary to run: ORBITAL_ASSISTANT_CLAUDE, or `claude` from the PATH. */
+export const claudeCommand = (env: NodeJS.ProcessEnv = process.env) => env.ORBITAL_ASSISTANT_CLAUDE || "claude";
+
 export function minimalEnv(env: NodeJS.ProcessEnv = process.env, serverEnv: Record<string, string> = {}): NodeJS.ProcessEnv {
   const keep = ["PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "SHELL", "CLAUDE_CONFIG_DIR"];
   return { ...Object.fromEntries(keep.filter((k) => env[k] !== undefined).map((k) => [k, env[k]])), ...serverEnv };
@@ -163,7 +166,7 @@ export async function* readStream(lines: AsyncIterable<string>, kill: () => void
 
 export function claudeCodeAssistant({
   server,
-  command = process.env.ORBITAL_ASSISTANT_CLAUDE || "claude",
+  command = claudeCommand(),
   model = process.env.ORBITAL_ASSISTANT_MODEL || "sonnet",
   timeoutMs = 120_000,
   graceMs = 2_000,
