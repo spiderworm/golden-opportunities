@@ -1,10 +1,11 @@
 import { useGLTF } from "@react-three/drei";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef, type CSSProperties, type RefObject } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import {
   AdditiveBlending,
   AnimationMixer,
   Box3,
+  BoxGeometry,
   Color,
   Group,
   Mesh,
@@ -23,21 +24,26 @@ import {
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import { BOSSES, type BossId } from "./bosses";
+import { BossLayout } from "./BossLayout";
 import type { BossSceneProps } from "./BossScene2D";
-import { SpeechBubble } from "./SpeechBubble";
 import styles from "./BossScene3D.module.css";
 
 // The bosses standing together in 3D: each one a generated Tripo robot
-// (public/models/bosses/provenance.json), under its speech bubble. The
-// bubbles are the same as in the 2D scene, laid out the same way, so the
-// keyboard, screen readers and the focus model don't change; each robot
-// stands under its bubble's column and follows it as the open column widens.
-// The open boss steps forward and talks; the rest idle. Loaded only on
-// Decide, and only once the browser has shown it can draw WebGL 2.
+// (public/models/bosses/provenance.json), on the floor of the same fixed
+// layout as the 2D scene (BossLayout), so the bubbles, keyboard, screen
+// readers and focus model don't change. Each robot stands under its column;
+// opening a bubble moves nobody (David: "without the robots changing
+// position"): the open boss leans in, glows and talks where it stands. The
+// robots move only if the columns do, when the scene is resized. Clicking a
+// robot opens its bubble, as in 2D. The canvas is see-through, so the room
+// behind it is the 2D scene's. Loaded only on Decide, once the browser has
+// shown it can draw WebGL 2.
 
 export interface BossScene3DProps extends BossSceneProps {
-  /** Still poses: no stepping, idling or bobbing. */
+  /** Still poses: no idling, leaning or bobbing. */
   reducedMotion: boolean;
+  /** Called once its bubbles are up. */
+  onShown?: () => void;
 }
 
 /**
@@ -54,9 +60,9 @@ const MODELS: Record<BossId, { height: number; hover?: number }> = {
 };
 const modelUrl = (boss: BossId) => `/models/bosses/${boss}.glb`;
 
-/** How far the open boss steps toward the player, and how fast. */
-const FORWARD = 0.35;
-const STEP_SPEED = 0.9;
+/** How far the open boss leans in and grows, where it stands. */
+const LEAN = 0.14;
+const GROW = 0.06;
 /** How far each boss turns toward the middle of the line-up, per place from it. */
 const TURN = 0.2;
 /** The Commerce Office is seven of the same unit: six faint copies stand behind the front one. */
@@ -69,42 +75,35 @@ const COPIES: [number, number][] = [
   [0, -1.05],
 ];
 
-export default function BossScene3D({ bubbles, open, onSelect, reducedMotion }: BossScene3DProps) {
-  const id = useId();
+export default function BossScene3D({ bubbles, open, onSelect, reducedMotion, onShown }: BossScene3DProps) {
   const columns = useRef<(HTMLLIElement | null)[]>([]);
+  const stage = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => onShown?.(), [onShown]);
   // The same list while the bubbles are, so the robots are made once.
   const bosses = useMemo(() => bubbles.map((b) => b.boss), [bubbles]);
-  return (
-    <div className={styles.scene}>
-      <ul className={styles.bubbles}>
-        {bubbles.map((b, i) => (
-          <li
-            key={b.boss}
-            ref={(el) => {
-              columns.current[i] = el;
-            }}
-            className={styles.member}
-            data-open={i === open || undefined}
-            style={{ "--tint": BOSSES[b.boss].tint, "--order": i } as CSSProperties}
-          >
-            <SpeechBubble bubble={b} open={i === open} id={`${id}-${i}`} onSelect={(how) => onSelect(i, how)} />
-          </li>
-        ))}
-      </ul>
-      {/* Decoration: the bubbles above say who each boss is and what they say. */}
-      <div className={styles.stage} aria-hidden="true">
-        <Canvas dpr={[1, 1.75]} camera={{ fov: 30, near: 0.1, far: 20, position: [0, 0.8, 2.7] }} gl={{ antialias: true, alpha: true }}>
-          <CameraAim />
-          <hemisphereLight args={["#c9d0ff", "#2a2140", 1.1]} />
-          <directionalLight position={[1.5, 3, 4]} intensity={1.6} color="#fff3e2" />
-          {/* The models load here, inside the canvas: the bubbles are up already, and the page keeps
-              one set of them rather than the 2D scene's too while the robots arrive. */}
-          <Suspense fallback={null}>
-            <Bosses bosses={bosses} open={open} onSelect={onSelect} columns={columns} reducedMotion={reducedMotion} />
-          </Suspense>
-        </Canvas>
-      </div>
+  const floor = (
+    <div ref={stage} className={styles.stage} aria-hidden="true">
+      <Canvas dpr={[1, 1.75]} camera={{ fov: 30, near: 0.1, far: 20, position: [0, 0.6, 2.35] }} gl={{ antialias: true, alpha: true }}>
+        <CameraAim />
+        <hemisphereLight args={["#c9d0ff", "#2a2140", 1.1]} />
+        <directionalLight position={[1.5, 3, 4]} intensity={1.6} color="#fff3e2" />
+        {/* The models load here, inside the canvas: the bubbles are up already. */}
+        <Suspense fallback={null}>
+          <Bosses bosses={bosses} open={open} onSelect={onSelect} columns={columns} stage={stage} reducedMotion={reducedMotion} />
+        </Suspense>
+      </Canvas>
     </div>
+  );
+  return (
+    <BossLayout
+      bubbles={bubbles}
+      open={open}
+      onSelect={onSelect}
+      floor={floor}
+      columnRef={(i) => (el) => {
+        columns.current[i] = el;
+      }}
+    />
   );
 }
 
@@ -118,8 +117,10 @@ interface Figure {
   root: Group;
   mixers: AnimationMixer[];
   /** The front unit's motions, if it's rigged. */
-  actions: { idle: AnimationAction; talk: AnimationAction; walk: AnimationAction } | null;
+  actions: { idle: AnimationAction; talk: AnimationAction } | null;
   playing: AnimationAction | null;
+  /** Materials and geometry made for this figure (its hit box, the faint copies'), to free when it goes. */
+  owned: { dispose(): void }[];
 }
 
 function Bosses({
@@ -127,12 +128,14 @@ function Bosses({
   open,
   onSelect,
   columns,
+  stage,
   reducedMotion,
 }: {
   bosses: BossId[];
   open: number;
   onSelect: BossSceneProps["onSelect"];
   columns: RefObject<(HTMLLIElement | null)[]>;
+  stage: RefObject<HTMLDivElement | null>;
   reducedMotion: boolean;
 }) {
   const models = useGLTF(bosses.map(modelUrl), false);
@@ -140,60 +143,84 @@ function Bosses({
     () => bosses.map((boss, i) => makeFigure(boss, models[i]!, (bosses.length - 1) / 2 - i)),
     [bosses, models],
   );
+  useEffect(() => () => figures.forEach((f) => f.owned.forEach((m) => m.dispose())), [figures]);
   const { gl } = useThree();
-  const work = useMemo(() => ({ ray: new Raycaster(), ndc: new Vector2(), plane: new Plane(new Vector3(0, 0, 1), 0), at: new Vector3() }), []);
+  const hovered = useRef(-1);
+  const work = useMemo(
+    () => ({ ray: new Raycaster(), ndc: new Vector2(), plane: new Plane(new Vector3(0, 0, 1), 0), at: new Vector3(), screen: new Vector3(), placed: "" }),
+    [],
+  );
   const glow = useRef<Group>(null);
+  const hover = useRef<Group>(null);
   const light = useRef<PointLight>(null);
-  const ring = useMemo(() => new MeshBasicMaterial({ transparent: true, opacity: 0.55, blending: AdditiveBlending, depthWrite: false }), []);
   const ringGeometry = useMemo(() => new RingGeometry(0.2, 0.34, 48).rotateX(-Math.PI / 2), []);
+  const rings = useMemo(
+    () => [0.55, 0.22].map((opacity) => new MeshBasicMaterial({ transparent: true, opacity, blending: AdditiveBlending, depthWrite: false })),
+    [],
+  );
   useEffect(
     () => () => {
-      ring.dispose();
+      rings.forEach((m) => m.dispose());
       ringGeometry.dispose();
     },
-    [ring, ringGeometry],
+    [rings, ringGeometry],
   );
 
   useFrame(({ camera, clock }, frameDelta) => {
     const delta = Math.min(frameDelta, 0.1);
     const t = clock.elapsedTime;
     const box = gl.domElement.getBoundingClientRect();
+    const placed: number[] = [];
     figures.forEach((f, i) => {
       const focused = i === open;
       const root = f.root;
-      // Step toward the player when its bubble is open, back when it closes.
-      const target = focused ? FORWARD : 0;
-      const step = reducedMotion ? Infinity : STEP_SPEED * delta;
-      const moving = Math.abs(target - root.position.z) > 1e-3;
-      root.position.z += Math.max(-step, Math.min(step, target - root.position.z));
-      // Under the middle of its bubble's column, wherever that is now.
+      // Under the middle of its column. The columns are fixed, so this changes only on a resize.
       const column = columns.current?.[i]?.getBoundingClientRect();
       if (column && box.width > 0) {
         work.ndc.set(((column.left + column.width / 2 - box.left) / box.width) * 2 - 1, -0.85);
         work.ray.setFromCamera(work.ndc, camera);
-        work.plane.constant = -root.position.z;
         if (work.ray.ray.intersectPlane(work.plane, work.at)) root.position.x = work.at.x;
       }
-      if (f.actions) {
-        play(f, moving && !reducedMotion ? f.actions.walk : focused ? f.actions.talk : f.actions.idle, reducedMotion);
-      } else if (!reducedMotion) {
-        // The Administrator and the drone aren't rigged: they bob, and lean in to talk.
+      // Where it stands on the page, for anyone checking that nobody moved.
+      work.screen.set(root.position.x, 0, 0).project(camera);
+      placed.push(Math.round(((work.screen.x + 1) / 2) * box.width), Math.round(((1 - work.screen.y) / 2) * box.height));
+      // The open boss leans in, a little bigger, where it stands; the rest stand easy.
+      const lean = focused ? LEAN : 0;
+      const grow = 1 + (focused ? GROW : 0);
+      const ease = reducedMotion ? 1 : Math.min(1, delta * 6);
+      root.rotation.x += (lean - root.rotation.x) * ease;
+      root.scale.setScalar(root.scale.x + (grow - root.scale.x) * ease);
+      if (f.actions) play(f, focused ? f.actions.talk : f.actions.idle, reducedMotion);
+      else if (!reducedMotion) {
+        // The Administrator and the drone aren't rigged: they bob, faster while they talk.
         const hover = MODELS[bosses[i]!].hover ?? 0;
-        const speed = focused ? 3.2 : 1.6;
-        root.position.y = hover ? 0.03 * Math.sin(t * speed + i) : 0.008 * Math.sin(t * speed + i);
-        root.rotation.x = focused ? 0.08 + 0.04 * Math.sin(t * 3.2) : 0;
+        root.position.y = (hover ? 0.03 : 0.008) * Math.sin(t * (focused ? 3.2 : 1.6) + i);
       }
       if (!reducedMotion) for (const m of f.mixers) m.update(delta);
     });
-    // The open boss's tint pools on the floor at its feet.
-    const lit = figures[open];
-    if (lit && glow.current && light.current) {
-      glow.current.position.set(lit.root.position.x, 0.005, lit.root.position.z);
-      const tint = BOSSES[bosses[open]!].tint;
-      ring.color.set(tint);
+    const where = placed.join(",");
+    if (where !== work.placed && stage.current) {
+      work.placed = where;
+      stage.current.dataset.robots = where;
+    }
+    // The open boss's tint pools at its feet; a hovered one gets a fainter pool of its own.
+    const place = (ring: Group | null, i: number) => {
+      const f = figures[i];
+      if (!ring) return;
+      ring.visible = Boolean(f);
+      if (!f) return;
+      ring.position.set(f.root.position.x, 0.005, 0);
+    };
+    place(glow.current, open);
+    place(hover.current, hovered.current === open ? -1 : hovered.current);
+    const tint = BOSSES[bosses[open]!]?.tint;
+    if (tint && light.current) {
+      rings[0]!.color.set(tint);
       light.current.color.set(tint);
       light.current.intensity = reducedMotion ? 2.2 : 2 + 0.4 * Math.sin(t * 2.4);
     }
+    const hoverTint = BOSSES[bosses[hovered.current]!]?.tint;
+    if (hoverTint) rings[1]!.color.set(hoverTint);
   });
 
   return (
@@ -206,13 +233,23 @@ function Bosses({
             event.stopPropagation();
             onSelect(i, "click");
           }}
-          onPointerOver={() => (gl.domElement.style.cursor = "pointer")}
-          onPointerOut={() => (gl.domElement.style.cursor = "")}
+          onPointerOver={(event: ThreeEvent<PointerEvent>) => {
+            event.stopPropagation();
+            hovered.current = i;
+            gl.domElement.style.cursor = "pointer";
+          }}
+          onPointerOut={() => {
+            if (hovered.current === i) hovered.current = -1;
+            gl.domElement.style.cursor = "";
+          }}
         />
       ))}
       <group ref={glow}>
-        <mesh geometry={ringGeometry} material={ring} />
+        <mesh geometry={ringGeometry} material={rings[0]} />
         <pointLight ref={light} position={[0, 0.9, 0.35]} distance={2.2} decay={1.4} />
+      </group>
+      <group ref={hover}>
+        <mesh geometry={ringGeometry} material={rings[1]} />
       </group>
     </>
   );
@@ -244,9 +281,19 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
   const root = new Group();
   const front = unit();
   root.add(front);
+  // An unseen box round the robot takes clicks and hovers for it, as the 2D figure's whole box does:
+  // a slender robot is otherwise all gaps.
+  const bounds = new Box3().setFromObject(front);
+  const size = bounds.getSize(new Vector3());
+  const hitGeometry = new BoxGeometry(Math.max(size.x, 0.3), size.y, Math.max(size.z, 0.3));
+  const hitMaterial = new MeshBasicMaterial({ visible: false });
+  const hit = new Mesh(hitGeometry, hitMaterial);
+  bounds.getCenter(hit.position);
+  root.add(hit);
   root.rotation.y = fromMiddle * TURN;
   const clip = (name: string) => model.animations.find((a) => a.name === name);
   const mixers: AnimationMixer[] = [];
+  const owned: { dispose(): void }[] = [hitMaterial];
   let actions: Figure["actions"] = null;
   const idle = clip("idle");
   if (idle) {
@@ -255,7 +302,6 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
     actions = {
       idle: mixer.clipAction(idle),
       talk: mixer.clipAction(clip("agree") ?? idle),
-      walk: mixer.clipAction(clip("walk") ?? idle),
     };
     actions.idle.play();
     actions.idle.time = Math.random() * idle.duration;
@@ -266,7 +312,7 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
       const copy = unit();
       copy.position.x += x;
       copy.position.z += z;
-      faint(copy);
+      owned.push(...faint(copy));
       root.add(copy);
       if (idle) {
         const mixer = new AnimationMixer(copy);
@@ -278,12 +324,14 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
       }
     }
   }
-  return { root, mixers, actions, playing: actions?.idle ?? null };
+  owned.push(hitGeometry);
+  return { root, mixers, actions, playing: actions?.idle ?? null, owned };
 }
 
-/** Fades a copy back, as the portrait does with the Commerce Office's other six units. */
-function faint(object: Object3D) {
+/** Fades a copy back, as the portrait does with the Commerce Office's other six units; returns its new materials. */
+function faint(object: Object3D): Material[] {
   const dim = new Color("#3a3f66");
+  const made: Material[] = [];
   object.traverse((o) => {
     const mesh = o as Mesh;
     if (!mesh.isMesh) return;
@@ -293,7 +341,9 @@ function faint(object: Object3D) {
     material.depthWrite = false;
     material.color?.lerp(dim, 0.4);
     mesh.material = material;
+    made.push(material);
   });
+  return made;
 }
 
 for (const boss of Object.keys(MODELS) as BossId[]) useGLTF.preload(modelUrl(boss), false);

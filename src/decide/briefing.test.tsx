@@ -65,9 +65,19 @@ describe("the bosses' brief (m1-copy section 3)", () => {
 
   it("keeps the rules the choice turns on beside the moves", () => {
     const html = render();
-    expect(html).toMatch(/<legend[^>]*>Your moves \(choose up to two\)<\/legend><p id="moves-rule"[^>]*>Your score is your <strong>lowest measure<\/strong>: Profit, Readers served, Happiness or Culture\.<\/p>/);
+    expect(html).toMatch(/<legend[^>]*>Your moves \(choose up to two\)<\/legend><div[^>]*aria-hidden="true">[\s\S]*?<\/div><p id="moves-rule"[^>]*>Your score is your <strong>lowest measure<\/strong>: Profit, Readers served, Happiness or Culture\.<\/p>/);
     expect(html).toContain('aria-describedby="moves-rule moves-status"');
     expect(html).toContain("instead of the scheduled picks (The Mallemaroking, Rystwyth and Portmeirion).");
+  });
+
+  it("sets the moves on the Throughput Subcommittee's requisition form, its chrome kept from screen readers", () => {
+    const html = render();
+    expect(html).toMatch(/<div class="[^"]*formMeta[^"]*" aria-hidden="true"><span>THROUGHPUT SUBCOMMITTEE<\/span><span>FORM TS-2: REQUISITION OF MOVES<\/span>/);
+    expect(html).toContain("LKS-2194-Q1-0002");
+    // One stamp per move, decoration only: the checkbox carries the choice.
+    expect(html.match(/<span class="[^"]*stamp[^"]*" aria-hidden="true">REQUISITIONED<\/span>/g)).toHaveLength(3);
+    expect(html.match(/<input type="checkbox" name="levers"/g)).toHaveLength(3);
+    expect(html).toContain(">Two moves maximum. Filed requisitions are final.</p></fieldset>");
   });
 
   it("drops the old brief", () => {
