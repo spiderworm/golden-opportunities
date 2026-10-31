@@ -141,6 +141,14 @@ Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events
 | `Weekday author nights` | `$200 a night` |
 | `Station-wide sale` | `15% off` |
 
+Each compact card also has a small button that pins its full description open (for touch screens; hover and focus open it too):
+
+| Element | String |
+| --- | --- |
+| Button, closed | `More` |
+| Button, pinned open | `Less` |
+| Button's accessible name | `Full description: {move title}`, with `aria-expanded` carrying open or closed |
+
 | Element | String |
 | --- | --- |
 | Moves heading | `Your moves (choose up to two)` |
