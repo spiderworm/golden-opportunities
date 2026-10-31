@@ -81,10 +81,14 @@ function actionQ1(request: Request, plan: Plan) {
   return { ok: true as const };
 }
 
-/** Whether Q2's plan is in, asked again after a refusal; false if the save can't be read. */
+/**
+ * Whether Q2's plan is in, asked again after a refusal: Q2 is the last quarter, so no quarter left to plan.
+ * False during Q1 (Audit, on #144: a Q2 form sent then would bounce to the results and back), and if the
+ * save can't be read.
+ */
 function q2Played(request: Request): boolean {
   try {
-    return currentQuarter(request) !== "2194-Q2";
+    return currentQuarter(request) === null;
   } catch {
     return false;
   }
