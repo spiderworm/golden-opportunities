@@ -23,7 +23,8 @@ const StationScene = lazy(() => retryImport(() => import("./scene/StationScene")
 type Support = "checking" | "3d" | "static" | "failed";
 
 // What the still picture says. Only a missing WebGL 2 is the device's doing (David saw the first one on an
-// M4 Pro when the scene's code hadn't arrived, 31 Oct).
+// M4 Pro when the scene's code hadn't arrived, 31 Oct). Until the player has seen the scene drawn, a failure
+// is "didn't load", models included: the canvas is ready before they arrive (Sage, on #132).
 const NOTES = {
   static: "This device can't show the station in 3D, so here it is from the shuttle.",
   loading: "The station didn't load in 3D, so here it is from the shuttle.",
@@ -92,9 +93,9 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
   const onFailed = useCallback(
     (error: unknown) => {
       setSupport("failed");
-      track("station_failed", { stage: ready ? "running" : "loading", cause: error instanceof ImportFailed ? "import" : "scene" });
+      track("station_failed", { stage: drawn ? "running" : "loading", cause: error instanceof ImportFailed ? "import" : "scene" });
     },
-    [ready],
+    [drawn],
   );
 
   const next: StationViewpoint = view === "inside" ? "outside" : "inside";
@@ -118,7 +119,7 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
           </Suspense>
         </SceneBoundary>
       ) : (
-        <StationPoster note={support === "static" ? NOTES.static : support === "failed" ? NOTES[ready ? "running" : "loading"] : undefined} />
+        <StationPoster note={support === "static" ? NOTES.static : support === "failed" ? NOTES[drawn ? "running" : "loading"] : undefined} />
       )}
       {held && !drawn && (support === "checking" || support === "3d") && <img className={styles.held} src={held} alt="" />}
       <p className={styles.place}>Orbital Books, Ring C, Berth 14</p>

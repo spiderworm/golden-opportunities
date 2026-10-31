@@ -240,3 +240,15 @@ test("a failed fetch of the station's code is tried once more", async ({ page, b
   await expect(station.getByRole('button', { name: /Go inside|Step outside/ })).toBeVisible({ timeout: 15_000 });
   expect(late.some(at => at >= 900)).toBe(true);
 });
+
+test("when a model of the station doesn't arrive, the still picture says it didn't load", async ({ page }) => {
+  // The canvas is up before its models arrive: a missing model is still a load failure, not a scene that stopped.
+  await page.route(/\/shelf-unit\.glb$/, route => route.abort());
+  await page.goto('/?analytics-test=1');
+  const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
+  test.skip(!webgl, "no WebGL 2 here: the device's own note is right");
+  await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
+  const station = page.getByRole('region', { name: 'The station' });
+  await expect(station.getByText("The station didn't load in 3D, so here it is from the shuttle.")).toBeVisible({ timeout: 20_000 });
+  await expect(station).not.toHaveAttribute('data-drawn', 'true');
+});
