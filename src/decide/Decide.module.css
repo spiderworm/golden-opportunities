@@ -93,7 +93,7 @@
   float: left;
   width: 100%;
   margin: 0;
-  padding: 0;
+  padding: 0 130px 0 0;
   font-size: 15px;
   font-weight: 600;
 }
@@ -143,12 +143,11 @@
 }
 
 .movesStatus {
-  min-height: 1.4em;
   margin: 0;
   overflow: hidden;
   color: var(--color-text-muted);
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -166,12 +165,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding-top: 6px;
+  padding-top: 5px;
   border-top: 1px solid rgb(255 255 255 / 0.08);
 }
 
+/* One line of fixed height, whether the status says something or not, so ticking moves nothing. */
 .formNotes {
-  display: grid;
+  display: flex;
+  align-items: center;
+  gap: 4px 12px;
+  height: 18px;
   min-width: 0;
 }
 
@@ -180,36 +183,35 @@
   overflow: hidden;
   color: var(--color-text-subtle);
   font-size: 11.5px;
+  line-height: 18px;
   letter-spacing: 0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* The moves as rows (tick, title with the stamp under it, then the line), or as three boxes in a wide form. */
+/* The moves as three compact cards: tick-box and title, the key figure, the line clamped to two (all of it is
+   in the page, and shows over the scene on hover, focus or "more"), and the stamp's kept corner. */
 .options {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
-/* A ruled box on the form. Its foot is kept clear for the stamp. */
 .option {
   position: relative;
   display: grid;
   align-content: start;
-  gap: 6px;
-  grid-template-columns: 180px minmax(0, 1fr);
-  column-gap: 12px;
-  padding: 8px 10px 8px 36px;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 10px 24px;
   border: 1px solid rgb(255 255 255 / 0.12);
   border-radius: 6px;
   background:
     repeating-linear-gradient(to bottom, transparent 0 27px, rgb(255 255 255 / 0.025) 27px 28px),
     rgb(255 255 255 / 0.015);
-  cursor: pointer;
   transition: border-color 160ms, background-color 160ms;
 }
 
@@ -222,59 +224,38 @@
   background-color: var(--color-accent-wash);
 }
 
+.optionLabel {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 8px;
+  padding-right: 16px;
+  cursor: pointer;
+}
+
 .itemNumber {
-  display: none;
   position: absolute;
-  top: 8px;
-  right: 10px;
+  top: 7px;
+  right: 8px;
   color: var(--color-text-subtle);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.08em;
 }
 
 /* The approval box: a square to tick, in the form's ink. */
 .option input {
-  position: absolute;
-  top: 9px;
-  left: 10px;
   display: grid;
   place-items: center;
   width: 18px;
   height: 18px;
-  margin: 0;
+  margin: 1px 0 0;
   border: 2px solid var(--color-accent-soft);
   border-radius: 3px;
   background: transparent;
   appearance: none;
   cursor: pointer;
 }
-
-.option input::after {
-  content: "";
-  width: 10px;
-  height: 6px;
-  margin-top: -3px;
-  border-bottom: 2.5px solid #fff;
-  border-left: 2.5px solid #fff;
-  transform: rotate(-45deg);
-  opacity: 0;
-}
-
-.option input:checked {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-}
-
-.option input:checked::after {
-  opacity: 1;
-}
-
-.option input:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 3px;
-}
-
 .moves:disabled .option,
 .moves:disabled .option input {
   cursor: default;
@@ -284,27 +265,84 @@
   opacity: 0.45;
 }
 
-/* In a row, the title keeps room under it for the stamp, so stamping moves nothing. */
 .optionTitle {
-  padding-bottom: 22px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.3;
+}
+
+/* The move's key figure, on the title's side of the clamp, so no number hides. */
+.optionFigure {
+  grid-column: 2;
+  color: var(--color-accent-soft);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .optionLine {
-  grid-row: 1 / span 2;
-  grid-column: 2;
+  display: -webkit-box;
+  margin: 0;
+  padding-left: 26px;
+  overflow: hidden;
   color: var(--color-text-muted);
   font-size: 12px;
   line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* "More": pins the whole line open (for touch, too); hover and focus open it as well. */
+.more {
+  position: absolute;
+  bottom: 4px;
+  left: 34px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent-soft);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.more:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* The whole line, over the scene under its card: it overlays, so nothing moves. */
+.popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  right: -1px;
+  left: -1px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-accent-soft);
+  border-radius: 8px;
+  background: #1d2440;
+  box-shadow: 0 14px 30px rgb(0 0 0 / 0.45);
+  color: var(--color-text);
+  font-size: 12.5px;
+  line-height: 1.45;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.option[data-more] .popover {
+  visibility: visible;
+  opacity: 1;
 }
 
 /* The bosses' rubber stamp, struck on a chosen move. */
 .stamp {
   position: absolute;
-  left: 36px;
-  bottom: 7px;
+  right: 8px;
+  bottom: 5px;
   padding: 3px 10px;
   border: 3px double var(--color-accent-soft);
   border-radius: 4px;
@@ -324,44 +362,15 @@
   opacity: 0.9;
 }
 
-/* A wide form (a big window): the moves as three boxes side by side, the stamp at each box's foot. */
-@container requisition (min-width: 760px) {
-  .options {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .option {
-    grid-template-columns: minmax(0, 1fr);
-    align-content: start;
-    row-gap: 4px;
-    padding: 10px 12px 30px 36px;
-  }
-
-  .optionTitle {
-    padding-bottom: 0;
-  }
-
-  .optionLine {
-    grid-row: auto;
-    grid-column: auto;
-  }
-
-  .itemNumber {
-    display: block;
-  }
-
-  .stamp {
-    right: 10px;
-    left: auto;
-  }
-}
-
-/* A form under 640 px: the chrome steps aside, so the rule keeps one line; the stamp is smaller under its title. */
-@container requisition (max-width: 639px) {
+/* The chrome needs a wide form; under 820 px it steps aside rather than crowd the foot. */
+@container requisition (max-width: 819px) {
   .formMeta {
     display: none;
   }
+}
+
+/* A form under 640 px: the stamp is smaller in its corner. */
+@container requisition (max-width: 639px) {
 
   .stamp {
     padding: 1px 6px;
@@ -370,9 +379,17 @@
   }
 }
 
+/* A narrow form (a narrow window): the cards stack. */
+@container requisition (max-width: 420px) {
+  .options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .option,
-  .stamp {
+  .stamp,
+  .popover {
     transition: none;
   }
 }
@@ -511,6 +528,13 @@
 }
 
 
+/* Submit sits up in the form's title row, at its right; in the page it still comes after the moves, so the
+   keyboard reaches it last. */
 .formFoot .primary {
-  height: 38px;
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  height: 34px;
+  padding: 0 16px;
+  font-size: 14px;
 }

@@ -49,9 +49,9 @@ describe("the bosses' brief (m1-copy section 3)", () => {
 
   it("opens the Administrator's bubble first, and shows the others' teasers", () => {
     const html = render();
-    expect([...html.matchAll(/aria-expanded="(true|false)"/g)].map((m) => m[1])).toEqual(["true", "false", "false", "false", "false"]);
+    expect([...html.matchAll(/class="[^"]*teaser[^"]*"[^>]*aria-expanded="(true|false)"/g)].map((m) => m[1])).toEqual(["true", "false", "false", "false", "false"]);
     // Each bubble is a button controlling its panel; the closed ones' panels are laid out but hidden.
-    expect(html.match(/<button type="button"[^>]*aria-expanded="[^"]*" aria-controls="[^"]+"/g)).toHaveLength(5);
+    expect(html.match(/<button type="button" class="[^"]*teaser[^"]*"[^>]*aria-expanded="[^"]*" aria-controls="[^"]+"/g)).toHaveLength(5);
     const panels = [...html.matchAll(/<div id="[^"]+" class="[^"]*panel[^"]*"( data-open="true")?( aria-hidden="true")?/g)].map((m) => (m[1] ? "open" : m[2] ? "hidden" : "?"));
     expect(panels).toEqual(["open", "hidden", "hidden", "hidden", "hidden"]);
     const open = /<div id="[^"]+" class="[^"]*panel[^"]*" data-open="true"[^>]*>([\s\S]*?)<div id=/.exec(html)?.[1] ?? "";
@@ -76,7 +76,7 @@ describe("the bosses' brief (m1-copy section 3)", () => {
     expect(html).toContain("LKS-2194-Q1-0002");
     // One stamp per move, decoration only: the checkbox carries the choice.
     expect(html.match(/<span class="[^"]*stamp[^"]*" aria-hidden="true">REQUISITIONED<\/span>/g)).toHaveLength(3);
-    expect(html.match(/<input type="checkbox" name="levers"/g)).toHaveLength(3);
+    expect(html.match(/<input type="checkbox"[^>]*name="levers"/g)).toHaveLength(3);
     // Its foot: the plan's status and the small print, the form's chrome, then Submit, in one row.
     expect(html).toMatch(/<p id="moves-status"[^>]*>[^<]*<\/p><p class="[^"]*formFooter[^"]*">Two moves maximum\. Filed requisitions are final\.<\/p><\/div><div class="[^"]*formMeta[^"]*" aria-hidden="true">[\s\S]*?LKS-2194-Q1-0002<\/span><\/div><button type="button"[^>]*>Submit plan<\/button><\/div><\/fieldset>/);
   });
@@ -87,8 +87,22 @@ describe("the bosses' brief (m1-copy section 3)", () => {
     expect(at('id="plan-heading"')).toBeGreaterThan(-1);
     expect(at('id="plan-heading"')).toBeLessThan(at("The Station Administrator</p>"));
     expect(at("The Station Administrator</p>")).toBeLessThan(at("<fieldset"));
-    expect(at("</fieldset>")).toBeLessThan(at("aria-expanded="));
-    expect(at("aria-expanded=")).toBeLessThan(at('data-boss="overall"'));
+    const tags = html.search(/class="[^"]*teaser/);
+    expect(at("</fieldset>")).toBeLessThan(tags);
+    expect(tags).toBeLessThan(at('data-boss="overall"'));
+  });
+
+  it("sets each move as a compact card: its key figure on the title line, its whole line in the page and on demand", () => {
+    const html = render();
+    for (const [id, figure] of [["repick", "3 hardcovers"], ["events", "$200 a night"], ["sale", "15% off"]] as const) {
+      // The checkbox is described by the whole line, clamped on screen only.
+      expect(html).toMatch(new RegExp(`<input type="checkbox" aria-describedby="move-line-${id}"`));
+      expect(html).toMatch(new RegExp(`<p id="move-line-${id}" class="[^"]*optionLine[^"]*">`));
+      expect(html).toContain(`>${figure}</span>`);
+      // "More" pins the copy over the scene: a fixed name, its state in aria-expanded; the copy itself is decoration.
+      expect(html).toMatch(new RegExp(`aria-expanded="false" aria-controls="move-more-${id}" aria-label="Full description: [^"]+">More</button>`));
+      expect(html).toMatch(new RegExp(`<div id="move-more-${id}" class="[^"]*popover[^"]*" aria-hidden="true">`));
+    }
   });
 
   it("drops the old brief", () => {

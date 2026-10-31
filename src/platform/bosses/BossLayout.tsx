@@ -1,4 +1,4 @@
-import { createContext, useContext, useId, type CSSProperties, type ReactNode, type Ref } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
 
 import { BOSSES } from "./bosses";
 import type { BossSceneProps } from "./BossScene2D";
@@ -28,6 +28,7 @@ export const BossBanner = createContext<{ heading?: ReactNode; form?: ReactNode 
 export function BossLayout({ bubbles, open, onSelect, floor, columnRef }: BossLayoutProps) {
   const id = useId();
   const banner = useContext(BossBanner);
+  const scroll = useScrollHint(open);
   return (
     <div className={styles.scene} style={{ "--open": open, "--count": bubbles.length } as CSSProperties}>
       <div className={styles.room}>
@@ -42,13 +43,21 @@ export function BossLayout({ bubbles, open, onSelect, floor, columnRef }: BossLa
                 return (
                   <div
                     key={b.boss}
+                    ref={i === open ? scroll.ref : undefined}
                     id={`${id}-${i}`}
                     className={styles.panel}
                     data-open={i === open || undefined}
+                    data-more={(i === open && scroll.more) || undefined}
                     aria-hidden={i !== open || undefined}
+                    // A long briefing scrolls inside the banner; then the keyboard can reach and scroll it.
+                    tabIndex={i === open && scroll.scrolls ? 0 : undefined}
+                    role={i === open && scroll.scrolls ? "region" : undefined}
+                    aria-labelledby={i === open && scroll.scrolls ? `${id}-${i}-speaker` : undefined}
                     style={{ "--tint": tint } as CSSProperties}
                   >
-                    <p className={styles.speaker}>{name}</p>
+                    <p id={`${id}-${i}-speaker`} className={styles.speaker}>
+                      {name}
+                    </p>
                     <p className={styles.line}>{b.line}</p>
                     <div className={styles.facts}>{b.facts}</div>
                   </div>
@@ -66,6 +75,7 @@ export function BossLayout({ bubbles, open, onSelect, floor, columnRef }: BossLa
                 <button
                   type="button"
                   className={styles.teaser}
+                  data-tag={b.boss}
                   data-open={i === open || undefined}
                   aria-expanded={i === open}
                   aria-controls={`${id}-${i}`}
@@ -85,4 +95,29 @@ export function BossLayout({ bubbles, open, onSelect, floor, columnRef }: BossLa
       </div>
     </div>
   );
+}
+
+/** Whether the open briefing overflows its fixed box, and whether more of it lies below what's shown. */
+function useScrollHint(open: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [state, setState] = useState({ scrolls: false, more: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const scrolls = el.scrollHeight > el.clientHeight + 1;
+      const more = scrolls && el.scrollTop + el.clientHeight < el.scrollHeight - 2;
+      setState((s) => (s.scrolls === scrolls && s.more === more ? s : { scrolls, more }));
+    };
+    el.scrollTop = 0;
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    el.addEventListener("scroll", measure, { passive: true });
+    return () => {
+      observer.disconnect();
+      el.removeEventListener("scroll", measure);
+    };
+  }, [open]);
+  return { ref, ...state };
 }
