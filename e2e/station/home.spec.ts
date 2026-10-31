@@ -77,11 +77,14 @@ test('coming back to the station shows its last frame until the scene draws agai
         return draw.apply(this, args);
       };
     }
-    // And counts pictures made into URLs: the held frame is one, once its encode has finished.
-    const createObjectURL = URL.createObjectURL.bind(URL);
-    URL.createObjectURL = (object: Blob | MediaSource) => {
-      (window as unknown as { pictures: number }).pictures = ((window as unknown as { pictures?: number }).pictures ?? 0) + 1;
-      return createObjectURL(object);
+    // And counts finished canvas encodes: the held frame is the app's only one (held-frame.ts is the only
+    // caller of toBlob at run time, three and its helpers included), counted once its callback has kept it.
+    const toBlob = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (this: HTMLCanvasElement, callback: BlobCallback, ...rest: unknown[]) {
+      return toBlob.call(this, (blob) => {
+        callback(blob);
+        (window as unknown as { pictures: number }).pictures = ((window as unknown as { pictures?: number }).pictures ?? 0) + 1;
+      }, ...(rest as [string?, number?]));
     };
   });
   await page.goto('/?analytics-test=1');
