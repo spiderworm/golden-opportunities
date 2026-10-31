@@ -114,7 +114,7 @@ function rules(v: AssumptionValues, quarter: number): Rule[] {
       text:
         quarter === 1
           ? `The third Inspector Ryeslton mystery sells ${RELEASE_RATE.toFixed(1)} copies a day at full price: 85% of volume 2's first-quarter rate in 2193, the series' own drop from volume 1 to volume 2. It sells three times that in its first week and twice that in its second.`
-          : `The third Inspector Ryeslton mystery keeps selling ${RELEASE_RATE.toFixed(1)} copies a day at full price, its rate in Q1 after the launch weeks.`,
+          : `The third Inspector Ryeslton mystery keeps selling ${RELEASE_RATE.toFixed(1)} copies a day at full price through Q2, its rate after the launch weeks.`,
     },
     {
       id: "new-volume-goals",
