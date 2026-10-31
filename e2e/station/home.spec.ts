@@ -200,3 +200,43 @@ test('coming back to the station resumes the scene where it was left', async ({ 
   expect(difference).not.toBeNull();
   expect(difference!).toBeLessThan(10);
 });
+
+test("when the station's code doesn't arrive, the still picture says so, and doesn't blame the device", async ({ page, browserName }) => {
+  // When each request for the scene's code came, in ms after the first; none gets through.
+  let first = 0;
+  const tries: number[] = [];
+  await page.route(/StationScene[^/]*\.js$/, route => {
+    tries.push(first ? Date.now() - first : ((first = Date.now()), 0));
+    return route.abort();
+  });
+  await page.goto('/?analytics-test=1');
+  const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
+  test.skip(!webgl, "no WebGL 2 here: the device's own note is right");
+  await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
+  const station = page.getByRole('region', { name: 'The station' });
+  await expect(station.getByText("The station didn't load, so here it is from the shuttle.")).toBeVisible({ timeout: 15_000 });
+  await expect(station.getByText("can't show the station in 3D")).toHaveCount(0);
+  // It was tried again a moment later before giving up. WebKit keeps a failed module as failed, so there its
+  // second try makes no request (see retry.ts).
+  expect(tries.some(at => at >= 900)).toBe(browserName !== 'webkit');
+});
+
+test("a failed fetch of the station's code is tried once more", async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit keeps a failed module as failed: its second try makes no request');
+  // Refused for its first half second (a preload and the import itself can both ask), then let through.
+  let first = 0;
+  const late: number[] = [];
+  await page.route(/StationScene[^/]*\.js$/, route => {
+    const at = first ? Date.now() - first : ((first = Date.now()), 0);
+    if (at < 500) return route.abort();
+    late.push(at);
+    return route.continue();
+  });
+  await page.goto('/?analytics-test=1');
+  const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
+  test.skip(!webgl, 'no WebGL 2 here: no 3D station to load');
+  await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('button', { name: 'Later' }).click();
+  const station = page.getByRole('region', { name: 'The station' });
+  await expect(station.getByRole('button', { name: /Go inside|Step outside/ })).toBeVisible({ timeout: 15_000 });
+  expect(late.some(at => at >= 900)).toBe(true);
+});

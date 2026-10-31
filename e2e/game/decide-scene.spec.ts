@@ -128,6 +128,25 @@ test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
   await expect(page.getByRole('button', { name: 'More about Weekday author nights' })).toHaveAttribute('aria-expanded', 'false');
 });
 
+test('a failed fetch of the 3D scene is tried once more', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit keeps a failed module as failed: its second try makes no request');
+  // Refused for its first half second (its preload and the import itself both ask), then let through.
+  let first = 0;
+  const late: number[] = [];
+  await page.route(/BossScene3D[^/]*\.js$/, route => {
+    const at = first ? Date.now() - first : ((first = Date.now()), 0);
+    if (at < 500) return route.abort();
+    late.push(at);
+    return route.continue();
+  });
+  await page.goto('/decide?analytics-test=1');
+  const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
+  test.skip(!webgl, 'no WebGL 2 here: the 2D scene stays');
+  const scene = page.getByRole('region', { name: 'PLAN FOR Q1 2194' });
+  await expect(scene.locator('[aria-hidden="true"] canvas')).toBeVisible({ timeout: 30_000 });
+  expect(late.some(at => at >= 900)).toBe(true);
+});
+
 test('a bubble focused in the 2D scene stays focused when the 3D scene takes over', async ({ page }) => {
   // Hold the 3D scene back, so the 2D scene is up first.
   let release!: () => void;
@@ -136,7 +155,8 @@ test('a bubble focused in the 2D scene stays focused when the 3D scene takes ove
     await held;
     await route.continue();
   });
-  await page.goto('/decide?analytics-test=1');
+  // Not "load": a held request for the scene's code can keep the page from ever finishing loading.
+  await page.goto('/decide?analytics-test=1', { waitUntil: 'domcontentloaded' });
   const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
   test.skip(!webgl, 'no WebGL 2 here: the 2D scene stays');
   const scene = page.getByRole('region', { name: 'PLAN FOR Q1 2194' });
