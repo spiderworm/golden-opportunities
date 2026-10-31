@@ -1,29 +1,39 @@
+import { alertsSeenOf, currentQuarter } from "~/game/progress";
+import type { QuarterId } from "~/game/quarters";
 import { getGameSession } from "~/game/session.server";
-import { ALERT_COPY } from "./alert-copy";
+import type { Grade, MeasureId } from "~/simulation/types";
+import { ALERT_COPY, Q2_ALERT_COPY } from "./alert-copy";
 import type { StationNotification } from "./NotificationsBell";
 
 export interface StationState {
   /** The in-game date, as YYYY-MM-DD. */
   date: string;
+  /** Newest first: each quarter's memo once its quarter has opened. */
   alerts: StationNotification[];
-  /** The Commerce Office's standing order: whether its transmission has been seen, and whether the plan it asks for is in. */
-  standingOrder: { seen: boolean; submitted: boolean };
+  /**
+   * The Commerce Office's standing order for the quarter being planned (null once every quarter is played):
+   * whether that quarter's memo has been seen, and whether its plan is in.
+   */
+  standingOrder: { quarter: QuarterId | null; seen: boolean; submitted: boolean };
+  /** Q1's overall result, for Q2's memo ("First-quarter overall score"); null until Q1 is played. */
+  q1: { score: number; grade: Grade; binding: MeasureId[] } | null;
 }
 
 export function getStationState(request: Request): StationState {
   const { save, date } = getGameSession(request);
-  const seen = save.alertSeen === true;
+  const quarter = currentQuarter(save);
+  const seen = alertsSeenOf(save);
+  const q1 = save.played[0]?.outcome.reportCard.plan.overall;
+  const alerts: StationNotification[] = [
+    { id: "q4-revenue-down", title: ALERT_COPY.bell.title, detail: ALERT_COPY.bell.detail, unread: !seen.includes("2194-Q1"), to: "/investigate" },
+  ];
+  if (save.played.length >= 1) {
+    alerts.unshift({ id: "q2-calendar-empty", title: Q2_ALERT_COPY.bell.title, detail: Q2_ALERT_COPY.bell.detail, unread: !seen.includes("2194-Q2"), to: "/investigate" });
+  }
   return {
     date,
-    alerts: [
-      {
-        id: "q4-revenue-down",
-        title: ALERT_COPY.bell.title,
-        detail: ALERT_COPY.bell.detail,
-        unread: !seen,
-        to: "/investigate",
-      },
-    ],
-    standingOrder: { seen, submitted: save.played.length > 0 },
+    alerts,
+    standingOrder: { quarter, seen: quarter === null || seen.includes(quarter), submitted: quarter === null },
+    q1: q1 ? { score: q1.score, grade: q1.grade, binding: [...q1.binding] } : null,
   };
 }

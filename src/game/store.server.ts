@@ -2,9 +2,10 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync, unlinkSync, statSync, readdirSync, utimesSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { withSaveLock, SaveLockBusy } from './lock.server.ts';
-import { isOutcome } from './outcome.ts';
+import { isQuarterOutcome } from './outcome.ts';
 import type { GameSave } from './types';
-import { QUARTERS, quarterMonths, quarterNumber } from './quarters.ts';
+import { QUARTERS, isQuarterId, quarterMonths, quarterNumber } from './quarters.ts';
+import { alertsSeenOf, currentQuarter } from './progress.ts';
 import { EVIDENCE_KEYS, MAX_EVIDENCE_SCOPES, discoveriesFromBuckets, discoveryParts } from './discovery-evidence.ts';
 
 const ID = /^[A-Za-z0-9_-]{43}$/;
@@ -39,6 +40,8 @@ function validate(save: GameSave, id: string): void {
     || (save.queryRevision !== undefined && (!Number.isSafeInteger(save.queryRevision) || save.queryRevision < 0 || save.queryRevision > save.revision))
     || (save.discoveryEvidence !== undefined && !validEvidence(save.discoveryEvidence))
     || (save.alertSeen !== undefined && save.alertSeen !== true)
+    || (save.alertsSeen !== undefined && (!Array.isArray(save.alertsSeen) || save.alertsSeen.length > QUARTERS.length
+      || !save.alertsSeen.every((q, i, all) => isQuarterId(q) && (i === 0 || QUARTERS.indexOf(all[i - 1]!) < QUARTERS.indexOf(q)))))
     || !Array.isArray(save.discoveries) || save.discoveries.length > 3
     || new Set(save.discoveries).size !== save.discoveries.length
     || !save.discoveries.every(d => ['A', 'B', 'C'].includes(d))
@@ -47,7 +50,7 @@ function validate(save: GameSave, id: string): void {
   const ids = new Set<string>();
   for (const [index, quarter] of save.played.entries()) {
     if (!quarter || quarter.period !== QUARTERS[index] || typeof quarter.outcomeId !== 'string' || !/^[a-f0-9-]{36}$/.test(quarter.outcomeId)
-      || !isOutcome(quarter.outcome) || quarter.outcome.quarter !== quarter.period
+      || !isQuarterOutcome(quarter.period, quarter.outcome) || quarter.outcome.quarter !== quarter.period
       || !Array.isArray(quarter.sales) || quarter.sales.length > 100_000
       || quarter.outcome.totals.plan.units !== quarter.sales.length) throw new SaveError('INVALID_SAVE');
     const months = quarterMonths(quarter.period); const number = quarterNumber(quarter.period);
@@ -185,15 +188,18 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
         return { save: publish(id, save), before, oldEvidence };
       });
     },
-    /** Record that the opening transmission was seen. Not query data, so it never changes the query grant; idempotent. */
+    /** Record that the current quarter's memo was seen. Not query data, so it never changes the query grant; idempotent. */
     markAlertSeen(id: string): GameSave {
       return locked(() => {
         if (existsSync(file(id) + '.lock')) throw new SaveError('SAVE_BUSY');
         const save = readUnlocked(id);
-        if (save.alertSeen) return save;
+        const quarter = currentQuarter(save); const seen = alertsSeenOf(save);
+        if (!quarter || seen.includes(quarter)) return save;
         save.queryRevision = save.queryRevision ?? save.revision;
         save.revision++;
-        save.alertSeen = true;
+        // One list from here on; the old Q1 flag folds into it.
+        delete save.alertSeen;
+        save.alertsSeen = QUARTERS.filter(q => q === quarter || seen.includes(q));
         return publish(id, save);
       });
     },

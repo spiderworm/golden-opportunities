@@ -14,6 +14,7 @@ import { MetricTiles } from "./MetricTiles";
 import { runQuery } from "~/query/run-query.server";
 import { recordDiscoveries, type ObservedQuery } from "~/game/discoveries.server";
 import { getGameSession } from "~/game/session.server";
+import { currentQuarter } from "~/game/progress";
 import { QueryError } from "~/query/errors";
 import {
   DEFAULT_STATE,
@@ -59,7 +60,7 @@ export function loader({ request }: Route.LoaderArgs) {
     by: state.by,
     filters: Object.keys(state.filters).length,
   });
-  return { state, ...investigation, planned: session.save.played.length > 0 };
+  return { state, ...investigation, planned: currentQuarter(session.save) === null };
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {

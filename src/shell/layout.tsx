@@ -18,7 +18,8 @@ export default function ShellLayout({ loaderData }: Route.ComponentProps) {
     <Shell
       stationDate={loaderData.date}
       notifications={loaderData.alerts}
-      standingOrder={loaderData.standingOrder}
+      // The Shell shows only Q1's memo so far; Q2's arrives with its own copy (Sage).
+      standingOrder={loaderData.standingOrder.quarter === "2194-Q1" ? loaderData.standingOrder : undefined}
       onAlertSeen={() => seen.submit(null, { method: "post", action: "/alert/seen" }).catch(() => {})}
       track={track}
     >
