@@ -17,7 +17,7 @@
 
 import type { Music, Song, Where } from "../player/player.ts";
 import { icons } from "./icons.ts";
-import { heartButton, nowPlaying, playButton, playlist, volume } from "./parts.ts";
+import { fullName, heartButton, nowPlaying, playButton, playlist, volume } from "./parts.ts";
 
 export type PopupHost = {
   /** a card or moment the pop-up mustn't cover is up */
@@ -58,6 +58,7 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
   const all = root.querySelectorAll<HTMLElement>(".music-popup");
   const el = all[all.length - 1];
   const button = (d: string) => el.querySelector<HTMLButtonElement>(`[data-do="${d}"]`)!;
+  const named = fullName(el.querySelector(".music-popup-name")!, el.querySelector(".music-title")!);
   let waiting = false;
   let timer = 0;
   let shown = false;
@@ -71,6 +72,7 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     const s = music.state();
     if (!s.song && !docked) return;
     el.querySelector(".music-title")!.textContent = s.song?.title ?? "Music";
+    named();
     playButton(button("play"), s.playing);
     heartButton(button("heart"), !!s.song && music.hearted(s.song.id));
     button("heart").disabled = !s.song;

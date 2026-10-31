@@ -19,6 +19,18 @@ export function heartButton(b: HTMLButtonElement, on: boolean) {
   b.classList.toggle("on", on);
 }
 
+/** A song's name cut short by its ellipsis has the whole of it as a tooltip,
+ * on hover (David, 30 Oct 2026). Checked as the pointer arrives and when the
+ * name changes (`check`), so a name that fits has none. */
+export function fullName(host: HTMLElement, name: HTMLElement) {
+  const check = () => {
+    if (name.scrollWidth > name.clientWidth) host.title = name.textContent ?? "";
+    else host.removeAttribute("title");
+  };
+  host.addEventListener("pointerenter", check);
+  return () => host.matches(":hover") && check();
+}
+
 /** The music volume, down to Mute: the game's music volume setting. */
 export function volume(music: Music, where: Where, doc: Document) {
   const el = doc.createElement("label");
@@ -48,10 +60,13 @@ export function nowPlaying(music: Music, where: Where, doc: Document) {
       <button type="button" data-do="skip" aria-label="Next">${icons.skip}</button>
     </span>`;
   const button = (d: string) => el.querySelector<HTMLButtonElement>(`[data-do="${d}"]`)!;
+  const title = el.querySelector<HTMLElement>(".music-title")!;
+  const named = fullName(title, title);
   const draw = () => {
     const s = music.state();
     el.hidden = !s.song;
-    el.querySelector(".music-title")!.textContent = s.song?.title ?? "";
+    title.textContent = s.song?.title ?? "";
+    named();
     playButton(button("play"), s.playing);
     heartButton(button("heart"), !!s.song && music.hearted(s.song.id));
   };
