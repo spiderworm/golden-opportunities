@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Stands in for `claude -p` in the engine's tests, so they never spawn the real thing. It reports how it was
-// started to FAKE_CLAUDE_REPORT, then behaves as FAKE_CLAUDE_MODE says.
+// started to FAKE_CLAUDE_REPORT, then behaves as FAKE_CLAUDE_MODE says (ok, foreign, tool-email, signed-out, crash, hang or stubborn).
 import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 
@@ -24,6 +24,14 @@ process.stdin.on("end", () => {
     out({ type: "result", subtype: "error", is_error: true, result: "failed for owner@example.com" });
     return;
   }
+  // "signed-out": what a real signed-out run sends (measured on 2.1.314).
+  if (mode === "signed-out") {
+    out({ type: "assistant", message: { content: [] }, error: "authentication_failed" });
+    out({ type: "result", subtype: "success", is_error: true, result: "Not logged in · Please run /login" });
+    return;
+  }
+  // "crash": exits with an error before saying anything.
+  if (mode === "crash") process.exit(3);
   if (mode === "hang" || mode === "stubborn") {
     out({ type: "stream_event", event: { type: "content_block_delta", delta: { type: "text_delta", text: "Thinking " } } });
     setInterval(() => {}, 1000);

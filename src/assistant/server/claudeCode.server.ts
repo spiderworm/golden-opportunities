@@ -152,7 +152,11 @@ export async function* readStream(lines: AsyncIterable<string>, kill: () => void
         yield { type: "tool", name: call.name.slice(`mcp__${server}__`.length), input: redactDeep(call.input), output: redactEmails(toolText(b.content)), isError: b.is_error === true };
       }
     }
-    if (line.type === "result" && line.is_error) throw new AssistantUnavailable(`The assistant failed: ${String(line.result ?? "unknown error").slice(0, 200)}`);
+    if (line.type === "result" && line.is_error) {
+      const result = String(line.result ?? "unknown error");
+      // Signed out reads "Not logged in · Please run /login" (measured on 2.1.314).
+      throw new AssistantUnavailable(`The assistant failed: ${result.slice(0, 200)}`, /not logged in|\/login|authenticat|api key/i.test(result) ? "signed_out" : "other");
+    }
   }
   yield* text(redactor.flush());
 }
@@ -207,7 +211,10 @@ export function claudeCodeAssistant({
       child.stderr.on("data", (c: Buffer) => (stderr = (stderr + c.toString()).slice(-2000)));
       const spawned = new Promise<void>((resolve, reject) => {
         child.once("spawn", resolve);
-        child.once("error", (e) => reject(new AssistantUnavailable(`The assistant couldn't start (${(e as NodeJS.ErrnoException).code ?? e.message}).`)));
+        child.once("error", (e) => {
+          const code = (e as NodeJS.ErrnoException).code;
+          reject(new AssistantUnavailable(`The assistant couldn't start (${code ?? e.message}).`, code === "ENOENT" ? "missing" : "broken"));
+        });
       });
       try {
         await spawned;
@@ -219,7 +226,8 @@ export function claudeCodeAssistant({
         }
         if (timedOut) throw new AssistantUnavailable(`The assistant took longer than ${timeoutMs / 1000} seconds, so it was stopped.`, "timeout");
         const code = await exited;
-        if (!any && !signal.aborted) throw new AssistantUnavailable(code === 0 ? "The assistant had nothing to say." : `The assistant stopped (exit ${code}). ${stderr.split("\n").filter(Boolean).pop() ?? ""}`.trim());
+        // Exiting with an error before saying anything is Claude Code failing to start.
+        if (!any && !signal.aborted) throw new AssistantUnavailable(code === 0 ? "The assistant had nothing to say." : `The assistant stopped (exit ${code}). ${stderr.split("\n").filter(Boolean).pop() ?? ""}`.trim(), code === 0 ? "other" : "broken");
       } finally {
         clearTimeout(timer);
         signal.removeEventListener("abort", kill);
