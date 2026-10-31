@@ -236,7 +236,7 @@ function Bosses({
           work.ray.setFromCamera(work.ndc, camera);
           return work.ray.ray.intersectPlane(work.plane, work.at) ? work.at.x : 0;
         };
-        // Under the middle of it, and no wider than it (David's no-overlap rule, as in 2D). Its width is
+        // Under the middle of it, and no wider than it (Goldy's no-overlap ruling, as in 2D). Its width is
         // measured on the page from points on the robot itself, since perspective spreads a boss far from the
         // middle more than its size: a boss that would be wider stands smaller, and the open one steps forward
         // only as far as its column allows, as its 2D cutout does. Only a resize changes this.
