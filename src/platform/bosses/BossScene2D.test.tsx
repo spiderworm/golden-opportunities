@@ -23,7 +23,7 @@ describe("the 2D boss scene", () => {
     expect(panels).toEqual([[controls[0], false], [controls[1], true]]);
     // The open bubble's button is described by its panel; the closed one's isn't.
     expect([...html.matchAll(/aria-describedby="([^"]+)"/g)].map((m) => m[1])).toEqual([controls[1]]);
-    expect(html).toMatch(/data-open="true" style="--tint:#199e70"><p[^>]*>The Commerce Office<\/p><p[^>]*>PROFIT\. A WHOLE LINE\.<\/p>/);
+    expect(html).toMatch(/data-open="true" style="--tint:#199e70"><p[^>]*>The Commerce Office<\/p><div class="[^"]*facts[^"]*"><p>Fact two\.<\/p><\/div><p[^>]*>PROFIT\. A WHOLE LINE\.<\/p>/);
   });
 
   it("stands each boss on the floor as decoration that opens its bubble when clicked", () => {
