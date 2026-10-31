@@ -1,6 +1,6 @@
 // Plot's result copy (docs/design/m1-copy.md, sections 4 and 5), filled from the model.
 import { has } from "./plan";
-import type { Assumption, HappenedFacts, LeverId, Plan, Q2Facts, Q2Plan } from "./types";
+import type { Assumption, HappenedFacts, LeverId, PickFacts, Plan, Q2Facts, Q2Plan } from "./types";
 import { EVENT_HAPPINESS } from "./measures";
 import { OBSERVED_EXTRAS } from "./model";
 
@@ -141,13 +141,17 @@ export function q2Assumptions(plan: Q2Plan, v: AssumptionValues): Assumption[] {
 
 const Q2_MONTHS = ["April", "May", "June"];
 
+/** One month's pick; a title nobody would have bought anyway gets its own wording (Plot). */
+function pickSentence(month: string, f: PickFacts): string {
+  const sold = `In ${month}, ${f.title} sold about ${about(f.extra)} extra copies`;
+  const base = about(f.baseCopies);
+  if (base === "0") return `${sold}. None would have sold without the pick, so every discounted copy was an extra sale.`;
+  return `${sold}; the discount on ${base} ${base === "1" ? "copy" : "copies"} that would have sold anyway cost ${money(f.discountCost)}.`;
+}
+
 /** Q2's "What happened": the picks as one move, then the other move; two moves end with their total. */
 export function q2Happened(facts: Q2Facts): string[] {
-  const picks = facts.picks.flatMap((f, m) =>
-    f
-      ? [`In ${Q2_MONTHS[m]}, ${f.title} sold about ${about(f.extra)} extra copies; the discount on ${about(f.baseCopies)} copies that would have sold anyway cost ${money(f.discountCost)}.`]
-      : [],
-  );
+  const picks = facts.picks.flatMap((f, m) => (f ? [pickSentence(Q2_MONTHS[m], f)] : []));
   const others = moveSentences({ events: facts.events, sale: facts.sale, amount: facts.amount });
   const moves = picks.length ? [[...picks, `Gross profit was ${signedMoney(facts.amount)} compared with holding course.`], ...others] : others;
   if (moves.length === 0) return ["You left the calendar empty: no Book of the Month in April, May or June."];
