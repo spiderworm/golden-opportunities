@@ -88,3 +88,55 @@ test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
     expect(await layout()).toEqual(before);
   }
 });
+
+test('a bubble focused in the 2D scene stays focused when the 3D scene takes over', async ({ page }) => {
+  // Hold the 3D scene back, so the 2D scene is up first.
+  let release!: () => void;
+  const held = new Promise<void>(resolve => (release = resolve));
+  await page.route(/BossScene3D/, async route => {
+    await held;
+    await route.continue();
+  });
+  await page.goto('/decide?analytics-test=1');
+  const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
+  test.skip(!webgl, 'no WebGL 2 here: the 2D scene stays');
+  const scene = page.getByRole('region', { name: 'PLAN FOR Q1 2194' });
+  const ministry = scene.getByRole('button', { name: /^The Ministry of Culture/ });
+  await ministry.focus();
+  await expect(ministry).toBeFocused();
+  release();
+  await expect(scene.locator('[aria-hidden="true"] canvas')).toBeVisible({ timeout: 30_000 });
+  await expect(scene.getByRole('button', { name: /^The Ministry of Culture/ })).toBeFocused();
+});
+
+test('in 3D, a robot opens its bubble when clicked, and opening bubbles moves nothing', async ({ page }) => {
+  await page.goto('/decide?analytics-test=1');
+  const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
+  test.skip(!webgl, 'no WebGL 2 here: the 2D test covers it');
+  const scene = page.getByRole('region', { name: 'PLAN FOR Q1 2194' });
+  const bubbles = scene.getByRole('button');
+  // The stage says where each robot stands on the page (x, y of its feet, in px) once they're in.
+  const stage = scene.locator('[data-robots]');
+  await expect(stage).toHaveAttribute('data-robots', /^\d+,\d+(,\d+,\d+){4}$/, { timeout: 30_000 });
+
+  const layout = () => page.evaluate(() => ({
+    robots: document.querySelector<HTMLElement>('[data-robots]')!.dataset.robots,
+    stage: (({ x, y, width, height }) => [x, y, width, height])(document.querySelector('[data-robots]')!.getBoundingClientRect()),
+    bubbles: [...document.querySelectorAll('[aria-controls]')].map(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }),
+    moves: (document.querySelector('fieldset') as HTMLElement).offsetTop,
+  }));
+  await page.waitForTimeout(800); // the scene's entrance
+  const before = await layout();
+  for (let i = 0; i < 5; i++) {
+    await bubbles.nth(i).click();
+    await expect(bubbles.nth(i)).toHaveAttribute('aria-expanded', 'true');
+    await page.waitForTimeout(300); // the open boss's lean and glow
+    expect(await layout()).toEqual(before);
+  }
+
+  // Clicking a robot (the Ministry, third) opens its bubble, like clicking the bubble.
+  const [x, y] = before.robots!.split(',').map(Number).slice(4, 6) as [number, number];
+  await stage.click({ position: { x, y: y - 40 } });
+  await expect(bubbles.nth(2)).toHaveAttribute('aria-expanded', 'true');
+  expect(await layout()).toEqual(before);
+});
