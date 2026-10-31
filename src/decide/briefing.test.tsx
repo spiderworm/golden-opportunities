@@ -15,11 +15,9 @@ function render() {
 const text = (html: string) => html.replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'");
 
 describe("the bosses' brief (m1-copy section 3)", () => {
-  it("has the seven bubbles, in Plot's order of speakers", () => {
+  it("has five bubbles, one per boss, in Plot's order", () => {
     const names = [...render().matchAll(/<figcaption[^>]*>([^<]+)<\/figcaption>/g)].map((m) => m[1]);
     expect(names).toEqual([
-      "The Station Administrator",
-      "The Commerce Office",
       "The Station Administrator",
       "The Commerce Office",
       "The Ministry of Culture",
@@ -31,7 +29,7 @@ describe("the bosses' brief (m1-copy section 3)", () => {
   it("carries every fact in the strips, as real text with the figures in bold", () => {
     const html = render();
     const strips = [...html.matchAll(/<div class="[^"]*facts[^"]*">([\s\S]*?)<\/div><\/div><\/figure>/g)].map((m) => text(m[1]!));
-    expect(strips).toHaveLength(7);
+    expect(strips).toHaveLength(5);
     const all = strips.join(" ");
     for (const fact of [
       "January 1 to March 31, 2194",

@@ -12,7 +12,7 @@ export interface BriefingBubble {
   line: string;
   /** The fact strip: every fact of the brief appears once, in one strip. */
   facts: FactLine;
-  /** Bubble 6: the scheduled picks follow as a list. */
+  /** The survey drone's bubble: the scheduled picks follow as a list. */
   picks?: true;
 }
 
@@ -22,23 +22,27 @@ export const DECIDE_COPY = {
   briefing: [
     {
       boss: "overall",
-      line: "ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. WE HAVE PREPARED REMARKS. THE REMARKS ARE MANDATORY.",
-      facts: ["Your plan runs from ", { strong: "January 1 to March 31, 2194" }, "."],
+      line: "ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. YOUR SCORE WILL BE YOUR WEAKEST MEASURE. WE CALL THIS TEAMWORK.",
+      facts: [
+        "Your plan runs from ",
+        { strong: "January 1 to March 31, 2194" },
+        ". Your score is your ",
+        { strong: "lowest measure" },
+        ": raise one by sinking another, and your score sinks with it.",
+      ],
     },
     {
       boss: "profit",
-      line: "WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT.",
-      facts: ["You're graded on ", { strong: "Profit, Readers served, Happiness and Culture" }, ". Each goal is ", { strong: "last year's first quarter plus 5%" }, "."],
-    },
-    {
-      boss: "overall",
-      line: "YOUR SCORE IS YOUR WEAKEST MEASURE. IF ONE MEASURE FAILS, YOU FAIL. WE CALL THIS TEAMWORK.",
-      facts: ["Your score is your ", { strong: "lowest measure" }, ". Raise one by sinking another, and your score sinks with it."],
-    },
-    {
-      boss: "profit",
-      line: "BOOKS ARE NOT FREE. WE CHECKED. TWICE.",
-      facts: ["Profit is revenue minus what the books cost you. Books cost the store ", { strong: "60% of their list price" }, "."],
+      line: "WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT. ALSO, BOOKS ARE NOT FREE. WE CHECKED.",
+      facts: [
+        "You're graded on ",
+        { strong: "Profit, Readers served, Happiness and Culture" },
+        ". Each goal is ",
+        { strong: "last year's first quarter plus 5%" },
+        ". Profit is revenue minus what the books cost, and books cost the store ",
+        { strong: "60% of their list price" },
+        ".",
+      ],
     },
     {
       boss: "culture",
