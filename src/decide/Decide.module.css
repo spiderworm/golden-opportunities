@@ -13,8 +13,7 @@
   white-space: nowrap;
 }
 
-/* The bosses' brief: the heading, then the bubbles in reading order; two
-   columns on wide screens so the moves stay near the fold. */
+/* The bosses' brief: the heading and its hint, then the bosses in one scene. */
 .briefing {
   display: grid;
   gap: 16px;
@@ -28,16 +27,10 @@
   letter-spacing: 0.12em;
 }
 
-.bubbles {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 18px 28px;
-}
-
-@media (min-width: 1100px) {
-  .bubbles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.hint {
+  margin: 4px 0 0;
+  color: var(--color-text-subtle);
+  font-size: 13px;
 }
 
 .bookTitle {
@@ -59,6 +52,18 @@
   margin-bottom: 12px;
   padding: 0;
   font-size: 16px;
+  font-weight: 600;
+}
+
+/* The rule the choice turns on, under the heading. */
+.rule {
+  margin: -4px 0 4px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.rule strong {
+  color: var(--color-text);
   font-weight: 600;
 }
 

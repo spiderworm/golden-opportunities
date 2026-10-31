@@ -16,7 +16,7 @@ const text = (html: string) => html.replace(/<[^>]+>/g, "").replace(/&#x27;/g, "
 
 describe("the bosses' brief (m1-copy section 3)", () => {
   it("has five bubbles, one per boss, in Plot's order", () => {
-    const names = [...render().matchAll(/<figcaption[^>]*>([^<]+)<\/figcaption>/g)].map((m) => m[1]);
+    const names = [...render().matchAll(/<span class="[^"]*name[^"]*">([^<]+)<\/span>/g)].map((m) => m[1]);
     expect(names).toEqual([
       "The Station Administrator",
       "The Commerce Office",
@@ -28,7 +28,7 @@ describe("the bosses' brief (m1-copy section 3)", () => {
 
   it("carries every fact in the strips, as real text with the figures in bold", () => {
     const html = render();
-    const strips = [...html.matchAll(/<div class="[^"]*facts[^"]*">([\s\S]*?)<\/div><\/div><\/figure>/g)].map((m) => text(m[1]!));
+    const strips = [...html.matchAll(/<div id="[^"]+" class="[^"]*facts[^"]*"[^>]*>([\s\S]*?)<\/div><\/div><div class="[^"]*figure/g)].map((m) => text(m[1]!));
     expect(strips).toHaveLength(5);
     const all = strips.join(" ");
     for (const fact of [
@@ -45,6 +45,27 @@ describe("the bosses' brief (m1-copy section 3)", () => {
       "up to two",
     ]) expect(all).toContain(fact);
     expect(html).toContain("<strong>60% of their list price</strong>");
+  });
+
+  it("opens the Administrator's bubble first, and shows the others' teasers", () => {
+    const html = render();
+    expect([...html.matchAll(/aria-expanded="(true|false)"/g)].map((m) => m[1])).toEqual(["true", "false", "false", "false", "false"]);
+    // Each bubble is a button controlling its strip; the closed ones' strips are hidden, not gone.
+    expect(html.match(/<button type="button"[^>]*aria-expanded="[^"]*" aria-controls="[^"]+"/g)).toHaveLength(5);
+    expect(html.match(/<div id="[^"]+" class="[^"]*facts[^"]*" hidden="">/g)).toHaveLength(4);
+    expect(html).toContain("WE CALL THIS TEAMWORK. MR. ZOOLANDER WOULD CALL IT ONE LOOK.");
+    for (const teaser of ["WE WILL GRADE YOU ON FOUR MEASURES.", "AUTHORS MAY BE INVITED.", "THE PREVIOUS MANAGER LEFT A SCHEDULE.", "SELECT UP TO TWO MOVES."]) {
+      expect(html).toContain(`>${teaser}</span>`);
+    }
+    expect(html).not.toContain("THREE SEEMED LENIENT");
+    expect(html).toContain("Select a boss to hear more.");
+  });
+
+  it("keeps the rules the choice turns on beside the moves", () => {
+    const html = render();
+    expect(html).toMatch(/<legend[^>]*>Your moves \(choose up to two\)<\/legend><p id="moves-rule"[^>]*>Your score is your <strong>lowest measure<\/strong>: Profit, Readers served, Happiness or Culture\.<\/p>/);
+    expect(html).toContain('aria-describedby="moves-rule moves-status"');
+    expect(html).toContain("instead of the scheduled picks (The Mallemaroking, Rystwyth and Portmeirion).");
   });
 
   it("drops the old brief", () => {

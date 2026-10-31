@@ -6,6 +6,8 @@ import type { LeverId } from "~/simulation/types";
 
 export interface BriefingBubble {
   boss: BossId;
+  /** What the bubble shows until it's selected: the line's opening, no joke yet. */
+  teaser: string;
   /** The boss's line, in capitals: the joke. */
   line: string;
   /** The fact strip: every fact of the brief appears once, in one strip. */
@@ -16,10 +18,13 @@ export interface BriefingBubble {
 
 export const DECIDE_COPY = {
   heading: "PLAN FOR Q1 2194",
+  /** Under the heading: the bubbles open when selected. */
+  hint: "Select a boss to hear more.",
   /** The brief, from the bosses, in order. */
   briefing: [
     {
       boss: "overall",
+      teaser: "ATTENTION, SHOPKEEPER. A NEW QUARTER.",
       line: "ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. YOUR SCORE WILL BE YOUR WEAKEST MEASURE. WE CALL THIS TEAMWORK. MR. ZOOLANDER WOULD CALL IT ONE LOOK.",
       facts: [
         "Your plan runs from ",
@@ -31,6 +36,7 @@ export const DECIDE_COPY = {
     },
     {
       boss: "profit",
+      teaser: "WE WILL GRADE YOU ON FOUR MEASURES.",
       line: "WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT. ALSO, BOOKS ARE NOT FREE. WE CHECKED.",
       facts: [
         "You're graded on ",
@@ -44,17 +50,20 @@ export const DECIDE_COPY = {
     },
     {
       boss: "culture",
+      teaser: "AUTHORS MAY BE INVITED.",
       line: "AUTHORS MAY BE INVITED. AUTHORS REQUIRE A SHUTTLE FARE. CULTURE IS EXPENSIVE. PLEASE PURCHASE SOME ANYWAY.",
       facts: ["An author night costs ", { strong: "$200" }, ": the author's shuttle fare and the room."],
     },
     {
       boss: "happiness",
+      teaser: "THE PREVIOUS MANAGER LEFT A SCHEDULE.",
       line: "THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. WE ASSUME THEY COULD NOT TURN LEFT.",
       facts: ["Already scheduled, Book of the Month at ", { strong: "15% off" }, " for the whole month:"],
       picks: true,
     },
     {
       boss: "readers",
+      teaser: "SELECT UP TO TWO MOVES.",
       line: "SELECT UP TO TWO MOVES. SELECTING THREE IS NOT PERMITTED. WE HAVE TESTED THIS PERSONALLY.",
       facts: ["Choose ", { strong: "up to two" }, " moves below, or none to hold course."],
     },
@@ -65,6 +74,8 @@ export const DECIDE_COPY = {
     { month: "March", title: "Portmeirion", format: "mass market paperback" },
   ],
   movesHeading: "Your moves (choose up to two)",
+  /** Under the moves heading: the rule the choice turns on, so no closed bubble hides it. */
+  rule: ["Your score is your ", { strong: "lowest measure" }, ": Profit, Readers served, Happiness or Culture."] as FactLine,
   holdCourse: "Hold course: the schedule runs as it is.",
   tooMany: "You can choose up to two moves.",
   submit: "Submit plan",
@@ -82,7 +93,7 @@ export const MOVES: { id: LeverId; title: string; line: string }[] = [
   {
     id: "repick",
     title: "Re-pick Book of the Month",
-    line: "Feature Kalakalal Avenue (January), Can I Be Honest? (February) and Who Did You Think You Were Kidding? (March), all in hardcover, instead of the scheduled picks.",
+    line: "Feature Kalakalal Avenue (January), Can I Be Honest? (February) and Who Did You Think You Were Kidding? (March), all in hardcover, instead of the scheduled picks (The Mallemaroking, Rystwyth and Portmeirion).",
   },
   { id: "events", title: "Weekday author nights", line: "Host 12 author nights, one each week on a Tuesday, Wednesday or Thursday, at $200 each." },
   { id: "sale", title: "Station-wide sale", line: "15% off every book, all quarter. The Book of the Month runs at the same 15%." },
