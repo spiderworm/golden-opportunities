@@ -4,7 +4,7 @@ import type { BookshopData, DeepReadonly } from "~/bookshop/types";
 import { assumptions, happened } from "./copy";
 import { reportCard } from "./grading";
 import { ledger, measures, ratingsOf, type Ledger, type Ratings } from "./measures";
-import { baseline, historyOf, leversFor, MONTHS, PICK_DISCOUNT, run, YEAR, type History, type Run } from "./model";
+import { baseline, historyOf, leversFor, PICK_DISCOUNT, run, YEAR, type History, type Run } from "./model";
 import { linesOf, ordersOf, type Order } from "./orders";
 import { has, isPlan } from "./plan";
 import type { HappenedFacts, MeasureId, Metrics, Plan, ReportCard, SimulationResult } from "./types";
@@ -57,7 +57,7 @@ function cardFor(p: Prepared, r: Run): ReportCard {
 }
 
 /** The featured editions' copies that would have sold without the promotion, and what their discount cost. */
-function pickedCopies(r: Run) {
+function pickedCopies(r: Run, months: readonly string[]) {
   let baseCopies = 0;
   let discountCost = 0;
   let extra = 0;
@@ -68,7 +68,7 @@ function pickedCopies(r: Run) {
       extra += 1;
       continue;
     }
-    const isbn = r.picks[MONTHS.indexOf(order.day.slice(5, 7) as (typeof MONTHS)[number])];
+    const isbn = r.picks[months.indexOf(order.day.slice(5, 7))];
     for (const item of order.items)
       if (item.isbn === isbn) {
         baseCopies += 1;
@@ -78,10 +78,10 @@ function pickedCopies(r: Run) {
   return { extra, baseCopies, discountCost };
 }
 
-function factsFor(plan: Plan, r: Run, mine: Ledger, hold: Ledger): HappenedFacts {
+function factsFor(plan: Plan, r: Run, months: readonly string[], mine: Ledger, hold: Ledger): HappenedFacts {
   const facts: HappenedFacts = { amount: mine.grossProfit - hold.grossProfit };
-  if (plan.levers.length === 0) facts.holdCourse = { ...pickedCopies(r), profit: mine.grossProfit };
-  if (has(plan, "repick")) facts.repick = pickedCopies(r);
+  if (plan.levers.length === 0) facts.holdCourse = { ...pickedCopies(r, months), profit: mine.grossProfit };
+  if (has(plan, "repick")) facts.repick = pickedCopies(r, months);
   if (has(plan, "events")) {
     // The nights' own orders, before the sale clones any of them.
     const nights = ledger(r.orders.filter((o) => o.kind === "event" && !o.saleClone));
@@ -116,7 +116,7 @@ export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<Boo
   };
   const withoutSale = profitOf(others);
   const saleChange = (response: number) => profitOf({ levers: [...others.levers, "sale"] }, response) - withoutSale;
-  const facts = factsFor(plan, planRun, mine, hold);
+  const facts = factsFor(plan, planRun, p.history.months, mine, hold);
   const monthOf = (orders: readonly Order[], month: string) => {
     const l = ledger(orders.filter((o) => o.day.slice(5, 7) === month));
     return { revenue: l.revenue, units: l.units };
@@ -128,7 +128,7 @@ export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<Boo
     outcome: {
       plan: { levers: [...plan.levers] },
       quarter: `${YEAR}-Q1`,
-      monthly: MONTHS.map((month) => ({
+      monthly: p.history.months.map((month) => ({
         month: `${YEAR}-${month}`,
         plan: monthOf(planRun.orders, month),
         holdCourse: monthOf(holdRun.orders, month),
