@@ -124,7 +124,7 @@ export function categoryOption(
 
   const categoryAxis = {
     type: "category",
-    data: model.categories.map((c) => formatDimensionShort(x, c)),
+    data: model.categories.map((c) => formatDimensionShort(x, c, model.categories.filter((k): k is string => k !== null))),
     inverse: horizontal,
     boundaryGap: kind === "bar",
     axisLine: { lineStyle: { color: chartTheme.axis } },

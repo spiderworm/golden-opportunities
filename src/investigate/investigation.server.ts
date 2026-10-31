@@ -35,11 +35,11 @@ function values(result: QueryResult, key: keyof FilterOptions): string[] {
   return result.rows.map((row) => row[key]).filter((v): v is string => typeof v === "string");
 }
 
-/** Whether a quarter ("2193-Q3") holds any of the months ("07"). No month filter means every quarter does. */
+/** Whether a quarter ("2193-Q3") holds any of the months ("2193-07"). No month filter means every quarter does. */
 export function quarterHasMonths(quarter: string, months: readonly string[] | undefined): boolean {
   if (!months?.length) return true;
   const q = Number(quarter.slice(-1));
-  return months.some((m) => Math.ceil(Number(m) / 3) === q);
+  return months.some((m) => m.slice(0, 4) === quarter.slice(0, 4) && Math.ceil(Number(m.slice(5, 7)) / 3) === q);
 }
 
 /**

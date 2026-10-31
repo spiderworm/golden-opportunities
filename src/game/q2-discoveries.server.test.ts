@@ -39,10 +39,10 @@ describe("D's picks", () => {
     const data = loadBookshop();
     // Every month's pick: those in D_PICKS are busy or quiet as listed, and the rest (January's) neither, so the list is complete.
     for (let m = 1; m <= 12; m++) {
-      const month = String(m).padStart(2, '0');
+      const month = String(m).padStart(2, '0'); const key = `2193-${month}`;
       const line = data.saleLines.find(l => l.isbn === historyOf(data, Math.ceil(m / 3) as 1 | 2 | 3 | 4).observedPick(month))!;
       const rows = runQuery({ measure: 'units', by: ['month'], filter: { title: [line.title], format: [line.format] } }, BASELINE_VIEW).rows;
-      const average = rows.filter(r => r.month !== month).reduce((sum, r) => sum + Number(r.units), 0) / 11;
+      const average = rows.filter(r => r.month !== key).reduce((sum, r) => sum + Number(r.units), 0) / 11;
       const p = D_PICKS.find(d => d.month === m);
       if (p) expect(line).toMatchObject({ title: p.title, format: p.format });
       expect(p ? (p.busy ? average >= 100 : average < 25) : average >= 25 && average < 100).toBe(true);
@@ -61,17 +61,20 @@ describe('Q2 discoveries', () => {
     expect(getGameSession(request(id)).save.discoveries).toEqual(['D']);
   });
 
-  it("doesn't count months that mix 2193 with the player's 2194, or too few months, or a subset of the sales", () => {
+  it("counts 2193's months, never the player's 2194, and not too few months or a subset of the sales", () => {
     const id = inQ2();
-    // February's Seawitch: February also holds the player's Q1 2194 rows unless the view picks 2193.
-    see(id, pickMonths('The Seawitch Sings'), pickMonths('Nothing But Capers'));
-    expect(saves.read(id).discoveries).toEqual([]);
-    see(id, { ...pickMonths('Ballinby Boys'), filter: { ...pickMonths('Ballinby Boys').filter, month: ['06', '07', '08'] } });
+    // February's Seawitch: month keys name their year, so 2193's February is its own row beside 2194's.
+    const rows = runQuery(pickMonths('The Seawitch Sings'), getGameSession(request(id)).queryView).rows.map(r => r.month);
+    expect(rows).toEqual(expect.arrayContaining(['2193-02', '2194-02']));
+    const only2194 = saves.create(); submitPlan(request(only2194.id), { levers: [] });
+    see(only2194.id, { ...pickMonths('The Seawitch Sings'), filter: { ...pickMonths('The Seawitch Sings').filter, quarter: ['2194-Q1'] } }, pickMonths('Nothing But Capers'));
+    expect(saves.read(only2194.id).discoveries).toEqual([]);
+    see(id, { ...pickMonths('Ballinby Boys'), filter: { ...pickMonths('Ballinby Boys').filter, month: ['2193-06', '2193-07', '2193-08'] } });
     see(id, { ...pickMonths('Ballinby Boys'), filter: { ...pickMonths('Ballinby Boys').filter, weekday: ['Monday'] } });
     see(id, { measure: 'revenue', by: ['month'], filter: pickMonths('Ballinby Boys').filter });
     expect(saves.read(id).discoveries).toEqual([]);
-    // By month and quarter names each row's year. It also puts Q1 2193 beside Q1 2194, which is F.
-    expect(see(id, pickMonths('The Seawitch Sings', ['month', 'quarter']))).toEqual(['D', 'F']);
+    expect(see(id, pickMonths('The Seawitch Sings'))).toEqual([]);
+    expect(see(id, pickMonths('Nothing But Capers'))).toEqual(['D']);
   });
 
   it('finds E from average rating for 20 titles in one view; fewer is only a part', () => {
@@ -97,7 +100,7 @@ describe('Q2 discoveries', () => {
     see(id, ...q2Views);
     expect(saves.read(id).discoveries).toEqual([]);
     see(id, { measure: 'units', by: ['month'], filter: { discount_rate: ['15%'], title: ['Hashtag QuokkaSelfie'] } },
-      { measure: 'units', by: ['month', 'title'], filter: { discount_rate: ['15%'], month: ['01', '02', '03'] } });
+      { measure: 'units', by: ['month', 'title'], filter: { discount_rate: ['15%'], month: ['2193-01', '2193-02', '2193-03'] } });
     expect(saves.read(id).discoveries).toEqual(['C']);
     submitPlan(request(id), { levers: [] });
     expect(see(id, ...q2Views, { measure: 'revenue', by: ['quarter'] })).toEqual(['C', 'D', 'E', 'F']);

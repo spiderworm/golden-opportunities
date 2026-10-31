@@ -44,7 +44,7 @@ export function Heatmap({ state, result, quarters, onCell }: HeatmapProps) {
           <span role="columnheader" />
           {model.months.map((m) => (
             <span key={m} role="columnheader" className={styles.heatColumnLabel}>
-              {formatDimensionShort("month", m)}
+              {formatDimensionShort("month", m, model.months)}
             </span>
           ))}
         </div>

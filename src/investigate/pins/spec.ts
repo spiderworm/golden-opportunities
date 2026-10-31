@@ -1,4 +1,5 @@
 // Pinned charts: what a pin holds, and checks for pins read back from storage.
+import { yearMonth } from "~/query/months";
 import { DIMENSIONS, MEASURES, QUERY_LIMITS, type Dimension, type Measure, type Query } from "~/query/types";
 
 export const CHART_PIN_KINDS = ["bar", "line", "table"] as const;
@@ -64,7 +65,8 @@ export function parseQuery(value: unknown): Query | null {
       if (!DIMENSIONS.includes(dimension as Dimension)) return null;
       if (!Array.isArray(values) || values.length < 1 || values.length > QUERY_LIMITS.filterValues) return null;
       if (!values.every((v) => isString(v, QUERY_LIMITS.filterValueLength))) return null;
-      checked[dimension as Dimension] = values as string[];
+      // Pins saved before months had a year ("04") keep working, as 2193's.
+      checked[dimension as Dimension] = dimension === "month" ? (values as string[]).map(yearMonth) : (values as string[]);
     }
     query.filter = checked;
   }
@@ -90,7 +92,8 @@ export function parseComparison(value: unknown): PinComparison | null {
   if (isObject(filter) && (across as string) in filter) return null;
   const query = parseQuery({ measure, by: [...by, across], ...(filter === undefined ? {} : { filter }) });
   if (!query) return null;
-  return { measure: query.measure, across: across as Dimension, from, to, by: query.by.slice(0, -1), ...(query.filter ? { filter: query.filter } : {}) };
+  const side = (v: string) => (across === "month" ? yearMonth(v) : v);
+  return { measure: query.measure, across: across as Dimension, from: side(from), to: side(to), by: query.by.slice(0, -1), ...(query.filter ? { filter: query.filter } : {}) };
 }
 
 export function parsePinSpec(value: unknown): PinSpec | null {
