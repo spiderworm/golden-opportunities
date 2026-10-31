@@ -6,18 +6,29 @@ import type { StationViewpoint } from "./scene/StationScene";
 import { heldFrame, watchHeldFrame } from "./held-frame";
 import { StationPoster } from "./StationPoster";
 import { FIRST_VIEW, rememberedView, rememberView } from "./view-memory";
+import { ImportFailed, retryImport } from "~/platform/lazy/retry";
 import { canRenderWebGL2 } from "~/platform/webgl";
 import styles from "./StationView.module.css";
 
 // three.js and the scene load only here, after the page is up and the
-// browser has shown it can draw them. Without WebGL 2 (or if the scene
-// fails) the player sees a still picture instead. The camera stays where it
+// browser has shown it can draw them. Without WebGL 2, or if the scene
+// fails (its code or models don't arrive, or it breaks), the player sees a
+// still picture instead, with a note saying which. The camera stays where it
 // is until the player moves it: inside on a first visit, then wherever they
 // left it last time. Coming back to the screen, the last frame of the
 // previous visit stays up until the new scene has drawn.
-const StationScene = lazy(() => import("./scene/StationScene"));
+const StationScene = lazy(() => retryImport(() => import("./scene/StationScene")));
 
-type Support = "checking" | "3d" | "static";
+/** "static": no WebGL 2 here. "failed": the device could draw it, but the scene didn't load, or broke. */
+type Support = "checking" | "3d" | "static" | "failed";
+
+// What the still picture says. Only a missing WebGL 2 is the device's doing (David saw the first one on an
+// M4 Pro when the scene's code hadn't arrived, 31 Oct).
+const NOTES = {
+  static: "This device can't show the station in 3D, so here it is from the shuttle.",
+  loading: "The station didn't load, so here it is from the shuttle.",
+  running: "The station stopped drawing, so here it is from the shuttle.",
+} as const;
 
 export interface StationViewProps {
   /** 0 to 1: how busy the shop is. A played quarter sets it. */
@@ -78,10 +89,13 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
     track("camera_moved", { to: settled, trigger: m.trigger, durationMs: Math.round(performance.now() - m.started) });
   }, []);
 
-  const onFailed = useCallback(() => {
-    setSupport("static");
-    track("station_failed", { stage: ready ? "running" : "loading" });
-  }, [ready]);
+  const onFailed = useCallback(
+    (error: unknown) => {
+      setSupport("failed");
+      track("station_failed", { stage: ready ? "running" : "loading", cause: error instanceof ImportFailed ? "import" : "scene" });
+    },
+    [ready],
+  );
 
   const next: StationViewpoint = view === "inside" ? "outside" : "inside";
   return (
@@ -104,9 +118,9 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
           </Suspense>
         </SceneBoundary>
       ) : (
-        <StationPoster note={support === "static" ? "This device can't show the station in 3D, so here it is from the shuttle." : undefined} />
+        <StationPoster note={support === "static" ? NOTES.static : support === "failed" ? NOTES[ready ? "running" : "loading"] : undefined} />
       )}
-      {held && !drawn && support !== "static" && <img className={styles.held} src={held} alt="" />}
+      {held && !drawn && (support === "checking" || support === "3d") && <img className={styles.held} src={held} alt="" />}
       <p className={styles.place}>Orbital Books, Ring C, Berth 14</p>
       {support === "3d" && ready && (
         <button
@@ -122,14 +136,14 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
   );
 }
 
-/** Falls back to the still picture if the scene throws (a lost GPU, a model that won't load). */
-class SceneBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+/** Falls back to the still picture if the scene throws (its code or a model that won't load, a lost GPU). */
+class SceneBoundary extends Component<{ onError: (error: unknown) => void; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  componentDidCatch() {
-    this.props.onError();
+  componentDidCatch(error: unknown) {
+    this.props.onError(error);
   }
   render() {
     return this.state.failed ? null : this.props.children;
