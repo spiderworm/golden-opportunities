@@ -1,15 +1,15 @@
 import { useGLTF } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
-import { AnimationMixer, Bone, Box3, BoxGeometry, Group, MathUtils, Mesh, MeshStandardMaterial, PerspectiveCamera, Quaternion, Vector3, type AnimationAction, type Object3D } from "three";
+import { AnimationMixer, Bone, Box3, Group, MathUtils, PerspectiveCamera, Quaternion, Vector3, type AnimationAction, type Object3D } from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import { BOSSES } from "~/platform/bosses/bosses";
 
-// The phone scene: the Throughput Subcommittee, the same Tripo robot as on
-// Decide (public/models/bosses/readers.glb), walks up to the glass and grabs
-// the phone in both hands, one on each side of the actual screen, then tugs
-// at it. The camera is the phone: it frames the robot to the screen's shape,
+// The phone scene: the Throughput Subcommittee, the Decide robot made again
+// with real hands for this (public/models/phone/subcommittee.glb), walks up to
+// the glass and takes the phone in both hands, one on each side of the actual
+// screen, its fingers wrapping round the edges, then tugs at it. The camera is the phone: it frames the robot to the screen's shape,
 // and keeps the robot's head in the band between the words above and below,
 // so nothing covers its face. Reduced motion: it's already holding the phone.
 
@@ -25,16 +25,15 @@ export interface PhoneSceneProps {
   head?: RefObject<HTMLElement | null>;
 }
 
-const MODEL = "/models/bosses/readers.glb";
+const MODEL = "/models/phone/subcommittee.glb";
 const HEIGHT = 1.75;
 /** When things happen, in seconds from the scene's start. */
 const WALK = [0.2, 1.9] as const;
 const REACH = [1.5, 2.3] as const;
 const SHAKE = 0.5;
-/** How far from the glass the hands take hold of the phone, and where the robot starts. */
-const HANDS_AT = 0.42;
-/** How far from the camera the claws close on the screen's sides. */
-const CLAMP_AT = 0.2;
+/** Where the robot starts. */
+/** The most the arms grow to reach the glass. */
+const MAX_GROW = 1.8;
 const START = 4.2;
 const FOV = 50;
 /** The head's height (with its antenna) in metres, for keeping it within the band. */
@@ -63,6 +62,8 @@ interface Arm {
   /** Shoulder to elbow: the joints the solve turns, and the hand it places. */
   joints: [Bone, Bone];
   hand: Bone;
+  /** Its finger joints, which curl as it takes hold. */
+  fingers: Bone[];
   /** Which side of the screen it takes: the robot faces the player, so its left hand is on the player's right. */
   side: -1 | 1;
 }
@@ -83,22 +84,16 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     const arms: Arm[] = (["Left", "Right"] as const).map((side) => ({
       joints: [bone(`mixamorig${side}Arm`), bone(`mixamorig${side}ForeArm`)],
       hand: bone(`mixamorig${side}Hand`),
+      fingers: ["Index", "Middle", "Ring", "Pinky", "Thumb"].flatMap((f) => [1, 2, 3].map((n) => bone(`mixamorig${side}Hand${f}${n}`))).filter(Boolean),
       side: side === "Left" ? 1 : -1,
     }));
     const mixer = new AnimationMixer(body);
     const clip = (name: string) => model.animations.find((a) => a.name === name) ?? model.animations[0]!;
     const actions = { idle: mixer.clipAction(clip("idle")), walk: mixer.clipAction(clip("walk")) };
     actions.walk.play();
-    const clamps = arms.map((arm) => makeClamp(arm.side));
-    return { root, arms, clamps, headBone: bone("mixamorigHead"), mixer, actions, playing: actions.walk as AnimationAction };
+    return { root, arms, headBone: bone("mixamorigHead"), mixer, actions, playing: actions.walk as AnimationAction };
   }, [model]);
-  useEffect(
-    () => () => {
-      rig.mixer.stopAllAction();
-      rig.clamps.forEach((c) => c.dispose());
-    },
-    [rig],
-  );
+  useEffect(() => () => void rig.mixer.stopAllAction(), [rig]);
   useEffect(() => {
     // Still: draw the one frame once the robot's in.
     if (reducedMotion) invalidate();
@@ -147,36 +142,33 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     cam.rotation.set(0, 0, holding > 0 && !reducedMotion ? 0.03 + Math.sin(holding * 1.3) * 0.02 : 0);
     cam.updateMatrixWorld(true);
 
-    // The hands take the phone by its sides: on the screen's edges, wherever they are for this shape of screen.
+    // The hands take the phone by its sides: just inside the screen's edges, wherever they are for this
+    // shape of screen, a little in front of the robot, beside its head, fingers toward the glass so they never cross its face.
     const reach = reducedMotion ? 1 : ease(clamp01((t - REACH[0]) / (REACH[1] - REACH[0])));
+    const close = reducedMotion ? 1 : ease(clamp01((t - REACH[1] + 0.3) / 0.3));
+    const handsAt = Math.max(0.35, -work.headAt.z - 0.3);
+    // Below the chin on any screen: on a narrow one the edges are close to the head, and fingers there would cross its face.
+    const chin = work.headAt.clone().project(cam).y;
+    const gripAt = Math.min(middle - 0.2, chin - 0.12);
     for (const arm of rig.arms) {
-      work.target.set(arm.side * HANDS_AT * tan * aspect, HANDS_AT * tan * middle, -HANDS_AT);
+      work.target.set(arm.side * handsAt * tan * aspect * 0.86, handsAt * tan * gripAt, -handsAt);
       cam.localToWorld(work.target);
-      // Its turnstile arms telescope: long enough to reach the glass from where it stands, as it reaches.
+      // The whole arm grows a little as it reaches, if it must, so the hands come up big rather than short of the glass.
       const [shoulder] = arm.joints;
-      shoulder.scale.y = 1;
-      arm.hand.scale.y = 1;
+      shoulder.scale.setScalar(1);
       shoulder.updateMatrixWorld(true);
       const length = shoulder.getWorldPosition(work.v).distanceTo(arm.joints[1].getWorldPosition(work.w)) + work.w.distanceTo(arm.hand.getWorldPosition(new Vector3()));
-      const stretch = 1 + (Math.max(1, work.target.distanceTo(work.v) / length) - 1) * reach;
-      shoulder.scale.y = stretch;
-      // The claw keeps its own size.
-      arm.hand.scale.y = 1 / stretch;
+      const grow = 1 + (Math.min(MAX_GROW, Math.max(1, work.target.distanceTo(work.v) / length)) - 1) * reach;
+      shoulder.scale.setScalar(grow);
       shoulder.updateMatrixWorld(true);
-      if (reach > 0) reachFor(arm, work.target, reach, work);
+      if (reach > 0) {
+        reachFor(arm, work.target, reach, work);
+        // The hand turns its fingers toward the glass, leaning in a little, and they close round the screen's edge.
+        clasp(arm.hand, work.w.set(-arm.side * 0.4, 0.15, 1).normalize().applyQuaternion(cam.quaternion), reach, work);
+        // The rig's hands are mirror images, so the left's fingers curl the other way about their own axis.
+        for (const finger of arm.fingers) finger.rotation.x = arm.side * (0.25 * reach + 0.85 * close);
+      }
     }
-    // The claws, where the arms meet the screen's sides: they swing in over the glass and close on it.
-    const close = reducedMotion ? 1 : ease(clamp01((t - REACH[1] + 0.35) / 0.35));
-    rig.clamps.forEach((clamp, i) => {
-      const side = rig.arms[i]!.side;
-      clamp.group.visible = reach > 0.6;
-      clamp.group.position.set(side * CLAMP_AT * tan * aspect, CLAMP_AT * tan * middle, -CLAMP_AT);
-      cam.localToWorld(clamp.group.position);
-      clamp.group.quaternion.copy(cam.quaternion);
-      // Sized to the screen: the fingers reach about a third of the way in on its narrower side.
-      clamp.group.scale.setScalar((CLAMP_AT * tan * Math.min(aspect, 1)) / 0.15);
-      clamp.pose(close);
-    });
 
     // Where the head is drawn, for anyone checking that the words never cover it.
     if (head?.current) {
@@ -196,14 +188,7 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     }
   });
 
-  return (
-    <>
-      <primitive object={rig.root} />
-      {rig.clamps.map((c, i) => (
-        <primitive key={i} object={c.group} />
-      ))}
-    </>
-  );
+  return <primitive object={rig.root} />;
 }
 
 /**
@@ -234,47 +219,15 @@ function reachFor(arm: Arm, target: Vector3, weight: number, work: { v: Vector3;
   });
 }
 
-/**
- * A claw for one side of the screen, in the camera's frame: a knuckle just outside the edge and three
- * two-jointed fingers that swing in over the glass and curl onto it as it closes (0 open, 1 shut).
- */
-function makeClamp(side: -1 | 1) {
-  const metal = new MeshStandardMaterial({ color: "#2b3163", metalness: 0.45, roughness: 0.45 });
-  const tipColor = new MeshStandardMaterial({ color: "#0b1530", emissive: BOSSES.readers.tint, emissiveIntensity: 1.6 });
-  const knuckleGeometry = new BoxGeometry(0.03, 0.09, 0.03);
-  const boneGeometry = new BoxGeometry(0.03, 0.016, 0.014).translate(0.015, 0, 0);
-  const tipGeometry = new BoxGeometry(0.022, 0.014, 0.012).translate(0.011, 0, 0);
-  const group = new Group();
-  // Mirrored for the left edge, so the fingers always reach in toward the middle.
-  const hand = new Group();
-  hand.scale.x = -side;
-  group.add(hand);
-  hand.add(new Mesh(knuckleGeometry, metal));
-  const fingers = [-1, 0, 1].map((row) => {
-    const base = new Group();
-    base.position.set(0.005, row * 0.03, 0);
-    const tip = new Group();
-    tip.position.x = 0.03;
-    tip.add(new Mesh(tipGeometry, tipColor));
-    base.add(new Mesh(boneGeometry, metal), tip);
-    hand.add(base);
-    return { base, tip };
-  });
-  return {
-    group,
-    pose(close: number) {
-      for (const { base, tip } of fingers) {
-        // Open, they point back past the edge; shut, they lie over the glass and the tips bite.
-        base.rotation.y = (1 - close) * 1.9;
-        tip.rotation.y = -0.2 - 0.5 * close;
-      }
-    },
-    dispose() {
-      for (const g of [knuckleGeometry, boneGeometry, tipGeometry]) g.dispose();
-      metal.dispose();
-      tipColor.dispose();
-    },
-  };
+/** Turns a hand so its fingers (the bone's +Y) point along `direction` (world space), blended in by `weight`. */
+function clasp(hand: Bone, direction: Vector3, weight: number, work: { v: Vector3; q: Quaternion; parent: Quaternion }) {
+  hand.getWorldQuaternion(work.q);
+  work.v.set(0, 1, 0).applyQuaternion(work.q);
+  const turn = new Quaternion().setFromUnitVectors(work.v, direction);
+  (hand.parent as Object3D).getWorldQuaternion(work.parent);
+  const aimed = hand.quaternion.clone().premultiply(work.parent.clone().invert().multiply(turn).multiply(work.parent));
+  hand.quaternion.slerp(aimed, weight);
+  hand.updateMatrixWorld(true);
 }
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));

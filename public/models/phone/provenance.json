@@ -1,0 +1,19 @@
+{
+  "about": "The phone screen's robot (src/phone/PhoneScene.tsx): the Throughput Subcommittee from Decide, made again with real hands so it can take the phone by its sides. David, shown the first version's stretched arms (\"some poles\"), picked a concept where the robot's own hands grip the screen's edges, and cleared the spend (\"Whichever you want is fine\").",
+  "date": "2026-10-30",
+  "by": "Orbit, in David's Tripo account",
+  "credits": "65: image to 3D at 45 and a humanoid rig at 20 (7,905 -> 7,840). The concept and the preset animations were free.",
+  "models": {
+    "subcommittee": {
+      "concept": "research/station-assets/phone/subcommittee-hands.jpg (downscaled from Tripo's 768 x 1376 PNG): Tripo Studio's image generator, Nano Banana 2 (Gemini), 9:16, two images, with the Subcommittee's full-body concept (research/station-assets/boss-figures/readers.jpg) as the reference image; the second was used (the first had four hands)",
+      "prompt": "Full-body picture of the same robot character as in the reference image: keep its design, colors, materials and face exactly the same (the boxy navy head with two small square glowing cyan eyes and an antenna, the glowing blue digital counter screen on its chest, the turnstile post body and the three metal turnstile arms, the two short robot legs with big flat feet), with one change: its two arms now end in big, sturdy mechanical hands, each with a broad palm, three thick jointed fingers and a thumb, with glowing blue fingertips, clearly separate from the arms. Standing in a T-pose, arms straight out to the sides at shoulder height, hands open with fingers spread, facing the viewer straight on, so it can be rigged. Show the whole robot, from the top of its head down to its feet, centered with a small margin, nothing touching or cut off at the edges. Same stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces. Body in dark navy and violet, with one bright blue accent. Plain flat solid light grey background, no gradient, no floor, no ground shadow, no text, no letters, no logos.",
+      "model": "Tripo Studio image to 3D: HD Model, H3.1, 2K texture, triangles, 10,000 polygon target; task 01282443-07a0-4110-a31c-bf1478293566; 45 credits",
+      "rig": "Tripo Auto Rig: Humanoid, Mixamo skeleton (with finger bones); 20 credits",
+      "animations": "Tripo's preset animations idle and walk, retargeted free; exported as GLB, 2K textures, with the skeleton, animations in place",
+      "processed": "research/station-assets/process.mjs <exports> public/models/phone 1024: color texture only, as 1024 px webp; skeleton and clips kept (resampled)",
+      "file": "public/models/phone/subcommittee.glb",
+      "sha256": "1d8f5737dbe1e29de0451c045219bd2f5704865aef8f1557c4dfa3c0b396a4f2",
+      "bytes": 765032
+    }
+  }
+}
