@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, prepareContext } from '../fixtures';
+import { test, expect, prepareContext, collectPageErrors } from '../fixtures';
 
 async function ledgers(page: Page, query = '') {
   await page.goto(`/investigate?analytics-test=1&${query}`);
@@ -76,7 +76,7 @@ async function checkReport(page: Page, holding: boolean) {
 test('M1: discover, choose two moves, play; a separate save holds course with hints', async ({ page, browser, baseURL }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
-  page.on('pageerror', error => errors.push(error.message));
+  collectPageErrors(page, baseURL!, errors);
   await page.goto('/?analytics-test=1');
   await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('link', { name: 'Open the ledgers' }).click();
   await expect(page.getByRole('button', { name: 'Notifications', exact: true })).toBeVisible();
@@ -104,7 +104,7 @@ test('M1: discover, choose two moves, play; a separate save holds course with hi
   await prepareContext(other, baseURL!);
   try {
     const second = await other.newPage();
-    second.on('pageerror', error => errors.push(error.message));
+    collectPageErrors(second, baseURL!, errors);
     await second.goto('/result?analytics-test=1');
     await expect(second).toHaveURL(/\/decide/); // first player's committed plan is not shared
     const id = (await page.context().cookies()).find(c => c.name === 'orbital_save')?.value;
