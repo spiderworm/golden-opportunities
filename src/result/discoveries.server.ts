@@ -2,11 +2,11 @@
 // found text is the answer, and the hint says where it is, so neither may ship
 // in the browser's code. The result loader sends each player only what they
 // have earned, and only after the quarter has played out.
-import type { DiscoveryId as Q1DiscoveryId } from "~/simulation/types";
+import type { DiscoveryId } from "~/game/types";
 import type { ResultQuarter } from "./copy";
 
-/** A–C are Q1's, D–F Q2's. Q1's discoveries stay on Q1's screen: they don't carry over. */
-export type DiscoveryId = Q1DiscoveryId | "D" | "E" | "F";
+/** A–C are Q1's, D–F Q2's (the game's ids). Q1's discoveries stay on Q1's screen: they don't carry over. */
+export type { DiscoveryId };
 
 const Q1: { id: DiscoveryId; found: string; notFound: string }[] = [
   {
