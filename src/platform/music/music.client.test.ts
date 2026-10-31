@@ -46,6 +46,7 @@ describe("loadMusic", () => {
       track,
       remember: true,
       oneTab: true,
+      pauseWhenHidden: expect.any(Function), // the desktop player's: plays on behind other tabs
     });
   });
 
