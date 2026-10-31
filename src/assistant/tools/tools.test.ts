@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createInterface } from "node:readline";
@@ -114,6 +115,11 @@ describe("the query endpoint", () => {
     expect(defaultQueryUrl({ PORT: "3000" })).toBe("http://[::1]:3000/api/query");
     expect(defaultQueryUrl({ PORT: "evil.example" })).toBe("http://[::1]:5173/api/query");
     expect(() => queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: defaultQueryUrl({}) })).not.toThrow();
+  });
+
+  it("gets its port from `npm start`, which sets PORT (3000 unless set) rather than leave the server to pick one", () => {
+    const start: string = JSON.parse(readFileSync(new URL("../../../package.json", import.meta.url), "utf8")).scripts.start;
+    expect(start).toMatch(/^PORT=\$\{PORT:-3000\} react-router-serve /);
   });
 });
 
