@@ -6,7 +6,8 @@ import { SERVER_NAME } from "./definitions.ts";
 
 /**
  * The URL this server's /api/query answers at, built from a loopback IP literal and this server's own port (PORT,
- * else Vite's 5173), never from a request. [::1], because Vite listens on [::1] only here (measured 30 Oct);
+ * else Vite's 5173), never from a request: its Host header is the client's to choose. `npm start` sets PORT
+ * (3000 unless it's set already), since react-router-serve would otherwise take a port the app can't see. [::1], because Vite listens on [::1] only here (measured 30 Oct);
  * a hostname would be resolved, and the tool server refuses one. ORBITAL_QUERY_URL overrides it, and the tool
  * server checks that too.
  */
