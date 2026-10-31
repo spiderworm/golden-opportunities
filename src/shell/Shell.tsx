@@ -95,41 +95,44 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
           </button>
         </div>
 
-        <nav id="main-menu" className={styles.menu} aria-label="Main menu">
-          <div className={styles.brand}>
-            Orbital <span className={styles.brandLight}>Books</span>
-          </div>
-          <div className={styles.menuHeading}>Main menu</div>
-          <ul className={styles.menuList}>
-            {navItems.map((item) => (
-              <li key={item.label}>
-                {item.to ? (
-                  <NavLink
-                    to={item.to}
-                    end
-                    className={({ isActive }) => (isActive ? `${styles.menuItem} ${styles.active}` : styles.menuItem)}
-                    title={collapsed ? item.label : undefined}
-                    onClick={() => track("nav_selected", { item: item.label })}
-                  >
-                    <Icon name={item.icon} />
-                    <span className={styles.menuLabel}>{item.label}</span>
-                  </NavLink>
-                ) : (
-                  <span
-                    className={`${styles.menuItem} ${styles.soon}`}
-                    aria-disabled="true"
-                    title={collapsed ? `${item.label} (coming soon)` : undefined}
-                  >
-                    <Icon name={item.icon} />
-                    <span className={styles.menuLabel}>{item.label}</span>
-                    <span className={styles.soonBadge}>Soon</span>
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+        <div className={styles.menu}>
+          <nav id="main-menu" className={styles.menuNav} aria-label="Main menu">
+            <div className={styles.brand}>
+              Orbital <span className={styles.brandLight}>Books</span>
+            </div>
+            <div className={styles.menuHeading}>Main menu</div>
+            <ul className={styles.menuList}>
+              {navItems.map((item) => (
+                <li key={item.label}>
+                  {item.to ? (
+                    <NavLink
+                      to={item.to}
+                      end
+                      className={({ isActive }) => (isActive ? `${styles.menuItem} ${styles.active}` : styles.menuItem)}
+                      title={collapsed ? item.label : undefined}
+                      onClick={() => track("nav_selected", { item: item.label })}
+                    >
+                      <Icon name={item.icon} />
+                      <span className={styles.menuLabel}>{item.label}</span>
+                    </NavLink>
+                  ) : (
+                    <span
+                      className={`${styles.menuItem} ${styles.soon}`}
+                      aria-disabled="true"
+                      title={collapsed ? `${item.label} (coming soon)` : undefined}
+                    >
+                      <Icon name={item.icon} />
+                      <span className={styles.menuLabel}>{item.label}</span>
+                      <span className={styles.soonBadge}>Soon</span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </nav>
+          {/* Beside the menu's landmark, not in it (Chart): the music isn't navigation. */}
           <MusicDock collapsed={collapsed} layer={musicLayer} />
-        </nav>
+        </div>
       </aside>
 
       <div className={styles.main}>

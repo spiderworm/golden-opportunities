@@ -42,7 +42,9 @@ test('with songs listed, the dock waits in the menu, the first tap starts the mu
   await page.goto('/investigate');
   // Nothing plays before a gesture.
   await page.waitForTimeout(800);
-  const dock = page.getByRole('navigation', { name: 'Main menu' }).locator('.music-dock');
+  const dock = page.locator('.music-dock');
+  // In the menu's column, but not in its navigation landmark.
+  await expect(page.getByRole('navigation', { name: 'Main menu' }).locator('.music-dock')).toHaveCount(0);
   await expect(dock).toContainText('Music');
   expect(await page.evaluate(() => (window as unknown as { __musicContexts: AudioContext[] }).__musicContexts.length)).toBe(0);
   await page.mouse.click(5, 5);
