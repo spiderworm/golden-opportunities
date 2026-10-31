@@ -1,0 +1,31 @@
+{
+  "name": "@tellim/kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "What a studio app starts with: platform, music and analytics, at versions tested together, and startApp() to wire them",
+  "type": "module",
+  "exports": {
+    "./app": "./src/app.ts",
+    "./music": "./src/music.ts",
+    "./platform/app": "./src/platform/app.ts",
+    "./platform/presence": "./src/platform/presence.ts",
+    "./analytics/client": "./src/analytics/client.ts",
+    "./analytics/deployed": "./src/analytics/deployed.ts",
+    "./analytics/environment": "./src/analytics/environment.ts",
+    "./music/player": "./src/music/player.ts",
+    "./music/desktop": "./src/music/desktop.ts",
+    "./music/manifest": "./src/music/manifest.ts",
+    "./music/popup": "./src/music/popup.ts",
+    "./music/dock": "./src/music/dock.ts",
+    "./music/panel": "./src/music/panel.ts",
+    "./music/music.css": "./src/music/music.css"
+  },
+  "scripts": {
+    "test": "node --test 'src/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@tellim/analytics": "file:../analytics",
+    "@tellim/music": "file:../music",
+    "@tellim/platform": "file:../platform"
+  }
+}

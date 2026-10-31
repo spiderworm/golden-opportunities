@@ -78,3 +78,11 @@ test("pauseWhenHidden: a hidden page starts no music, unless the game says it ma
     delete (globalThis as any).document;
   }
 });
+
+test("the app's storage, from @tellim/platform, is where its choices are kept", () => {
+  const m = new Map([["cubeberg.music", JSON.stringify({ volume: 0.3 })]]);
+  const storage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  createMusic({ app: { id: "waddleberg", storagePrefix: "cubeberg" }, songs, base: "", storage }).setVolume(0.4);
+  assert.equal(JSON.parse(m.get("cubeberg.music")!).volume, 0.4);
+  assert.throws(() => createMusic({ songs, base: "" }));
+});

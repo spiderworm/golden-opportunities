@@ -23,6 +23,9 @@ and never content, recorded on the device first.
    const analytics = createAnalytics({ game: "slice-shift", key: "pizza", endpoint: dev ? undefined : deployed.endpoint, build, platform });
    export const track = analytics.track;
    ```
+   Or pass the app instead (`@tellim/platform`'s `defineApp()`, read structurally): `createAnalytics({ app, endpoint, platform })`
+   takes `game` from `app.id`, `key` from `app.storagePrefix` (else `app.id`), and `build` and `version` from the app.
+   Options given explicitly still win, e.g. Pizza's `key: local ? "pizza.test" : "pizza"`.
    Pass `gl: () => renderer.getContext()` (the game's own WebGL context) so the device event has the GPU.
    Features call `track()` and nothing else.
 
