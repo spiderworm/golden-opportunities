@@ -124,17 +124,34 @@ export default function Decide() {
 
       <fieldset className={styles.moves} disabled={step !== "choose"} aria-describedby="moves-rule moves-status">
         <legend className={styles.movesHeading}>{COPY.movesHeading}</legend>
+        {/* The form's chrome: who issued it and its serial. Decoration; the legend names the form. */}
+        <div className={styles.formMeta} aria-hidden="true">
+          {COPY.form.issuer.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+          <span className={styles.serial}>
+            <span className={styles.barcode} />
+            {COPY.form.serial}
+          </span>
+        </div>
         <p id="moves-rule" className={styles.rule}>
           <FactText line={COPY.rule} />
         </p>
         <div className={styles.options}>
-          {MOVES.map((m) => {
+          {MOVES.map((m, i) => {
             const selected = chosen.includes(m.id);
             return (
               <label key={m.id} className={styles.option} data-selected={selected || undefined}>
+                <span className={styles.itemNumber} aria-hidden="true">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
                 <input type="checkbox" name="levers" value={m.id} checked={selected} onChange={() => toggle(m.id)} />
                 <span className={styles.optionTitle}>{m.title}</span>
                 <span className={styles.optionLine}>{m.line}</span>
+                {/* The bosses' stamp on a chosen move: its space is always kept, so stamping moves nothing. */}
+                <span className={styles.stamp} aria-hidden="true">
+                  {COPY.form.stamp}
+                </span>
               </label>
             );
           })}
@@ -143,6 +160,7 @@ export default function Decide() {
         <p id="moves-status" className={styles.movesStatus} role="status" data-warning={tooMany || undefined}>
           {tooMany ? COPY.tooMany : chosen.length === 0 ? COPY.holdCourse : ""}
         </p>
+        <p className={styles.formFooter}>{COPY.form.footer}</p>
       </fieldset>
 
       {step === "choose" && (

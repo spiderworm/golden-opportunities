@@ -74,6 +74,14 @@ export const DECIDE_COPY = {
     { month: "March", title: "Portmeirion", format: "mass market paperback" },
   ],
   movesHeading: "Your moves (choose up to two)",
+  /** The moves as a requisition form the bosses issue: its chrome is decoration (aria-hidden); the checkboxes carry the choice. */
+  form: {
+    issuer: ["THROUGHPUT SUBCOMMITTEE", "FORM TS-2: REQUISITION OF MOVES"],
+    serial: "LKS-2194-Q1-0002",
+    stamp: "REQUISITIONED",
+    /** Small print at the foot of the form. */
+    footer: "Two moves maximum. Filed requisitions are final.",
+  },
   /** Under the moves heading: the rule the choice turns on, so no closed bubble hides it. */
   rule: ["Your score is your ", { strong: "lowest measure" }, ": Profit, Readers served, Happiness or Culture."] as FactLine,
   holdCourse: "Hold course: the schedule runs as it is.",

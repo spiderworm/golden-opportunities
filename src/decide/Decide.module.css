@@ -38,26 +38,94 @@
   font-style: italic;
 }
 
-/* The three moves: checkbox cards, up to two ticked. */
+/* The three moves, as a requisition form the bosses issue: a dark laminated sheet clipped at the top,
+   red edge strips, a serial strip, three ruled boxes, and the bosses' stamp on each chosen move. The
+   chrome is decoration; the fieldset, its legend and the checkboxes carry the choice. Choosing changes
+   colours and the stamp's opacity only, so nothing moves. */
 .moves {
+  position: relative;
   display: grid;
   gap: 12px;
   min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
+  margin: 10px 0 0;
+  padding: 20px 24px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background:
+    linear-gradient(to bottom, rgb(255 255 255 / 0.035), transparent 90px),
+    linear-gradient(180deg, #1b2236, #171d2f);
+  box-shadow:
+    inset 3px 0 0 rgb(255 122 144 / 0.45),
+    inset -3px 0 0 rgb(255 122 144 / 0.45),
+    0 14px 34px rgb(0 0 0 / 0.35);
 }
 
+/* Two binder clips over the top edge. */
+.moves::before,
+.moves::after {
+  content: "";
+  position: absolute;
+  top: -9px;
+  width: 54px;
+  height: 16px;
+  border: 1px solid #3a4361;
+  border-radius: 4px;
+  background: linear-gradient(to bottom, #2c3450, #20263b);
+}
+
+.moves::before {
+  left: 22%;
+}
+
+.moves::after {
+  right: 22%;
+}
+
+/* The form's title: floated, so it lays out inside the sheet like any block. */
 .movesHeading {
-  margin-bottom: 12px;
+  float: left;
+  width: 100%;
+  margin: 0;
   padding: 0;
   font-size: 16px;
   font-weight: 600;
 }
 
-/* The rule the choice turns on, under the heading. */
+/* Who issued the form, and its serial: top right, small and monospaced, out of the flow. */
+.formMeta {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  color: var(--color-text-subtle);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+}
+
+.serial {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--color-text-muted);
+}
+
+.barcode {
+  width: 84px;
+  height: 12px;
+  background: repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 3px, currentColor 3px 5px, transparent 5px 6px, currentColor 6px 7px, transparent 7px 10px);
+  opacity: 0.7;
+}
+
+/* The rule the choice turns on, under the title. */
 .rule {
-  margin: -4px 0 4px;
+  clear: both;
+  margin: 0 0 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
   color: var(--color-text-muted);
   font-size: 14px;
 }
@@ -80,47 +148,104 @@
   font-weight: 600;
 }
 
+/* The form's small print. */
+.formFooter {
+  margin: -6px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  color: var(--color-text-subtle);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
 .options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
+/* A ruled box on the form. Its foot is kept clear for the stamp. */
 .option {
   position: relative;
   display: grid;
   align-content: start;
   gap: 6px;
-  padding: 20px 22px 20px 52px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
-  background: var(--color-panel);
+  padding: 16px 18px 46px 48px;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 27px, rgb(255 255 255 / 0.025) 27px 28px),
+    rgb(255 255 255 / 0.015);
   cursor: pointer;
+  transition: border-color 160ms, background-color 160ms;
 }
 
 .option:hover {
-  background: var(--color-panel-raised);
+  border-color: rgb(255 255 255 / 0.22);
 }
 
 .option[data-selected] {
-  border-color: var(--color-accent);
-  background: var(--color-accent-wash);
+  border-color: var(--color-accent-soft);
+  background-color: var(--color-accent-wash);
 }
 
+.itemNumber {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  color: var(--color-text-subtle);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+/* The approval box: a square to tick, in the form's ink. */
 .option input {
   position: absolute;
-  top: 22px;
-  left: 20px;
-  width: 18px;
-  height: 18px;
+  top: 18px;
+  left: 16px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
   margin: 0;
-  accent-color: var(--color-accent);
+  border: 2px solid var(--color-accent-soft);
+  border-radius: 3px;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
 }
 
-.moves:disabled .option {
+.option input::after {
+  content: "";
+  width: 10px;
+  height: 6px;
+  margin-top: -3px;
+  border-bottom: 2.5px solid #fff;
+  border-left: 2.5px solid #fff;
+  transform: rotate(-45deg);
+  opacity: 0;
+}
+
+.option input:checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.option input:checked::after {
+  opacity: 1;
+}
+
+.option input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.moves:disabled .option,
+.moves:disabled .option input {
   cursor: default;
 }
 
@@ -137,6 +262,43 @@
   color: var(--color-text-muted);
   font-size: 14px;
   line-height: 1.45;
+}
+
+/* The bosses' rubber stamp, struck on a chosen move. */
+.stamp {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  padding: 3px 10px;
+  border: 3px double var(--color-accent-soft);
+  border-radius: 4px;
+  color: var(--color-accent-soft);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  transform: rotate(-7deg) scale(1.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 180ms cubic-bezier(0.3, 1.4, 0.5, 1), opacity 120ms;
+}
+
+.option[data-selected] .stamp {
+  transform: rotate(-7deg) scale(1);
+  opacity: 0.9;
+}
+
+@media (max-width: 1000px) {
+  .formMeta {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option,
+  .stamp {
+    transition: none;
+  }
 }
 
 .actions {
