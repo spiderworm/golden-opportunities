@@ -36,6 +36,11 @@
     .fact {
       grid-column: 2;
     }
+
+    /* The still robot (while the 3D scene loads, or for good without WebGL 2) keeps to the left too. */
+    .still {
+      padding-right: calc(54% + 16px);
+    }
   }
 
   :global(body) > :not(.phone) {
