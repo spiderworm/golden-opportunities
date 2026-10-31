@@ -9,6 +9,7 @@ import { track as platformTrack } from "~/platform/analytics/analytics.client";
 import { ASSISTANT_NAME as NAME } from "../name.ts";
 import type { ChartSpec } from "../tools/definitions.ts";
 import { browserStorage, clearConversation, historyFor, INTERRUPTED, loadConversation, saveConversation } from "./conversation.ts";
+import { fetchStatus, type AssistantStatus } from "./status.ts";
 import { askAssistant } from "./stream.ts";
 
 /** The platform's track(); injectable for tests. */
@@ -80,6 +81,16 @@ export function AssistantPanel({
     const timer = setTimeout(save, wait);
     return () => clearTimeout(timer);
   }, [replies, restored, owner]);
+  // Whether the assistant can answer on this machine: asked on mount, and again after any error, so the
+  // panel says it's offline before the player types (no Claude Code, or not signed in).
+  const [status, setStatus] = useState<AssistantStatus>({ available: true });
+  const checkStatus = () =>
+    void fetchStatus(fetcher).then((s) => {
+      setStatus(s);
+      if (!s.available) track("assistant_offline_shown", { reason: s.reason });
+    });
+  useEffect(checkStatus, []);
+  const offline = !status.available;
   const busy = replies.at(-1)?.state === "streaming";
 
   // Starting over bumps the conversation, so an answer still winding down can't write into the new one.
@@ -88,7 +99,7 @@ export function AssistantPanel({
 
   async function send() {
     const text = question.trim();
-    if (!text || busy) return;
+    if (!text || busy || offline) return;
     // What players type stays on the device (David, 30 Oct); only its length is sent.
     track("agent_asked", { text, chars: text.length }, { hold: "agent_text" });
     track("assistant_question_sent", { chars: text.length, turn: replies.length });
@@ -112,6 +123,7 @@ export function AssistantPanel({
         } else if (event.type === "error") {
           outcome = "failed";
           update((r) => ({ ...r, error: event.message }));
+          checkStatus();
         }
       }
     } catch (e) {
@@ -144,7 +156,13 @@ export function AssistantPanel({
         )}
       </header>
       <div ref={log} style={styles.log} aria-live="polite">
-        {replies.length === 0 && <p style={styles.muted}>Ask about your sales: a figure, a breakdown, a term. {NAME} looks things up; what they mean is up to you.</p>}
+        {offline && (
+          <div role="status" style={styles.offline}>
+            <p style={styles.offlineMessage}>{status.message}</p>
+            <p style={styles.muted}>{status.hint}</p>
+          </div>
+        )}
+        {replies.length === 0 && !offline && <p style={styles.muted}>Ask about your sales: a figure, a breakdown, a term. {NAME} looks things up; what they mean is up to you.</p>}
         {replies.map((r, i) => (
           <article key={i} style={styles.turn}>
             <p style={styles.question}>{r.question}</p>
@@ -170,7 +188,8 @@ export function AssistantPanel({
           aria-label={`Question for ${NAME}`}
           value={question}
           maxLength={QUESTION_MAX}
-          placeholder="What was revenue by quarter?"
+          placeholder={offline ? `${NAME} is offline` : "What was revenue by quarter?"}
+          disabled={offline}
           onChange={(e) => setQuestion(e.target.value)}
           style={styles.input}
         />
@@ -179,7 +198,7 @@ export function AssistantPanel({
             Stop
           </button>
         ) : (
-          <button type="submit" style={styles.button} disabled={!question.trim()}>
+          <button type="submit" style={styles.button} disabled={offline || !question.trim()}>
             Ask
           </button>
         )}
@@ -239,6 +258,8 @@ function LookupView({ lookup }: { lookup: Lookup }) {
 const styles = {
   panel: { display: "flex", flexDirection: "column", gap: 12, maxWidth: 520, padding: 16, background: "var(--color-panel)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-panel)", color: "var(--color-text)", fontFamily: "var(--font-body)" },
   header: { display: "flex", alignItems: "baseline", gap: 8 },
+  offline: { display: "flex", flexDirection: "column", gap: 4, padding: 10, background: "var(--color-panel-raised)", borderRadius: "var(--radius-control)" },
+  offlineMessage: { margin: 0 },
   quiet: { marginLeft: "auto", padding: "2px 8px", background: "none", color: "var(--color-text-muted)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-control)", cursor: "pointer", fontSize: 12 },
   muted: { color: "var(--color-text-muted)", margin: 0, fontSize: 13 },
   log: { display: "flex", flexDirection: "column", gap: 16, maxHeight: 480, overflowY: "auto" },

@@ -6,6 +6,7 @@ import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
 import { chartTitle, type ChartSpec } from "../tools/definitions.ts";
 import { acquire, arrive, ndjson } from "./assistant.server.ts";
+import { markOffline, OFFLINE, type OfflineReason } from "./availability.server.ts";
 import { Refs, scrubDeep, sentenceGate } from "./figures.server.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
@@ -117,6 +118,7 @@ export const LOOKUP_FAILED = "The terminal couldn't run that lookup.";
 export const SESSION_ENDED = "That session ended. Reload the page to continue.";
 export const UNAVAILABLE = "The assistant is unavailable right now. Try again in a moment.";
 export const TIMED_OUT = "The assistant took too long, so it was stopped.";
+const OFFLINE_KINDS = new Set(["missing", "signed_out", "broken"]);
 export const FAILED = "Something went wrong with the assistant.";
 
 /**
@@ -247,6 +249,8 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
           if (!signal.aborted) yield { type: "done" };
         } catch (e) {
           outcome = e instanceof AssistantUnavailable ? "unavailable" : "failed";
+          // Remember it, so the panel says so before the next question (and the event says why).
+          if (e instanceof AssistantUnavailable && OFFLINE_KINDS.has(e.kind)) markOffline(e.kind as OfflineReason, track);
           throw e;
         } finally {
           slot.release();
@@ -255,7 +259,7 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
           track("assistant_answered", { outcome, provider: provider.name, kind: questionKind(input.question), questionChars: input.question.length, turns: input.history.length, durationMs: now() - started, ...stats });
         }
       },
-      (e) => ({ type: "error", message: e instanceof AssistantUnavailable ? (e.kind === "timeout" ? TIMED_OUT : UNAVAILABLE) : FAILED }),
+      (e) => ({ type: "error", message: e instanceof AssistantUnavailable ? (OFFLINE_KINDS.has(e.kind) ? OFFLINE : e.kind === "timeout" ? TIMED_OUT : UNAVAILABLE) : FAILED }),
       request,
     );
   })();

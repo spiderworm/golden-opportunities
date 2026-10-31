@@ -24,11 +24,17 @@ export interface AssistantProvider {
   ask(prompt: AssistantPrompt, signal: AbortSignal): AsyncIterable<ProviderEvent>;
 }
 
+/**
+ * Why the assistant couldn't answer. "missing", "signed_out" and "broken" mean Claude Code isn't usable on this
+ * machine at all (see availability.server.ts); "timeout" and "other" are this answer's.
+ */
+export type UnavailableKind = "timeout" | "missing" | "signed_out" | "broken" | "other";
+
 /** Its message is shown to the player, so it never carries an email address (stderr and results can). */
 export class AssistantUnavailable extends Error {
   /** Which fixed message the player sees: the message itself can carry outside text (stderr, the CLI's). */
-  readonly kind: "timeout" | "other";
-  constructor(message: string, kind: "timeout" | "other" = "other") {
+  readonly kind: UnavailableKind;
+  constructor(message: string, kind: UnavailableKind = "other") {
     super(redactEmails(message));
     this.kind = kind;
   }
