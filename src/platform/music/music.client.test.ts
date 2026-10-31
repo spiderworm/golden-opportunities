@@ -4,17 +4,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const createMusic = vi.hoisted(() => vi.fn((options: unknown) => ({ options })));
 const track = vi.hoisted(() => vi.fn());
 vi.mock("@tellim/music/player", () => ({ createMusic }));
-vi.mock("@tellim/music/music.css", () => ({}));
-vi.mock("~/platform/analytics/analytics.client", () => ({ track }));
+vi.mock("@tellim/kit/music/music.css", () => ({}));
+// the kit as the page starts it, without analytics (analytics.client's own tests have that)
+const kit = vi.hoisted(() => ({ started: undefined as unknown }));
+vi.mock("~/platform/kit.client", async () => {
+  const { defineApp, startApp } = await import("@tellim/kit/app");
+  const app = defineApp({ id: "orbital-books" });
+  return { studio: () => (kit.started ??= startApp(app, { form: "desktop", analytics: false, track })) };
+});
 
-import { loadMusic, resetMusic } from "./music.client";
+import { loadMusic } from "./music.client";
 
 const respond = (body: unknown, ok = true) => vi.fn(async () => ({ ok, json: async () => body }) as unknown as Response);
 
 describe("loadMusic", () => {
   beforeEach(() => vi.stubGlobal("window", {}));
   afterEach(() => {
-    resetMusic();
+    kit.started = undefined;
     vi.unstubAllGlobals();
     createMusic.mockClear();
     track.mockClear();
@@ -27,12 +33,12 @@ describe("loadMusic", () => {
 
   it("makes no player when the manifest is missing or broken", async () => {
     expect(await loadMusic(respond(null, false))).toBeNull();
-    resetMusic();
+    kit.started = undefined;
     expect(await loadMusic(vi.fn(async () => Promise.reject(new Error("offline"))))).toBeNull();
     expect(createMusic).not.toHaveBeenCalled();
   });
 
-  it("makes the player once, from public/music/, reporting through track", async () => {
+  it("makes the player once, from public/music/, with the kit's desktop defaults, reporting through track", async () => {
     const fetcher = respond({ songs: [{ id: "nebula-waltz", file: "nebula-waltz.mp3", title: "Nebula Waltz" }] });
     const [a, b] = await Promise.all([loadMusic(fetcher), loadMusic(fetcher)]);
     expect(a).toBe(b);
@@ -40,7 +46,7 @@ describe("loadMusic", () => {
     expect(fetcher).toHaveBeenCalledWith("/music/songs.json", { cache: "no-cache" });
     expect(createMusic).toHaveBeenCalledTimes(1);
     expect(createMusic.mock.calls[0]![0]).toMatchObject({
-      key: "orbital-books",
+      app: expect.objectContaining({ id: "orbital-books", storagePrefix: "orbital-books" }),
       base: "/music/",
       songs: [{ id: "nebula-waltz", file: "nebula-waltz.mp3", title: "Nebula Waltz" }],
       track,
