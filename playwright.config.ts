@@ -1,5 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const port = process.env.E2E_PORT ?? '5187';
+if (!/^[1-9][0-9]{0,4}$/.test(port) || Number(port) > 65535) {
+  throw new Error('E2E_PORT must be an integer from 1 to 65535.');
+}
+const baseURL = `http://127.0.0.1:${port}`;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -7,7 +13,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://127.0.0.1:5187',
+    baseURL,
     serviceWorkers: 'block',
     trace: 'retain-on-failure',
   },
@@ -18,9 +24,9 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
-    env: { ORBITAL_ANALYTICS: 'off', ORBITAL_ASSISTANT_PROVIDER: 'fake' },
+    env: { E2E_PORT: port, ORBITAL_ANALYTICS: 'off', ORBITAL_ASSISTANT_PROVIDER: 'fake' },
     command: 'npm run build && node e2e/server.mjs',
-    url: 'http://127.0.0.1:5187/?analytics-test=1',
+    url: `${baseURL}/?analytics-test=1`,
     reuseExistingServer: false,
     gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
   },

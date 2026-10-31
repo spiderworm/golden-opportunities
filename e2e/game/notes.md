@@ -4,11 +4,13 @@ After installing dependencies and Playwright Chromium/WebKit (`npx playwright in
 
 ```sh
 npm run test:e2e -- --workers=2
+# Another agent is already using the default port:
+E2E_PORT=5297 npm run test:e2e -- --workers=2
 # Only the full game loop:
 npm run test:e2e -- e2e/game/m1-loop.spec.ts --workers=2
 ```
 
-The config builds production assets and starts a new server on 127.0.0.1:5187. It refuses to reuse an existing listener. `e2e/server.mjs` allocates a new temporary data directory for each run, overrides ORBITAL_DATA_DIR, disables server analytics, and forces the fake assistant provider. It never reads or deletes a developer's .data. Graceful shutdown removes the temporary directory after the server exits (an OS-level force kill can leave it behind).
+The config builds production assets and starts a new server on 127.0.0.1:5187 by default. Set E2E_PORT (1–65535) to choose another port; the server, readiness check and both browser contexts all use it. Concurrent runs should use separate checkouts as well as different ports, since each run builds into its checkout’s build directory. It refuses to reuse an existing listener. `e2e/server.mjs` allocates a new temporary data directory for each run, overrides ORBITAL_DATA_DIR, disables server analytics, and forces the fake assistant provider. It never reads or deletes a developer's .data. Graceful shutdown removes the temporary directory after the server exits (an OS-level force kill can leave it behind).
 
 Both browser contexts use the same mute/external-request-blocking fixture. Initial and bookmarked navigations include `analytics-test=1`; automated-browser detection and blocked external requests also prevent browser analytics during link navigation. No real-model calls or data seeding are involved.
 
