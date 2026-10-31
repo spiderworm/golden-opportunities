@@ -20,6 +20,9 @@ import { onPageLeaving, pageLeaving, whenStayed } from "~/platform/lazy/cut-off"
 // which has a 2D one to fall back on, keeps its real failures quiet.) Kept
 // for the page's life, as drei's own cache was.
 
+// The manager is the whole page's, so this also cancels Decide's and the phone scene's model loads, which aren't
+// held: a page that stays after all (a download link) clicked while one of them loads shows its 2D scene or still
+// picture instead. Rare, and safe.
 if (typeof window !== "undefined") onPageLeaving(() => DefaultLoadingManager.abort());
 
 const loads = new Map<string, Promise<unknown>>();
