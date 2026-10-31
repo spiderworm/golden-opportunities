@@ -43,6 +43,11 @@
   background: rgb(13 17 31 / 0.78);
   box-shadow: 0 18px 40px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.06);
   backdrop-filter: blur(10px) saturate(1.1);
+  /* Above the tags (which are above the floor): what opens out of the form, a move's whole line or a month's
+     list of books, lies over the tags rather than under them. Its frosting makes it a layer of its own, so
+     its contents' z-index can't do this for them. */
+  position: relative;
+  z-index: 2;
 }
 
 /* The briefing: the heading, then the open boss's panel filling the banner's height (the form sets it). */
