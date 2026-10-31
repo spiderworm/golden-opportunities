@@ -81,12 +81,26 @@ test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
     bubbles: [...document.querySelectorAll('[data-tag]')].map(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }),
     form: (({ x, y, width, height }) => [x, y, width, height])((document.querySelector('fieldset') as HTMLElement).getBoundingClientRect()),
   }));
+  // Nor does any boss reach into a neighbour's column, the open one stepping forward included (David's rule):
+  // each cutout's drawn picture, inside its contained image, lies within its tag's column.
+  const overreach = () => page.evaluate(() => {
+    const columns = [...document.querySelectorAll('[data-tag]')].map(tag => tag.closest('li')!.getBoundingClientRect());
+    return [...document.querySelectorAll('[data-boss] img')].map((img, i) => {
+      const box = img.getBoundingClientRect();
+      const { naturalWidth, naturalHeight } = img as HTMLImageElement;
+      const drawn = naturalWidth * Math.min(box.width / naturalWidth, box.height / naturalHeight);
+      const middle = box.left + box.width / 2;
+      return Math.max(columns[i]!.left - (middle - drawn / 2), middle + drawn / 2 - columns[i]!.right);
+    });
+  });
   await page.waitForTimeout(800); // the scene's entrance
   const before = await layout();
   for (let i = 0; i < 5; i++) {
     await bubbles.nth(i).click();
     await expect(bubbles.nth(i)).toHaveAttribute('aria-expanded', 'true');
     expect(await layout()).toEqual(before);
+    await page.waitForTimeout(300); // the open boss's step forward
+    for (const over of await overreach()) expect(over).toBeLessThanOrEqual(0.5);
   }
   // Nor does ticking moves: the stamp's space is kept, and the plan's status line keeps its height.
   await page.getByRole('checkbox', { name: /Re-pick Book of the Month/ }).check();
