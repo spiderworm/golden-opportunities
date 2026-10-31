@@ -14,7 +14,8 @@ import styles from "./BossBriefing.module.css";
 // width at which BossLayout keeps them, 620 px). Until then, narrower than
 // that, or if the 3D scene fails, the 2D scene shows, with the same bubbles
 // and the same focus. The 3D scene's code is fetched before it swaps in, so
-// the 2D scene is replaced once, not twice; a failed fetch is tried once more.
+// the 2D scene is replaced once, not twice; a failed fetch is tried once more,
+// and again on the next visit (not on every resize of this one).
 const WIDE = 620;
 let loading: Promise<ComponentType<BossScene3DProps>> | undefined;
 const loadScene3D = () =>
@@ -22,6 +23,7 @@ const loadScene3D = () =>
     (m) => m.default,
     (error: unknown) => {
       track("boss_scene_failed", { cause: "import" });
+      loading = undefined;
       throw error;
     },
   ));
@@ -59,7 +61,10 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
           setScene3D(() => scene);
           setMode(failed.current || element.clientWidth <= WIDE ? "2d" : "3d");
         },
-        () => current && setMode("2d"),
+        () => {
+          failed.current = true;
+          if (current) setMode("2d");
+        },
       );
     };
     decide();

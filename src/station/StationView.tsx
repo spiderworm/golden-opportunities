@@ -26,8 +26,8 @@ type Support = "checking" | "3d" | "static" | "failed";
 // M4 Pro when the scene's code hadn't arrived, 31 Oct).
 const NOTES = {
   static: "This device can't show the station in 3D, so here it is from the shuttle.",
-  loading: "The station didn't load, so here it is from the shuttle.",
-  running: "The station stopped drawing, so here it is from the shuttle.",
+  loading: "The station didn't load in 3D, so here it is from the shuttle.",
+  running: "The station stopped running in 3D, so here it is from the shuttle.",
 } as const;
 
 export interface StationViewProps {
