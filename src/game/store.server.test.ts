@@ -72,8 +72,10 @@ describe('persistent save storage budget', () => {
   });
   it('caps aggregate bytes and protects the requester during an update', () => {
     const { dir } = fixture(); let now = 1000;
-    const store = createSaveStore(dir, { maxBytes: 400, now: () => now });
-    const a = store.create(); now++; const b = store.create(); now++; const c = store.create();
+    const a = createSaveStore(dir, { now: () => now }).create();
+    const maxBytes = Buffer.byteLength(JSON.stringify({ ...a, seed: 0xffffffff })) * 3 + 8;
+    const store = createSaveStore(dir, { maxBytes, now: () => now });
+    now++; const b = store.create(); now++; const c = store.create();
     // A is oldest but must survive the admission of its replacement file.
     now++; store.update(a.id, 0, s => { s.discoveries.push('A'); });
     expect(store.read(a.id).discoveries).toEqual(['A']);
@@ -81,7 +83,7 @@ describe('persistent save storage budget', () => {
     expect(store.read(c.id).id).toBe(c.id);
     for (let i = 0; i < 10; i++) { now++; store.create(); }
     const bytes = readdirSync(dir).reduce((sum, f) => sum + statSync(path.join(dir, f)).size, 0);
-    expect(bytes).toBeLessThanOrEqual(400);
+    expect(bytes).toBeLessThanOrEqual(maxBytes);
   });
   it('fails closed without deleting the requester when its write cannot fit', () => {
     const { dir } = fixture(); const store = createSaveStore(dir); const a = store.create();

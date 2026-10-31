@@ -1,3 +1,5 @@
+import { recordDiscoveries } from '../game/discoveries.server';
+import { validateQuery } from './validate';
 import { authorizeQuery, viewForAccess, type QueryAccess } from './access.server';
 import { QueryError } from './errors';
 import { runQuery } from './run-query.server';
@@ -74,11 +76,13 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
       if (now() - windowStart >= 60_000) { windowStart = now(); counts = { browser: 0, agent: 0, total: 0 }; }
       if (counts[caller] >= 60 || counts.total >= 100 || active >= 8) throw new QueryError('RATE_LIMITED', 'Query capacity reached; retry later.');
       counts[caller]++; counts.total++; active++; admitted = true;
-      const query = await readJson(request);
+      const query = validateQuery(await readJson(request));
       // Body arrival is asynchronous: recheck expiry, revocation and revision after that wait.
       const access = authorizeQuery(request);
-      const result = run(query, resolveView(access), track);
+      const view = resolveView(access);
+      const result = run(query, view, track);
       const body = serializeResult(result);
+      recordDiscoveries(access.save, view, [{ query, result }]);
       emit(track, 'query_request_completed', { rowCount: result.rows.length, durationMs: performance.now() - started });
       return new Response(body, { status: 200, headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8' } });
     } catch (error) {

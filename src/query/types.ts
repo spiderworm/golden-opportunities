@@ -35,6 +35,8 @@ export interface QueryColumn {
 }
 export type QueryRow = Partial<Record<Dimension, string | null>> & Partial<Record<Measure, number | null>>;
 export interface QueryResult {
+  /** True if the row limit omitted groups. Optional for older consumers. */
+  truncated?: boolean;
   /** Grouping columns in query order, then the measure column. */
   columns: QueryColumn[];
   rows: QueryRow[];
