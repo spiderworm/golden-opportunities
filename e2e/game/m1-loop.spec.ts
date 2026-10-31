@@ -78,9 +78,8 @@ test('M1: discover, choose two moves, play; a separate save holds course with hi
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/?analytics-test=1');
-  await expect(page.getByRole('region', { name: 'The station' })).toBeVisible();
-  await page.getByRole('button', { name: 'Notifications, 1 unread' }).click();
-  await page.getByRole('link', { name: /Q4 revenue is down 41% on Q3/ }).click();
+  await page.getByRole('dialog', { name: 'Transmission from the Commerce Office' }).getByRole('link', { name: 'Open the ledgers' }).click();
+  await expect(page.getByRole('button', { name: 'Notifications', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Write the plan' })).toBeVisible();
 
   // A1: broad Q3/Q4 shape, A2: order size across both quarters.

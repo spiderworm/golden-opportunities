@@ -1,0 +1,64 @@
+/* Slim and urgent, but part of the page: a ruled strip in the alert's red, not a site notice. */
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 20px;
+  margin: 12px 36px 0;
+  padding: 10px 16px;
+  border: 1px solid rgb(255 122 144 / 0.35);
+  border-left: 4px solid var(--color-down);
+  border-radius: var(--radius-control);
+  background: var(--color-down-wash);
+}
+
+.text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.text strong {
+  color: var(--color-down);
+  font-weight: 700;
+}
+
+.short {
+  display: none;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgb(255 122 144 / 0.6);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
+@media (max-width: 760px) {
+  .long {
+    display: none;
+  }
+
+  .short {
+    display: inline;
+  }
+}
