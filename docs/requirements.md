@@ -17,7 +17,7 @@ Due **3 November 2026**. Golden Analytics will extend if asked; David will decid
 - **Scoring comes from how your actions affect the bookstore over time,** not from matching a single right answer. Points aren't the main reward; discovering something interesting in the data is. (David, 30 Oct)
 - **The score is a report card, not gross profit alone.** Four measures out of 100: Profit, Readers served, Happiness and Culture, with letter grades against goals set from last year. "Scoring on gross profit SOLELY feels icky to me." Details in `docs/design/scoring.md`. (David with Plot, 30 Oct)
 - **M1 uses a reduced card:** Profit, Readers served, Culture from real ratings and awards, and Happiness from Quality and Value only; goals are Q1 2193 plus 5%. (Plot's proposal, scoped by Goldy, 30 Oct)
-- **Names:** the agent is Dewey and the landlord is the Commerce Office. "Meridian Station" is out (it's a location in Halo); Larkspur Station is proposed. (David, 30 Oct)
+- **Names:** the agent is Dewey and the landlord is the Commerce Office. "Meridian Station" is out (it's a location in Halo); the station is Larkspur Station. (David, 30 Oct)
 
 ## Simulation
 
