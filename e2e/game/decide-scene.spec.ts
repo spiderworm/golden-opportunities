@@ -190,6 +190,16 @@ test('in 3D, a robot opens its bubble when clicked, and opening bubbles moves no
     await expect(bubbles.nth(i)).toHaveAttribute('aria-expanded', 'true');
     await page.waitForTimeout(300); // the open boss's lean and glow
     expect(await layout()).toEqual(before);
+    // The open boss steps forward only as far as its column allows, as in 2D.
+    const [from, to, column] = await page.evaluate((i) => {
+      const stage = document.querySelector<HTMLElement>('[data-robots]')!;
+      const left = stage.getBoundingClientRect().left;
+      const [from, to] = stage.dataset.openSpan!.split(',').map(Number);
+      const column = document.querySelectorAll('[data-tag]')[i]!.closest('li')!.getBoundingClientRect();
+      return [from! + left, to! + left, [column.left, column.right]] as const;
+    }, i);
+    expect(from).toBeGreaterThanOrEqual(column[0] - 2);
+    expect(to).toBeLessThanOrEqual(column[1] + 2);
   }
 
   // Clicking a robot (the Ministry, third) opens its bubble, like clicking the bubble.
