@@ -1,10 +1,12 @@
 import { Component, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type FocusEvent, type ReactNode } from "react";
 
 import { track } from "../analytics/analytics.client";
+import { pageLeaving } from "../lazy/cut-off";
 import { retryImport } from "../lazy/retry";
 import { canRenderWebGL2 } from "../webgl";
 import type { BossId } from "./bosses";
-import { BossScene2D } from "./BossScene2D";
+import { BossLayout } from "./BossLayout";
+import { BossFigures } from "./BossScene2D";
 import type { BossScene3DProps } from "./BossScene3D";
 import { useBossFocus, type FocusHow, type SceneBubble, type SceneMode } from "./useBossFocus";
 import styles from "./BossBriefing.module.css";
@@ -13,7 +15,8 @@ import styles from "./BossBriefing.module.css";
 // it can draw them and the briefing is wide enough for its full bubbles (the
 // width at which BossLayout keeps them, 620 px). Until then, narrower than
 // that, or if the 3D scene fails, the 2D scene shows, with the same bubbles
-// and the same focus. The 3D scene's code is fetched before it swaps in, so
+// and the same focus. Only the floor swaps: the layout, and whatever the page
+// hangs in its banner (a form being filled in, its focus), stays mounted. The 3D scene's code is fetched before it swaps in, so
 // the 2D scene is replaced once, not twice; a failed fetch is tried once more,
 // and again on the next visit (not on every resize of this one).
 const WIDE = 620;
@@ -92,7 +95,16 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
   }, []);
   useLayoutEffect(restoreFocus, [mode, restoreFocus]);
 
-  const flat = <BossScene2D bubbles={bubbles} open={open} onSelect={select} />;
+  // The columns the 3D bosses stand under, from the one layout both floors share.
+  const columns = useRef<(HTMLLIElement | null)[]>([]);
+  const flat = <BossFigures bubbles={bubbles} open={open} onSelect={select} />;
+  // The 3D scene broke, or its models didn't arrive: the 2D scene for the rest of this visit. A page that's
+  // going away cut the models off itself, so that's nobody's failure.
+  const failed3D = useCallback((cause: "scene" | "models") => {
+    if (!pageLeaving()) track("boss_scene_failed", { cause });
+    failed.current = true;
+    setMode("2d");
+  }, []);
   return (
     <div
       ref={box}
@@ -102,20 +114,26 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
         if (!box.current?.contains(event.relatedTarget as Node | null)) focused.current = null;
       }}
     >
-      {mode === "3d" && Scene3D ? (
-        <SceneBoundary
-          fallback={flat}
-          onError={() => {
-            track("boss_scene_failed", { cause: "scene" });
-            failed.current = true;
-            setMode("2d");
-          }}
-        >
-          <Scene3D bubbles={bubbles} open={open} onSelect={select} reducedMotion={reducedMotion} onShown={restoreFocus} />
-        </SceneBoundary>
-      ) : (
-        flat
-      )}
+      <BossLayout
+        bubbles={bubbles}
+        open={open}
+        onSelect={select}
+        columnRef={(i) => (el) => {
+          columns.current[i] = el;
+        }}
+        floor={
+          mode === "3d" && Scene3D ? (
+            <SceneBoundary
+              fallback={flat}
+              onError={() => failed3D("scene")}
+            >
+              <Scene3D bubbles={bubbles} open={open} onSelect={select} columns={columns} reducedMotion={reducedMotion} onShown={restoreFocus} onFailed={() => failed3D("models")} />
+            </SceneBoundary>
+          ) : (
+            flat
+          )
+        }
+      />
     </div>
   );
 }
