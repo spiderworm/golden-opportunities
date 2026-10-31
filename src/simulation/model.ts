@@ -6,6 +6,7 @@ import type { BookshopData, DeepReadonly, SaleLine } from "~/bookshop/types";
 import { cloneOrder, itemOf, ordersOf, type Item, type Order } from "./orders";
 import { integer, pick, roundRandomly, sampleIndexes, stream, weightedIndex, type Random } from "./random";
 import { has } from "./plan";
+import { RELEASE, RELEASE_DAY, RELEASE_RATE, releaseLaunch, releaseLine } from "./release";
 import type { Plan } from "./types";
 
 export const YEAR = 2194;
@@ -91,13 +92,16 @@ export function historyOf(data: DeepReadonly<BookshopData>, quarter: QuarterNumb
       picks.set(month, (picks.get(month) ?? new Set()).add(line.isbn));
     }
   }
+  // The new volume can be sold and picked like any edition.
+  const release = releaseLine(data);
+  templates.set(release.isbn, release);
   return {
     quarter,
     months,
     lastYear: data.saleLines.filter((l) => l.date >= from && l.date < to),
     template: (isbn) => {
       const line = templates.get(isbn);
-      if (!line) throw new Error(`No 2193 sale of edition ${isbn}`);
+      if (!line) throw new Error(`No 2193 sale or release of edition ${isbn}`);
       return line;
     },
     isbnOf: ({ title, format }) => {
@@ -147,6 +151,27 @@ export function baseline(history: History, seed: number): Order[] {
     const kept = target < source.length ? sampleIndexes(random, source.length, target).map((i) => source[i]) : [...source];
     while (kept.length < target) kept.push(pick(random, source));
     orders.push(...kept.map((o) => cloneOrder(o, { day })));
+  }
+  return orders;
+}
+
+/**
+ * The baseline with the new volume's copies added: each a one-line order at full
+ * price, at its rate times its launch, scaled by the day's share of the quarter's
+ * orders, so it follows the weekday pattern. Its own stream: every plan gets the same release.
+ */
+export function withRelease(history: History, base: readonly Order[], seed: number): Order[] {
+  const days = quarterDays(YEAR, history.quarter);
+  const perDay = new Map<string, number>();
+  for (const order of base) perDay.set(order.day, (perDay.get(order.day) ?? 0) + 1);
+  const meanDay = base.length / days.length;
+  const random = stream(seed, streamName(history.quarter, "release"));
+  const template = history.template(RELEASE.edition.isbn);
+  const orders = [...base];
+  for (const day of days) {
+    if (day < RELEASE_DAY) continue;
+    const expected = RELEASE_RATE * releaseLaunch((timeOf(day) - timeOf(RELEASE_DAY)) / DAY) * ((perDay.get(day) ?? 0) / meanDay);
+    for (let i = roundRandomly(random, expected); i > 0; i--) orders.push({ day, items: [itemOf(template)], kind: "release" });
   }
   return orders;
 }

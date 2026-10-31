@@ -14,11 +14,13 @@ const NONE = { picks: [null, null, null], sale: null, events: false };
 
 describe("any quarter", () => {
   it("keeps M1's Q1 output exactly", { timeout: 30_000 }, () => {
-    // A fingerprint of every plan on three seeds, taken before the model took a quarter.
+    // A fingerprint of every plan on three seeds. It was dcd2472a… before the new volume
+    // (m1-new-volume.md), and the volume is its only change: without its orders, anchor, fact
+    // and copy, the model gives dcd2472a… again.
     const hash = createHash("sha256");
     const plans = [[], ["repick"], ["events"], ["sale"], ["repick", "events"], ["repick", "sale"], ["events", "sale"]];
     for (const levers of plans) for (const seed of [1, 2, 3]) hash.update(JSON.stringify(simulateQuarter({ levers } as Plan, seed, data)));
-    expect(hash.digest("hex")).toBe("dcd2472a1ff7489780ec91710b6879c926db0db3f89b9da3c880dd10519b5a33");
+    expect(hash.digest("hex")).toBe("cf9242595c7b29510488ad7da03421bea09f347cb3ee6f387cabd439e4007674");
   });
 
   it("names each quarter's months and days", () => {

@@ -4,22 +4,25 @@
 import type { BookshopData, DeepReadonly } from "~/bookshop/types";
 import { q2Assumptions, q2Happened } from "./copy";
 import { ledger } from "./measures";
-import { baseline, PICK_DISCOUNT, run, SALE_RESPONSE, YEAR, type Levers, type Run } from "./model";
+import { baseline, PICK_DISCOUNT, run, SALE_RESPONSE, withRelease, YEAR, type Levers, type Run } from "./model";
 import { linesOf } from "./orders";
 import { isQ2Plan } from "./plan";
+import { RELEASE } from "./release";
 import { cardFor, eventFacts, metricsOf, monthlyOf, prepare, saleFacts } from "./simulate";
 import type { PickCandidate, PickFacts, Q2Facts, Q2Plan, Q2SimulationResult } from "./types";
 
 const QUARTER = 2;
 const candidatesOf = new WeakMap<DeepReadonly<BookshopData>, PickCandidate[]>();
 
-/** Every edition sold in 2193, by title and then format: the editions a Book of the Month can be. */
+/** Every edition sold in 2193 and the new volume, by title and then format: the editions a Book of the Month can be. */
 export function q2Candidates(data: DeepReadonly<BookshopData>): readonly PickCandidate[] {
   const cached = candidatesOf.get(data);
   if (cached) return cached;
   const byIsbn = new Map<string, PickCandidate>();
   for (const l of data.saleLines)
     if (!byIsbn.has(l.isbn)) byIsbn.set(l.isbn, { isbn: l.isbn, bookId: l.book.id, title: l.title, format: l.format, listPrice: l.listPrice });
+  const { book, edition } = RELEASE;
+  byIsbn.set(edition.isbn, { isbn: edition.isbn, bookId: book.id, title: book.title, format: edition.format, listPrice: edition.listPrice });
   const list = [...byIsbn.values()].sort((a, b) => a.title.localeCompare(b.title, "en-US") || a.format.localeCompare(b.format, "en-US"));
   candidatesOf.set(data, list);
   return list;
@@ -57,12 +60,12 @@ function pickFacts(r: Run, months: readonly string[], candidates: ReadonlyMap<st
   });
 }
 
-/** Why a plan can't be played: its shape, an edition not sold in 2193, or one title picked twice. */
+/** Why a plan can't be played: its shape, an edition that can't be picked, or one title picked twice. */
 export type Q2PlanProblem = "shape" | "unknown-edition" | "same-title";
 
 const PROBLEMS: Record<Q2PlanProblem, string> = {
   shape: "three months of an ISBN or null, and at most one of events or sale",
-  "unknown-edition": "a pick isn't an edition sold in 2193",
+  "unknown-edition": "a pick isn't an edition sold in 2193 or the new volume",
   "same-title": "the same title picked twice",
 };
 
@@ -84,7 +87,7 @@ export function simulateQ2(plan: Q2Plan, seed: number, data: DeepReadonly<Booksh
   const chosen = plan.picks.filter((isbn) => isbn !== null);
 
   const p = prepare(data, QUARTER);
-  const base = baseline(p.history, seed);
+  const base = withRelease(p.history, baseline(p.history, seed), seed);
   const hold: Q2Plan = { picks: [null, null, null], levers: [] };
   const runOf = (q: Q2Plan, response?: number) => run(p.history, base, seed, leversOf(q, response));
   const holdRun = runOf(hold);

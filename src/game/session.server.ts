@@ -2,7 +2,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import type { MiddlewareFunction } from 'react-router';
 import { loadBookshop } from '../bookshop/loader.server';
+import type { JoinedBook } from '../bookshop/types';
 import type { QueryView } from '../query/types';
+import { RELEASE, releaseBook } from '../simulation/release';
 import { BASELINE_VIEW } from '../query/view.server';
 import { DATA_DIR } from '../platform/analytics/instance.server';
 import { trackServer } from '../platform/analytics/analytics.server';
@@ -34,8 +36,9 @@ export function queryViewForSave(save: GameSave): QueryView {
   const sales = save.played.flatMap(q => q.sales);
   if (!sales.length) return { ...BASELINE_VIEW, periods: [...BASELINE_VIEW.periods, ...save.played.map(q => q.period)] };
   const data = loadBookshop();
-  const editions = new Map(data.editions.map(e => [e.isbn, e]));
-  const books = new Map(data.joinedBooks.map(b => [b.id, b]));
+  // The new volume is generated, not in the data: the engine's records join it (src/simulation/release.ts).
+  const editions = new Map([...data.editions, RELEASE.edition].map(e => [e.isbn, e]));
+  const books = new Map([...data.joinedBooks, releaseBook(data) as JoinedBook].map(b => [b.id, b]));
   const publishers = new Map(data.publishers.map(p => [p.id, p]));
   return { ...BASELINE_VIEW, periods: [...BASELINE_VIEW.periods, ...save.played.map(q => q.period)], simulatedSales: sales.map(sale => {
     const edition = editions.get(sale.isbn); const book = edition && books.get(edition.bookId); const publisher = edition && publishers.get(edition.publisherId);
