@@ -94,12 +94,14 @@ export function submitQ2Plan(request: Request, plan: unknown): { outcomeId: stri
   const started = performance.now();
   try {
     refuseUnlessLocalPost(request);
+    const save = current(request);
+    if (quarterOf(save) !== '2194-Q2') throw quarterOf(save) === '2194-Q1' ? new Response('Play the first quarter first.', { status: 409 }) : alreadyPlayed();
     const data = loadBookshop();
     const problem = q2PlanProblem(plan, data);
     if (problem) throw Response.json({ problem }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
-    const save = current(request);
-    if (quarterOf(save) !== '2194-Q2') throw quarterOf(save) === '2194-Q1' ? new Response('Play the first quarter first.', { status: 409 }) : alreadyPlayed();
-    const canonical = structuredClone(plan as Q2Plan);
+    // In the engine's key order, whatever order the request sent: the stored plan is compared with the outcome's.
+    const { picks, levers } = plan as Q2Plan;
+    const canonical: Q2Plan = { picks: [...picks], levers: [...levers] };
     const result = simulateQ2(canonical, save.seed, data);
     // Q1's discoveries stay on Q1's result; Q2's own (D, E, F) aren't detected yet.
     const outcome: Q2GameOutcome = { ...result.outcome, discoveries: [] };

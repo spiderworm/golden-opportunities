@@ -66,8 +66,19 @@ describe('the second quarter', () => {
       expect(await response.json()).toEqual({ problem });
     }
     expect(saves.read(save.id).played).toHaveLength(1);
+    // During Q1, any Q2 plan is out of turn, well formed or not.
+    const early = saves.create();
+    await refusal(() => submitQ2Plan(request(early.id), { picks: [null], levers: [] }), 409);
     await refusal(() => submitQ2Plan(request(save.id, 'GET'), quiet), 405);
     await refusal(() => submitQ2Plan(request(save.id, 'POST', 'http://evil.example'), quiet), 403);
+  });
+
+  it('takes a Q2 plan whatever order its keys arrive in, and stores it in the engine\'s order', () => {
+    const save = saves.create(); const req = request(save.id);
+    submitPlan(req, { levers: [] });
+    submitQ2Plan(req, JSON.parse(JSON.stringify({ levers: quiet.levers, picks: quiet.picks })));
+    expect(Object.keys(getPlan(req, '2194-Q2')!)).toEqual(['picks', 'levers']);
+    expect(getPlan(req, '2194-Q2')).toEqual(quiet);
   });
 
   it('gives the result screen each quarter, then the half-year review as the mean, rounded half up', () => {
