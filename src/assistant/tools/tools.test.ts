@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createInterface } from "node:readline";
@@ -7,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DIMENSIONS, MEASURES } from "../../query/types.ts";
 import { checkChart, checkComparison, checkQuery, describeData, ToolInputError, TOOLS } from "./definitions.ts";
 import { callTool, handle, queryEndpoint, resetRefsForTests } from "./server.ts";
-import { defaultQueryUrl, orbitalToolServer } from "./toolServer.server.ts";
+import { defaultQueryUrl, orbitalToolServer, toolServerPath } from "./toolServer.server.ts";
 import { toWire } from "../server/ask.server.ts";
 import { fakeLookupAssistant } from "../server/fakeLookups.server.ts";
 import { Refs, sentenceGate } from "../server/figures.server.ts";
@@ -115,6 +116,24 @@ describe("the query endpoint", () => {
     expect(defaultQueryUrl({ PORT: "3000" })).toBe("http://[::1]:3000/api/query");
     expect(defaultQueryUrl({ PORT: "evil.example" })).toBe("http://[::1]:5173/api/query");
     expect(() => queryEndpoint({ ORBITAL_QUERY_TOKEN: "t", ORBITAL_QUERY_URL: defaultQueryUrl({}) })).not.toThrow();
+  });
+
+  it("takes the dev server's own recorded address first, since Vite moves to 5174 when 5173 is busy", () => {
+    expect(defaultQueryUrl({ ORBITAL_LISTEN_PORT: "5174", ORBITAL_LISTEN_HOST: "::1" })).toBe("http://[::1]:5174/api/query");
+    expect(defaultQueryUrl({ ORBITAL_LISTEN_PORT: "5174", ORBITAL_LISTEN_HOST: "127.0.0.1", PORT: "3000" })).toBe("http://127.0.0.1:5174/api/query");
+    expect(defaultQueryUrl({ ORBITAL_LISTEN_PORT: "5174", ORBITAL_LISTEN_HOST: "::" })).toBe("http://[::1]:5174/api/query");
+    expect(defaultQueryUrl({ ORBITAL_LISTEN_PORT: "x", PORT: "3000" })).toBe("http://[::1]:3000/api/query");
+    expect(defaultQueryUrl({ ORBITAL_LISTEN_PORT: "5174", ORBITAL_QUERY_URL: "http://127.0.0.1:9/api/query" })).toBe("http://127.0.0.1:9/api/query");
+  });
+
+  it("finds the tool server from source and from the production build, which can't bundle it", () => {
+    const source = fileURLToPath(new URL("./server.ts", import.meta.url));
+    expect(toolServerPath(new URL("./toolServer.server.ts", import.meta.url))).toBe(source);
+    // Where the build runs this module: build/server/index.js, two levels below the project root.
+    expect(toolServerPath(new URL("../../../build/server/index.js", import.meta.url))).toBe(source);
+    expect(existsSync(toolServerPath(new URL("../../../build/server/index.js", import.meta.url)))).toBe(true);
+    expect(() => toolServerPath(new URL("file:///nowhere/build/server/index.js"))).toThrow(/tool server .* is missing/);
+    expect(orbitalToolServer("t").args).toEqual([source]);
   });
 
   it("gets its port from `npm start`, which sets PORT (3000 unless set) rather than leave the server to pick one", () => {
