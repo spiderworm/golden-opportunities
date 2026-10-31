@@ -3,6 +3,7 @@ import { useRouteLoaderData } from "react-router";
 
 import { setSharing, sharingConfirmed, startAnalytics, track } from "~/platform/analytics/analytics.client";
 import type { loader as rootLoader } from "~/root";
+import { MusicSettings } from "./MusicSettings";
 import styles from "./Settings.module.css";
 
 export function meta() {
@@ -78,6 +79,7 @@ export default function Settings() {
         </dl>
         <p className={styles.note}>To have your play data deleted, email tellim.games@gmail.com with your install number.</p>
       </section>
+      <MusicSettings />
     </div>
   );
 }

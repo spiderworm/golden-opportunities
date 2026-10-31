@@ -203,3 +203,15 @@ a.menuItem:hover {
     display: none;
   }
 }
+
+/* The music's pop-up and full player float over the page; the layer itself lets clicks through. */
+.musicLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.musicLayer :global(.music-full) {
+  pointer-events: auto;
+}
