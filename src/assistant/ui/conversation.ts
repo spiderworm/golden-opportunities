@@ -9,7 +9,8 @@
 // is checked against the shape the panel wrote, and one that doesn't fit is dropped; restored text is shown
 // as plain text (a stored "{{a1}}" stays literally that); and the server treats all history from the browser,
 // restored or not, as the player's data, never as the assistant's own words. Editing it changes only what this
-// player sees on their own screen. Keeping the conversation in the server-side save is the cleaner end state, once saves exist.
+// player sees on their own screen; a stored lookup's pin is checked again by Investigate and run as the player's
+// own query, so editing one pins only what the player could look up anyway. Keeping the conversation in the server-side save is the cleaner end state, once saves exist.
 
 import type { SentTurn } from "./stream.ts";
 
@@ -50,19 +51,25 @@ const isCell = (v: unknown) => v === null || isStr(v, 1_000) || (typeof v === "n
 const isColumn = (c: unknown) => isObj(c) && only(c, ["key", "label", "type", "nullable"]) && isStr(c.key, 100) && isStr(c.label, 200) && (c.type === "string" || c.type === "number") && typeof c.nullable === "boolean";
 const isTable = (l: Obj) => Array.isArray(l.columns) && l.columns.length <= 10 && l.columns.every(isColumn) && Array.isArray(l.rows) && l.rows.length <= ROWS_MAX && l.rows.every((r) => isObj(r) && Object.values(r).every(isCell)) && isStr(l.source, 5_000);
 const isFigures = (t: unknown) => isObj(t) && Object.values(t).every(isCell);
+/** A lookup's pin, loosely: Investigate checks it fully (parsePinSpec) before pinning, and runs it as a query. */
+const isPin = (p: unknown) => p === undefined || (isObj(p) && isStr(p.title, 200) && ((p.kind === "table" && only(p, ["title", "kind", "query"]) && isObj(p.query)) || (p.kind === "comparison" && only(p, ["title", "kind", "comparison"]) && isObj(p.comparison))));
 const isChart = (c: unknown) => isObj(c) && only(c, ["title", "kind", "query"]) && isStr(c.title, 200) && isStr(c.kind, 20) && isObj(c.query);
 
 /** One lookup as the panel stored it: a table with its source, a failed lookup, or a pin acknowledgement. */
 function isLookup(l: unknown): boolean {
   if (!isObj(l)) return false;
-  if (l.type === "data") return only(l, ["type", "columns", "rows", "total", "source", "query"]) && (l.query === undefined || isObj(l.query)) && isTable(l) && (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)));
-  if (l.type === "comparison") return only(l, ["type", "columns", "rows", "total", "labels", "source"]) && isTable(l) && isFigures(l.total);
+  if (l.type === "data") return only(l, ["type", "columns", "rows", "total", "source", "query", "pin"]) && (l.query === undefined || isObj(l.query)) && isPin(l.pin) && isTable(l) && (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)));
+  if (l.type === "comparison") return only(l, ["type", "columns", "rows", "total", "labels", "source", "pin"]) && isPin(l.pin) && isTable(l) && isFigures(l.total);
   if (l.type === "lookup_failed") return only(l, ["type", "message"]) && isStr(l.message, 300);
   if (l.type === "pin") return only(l, ["type", "chart", "source", "placed"]) && isChart(l.chart) && isStr(l.source, 5_000) && typeof l.placed === "boolean";
   return false;
 }
 
-/** The model's own tool input, which some lookups carry, is never kept: only what was shown. */
+/**
+ * The model's own tool input, which some lookups carry, is never kept: only what was shown. A lookup's pin is
+ * kept: it's that input as the tool server checked it, titled from its parts, and Investigate checks it again
+ * and runs it as the player's own query before showing anything.
+ */
 const withoutQuery = <R extends StoredReply>(r: R): R => ({ ...r, lookups: r.lookups.map((l) => (isObj(l) && "query" in l ? (({ query: _, ...rest }) => rest)(l) : l)) });
 
 /** A turn exactly as the panel stored it; anything else (null lookups, extra fields, wrong types) isn't. */

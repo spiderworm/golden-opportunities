@@ -4,7 +4,7 @@
 import { randomBytes } from "node:crypto";
 import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
-import { chartTitle, type ChartSpec } from "../tools/definitions.ts";
+import { chartTitle, lookupPin, type ChartSpec } from "../tools/definitions.ts";
 import { acquire, arrive, ndjson } from "./assistant.server.ts";
 import { markOffline, OFFLINE, type OfflineReason } from "./availability.server.ts";
 import { Refs, scrubDeep, sentenceGate } from "./figures.server.ts";
@@ -121,9 +121,16 @@ export const TIMED_OUT = "The assistant took too long, so it was stopped.";
 const OFFLINE_KINDS = new Set(["missing", "signed_out", "broken"]);
 export const FAILED = "Something went wrong with the assistant.";
 
+/** A lookup's pin: the input the tool server ran, checked again here; the player pins it from the panel. */
+const pinFor = (event: { name: string; input: unknown }) => {
+  const pin = lookupPin(event.name, event.input);
+  return pin ? { pin } : {};
+};
+
 /**
- * Turns a provider's tool events into what the browser shows: the data's own tables and sources, never the
- * model's tool input. Tool output is ours, but parse it defensively.
+ * Turns a provider's tool events into what the browser shows: the data's own tables and sources. The model's
+ * tool input goes only into a lookup's pin, checked as the tool server checked it, and never shown: the pin's
+ * title is built from its measure and dimensions. Tool output is ours, but parse it defensively.
  */
 export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
   if (event.type === "text") return event;
@@ -137,10 +144,10 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
     return null;
   }
   if (event.name === "query_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.source === "string") {
-    return { type: "data", columns: output.columns, rows: output.rows, total: output.total as number | null, source: output.source } as WireEvent;
+    return { type: "data", columns: output.columns, rows: output.rows, total: output.total as number | null, source: output.source, ...pinFor(event) } as WireEvent;
   }
   if (event.name === "compare_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.total === "object" && typeof output.source === "string") {
-    return { type: "comparison", columns: output.columns, rows: output.rows, total: output.total, source: output.source } as WireEvent;
+    return { type: "comparison", columns: output.columns, rows: output.rows, total: output.total, source: output.source, ...pinFor(event) } as WireEvent;
   }
   if (pins && event.name === "pin_chart" && output.pinned === true && typeof output.source === "string") {
     return { type: "pin", chart: output.chart as ChartSpec, source: output.source };

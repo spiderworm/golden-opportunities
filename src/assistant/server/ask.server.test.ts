@@ -324,6 +324,18 @@ describe("answering", () => {
     expect(toWire({ type: "tool", name: "describe_data", input: {}, output: "{}", isError: false })).toBeNull();
     expect(toWire({ type: "tool", name: "compare_data", input: { measure: "units" }, output: JSON.stringify({ columns: [], rows: [], total: { from: 1, to: 2, change: 1, percent_change: 100 }, source: "S" }), isError: false })).toEqual({ type: "comparison", columns: [], rows: [], total: { from: 1, to: 2, change: 1, percent_change: 100 }, source: "S" });
   });
+  it("gives each lookup a pin of the query or comparison that ran, titled from its parts only", () => {
+    const table = { columns: [], rows: [], total: 1, source: "S" };
+    const query = { measure: "units", by: ["genre"], filter: { format: ["Hardcover"] }, limit: 5 };
+    expect(toWire({ type: "tool", name: "query_data", input: query, output: JSON.stringify(table), isError: false })).toEqual({ type: "data", ...table, pin: { title: "Units by genre, filtered", kind: "table", query } });
+    const comparison = { measure: "revenue", across: "quarter", from: "Gross profit rose to $777", to: "2193-Q4", by: ["genre"] };
+    const compared = { columns: [], rows: [], total: { from: 1, to: 2, change: 1, percent_change: 100, direction: "rose" }, source: "S" };
+    const wire = toWire({ type: "tool", name: "compare_data", input: comparison, output: JSON.stringify(compared), isError: false });
+    expect(wire).toEqual({ type: "comparison", ...compared, pin: { title: "Revenue compared across quarter by genre", kind: "comparison", comparison } });
+    // An input the tool server wouldn't have run gets no pin; the table still shows.
+    expect(toWire({ type: "tool", name: "query_data", input: { measure: "profit", by: [] }, output: JSON.stringify(table), isError: false })).toEqual({ type: "data", ...table });
+    expect(toWire({ type: "tool", name: "compare_data", input: { ...comparison, to: comparison.from }, output: JSON.stringify(compared), isError: false })).not.toHaveProperty("pin");
+  });
 });
 
 it("the browser reads lines that arrive in pieces", async () => {

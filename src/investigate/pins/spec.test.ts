@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addPin, MAX_PINS, parsePins, parsePinSpec, pinKey, type Pin } from "./spec";
+import type { Query } from "~/query/types";
+import { addPin, MAX_PINS, parsePins, parsePinSpec, pinKey, type Pin, type PinSpec } from "./spec";
 
 const spec = { title: "Revenue by quarter", kind: "bar", query: { measure: "revenue", by: ["quarter"] } } as const;
 const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -31,8 +32,9 @@ describe("pin specs", () => {
   it("treats the same kind and query as the same chart, whatever the filter order", () => {
     const a = { measure: "units", by: [], filter: { genre: ["Memoir", "Fiction"], format: ["Hardcover"] } } as const;
     const b = { measure: "units", by: [], filter: { format: ["Hardcover"], genre: ["Fiction", "Memoir"] } } as const;
-    expect(pinKey("bar", copy(a))).toBe(pinKey("bar", copy(b)));
-    expect(pinKey("bar", copy(a))).not.toBe(pinKey("table", copy(a)));
+    const pin = (kind: "bar" | "table", query: Query): PinSpec => ({ title: "Units", kind, query });
+    expect(pinKey(pin("bar", copy(a)))).toBe(pinKey({ ...pin("bar", copy(b)), title: "Another title" }));
+    expect(pinKey(pin("bar", copy(a)))).not.toBe(pinKey(pin("table", copy(a))));
   });
 
   it("keeps the newest first, moves a repeat to the front, and caps the board", () => {
@@ -44,5 +46,51 @@ describe("pin specs", () => {
     for (let i = 0; i < MAX_PINS + 2; i++) pins = addPin(pins, { ...copy(spec), query: { measure: "units", by: [], limit: i + 1 } }, "player", `x${i}`);
     expect(pins).toHaveLength(MAX_PINS);
     expect(pins[0]!.id).toBe(`x${MAX_PINS + 1}`);
+  });
+
+  const comparison = { title: "Revenue compared across quarter", kind: "comparison", comparison: { measure: "revenue", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: ["genre"] } } as const;
+
+  it("accepts Dewey's comparison shape, checked as Dewey checks it", () => {
+    expect(parsePinSpec(copy(comparison))).toEqual(comparison);
+    const filtered = { ...copy(comparison), comparison: { ...copy(comparison.comparison), by: [], filter: { format: ["Hardcover"] } } };
+    expect(parsePinSpec(filtered)).toEqual(filtered);
+    const bad = (change: object) => parsePinSpec({ ...copy(comparison), comparison: { ...copy(comparison.comparison), ...change } });
+    expect(bad({ to: "2193-Q3" })).toBeNull();
+    expect(bad({ from: "" })).toBeNull();
+    expect(bad({ from: "x".repeat(500) })).toBeNull();
+    expect(bad({ by: ["genre", "format"] })).toBeNull();
+    expect(bad({ by: ["quarter"] })).toBeNull();
+    expect(bad({ across: "colour" })).toBeNull();
+    expect(bad({ measure: "profit" })).toBeNull();
+    expect(bad({ filter: { quarter: ["2193-Q1"] } })).toBeNull();
+    expect(bad({ filter: { colour: ["red"] } })).toBeNull();
+    expect(bad({ rows: [] })).toBeNull();
+  });
+
+  it("never reads one kind as the other", () => {
+    // Each variant has its own keys: a comparison carrying a query, or a chart carrying a comparison, is dropped.
+    expect(parsePinSpec({ ...copy(comparison), query: copy(spec.query) })).toBeNull();
+    expect(parsePinSpec({ ...copy(spec), comparison: copy(comparison.comparison) })).toBeNull();
+    expect(parsePinSpec({ ...copy(spec), kind: "comparison" })).toBeNull();
+    expect(parsePinSpec({ title: spec.title, kind: "table", comparison: copy(comparison.comparison) })).toBeNull();
+  });
+
+  it("still reads pins stored before comparisons, unchanged", () => {
+    const v1 = [
+      { ...copy(spec), id: "a", pinnedBy: "player" },
+      { title: "Units by month", kind: "table", query: { measure: "units", by: ["month"], filter: { genre: ["Memoir"] }, limit: 12 }, id: "b", pinnedBy: "dewey" },
+    ];
+    expect(parsePins(JSON.stringify(v1))).toEqual(v1);
+    const mixed = [...v1, { ...copy(comparison), id: "c", pinnedBy: "player" }];
+    expect(parsePins(JSON.stringify(mixed))).toEqual(mixed);
+  });
+
+  it("keys a comparison on what it compares, whatever its title or filter order", () => {
+    const filtered = (filter: object, title: string = comparison.title): PinSpec => ({ ...copy(comparison), title, comparison: { ...copy(comparison.comparison), filter } }) as PinSpec;
+    expect(pinKey(filtered({ genre: ["Memoir", "Fiction"], format: ["Hardcover"] }))).toBe(pinKey(filtered({ format: ["Hardcover"], genre: ["Fiction", "Memoir"] }, "Q3 vs Q4 revenue")));
+    expect(pinKey(copy(comparison) as PinSpec)).not.toBe(pinKey({ ...copy(comparison), comparison: { ...copy(comparison.comparison), from: "2193-Q2" } } as PinSpec));
+    let pins: Pin[] = addPin([], copy(comparison) as PinSpec, "dewey", "1");
+    pins = addPin(pins, { ...copy(comparison), title: "Another title" } as PinSpec, "player", "2");
+    expect(pins.map((p) => p.id)).toEqual(["2"]);
   });
 });

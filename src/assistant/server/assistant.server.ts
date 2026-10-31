@@ -22,10 +22,14 @@ let override: AssistantProvider | null = null;
 /** For tests. */
 export const setAssistantForTests = (p: AssistantProvider | null) => void (override = p);
 
-/** The provider to use. `real` builds the Claude Code one; it's only called when nothing else answers. */
-export function getAssistant(real: () => AssistantProvider, env = process.env): AssistantProvider {
+/**
+ * The provider to use. `real` builds the Claude Code one; it's only called when nothing else answers. `fake`
+ * builds the one ORBITAL_ASSISTANT_PROVIDER=fake asks for (tests under Vitest always get the canned one).
+ */
+export function getAssistant(real: () => AssistantProvider, env = process.env, fake: () => AssistantProvider = fakeAssistant): AssistantProvider {
   if (override) return override;
-  if (env.ORBITAL_ASSISTANT_PROVIDER === "fake" || env.VITEST) return fakeAssistant();
+  if (env.VITEST) return fakeAssistant();
+  if (env.ORBITAL_ASSISTANT_PROVIDER === "fake") return fake();
   return real();
 }
 

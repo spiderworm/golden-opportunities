@@ -1,24 +1,45 @@
 // Pinned charts: what a pin holds, and checks for pins read back from storage.
-import { DIMENSIONS, MEASURES, QUERY_LIMITS, type Dimension, type Query } from "~/query/types";
+import { DIMENSIONS, MEASURES, QUERY_LIMITS, type Dimension, type Measure, type Query } from "~/query/types";
 
-export const PIN_KINDS = ["bar", "line", "table"] as const;
+export const CHART_PIN_KINDS = ["bar", "line", "table"] as const;
+export const PIN_KINDS = [...CHART_PIN_KINDS, "comparison"] as const;
 export type PinKind = (typeof PIN_KINDS)[number];
 
 /**
- * A chart to pin. Structurally the same as Sage's ChartSpec
+ * A chart or table to pin. Structurally the same as Sage's ChartSpec
  * (src/assistant/tools/definitions.ts), so Dewey's onPin passes straight in.
  */
-export interface PinSpec {
+export interface ChartPinSpec {
   title: string;
-  kind: PinKind;
+  kind: (typeof CHART_PIN_KINDS)[number];
   query: Query;
 }
 
-export interface Pin extends PinSpec {
-  id: string;
-  /** Who pinned it: the player, from a chart, or Dewey, when the player asked. */
-  pinnedBy: "player" | "dewey";
+/**
+ * Two values of one dimension compared on one measure: Dewey's Comparison (src/assistant/tools/definitions.ts).
+ * It's run as two queries, so it's stored as the comparison, never as rows.
+ */
+export interface PinComparison {
+  measure: Measure;
+  across: Dimension;
+  from: string;
+  to: string;
+  by: readonly Dimension[];
+  filter?: Partial<Record<Dimension, readonly string[]>>;
 }
+export interface ComparisonPinSpec {
+  title: string;
+  kind: "comparison";
+  comparison: PinComparison;
+}
+
+export type PinSpec = ChartPinSpec | ComparisonPinSpec;
+
+export type Pin = PinSpec & {
+  id: string;
+  /** Who pinned it: the player (from a chart, or from a lookup Dewey showed), or Dewey, when the player asked. */
+  pinnedBy: "player" | "dewey";
+};
 
 export const MAX_PINS = 8;
 export const TITLE_MAX = 80;
@@ -59,11 +80,29 @@ export function parseQuery(value: unknown): Query | null {
   return query;
 }
 
+/** A comparison's shape, checked as Dewey's checkComparison does; its two queries are checked again by the server. */
+export function parseComparison(value: unknown): PinComparison | null {
+  if (!isObject(value) || !only(value, ["measure", "across", "from", "to", "by", "filter"])) return null;
+  const { measure, across, from, to, by, filter } = value;
+  if (!DIMENSIONS.includes(across as never)) return null;
+  if (!isString(from, QUERY_LIMITS.filterValueLength) || !isString(to, QUERY_LIMITS.filterValueLength) || from === to) return null;
+  if (!Array.isArray(by) || by.length > 1 || by.includes(across)) return null;
+  if (isObject(filter) && (across as string) in filter) return null;
+  const query = parseQuery({ measure, by: [...by, across], ...(filter === undefined ? {} : { filter }) });
+  if (!query) return null;
+  return { measure: query.measure, across: across as Dimension, from, to, by: query.by.slice(0, -1), ...(query.filter ? { filter: query.filter } : {}) };
+}
+
 export function parsePinSpec(value: unknown): PinSpec | null {
-  if (!isObject(value) || !only(value, ["title", "kind", "query"])) return null;
+  if (!isObject(value) || !isString(value.title, TITLE_MAX)) return null;
+  if (value.kind === "comparison") {
+    if (!only(value, ["title", "kind", "comparison"])) return null;
+    const comparison = parseComparison(value.comparison);
+    return comparison && { title: value.title, kind: "comparison", comparison };
+  }
+  if (!only(value, ["title", "kind", "query"]) || !CHART_PIN_KINDS.includes(value.kind as never)) return null;
   const query = parseQuery(value.query);
-  if (!query || !isString(value.title, TITLE_MAX) || !PIN_KINDS.includes(value.kind as PinKind)) return null;
-  return { title: value.title, kind: value.kind as PinKind, query };
+  return query && { title: value.title, kind: value.kind as ChartPinSpec["kind"], query };
 }
 
 /** Pins as stored; anything malformed is dropped rather than trusted. */
@@ -81,22 +120,29 @@ export function parsePins(json: string | null): Pin[] {
     if (!isObject(item) || !isString(item.id, 64) || (item.pinnedBy !== "player" && item.pinnedBy !== "dewey")) continue;
     const { id, pinnedBy, ...rest } = item;
     const spec = parsePinSpec(rest);
-    if (spec) pins.push({ ...spec, id, pinnedBy });
+    if (spec) pins.push({ ...spec, id: id as string, pinnedBy });
   }
   return pins;
 }
 
-/** Two pins are the same chart when their kind and query match, whatever their titles. */
-export function pinKey(kind: PinKind, query: Query): string {
-  const filter = Object.entries(query.filter ?? {})
+const sortedFilter = (filter: Partial<Record<Dimension, readonly string[]>> | undefined) =>
+  Object.entries(filter ?? {})
     .map(([d, values]) => [d, [...values!].sort()] as const)
     .sort(([a], [b]) => (a < b ? -1 : 1));
-  return JSON.stringify([kind, query.measure, query.by, filter, query.sort ?? null, query.limit ?? null]);
+
+/** Two pins are the same when their kind and query (or comparison) match, whatever their titles and filter order. */
+export function pinKey(spec: PinSpec): string {
+  if (spec.kind === "comparison") {
+    const c = spec.comparison;
+    return JSON.stringify([spec.kind, c.measure, c.across, c.from, c.to, c.by, sortedFilter(c.filter)]);
+  }
+  const { query } = spec;
+  return JSON.stringify([spec.kind, query.measure, query.by, sortedFilter(query.filter), query.sort ?? null, query.limit ?? null]);
 }
 
-/** Newest first; a repeat of an existing chart moves it to the front; the oldest drop past MAX_PINS. */
+/** Newest first; a repeat of an existing pin moves it to the front; the oldest drop past MAX_PINS. */
 export function addPin(pins: readonly Pin[], spec: PinSpec, pinnedBy: Pin["pinnedBy"], id: string): Pin[] {
-  const key = pinKey(spec.kind, spec.query);
-  const rest = pins.filter((p) => pinKey(p.kind, p.query) !== key);
+  const key = pinKey(spec);
+  const rest = pins.filter((p) => pinKey(p) !== key);
   return [{ ...spec, id, pinnedBy }, ...rest].slice(0, MAX_PINS);
 }

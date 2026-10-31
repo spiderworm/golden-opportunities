@@ -141,6 +141,23 @@ describe("keeping the conversation in the browser", () => {
     expect(loadConversation(storage, "inst")).toEqual([reply(1, { lookups: [reply(1).lookups[0]] })]);
   });
 
+  it("keeps a lookup's pin, so a restored table can still be pinned, and drops a turn whose pin isn't one", () => {
+    const storage = new MemoryStorage();
+    const data = reply(1).lookups[0] as object;
+    const table = { title: "Revenue by quarter", kind: "table", query: { measure: "revenue", by: ["quarter"] } };
+    const comparison = { title: "Revenue compared across quarter", kind: "comparison", comparison: { measure: "revenue", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: [] } };
+    const compared = { type: "comparison", columns: [], rows: [], total: { from: 1, to: 2, change: 1, percent_change: 100, direction: "rose" }, source: "S", pin: comparison };
+    const good = reply(1, { lookups: [{ ...data, pin: table }, compared] as StoredReply["lookups"] });
+    saveConversation(storage, "inst", [good]);
+    expect(loadConversation(storage, "inst")).toEqual([good]);
+    for (const pin of [null, "pin", { ...table, kind: "comparison" }, { ...comparison, kind: "table" }, { ...table, rows: [] }, { ...table, title: 7 }]) {
+      storage.setItem(storageKey("inst"), JSON.stringify([reply(2, { lookups: [{ ...data, pin }] as StoredReply["lookups"] }), good]));
+      expect(loadConversation(storage, "inst")).toEqual([good]);
+    }
+    // Never sent to the model.
+    expect(JSON.stringify(historyFor([good]))).not.toMatch(/"pin"|2193-Q3/);
+  });
+
   it("keeps stored refs as literal text: nothing restored is rendered or resolved", () => {
     const storage = new MemoryStorage();
     saveConversation(storage, "inst", [reply(1, { text: "Revenue was {{a1}}." })]);
