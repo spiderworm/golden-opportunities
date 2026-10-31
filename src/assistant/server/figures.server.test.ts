@@ -190,3 +190,39 @@ describe("months name their year, so like quarters they are period names", () =>
     expect(say("In 2193-01, units were {{m1}}.", r)).toBe(WITHHELD);
   });
 });
+
+describe("titles the data returned may be named in prose, digits and all (Probe's Q2 red-team)", () => {
+  const TITLE = "9803 North Millworks Road";
+  const byTitle = ["query_data", { measure: "units", by: ["title"] }, { ref: "t", complete: true, columns: [], rows: [{ ref: "t1", title: TITLE, units: 1212 }, { ref: "t2", title: "1984", units: 7 }, { ref: "t3", title: "The Seawitch Sings", units: 900 }], total: 2119, source: SOURCE }] as const;
+  const filteredTo = (title: string, total: number) => ["query_data", { measure: "units", by: ["month"], filter: { title: [title] } }, { ref: "f", complete: true, columns: [], rows: [], total, source: SOURCE }] as const;
+
+  it("a title from the rows, exactly and whole", () => {
+    const r = refs(byTitle);
+    expect(say(`I looked up units for ${TITLE}: {{t1}}.`, r)).toBe(`I looked up units for ${TITLE}: 1,212.`);
+  });
+
+  it("a title the player asked for, once the data confirmed it with something there", () => {
+    expect(say(`I looked up units by month for ${TITLE}. They came to {{f.total}}.`, refs(filteredTo(TITLE, 3204)))).toBe(`I looked up units by month for ${TITLE}. They came to 3,204.`);
+    // Nothing there: the filter value is only the model's, so its digits are its own.
+    expect(say(`I looked up units by month for ${TITLE}.`, refs(filteredTo(TITLE, 0)))).toBe(WITHHELD);
+  });
+
+  it("never a made-up title, part of one, a figure beside one, or one no lookup had returned yet", () => {
+    const r = refs(byTitle);
+    expect(say("I looked up units for The 500 Club: {{t1}}.", r)).toBe(WITHHELD);
+    expect(say("I looked up units for 9803 North: {{t1}}.", r)).toBe(WITHHELD);
+    expect(say(`I looked up units for ${TITLE}. It sold 212.`, r)).toBe(WITHHELD);
+    expect(say(`${TITLE} sold 212 copies.`, r)).toBe(WITHHELD);
+    expect(say(`I looked up units for ${TITLE}2: {{t1}}.`, r)).toBe(WITHHELD);
+    expect(renderSentence(`I looked up units for ${TITLE}.`, r, 0)).toBeNull();
+  });
+
+  it("not a title that's only a number: it could pass for a figure", () => {
+    expect(say("I looked up units for 1984: {{t2}}.", refs(byTitle))).toBe(WITHHELD);
+  });
+
+  it("only titles: other dimensions' values with digits stay the model's (a 15% discount rate)", () => {
+    const rates = ["query_data", { measure: "units", by: ["discount_rate"] }, { ref: "d", complete: true, columns: [], rows: [{ ref: "d1", discount_rate: "15%", units: 30 }], total: 30, source: SOURCE }] as const;
+    expect(say("At 15%, units were {{d1}}.", refs(rates))).toBe(WITHHELD);
+  });
+});

@@ -1,17 +1,29 @@
 // Runs the red-team regressions against a running dev server with the real provider:
-//   node src/assistant/regression/run.ts http://[::1]:5173 [case-id ...]
-// Each case is one real answer. Prints each reply and any problems; exits 1 if any case failed.
+//   node src/assistant/regression/run.ts http://[::1]:5173 [--after-q1] [case-id ...]
+// Each case is one real answer. Prints each reply and any problems; exits 1 if any case failed. Dewey answers only
+// within a game, so it starts one first; --after-q1 plays Q1 by holding course, so the ledger holds 2194-Q1 as a Q2
+// player's does (Probe's Q2 red-team).
 
 import type { WireEvent } from "../events.ts";
 import { CASES } from "./cases.ts";
 
-const base = process.argv[2] ?? "http://[::1]:5173";
-const only = process.argv.slice(3);
+const args = process.argv.slice(2);
+const afterQ1 = args.includes("--after-q1");
+const [base = "http://[::1]:5173", ...only] = args.filter((a) => a !== "--after-q1");
+
+// A new save: the station's first load sets its cookie.
+const first = await fetch(`${base}/`, { redirect: "manual" });
+const cookie = first.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+if (!cookie) throw new Error("No save cookie from the station.");
+if (afterQ1) {
+  const played = await fetch(`${base}/decide.data`, { method: "POST", headers: { cookie, origin: base, "content-type": "application/x-www-form-urlencoded" }, body: "levers=" });
+  if (!played.ok) throw new Error(`Playing Q1 failed: HTTP ${played.status}`);
+}
 let failed = 0;
 for (const c of CASES.filter((c) => !only.length || only.includes(c.id))) {
   const res = await fetch(`${base}/api/assistant`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin" },
+    headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", cookie },
     body: JSON.stringify({ question: c.question, history: [], pins: true }),
   });
   const events: WireEvent[] = (await res.text()).split("\n").filter(Boolean).map((l) => JSON.parse(l));
