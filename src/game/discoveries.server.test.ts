@@ -54,7 +54,7 @@ it('records Dewey evidence without ending its capability; play ends it and freez
   } finally { cap.revoke(); }
 });
 
-it('skips default visits and option queries, but intentional chart/heatmap views count', () => {
+it('skips default visits and option queries, but intentional chart views count', () => {
   const save = saves.create();
   load(save.id); load(save.id, '?unknown=claim&by=invalid');
   expect(saves.read(save.id)).toEqual(save);
@@ -64,7 +64,7 @@ it('skips default visits and option queries, but intentional chart/heatmap views
   expect(saves.read(save.id).discoveries).toEqual([]); // A1 only, not the default heatmap's B
   load(save.id, '?measure=avg_order_value&by=quarter');
   expect(saves.read(save.id).discoveries).toEqual(['A']);
-  load(save.id, '?measure=orders_per_day'); // this really changes the heatmap
+  load(save.id, '?measure=orders_per_day&by=weekday&compare=quarter');
   expect(saves.read(save.id).discoveries).toEqual(['A', 'B']);
   const persisted = createSaveStore(path.join(directory, 'saves')).read(save.id);
   expect(persisted.discoveries).toEqual(['A', 'B']);
@@ -151,7 +151,7 @@ it('renders already-loaded ledgers when discovery persistence is busy, and can c
     vi.spyOn(saves, 'read').mockImplementation(() => { throw new SaveError('SAVE_BUSY'); });
     throw new SaveError('SAVE_BUSY');
   });
-  const data = load(save.id, '?measure=orders_per_day');
+  const data = load(save.id, '?measure=orders_per_day&by=weekday&compare=quarter');
   expect(data.chart.rows.length).toBeGreaterThan(0);
   expect(data.heatmap.rows).toHaveLength(84);
   expect(data.planned).toBe(false);
@@ -160,6 +160,19 @@ it('renders already-loaded ledgers when discovery persistence is busy, and can c
   vi.mocked(saves.read).mockRestore();
   expect(saves.read(save.id)).toEqual(save);
   expect(trackServer).toHaveBeenCalledWith('discovery_record_deferred', { code: 'SAVE_BUSY' });
-  load(save.id, '?measure=orders_per_day');
+  load(save.id, '?measure=orders_per_day&by=weekday&compare=quarter');
+  expect(saves.read(save.id).discoveries).toEqual(['B']);
+});
+
+it('never credits the heatmap after measure or filter changes, but credits a weekday chart', () => {
+  const save = saves.create();
+  for (const search of ['?measure=orders', '?measure=orders_per_day', '?genre=Fiction']) {
+    const data = load(save.id, search);
+    expect(data.heatmap.rows).toHaveLength(84);
+    expect(saves.read(save.id)).toEqual(save);
+  }
+  load(save.id, '?by=weekday'); // no quarter comparison, even though the heatmap has months
+  expect(saves.read(save.id)).toEqual(save);
+  load(save.id, '?by=weekday&compare=quarter');
   expect(saves.read(save.id).discoveries).toEqual(['B']);
 });
