@@ -211,7 +211,7 @@ function onBubbleFocused(boss: BossId, how: FocusHow, mode: SceneMode) {
   track("bubble_focused", { boss, how, mode });
 }
 
-/** A bubble's fact strip: its sentence, with the key figures in bold, and bubble 6's scheduled picks. */
+/** A bubble's fact strip: its sentence, with the key figures in bold, and the survey drone's scheduled picks. */
 function Facts({ bubble }: { bubble: BriefingBubble }) {
   return (
     <>

@@ -15,7 +15,10 @@ export interface SceneBubble {
 
 /** How the scene is drawn: the 3D bosses, or the 2D picture when WebGL 2 isn't there. */
 export type SceneMode = "2d" | "3d";
-/** What opened a bubble: the scene coming up, a pointer, or the keyboard. */
+/**
+ * What opened a bubble: the scene coming up, a pointer, or "key" for any activation without one
+ * (Enter or Space, and a screen reader's or switch control's press).
+ */
 export type FocusHow = "auto" | "click" | "key";
 
 export interface BossFocusOptions {
