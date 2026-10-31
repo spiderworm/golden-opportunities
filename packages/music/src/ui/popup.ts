@@ -9,8 +9,13 @@
 // The game says where the pop-up goes (`place`) and when it must wait
 // (`busy`): it never covers the play area or a card. While it waits, a song
 // that's over isn't named late; the one playing then is.
+//
+// Docked (dock.ts), the pill stays: it sits in the game's own place for it
+// (Goldy's sidebar, David 30 Oct 2026: "can always live in tooltip player
+// mode, never really needs to go away") and shows the song playing, or
+// "Music" with a play button before the first one.
 
-import type { Music, Song } from "../player/player.ts";
+import type { Music, Song, Where } from "../player/player.ts";
 import { icons } from "./icons.ts";
 import { heartButton, nowPlaying, playButton, playlist, volume } from "./parts.ts";
 
@@ -24,6 +29,10 @@ export type PopupHost = {
   hidden?(): void;
   /** the full player opened or closed (a game might pause for it) */
   full?(open: boolean): void;
+  /** the pill stays put and shown (dock.ts): no timers, no place() */
+  docked?: boolean;
+  /** where the full player floats, over the page (default: root) */
+  layer?: HTMLElement;
 };
 
 const SHOW_MS = 4000; // the name alone
@@ -33,9 +42,12 @@ const MARGIN = 8;
 
 export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
   const doc = root.ownerDocument;
+  const docked = !!host.docked;
+  const where: Where = docked ? "dock" : "popup";
+  const layer = host.layer ?? root;
   root.insertAdjacentHTML(
     "beforeend",
-    `<div class="music-popup">
+    `<div class="music-popup${docked ? " music-dock on" : ""}">
       <button type="button" data-do="back" aria-label="Back">${icons.back}</button>
       <button type="button" data-do="play"></button>
       <button class="music-popup-name" type="button" aria-haspopup="dialog" aria-label="Open the music player"><span class="music-notes">${icons.notes}</span><span class="music-title" role="status" aria-live="polite"></span></button>
@@ -50,16 +62,22 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
   let timer = 0;
   let shown = false;
   let full: { el: HTMLElement; dispose: () => void } | null = null;
+  // a tap on the dock before any song has started is the gesture that
+  // starts the music (player.ts): its play button mustn't then pause it
+  let begun = false;
+  let starting = false;
 
   function draw() {
     const s = music.state();
-    if (!s.song) return;
-    el.querySelector(".music-title")!.textContent = s.song.title;
+    if (!s.song && !docked) return;
+    el.querySelector(".music-title")!.textContent = s.song?.title ?? "Music";
     playButton(button("play"), s.playing);
-    heartButton(button("heart"), music.hearted(s.song.id));
+    heartButton(button("heart"), !!s.song && music.hearted(s.song.id));
+    button("heart").disabled = !s.song;
   }
 
   function show() {
+    if (docked) return draw();
     clearTimeout(timer);
     if (host.busy()) {
       waiting = true;
@@ -76,11 +94,13 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
   }
 
   function linger(ms: number) {
+    if (docked) return;
     clearTimeout(timer);
     timer = window.setTimeout(hide, ms);
   }
 
   function hide() {
+    if (docked) return;
     clearTimeout(timer);
     el.classList.remove("on");
     if (shown) host.hidden?.();
@@ -91,18 +111,18 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
   // the lower half of the screen, down from it in the upper half.
   function openFull() {
     if (full) return;
-    if (!shown) host.place(el, false);
+    if (!shown && !docked) host.place(el, false);
     const at = el.getBoundingClientRect();
-    const box = root.getBoundingClientRect();
+    const box = layer.getBoundingClientRect();
     hide();
     const card = doc.createElement("div");
     card.className = "music-full";
     card.setAttribute("role", "dialog");
     card.setAttribute("aria-label", "Music");
     card.innerHTML = `<button type="button" class="music-close" aria-label="Close">${icons.close}</button><div class="music-full-body"></div>`;
-    const parts = [volume(music, "popup", doc), nowPlaying(music, "popup", doc), playlist(music, "popup", doc)];
+    const parts = [volume(music, where, doc), nowPlaying(music, where, doc), playlist(music, where, doc)];
     card.querySelector(".music-full-body")!.append(...parts.map((p) => p.el));
-    root.append(card);
+    layer.append(card);
     const width = Math.min(box.width - 2 * MARGIN, 400);
     const centre = at.left + at.width / 2 - box.left;
     card.style.width = `${width}px`;
@@ -131,7 +151,7 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     };
     card.querySelector(".music-close")!.addEventListener("click", closeFull);
     doc.addEventListener("pointerdown", outside, true);
-    music.opened("popup");
+    music.opened(where);
     host.full?.(true);
     card.querySelector<HTMLElement>(".music-close")!.focus({ preventScroll: true });
   }
@@ -149,23 +169,33 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     const d = t.closest<HTMLElement>("[data-do]")?.dataset.do;
     const song = music.state().song;
     if (!d) return;
-    if (d === "back") music.back("popup");
-    if (d === "skip") music.skip("popup");
-    if (d === "play") music.state().playing ? music.pause("popup") : music.resume("popup");
-    if (d === "heart" && song) music.setHearted(song.id, !music.hearted(song.id), "popup");
+    if (d === "play" && starting) return;
+    if (d === "back") music.back(where);
+    if (d === "skip") music.skip(where);
+    if (d === "play") music.state().playing ? music.pause(where) : music.resume(where);
+    if (d === "heart" && song) music.setHearted(song.id, !music.hearted(song.id), where);
     linger(TOUCHED_MS);
   });
-  doc.addEventListener("keydown", (e) => e.key === "Escape" && closeFull());
+  const pressed = () => (starting = !begun);
+  el.addEventListener("pointerdown", pressed);
+  el.addEventListener("keydown", pressed);
+  const escape = (e: KeyboardEvent) => e.key === "Escape" && closeFull();
+  doc.addEventListener("keydown", escape);
 
   // a new song is named, unless the full player is open (it shows it)
-  music.onSong(() => full || waiting || show());
-  music.subscribe(() => shown && draw());
+  const offSong = music.onSong(() => {
+    begun = true;
+    if (!full && !waiting) show();
+  });
+  const offState = music.subscribe(() => (shown || docked) && draw());
+  if (docked) draw();
   // an app put away comes back without either
-  doc.addEventListener("visibilitychange", () => {
+  const away = () => {
     if (!doc.hidden) return;
     hide();
     closeFull();
-  });
+  };
+  doc.addEventListener("visibilitychange", away);
 
   return {
     el,
@@ -174,7 +204,18 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     close: closeFull,
     hide,
     /** for the game: it moved what the pop-up sits by (a resize) */
-    place: () => shown && host.place(el, false),
+    place: () => shown && !docked && host.place(el, false),
+    /** for the game: the pop-up is done with (its page or component goes):
+     * closes it, removes it and stops listening (Goldy's game, 30 Oct 2026) */
+    dispose() {
+      closeFull();
+      clearTimeout(timer);
+      offSong();
+      offState();
+      doc.removeEventListener("keydown", escape);
+      doc.removeEventListener("visibilitychange", away);
+      el.remove();
+    },
   };
 }
 

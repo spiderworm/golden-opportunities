@@ -2,11 +2,12 @@
   "name": "@tellim/music",
   "version": "0.1.0",
   "private": true,
-  "description": "The studio's music player: shuffle with pinned openers, exclusions and hearts, the pop-up and the Settings panel",
+  "description": "The studio's music player: shuffle with pinned openers, exclusions and hearts, the pop-up (or dock) and the Settings panel",
   "type": "module",
   "exports": {
     "./player": "./src/player/player.ts",
     "./popup": "./src/ui/popup.ts",
+    "./dock": "./src/ui/dock.ts",
     "./panel": "./src/ui/panel.ts",
     "./music.css": "./src/ui/music.css"
   },
