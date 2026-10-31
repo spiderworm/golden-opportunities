@@ -18,8 +18,9 @@ type Props = Record<string, string | number | boolean>;
 
 /** Why a song started: by itself, or the player's skip or back. */
 export type Cause = "auto" | "skip" | "back";
-/** Where the player did it: the pop-up or the Settings panel. */
-export type Where = "popup" | "settings";
+/** Where the player did it: the pop-up, the dock (the pop-up kept in a
+ * game's sidebar) or the Settings panel. */
+export type Where = "popup" | "dock" | "settings";
 
 export type MusicOptions = {
   /** prefix for its storage key, as for createAnalytics, e.g. "cubeberg" */

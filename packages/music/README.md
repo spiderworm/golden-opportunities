@@ -9,7 +9,8 @@ all games."). The plan, and why, is in `plans/music-player.md`.
 | `src/queue/` | The order: pinned songs first, once each open; with Shuffle off, the rest in the player's dragged order; with it on (the default), shuffled each open, new songs at the front of the first shuffle; never the same song twice running; exclusions read as each song is picked. |
 | `src/prefs/` | What the player chose, kept on the device: volume, excluded, hearted, their order, Shuffle, and the songs known (so an update's songs are New). |
 | `src/player/` | `createMusic()`: streams the songs through one `<audio>`, through Web Audio when the game gives its context (and its effects), starts on the first touch, pauses out of sight, skips a song that won't load, and sends every choice to the game's `track()`. |
-| `src/ui/popup.ts` | `createPopup()`: as a song starts, a pill: back, pause, the song's name, heart, next. Tapping the name opens the full player where the pill was (volume, the song playing, the playlist); a tap outside, Escape or the close button shuts it. The game places the pill and says when it must wait; `full(open)` tells it the full player opened, e.g. to pause. |
+| `src/ui/popup.ts` | `createPopup()`: as a song starts, a pill: back, pause, the song's name, heart, next. Tapping the name opens the full player where the pill was (volume, the song playing, the playlist); a tap outside, Escape or the close button shuts it. The game places the pill and says when it must wait; `full(open)` tells it the full player opened, e.g. to pause. `dispose()` when the page or component that holds it goes. |
+| `src/ui/dock.ts` | `createDock(music, root, { layer })`: the pill kept for good in a place of the game's own (Orbital Books' sidebar): the name above back, pause, heart and next; "Music" and a play button before the first song. Its name opens the full player over `layer` (a fixed layer over the page), where the dock is. `compact(true)` keeps only pause / play, for a collapsed sidebar. `dispose()` when it goes. |
 | `src/ui/panel.ts` | `createMusicPanel()`: for Settings. The music volume (this is the game's music volume setting), the song playing, and a Playlist row that opens the playlist in its place. |
 | `src/ui/parts.ts` | The pieces both share. The playlist: Shuffle, and every song with a handle to drag (or arrow keys), a heart and an on/off switch; songs switched off sink to the bottom each time it opens. |
 | `src/ui/music.css` | Its look, through `--music-*` variables a game sets to its colors (`--music-bg`, `-border`, `-fg`, `-muted`, `-accent`, `-heart`, `-knob`, and `-full-base`, the solid color under the full player so the game never shows through). Its defaults weigh nothing, so the game's own `:root` wins whatever the load order. |
@@ -37,6 +38,7 @@ all games."). The plan, and why, is in `plans/music-player.md`.
    imported URL as its `file`, and take the `id` from the file's stem, never the URL.
 3. The pop-up: `createPopup(music, hudRoot, { busy, place, hidden })`. `place(el, open)` sets its
    `top` (and `left`, `maxWidth`) clear of the play area; Waddleberg's song toast placement moves here.
+   Or, for a pill that never goes away, the dock: `createDock(music, sidebarSpot, { layer })`.
 4. Settings: `const p = createMusicPanel(music)`, put `p.el` where the music setting was, and call
    `p.dispose()` when the page goes. Remove the game's own music volume or on/off setting.
 5. While the game must be silent (Pizza's `"quiet"`), `music.setQuiet(true)`.
@@ -55,8 +57,8 @@ All through the game's `track()`:
 `song_ended {id, how: finished|skipped|back, at_s, length_s}`, `song_restarted {id, at_s, where}`,
 `music_paused` / `music_resumed {id, where}`, `song_excluded` / `song_included {id, pinned, where}`,
 `song_hearted` / `song_unhearted {id, where}`, `song_moved {id, from, to, where}`, `music_shuffle_set {on, where}`,
-`music_player_opened {from}` (the full player from the pop-up, or the playlist in Settings),
-`music_volume_set {level, where}` (once the slider is let go). `where` is `popup` or `settings`.
+`music_player_opened {from}` (the full player from the pop-up or dock, or the playlist in Settings),
+`music_volume_set {level, where}` (once the slider is let go). `where` is `popup`, `dock` or `settings`.
 
 ## Tests
 

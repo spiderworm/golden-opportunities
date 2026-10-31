@@ -36,6 +36,16 @@
   .music-popup, .music-popup.on { transform: translate(-50%, 0); transition: opacity 0.3s linear; }
 }
 
+/* The dock (dock.ts): the pill kept in the game's place for it, the name
+   on its own row above the controls so it fits a sidebar. Compact, only
+   pause / play. */
+.music-popup.music-dock { position: static; transform: none; transition: none; max-width: none;
+  display: grid; grid-template-columns: repeat(4, 1fr); justify-items: center; box-shadow: none; border-radius: 16px; }
+.music-dock > .music-popup-name { grid-column: 1 / -1; order: -1; justify-self: stretch; }
+.music-dock > [data-do]:disabled { opacity: 0.4; cursor: default; }
+.music-dock.music-compact { grid-template-columns: 1fr; border-radius: 22px; }
+.music-dock.music-compact > :not([data-do="play"]) { display: none; }
+
 /* The full player, opened from the pop-up where it was (popup.ts sets its
    place and height); its body scrolls. */
 .music-full { position: absolute; z-index: 7; display: flex; flex-direction: column; box-sizing: border-box;
