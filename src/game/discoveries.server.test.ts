@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 const directory = await vi.hoisted(async () => {
@@ -8,7 +8,7 @@ const directory = await vi.hoisted(async () => {
 vi.mock('../platform/analytics/instance.server', () => ({ DATA_DIR: directory }));
 vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }));
 import { saves, getGameSession } from './session.server';
-import { createSaveStore } from './store.server';
+import { createSaveStore, SaveError } from './store.server';
 import { issueGameQueryToken, saveForQueryToken } from './query-token.server';
 import { createQueryHandler } from '../query/http.server';
 import { runQuery } from '../query/run-query.server';
@@ -31,6 +31,7 @@ function api(id: string, query: unknown, token?: string, handler = createQueryHa
 }
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 beforeEach(() => vi.mocked(trackServer).mockClear());
+afterEach(() => vi.restoreAllMocks());
 
 it('records Dewey evidence without ending its capability; play ends it and freezes the outcome', async () => {
   const save = saves.create(); const other = saves.create(); const cap = issueGameQueryToken(save.id);
@@ -57,9 +58,13 @@ it('skips default visits and option queries, but intentional chart/heatmap views
   const save = saves.create();
   load(save.id); load(save.id, '?unknown=claim&by=invalid');
   expect(saves.read(save.id)).toEqual(save);
+  load(save.id, '?by=format');
+  expect(saves.read(save.id)).toEqual(save); // unchanged default heatmap must not award B
   load(save.id, '?by=genre&compare=quarter');
-  expect(saves.read(save.id).discoveries).toEqual(['B']); // player-changed heatmap, not a default visit
+  expect(saves.read(save.id).discoveries).toEqual([]); // A1 only, not the default heatmap's B
   load(save.id, '?measure=avg_order_value&by=quarter');
+  expect(saves.read(save.id).discoveries).toEqual(['A']);
+  load(save.id, '?measure=orders_per_day'); // this really changes the heatmap
   expect(saves.read(save.id).discoveries).toEqual(['A', 'B']);
   const persisted = createSaveStore(path.join(directory, 'saves')).read(save.id);
   expect(persisted.discoveries).toEqual(['A', 'B']);
@@ -137,4 +142,24 @@ it('retains completed A parts when old partial comparison scopes are evicted', (
   for (let i = 1; i <= 70; i++) saves.recordEvidence(save.id, 0, { [i.toString(16).padStart(64, '0')]: ['a2:7'] });
   saves.recordEvidence(save.id, 0, { ['f'.repeat(64)]: [7, 8, 9, 10, 11, 12].map(m => `a2:${m}`) });
   expect(saves.read(save.id).discoveries).toEqual(['A']);
+});
+
+it('renders already-loaded ledgers when discovery persistence is busy, and can credit a later retry', () => {
+  const save = saves.create();
+  const write = vi.spyOn(saves, 'recordEvidence').mockImplementationOnce(() => {
+    // The competing owner may still hold its lock after the failed evidence write.
+    vi.spyOn(saves, 'read').mockImplementation(() => { throw new SaveError('SAVE_BUSY'); });
+    throw new SaveError('SAVE_BUSY');
+  });
+  const data = load(save.id, '?measure=orders_per_day');
+  expect(data.chart.rows.length).toBeGreaterThan(0);
+  expect(data.heatmap.rows).toHaveLength(84);
+  expect(data.planned).toBe(false);
+  expect(write).toHaveBeenCalledOnce();
+  expect(saves.read).not.toHaveBeenCalled();
+  vi.mocked(saves.read).mockRestore();
+  expect(saves.read(save.id)).toEqual(save);
+  expect(trackServer).toHaveBeenCalledWith('discovery_record_deferred', { code: 'SAVE_BUSY' });
+  load(save.id, '?measure=orders_per_day');
+  expect(saves.read(save.id).discoveries).toEqual(['B']);
 });
