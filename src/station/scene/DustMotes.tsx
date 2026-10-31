@@ -3,23 +3,30 @@ import { useEffect, useMemo } from "react";
 import { AdditiveBlending, BufferAttribute, BufferGeometry, ShaderMaterial } from "three";
 
 import { ROOM } from "./layout";
+import { kept } from "./world";
 
 // Dust drifting in the shop's light. The drift is worked out on the GPU,
 // so it costs one draw call and no per-frame JavaScript.
 
 const COUNT = 260;
 
+function scatter() {
+  const positions = new Float32Array(COUNT * 3);
+  const seeds = new Float32Array(COUNT);
+  for (let i = 0; i < COUNT; i++) {
+    positions.set(
+      [(Math.random() - 0.5) * (ROOM.width - 1), 0.3 + Math.random() * (ROOM.height - 0.6), (Math.random() - 0.5) * (ROOM.depth - 1)],
+      i * 3,
+    );
+    seeds[i] = Math.random() * 100;
+  }
+  return { positions, seeds };
+}
+
 export function DustMotes() {
   const { geometry, material } = useMemo(() => {
-    const positions = new Float32Array(COUNT * 3);
-    const seeds = new Float32Array(COUNT);
-    for (let i = 0; i < COUNT; i++) {
-      positions.set(
-        [(Math.random() - 0.5) * (ROOM.width - 1), 0.3 + Math.random() * (ROOM.height - 0.6), (Math.random() - 0.5) * (ROOM.depth - 1)],
-        i * 3,
-      );
-      seeds[i] = Math.random() * 100;
-    }
+    // The same motes on every visit.
+    const { positions, seeds } = kept("dust", scatter);
     const geometry = new BufferGeometry();
     geometry.setAttribute("position", new BufferAttribute(positions, 3));
     geometry.setAttribute("seed", new BufferAttribute(seeds, 1));
@@ -57,8 +64,8 @@ export function DustMotes() {
     geometry.dispose();
     material.dispose();
   }, [geometry, material]);
-  useFrame(({ gl }, delta) => {
-    material.uniforms.time!.value += delta;
+  useFrame(({ gl, clock }) => {
+    material.uniforms.time!.value = clock.elapsedTime;
     material.uniforms.pixelRatio!.value = gl.getPixelRatio();
   });
   return <points geometry={geometry} material={material} position={[0, 0, 0]} />;

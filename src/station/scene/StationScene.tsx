@@ -5,7 +5,6 @@ import type { DirectionalLight, Group } from "three";
 import { track } from "~/platform/analytics/analytics.client";
 import { holdFrame } from "../held-frame";
 import { sceneLevels } from "../scene-params";
-import { Bookshop } from "./bookshop";
 import { CameraRig, SUN_INTENSITY } from "./CameraRig";
 import { DustMotes } from "./DustMotes";
 import { Exterior, Shuttles } from "./Exterior";
@@ -16,6 +15,7 @@ import { Props } from "./Props";
 import { Robots } from "./Robots";
 import { Shoppers } from "./Shoppers";
 import { Sky } from "./Sky";
+import { keepElapsed, stationElapsed, stationShop } from "./world";
 
 // The 3D station. Loaded only by the Station screen, and only once the
 // browser has shown it can draw WebGL 2, so no other screen pays for three.js.
@@ -49,19 +49,19 @@ export default function StationScene(props: StationSceneProps) {
     if (settled.current !== props.view) settled.current = null;
   }, [props.view]);
   const levels = sceneLevels(props.busyness);
-  const shop = useMemo(() => {
-    const opening = new Bookshop();
-    // A couple of books already out of place, so the robots have work from the start.
-    opening.misplace(-6.6, 1.0);
-    opening.misplace(1.2, -4.3);
-    return opening;
-  }, []);
+  // Where the books are outlives the canvas (see world.ts).
+  const shop = stationShop();
   return (
     <Canvas
       dpr={[1, 1.75]}
       camera={{ fov: 55, near: 0.5, far: 12000, position: OUTSIDE_EYE.toArray() }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
-      onCreated={({ gl }) => props.onReady(gl.getContext() as WebGL2RenderingContext)}
+      onCreated={({ gl, clock }) => {
+        // Pick up the scene's time where the last visit left it, so everything
+        // clock-driven resumes (SceneClock sets it again once the models are in).
+        clock.elapsedTime = stationElapsed();
+        props.onReady(gl.getContext() as WebGL2RenderingContext);
+      }}
       aria-hidden="true"
     >
       <color attach="background" args={["#03050d"]} />
@@ -82,6 +82,7 @@ export default function StationScene(props: StationSceneProps) {
             <DustMotes />
             <Props />
           </group>
+          <SceneClock />
           <FirstFrame onDrawn={props.onDrawn} hold={props.hold} />
         </Suspense>
       </group>
@@ -102,6 +103,27 @@ function Spinner({ station }: { station: RefObject<Group | null> }) {
   useFrame(({ clock }) => {
     if (station.current) station.current.rotation.y = STATION_START_ANGLE + STATION_SPIN * clock.elapsedTime;
   });
+  return null;
+}
+
+/** The most the scene moves on in one frame, in seconds. */
+const MAX_STEP = 0.1;
+
+/**
+ * Keeps the scene's time (see world.ts), from the frames that draw the
+ * models. Time doesn't jump: a stalled frame (the first, compiling shaders,
+ * or one after the tab was hidden) moves the scene on by MAX_STEP at most.
+ */
+function SceneClock() {
+  const started = useRef(false);
+  // Before every other frame callback (a negative priority still lets R3F draw the frame).
+  useFrame(({ clock }, delta) => {
+    // The clock ran on while the models loaded: pick up where the last visit left off.
+    if (!started.current) clock.elapsedTime = stationElapsed();
+    else if (delta > MAX_STEP) clock.elapsedTime -= delta - MAX_STEP;
+    started.current = true;
+    keepElapsed(clock.elapsedTime);
+  }, -1);
   return null;
 }
 

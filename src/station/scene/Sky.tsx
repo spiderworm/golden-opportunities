@@ -15,6 +15,7 @@ import {
 } from "three";
 
 import { PLANET_POSITION, PLANET_RADIUS, SUN_DIRECTION } from "./layout";
+import { kept } from "./world";
 
 // Everything far away: the planet, its atmosphere, the sun and the stars.
 // The planet's day and night maps and the starfield behind the stars are
@@ -137,9 +138,9 @@ function Planet({ day, night }: { day: Texture; night: Texture }) {
     [],
   );
 
-  useFrame((_, delta) => {
-    material.uniforms.time!.value += delta;
-    if (surface.current) surface.current.rotation.y += delta * 0.004;
+  useFrame(({ clock }) => {
+    material.uniforms.time!.value = clock.elapsedTime;
+    if (surface.current) surface.current.rotation.y = clock.elapsedTime * 0.004;
   });
 
   return (
@@ -156,22 +157,28 @@ function Planet({ day, night }: { day: Texture; night: Texture }) {
 
 const STAR_COUNT = 2600;
 
+function starField() {
+  const positions = new Float32Array(STAR_COUNT * 3);
+  const colors = new Float32Array(STAR_COUNT * 3);
+  const sizes = new Float32Array(STAR_COUNT);
+  const palette = [new Color("#ffffff"), new Color("#c9d6ff"), new Color("#ffe2b8"), new Color("#b9aaff")];
+  for (let i = 0; i < STAR_COUNT; i++) {
+    // Uniform on a sphere far beyond the planet.
+    const u = Math.random() * 2 - 1;
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(1 - u * u);
+    positions.set([r * Math.cos(a) * 6000, u * 6000, r * Math.sin(a) * 6000], i * 3);
+    const c = palette[i % palette.length]!;
+    colors.set([c.r, c.g, c.b], i * 3);
+    sizes[i] = 0.8 + Math.random() ** 4 * 3.2;
+  }
+  return { positions, colors, sizes };
+}
+
 function Stars() {
   const { geometry, material } = useMemo(() => {
-    const positions = new Float32Array(STAR_COUNT * 3);
-    const colors = new Float32Array(STAR_COUNT * 3);
-    const sizes = new Float32Array(STAR_COUNT);
-    const palette = [new Color("#ffffff"), new Color("#c9d6ff"), new Color("#ffe2b8"), new Color("#b9aaff")];
-    for (let i = 0; i < STAR_COUNT; i++) {
-      // Uniform on a sphere far beyond the planet.
-      const u = Math.random() * 2 - 1;
-      const a = Math.random() * Math.PI * 2;
-      const r = Math.sqrt(1 - u * u);
-      positions.set([r * Math.cos(a) * 6000, u * 6000, r * Math.sin(a) * 6000], i * 3);
-      const c = palette[i % palette.length]!;
-      colors.set([c.r, c.g, c.b], i * 3);
-      sizes[i] = 0.8 + Math.random() ** 4 * 3.2;
-    }
+    // The same sky on every visit.
+    const { positions, colors, sizes } = kept("stars", starField);
     const geometry = new BufferGeometry();
     geometry.setAttribute("position", new BufferAttribute(positions, 3));
     geometry.setAttribute("color", new BufferAttribute(colors, 3));
@@ -208,8 +215,8 @@ function Stars() {
     return { geometry, material };
   }, []);
 
-  useFrame(({ gl, camera }, delta) => {
-    material.uniforms.time!.value += delta;
+  useFrame(({ gl, clock }) => {
+    material.uniforms.time!.value = clock.elapsedTime;
     material.uniforms.pixelRatio!.value = gl.getPixelRatio();
   });
 

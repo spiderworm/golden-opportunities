@@ -32,27 +32,16 @@ describe("startIdling", () => {
     posedLike(arm, DOWN);
   });
 
-  it("idles again when React cleans the effect up and reruns it (the keeper's T-pose)", () => {
+  it("crossfades into a walk and back to idling", () => {
     const { figure: f, arm } = figure();
-    const stop = startIdling([f]);
-    setWalking(f, true);
-    stop();
-    expect(f.idle.isRunning()).toBe(false);
-    startIdling([f]);
-    expect(f.idle.isRunning()).toBe(true);
-    expect(f.walking).toBe(false);
-    f.mixer.update(0.1);
-    posedLike(arm, DOWN);
-    expect(arm.quaternion.angleTo(new Quaternion())).toBeGreaterThan(1);
-  });
-
-  it("still crossfades into a walk after the rerun", () => {
-    const { figure: f, arm } = figure();
-    startIdling([f])();
     startIdling([f]);
     setWalking(f, true);
     f.mixer.update(1);
     expect(f.walk.isRunning()).toBe(true);
     posedLike(arm, SWING);
+    setWalking(f, false);
+    f.mixer.update(1);
+    expect(f.idle.isRunning()).toBe(true);
+    posedLike(arm, DOWN);
   });
 });

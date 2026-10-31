@@ -10,13 +10,12 @@ export interface Figure {
 }
 
 /**
- * Sets every figure standing idle, out of step with each other, and returns
- * the cleanup that stops them. Run from an effect, not where the figures are
- * made: React can clean an effect up and run it again on the same figures
- * (strict mode does, in development), and a figure whose actions were stopped
- * and never restarted stands in its rig's T-pose.
+ * Sets every figure standing idle, out of step with each other, once, as
+ * they're made. They're kept across visits (see world.ts), so nothing stops
+ * their actions when the canvas goes: a figure whose actions were stopped and
+ * never restarted would stand in its rig's T-pose.
  */
-export function startIdling(figures: readonly Figure[], random = Math.random): () => void {
+export function startIdling(figures: readonly Figure[], random = Math.random) {
   for (const f of figures) {
     f.walking = false;
     f.idle.play();
@@ -24,7 +23,6 @@ export function startIdling(figures: readonly Figure[], random = Math.random): (
     // Posed now, before the first frame draws.
     f.mixer.update(0);
   }
-  return () => figures.forEach((f) => f.mixer.stopAllAction());
 }
 
 /** Crossfades a figure between walking and standing. */
