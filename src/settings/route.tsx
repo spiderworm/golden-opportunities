@@ -47,7 +47,6 @@ export default function Settings() {
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>Settings</h1>
       <section className={styles.panel} aria-labelledby="share-heading">
         <div className={styles.row}>
           <div>
