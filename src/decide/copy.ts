@@ -74,10 +74,10 @@ export const DECIDE_COPY = {
     { month: "March", title: "Portmeirion", format: "mass market paperback" },
   ],
   movesHeading: "Your moves (choose up to two)",
-  /** The button that pins a move's whole line open: its visible label, closed and open, and its fixed name. */
+  /** The button that pins a move's whole line open: its visible label, closed and open, then "about {move}" for screen readers. */
   more: "More",
   less: "Less",
-  moreLabel: "Full description:",
+  moreAbout: "about",
   /** The moves as a requisition form the bosses issue: its chrome is decoration (aria-hidden); the checkboxes carry the choice. */
   form: {
     issuer: ["THROUGHPUT SUBCOMMITTEE", "FORM TS-2: REQUISITION OF MOVES"],
