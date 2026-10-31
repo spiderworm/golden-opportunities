@@ -1,5 +1,7 @@
 import { Component, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type FocusEvent, type ReactNode } from "react";
 
+import { track } from "../analytics/analytics.client";
+import { retryImport } from "../lazy/retry";
 import { canRenderWebGL2 } from "../webgl";
 import type { BossId } from "./bosses";
 import { BossScene2D } from "./BossScene2D";
@@ -12,10 +14,19 @@ import styles from "./BossBriefing.module.css";
 // width at which BossLayout keeps them, 620 px). Until then, narrower than
 // that, or if the 3D scene fails, the 2D scene shows, with the same bubbles
 // and the same focus. The 3D scene's code is fetched before it swaps in, so
-// the 2D scene is replaced once, not twice.
+// the 2D scene is replaced once, not twice; a failed fetch is tried once more,
+// and again on the next visit (not on every resize of this one).
 const WIDE = 620;
 let loading: Promise<ComponentType<BossScene3DProps>> | undefined;
-const loadScene3D = () => (loading ??= import("./BossScene3D").then((m) => m.default));
+const loadScene3D = () =>
+  (loading ??= retryImport(() => import("./BossScene3D")).then(
+    (m) => m.default,
+    (error: unknown) => {
+      track("boss_scene_failed", { cause: "import" });
+      loading = undefined;
+      throw error;
+    },
+  ));
 
 export interface BossBriefingProps {
   bubbles: readonly SceneBubble[];
@@ -50,7 +61,10 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
           setScene3D(() => scene);
           setMode(failed.current || element.clientWidth <= WIDE ? "2d" : "3d");
         },
-        () => current && setMode("2d"),
+        () => {
+          failed.current = true;
+          if (current) setMode("2d");
+        },
       );
     };
     decide();
@@ -92,6 +106,7 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
         <SceneBoundary
           fallback={flat}
           onError={() => {
+            track("boss_scene_failed", { cause: "scene" });
             failed.current = true;
             setMode("2d");
           }}

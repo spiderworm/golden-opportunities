@@ -15,6 +15,7 @@ import {
 import { Bookshop } from "./bookshop";
 import { ROOM, smoothstep } from "./layout";
 import { selfLit, useModelParts } from "./models";
+import { clear, CRUISE, HOMES, inFrontOf, routePoints, SIZE, unitFront } from "./robot-paths";
 import { SHELF_HEIGHT, SHELF_UNITS } from "./shelves";
 import { kept } from "./world";
 
@@ -24,17 +25,12 @@ import { kept } from "./world";
 // polish the window, and rest in their corners when there's nothing to do.
 
 export const ROBOTS = 3;
-/** Each robot crosses the room at its own height, so they never meet. */
-const CRUISE = [3.1, 3.5, 3.9];
 const SPEED = 1.4;
-const HOMES = [new Vector3(6.6, 4.3, 4.6), new Vector3(-7.1, 4.3, -0.6), new Vector3(1.5, 4.4, -4.3)];
 /** Where a carried book hangs, below the robot. */
 const GRIP = 0.33;
 /** The window's inside face, less a little room for the robot. */
 const GLASS_Z = ROOM.depth / 2 - 0.4;
 const DOWN = new Vector3(0, -1, 0);
-/** The model is a unit tall; a robot is a little under half a meter, so it reads from the camera's corner. */
-const SIZE = 0.46;
 const HIDDEN = new Matrix4().makeScale(0, 0, 0);
 
 /** One stretch of a chore: fly to `to`, then stay there for `hold` seconds. */
@@ -64,11 +60,8 @@ interface Robot {
 
 /** Up to cruising height, across, and down to `to`; `last` adds to the final leg. */
 function route(from: Vector3, to: Vector3, cruise: number, last: Partial<Leg> = {}): Leg[] {
-  return [
-    { to: new Vector3(from.x, cruise, from.z) },
-    { to: new Vector3(to.x, cruise, to.z) },
-    { ...last, to: to.clone() },
-  ];
+  const [up, across, down] = routePoints(from, to, cruise);
+  return [{ to: up! }, { to: across! }, { ...last, to: down! }];
 }
 
 export function Robots({ shop }: { shop: Bookshop }) {
@@ -124,11 +117,8 @@ export function Robots({ shop }: { shop: Bookshop }) {
     const stray = shop.strays[slot]!;
     const book = stray.book;
     const above = new Vector3().setFromMatrixPosition(stray.matrix).add(new Vector3(0, GRIP + 0.05, 0));
-    const center = shop.shelfCenter(book);
-    const front = shop.front(book);
     const facing = shop.books[book]!.facing;
-    const hover = center.clone().addScaledVector(front, 0.3);
-    hover.y = center.y + shop.books[book]!.size.y / 2 + 0.32;
+    const hover = inFrontOf(shop, book, 0.32);
     const from = { at: new Vector3(), turn: new Quaternion() };
     const into = { at: new Vector3(), turn: new Quaternion(), scale: new Vector3(), pose: new Matrix4() };
     const cruise = CRUISE[i]!;
@@ -163,16 +153,14 @@ export function Robots({ shop }: { shop: Bookshop }) {
   /** Nudge a leaning book upright. */
   function straighten(i: number, robot: Robot, book: number): Leg[] {
     const b = shop.books[book]!;
-    const center = shop.shelfCenter(book);
-    const front = shop.front(book);
-    const hover = center.clone().addScaledVector(front, 0.35);
-    hover.y = center.y + b.size.y / 2 + 0.3;
+    const hover = inFrontOf(shop, book, 0.3);
     const lean = b.lean;
     return route(robot.at, hover, CRUISE[i]!, {
       hold: 1.4,
       face: b.facing + Math.PI,
       arrive: () => {
-        robot.beam = front.clone().multiplyScalar(-0.7).add(DOWN).normalize();
+        // Its work light on the book, from wherever it hovers.
+        robot.beam = shop.shelfCenter(book).sub(robot.at).normalize();
       },
       during: (f) => shop.setLean(book, lean * (1 - smoothstep(0.2, 0.9, f))),
       done: () => {
@@ -188,13 +176,13 @@ export function Robots({ shop }: { shop: Bookshop }) {
     const u = free[Math.floor(Math.random() * free.length)]!;
     busy.dusting.add(u);
     const unit = SHELF_UNITS[u]!;
-    const front = new Vector3(Math.sin(unit.facing), 0, Math.cos(unit.facing));
+    const front = unitFront(unit);
     const along = new Vector3(Math.cos(unit.facing), 0, -Math.sin(unit.facing)).multiplyScalar(unit.width / 2 - 0.35);
     const top = new Vector3(unit.x, SHELF_HEIGHT + 0.32, unit.z).addScaledVector(front, 0.05);
     const [a, b] = Math.random() < 0.5 ? [top.clone().add(along), top.clone().sub(along)] : [top.clone().sub(along), top.clone().add(along)];
-    // Come up in front of the shelf, not through it, and leave the same way.
-    const outA = a.clone().addScaledVector(front, 0.6);
-    const outB = b.clone().addScaledVector(front, 0.6);
+    // Come up in front of the shelf, not through it (nor the one beside it, in a corner), and leave the same way.
+    const outA = clear(a.clone().addScaledVector(front, 0.6));
+    const outB = clear(b.clone().addScaledVector(front, 0.6));
     return [
       ...route(robot.at, outA, CRUISE[i]!),
       { to: a, arrive: () => (robot.beam = DOWN.clone()) },
