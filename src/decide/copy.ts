@@ -65,7 +65,7 @@ export const DECIDE_COPY = {
       boss: "readers",
       teaser: "SELECT UP TO TWO MOVES.",
       line: "SELECT UP TO TWO MOVES. SELECTING THREE IS NOT PERMITTED. WE HAVE TESTED THIS PERSONALLY.",
-      facts: ["Choose ", { strong: "up to two" }, " moves below, or none to hold course."],
+      facts: ["Choose ", { strong: "up to two" }, " moves, or none to hold course."],
     },
   ] satisfies BriefingBubble[] as BriefingBubble[],
   scheduled: [
