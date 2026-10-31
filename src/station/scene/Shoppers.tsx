@@ -1,10 +1,11 @@
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
-import { AnimationMixer, Box3, Group, Quaternion, Vector3, type AnimationAction, type Mesh, type MeshStandardMaterial } from "three";
+import { useLayoutEffect, useMemo } from "react";
+import { AnimationMixer, Box3, Group, Quaternion, Vector3, type Mesh, type MeshStandardMaterial } from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import type { Bookshop } from "./bookshop";
+import { setWalking, startIdling, type Figure } from "./figures";
 import { modelUrl } from "./models";
 import { MAX_SHOPPERS } from "../scene-params";
 
@@ -39,15 +40,6 @@ const VARIANTS = ["shopper-teal", "shopper-coral", "shopper-lavender", "shopper-
 /** The keeper wears the cardigan. */
 const KEEPER_VARIANT = 3;
 const HEIGHT = 1.7;
-
-/** One resident: a clone of a variant's rigged model, with its own motions. */
-interface Figure {
-  root: Group;
-  mixer: AnimationMixer;
-  walk: AnimationAction;
-  idle: AnimationAction;
-  walking: boolean;
-}
 
 
 interface Walker {
@@ -100,13 +92,11 @@ export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
       const clip = (name: string) => source.animations.find((a) => a.name.toLowerCase().includes(name)) ?? source.animations[0]!;
       const walk = mixer.clipAction(clip("walk"));
       const idle = mixer.clipAction(clip("idle"));
-      idle.play();
-      // Out of step with each other.
-      idle.time = Math.random() * idle.getClip().duration;
       return { root, mixer, walk, idle, walking: false };
     });
   }, [variants]);
-  useEffect(() => () => figures.forEach((f) => f.mixer.stopAllAction()), [figures]);
+  // A layout effect, so they're posed before the first frame draws.
+  useLayoutEffect(() => startIdling(figures), [figures]);
 
   const walkers = useMemo(
     () =>
@@ -174,13 +164,4 @@ export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
       ))}
     </>
   );
-}
-
-/** Crossfades a figure between walking and standing. */
-function setWalking(f: Figure, walking: boolean) {
-  if (f.walking === walking) return;
-  f.walking = walking;
-  const [from, to] = walking ? [f.idle, f.walk] : [f.walk, f.idle];
-  to.reset().play();
-  from.crossFadeTo(to, 0.3, false);
 }
