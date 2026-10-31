@@ -205,6 +205,12 @@ export function createMusic(o: MusicOptions) {
     try {
       const s = JSON.parse(store?.getItem(sessionKey) ?? "null") as Session | null;
       if (s && Date.now() - s.at < rememberFor && o.songs.some((x) => x.id === s.id)) {
+        // the song this tab has loaded: on to the place, without reloading (or announcing) it
+        if (loaded && song?.id === s.id) {
+          queue.resume(s.place);
+          if (Math.abs(s.t - deck.currentTime) >= 1) deck.currentTime = Math.max(0, Number(s.t) || 0);
+          return void (paused = s.paused === true);
+        }
         queue.resume(s.place);
         if (queue.current()?.id === s.id) {
           song = queue.current();
@@ -226,6 +232,29 @@ export function createMusic(o: MusicOptions) {
       remember();
     });
     if (typeof addEventListener !== "undefined") addEventListener("pagehide", remember);
+  }
+
+  // Paused out of sight, a tab lets go of the music (oneTab), and the tab
+  // that shows carries on where the last one was, unless the player paused
+  // it (David, 31 Oct 2026). A tab playing on out of sight (pauseWhenHidden
+  // false) keeps it.
+  function hide() {
+    deck.pause();
+    if (!tabs?.mine() || paused) return;
+    remember();
+    tabs.release();
+  }
+  function show() {
+    if (!tabs || tabs.mine() || paused || !started) return play();
+    void tabs.claimWhenFree().then((ok) => {
+      if (!ok) return; // another tab plays on: this one stays held back
+      if (hidden()) return tabs.release(); // hidden again meanwhile
+      yielded = false;
+      if (rememberFor && (!loaded || deck.paused)) restore();
+      if (paused) return (tabs.release(), changed()); // the player paused it in another tab
+      changed();
+      play();
+    });
   }
 
   // the player's own play (or skip, or back): take the music from another
@@ -325,7 +354,7 @@ export function createMusic(o: MusicOptions) {
     };
     for (const g of gestures) addEventListener(g, start, true);
     deck.addEventListener("playing", () => gestures.forEach((g) => removeEventListener(g, start, true)), { once: true });
-    document.addEventListener("visibilitychange", () => (hidden() ? deck.pause() : play()));
+    document.addEventListener("visibilitychange", () => (hidden() ? hide() : show()));
   }
 
   const has = (list: string[], id: string) => list.includes(id);
