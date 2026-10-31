@@ -24,8 +24,19 @@ export type FocusHow = "auto" | "click" | "key";
 export interface BossFocusOptions {
   /** The bubble open when the scene comes up. */
   initial?: number;
-  mode: SceneMode;
+  /** How the scene is drawn, or null until the browser has said whether it can draw it in 3D. */
+  mode: SceneMode | null;
   onFocus?: (boss: BossId, how: FocusHow, mode: SceneMode) => void;
+}
+
+/**
+ * The boss whose bubble the scene opened by itself, to report once the scene's mode is known
+ * (null until then, or once reported). Rendering on the server can't tell 3D from 2D, so the
+ * first report waits for the browser rather than saying "2d" on every device.
+ */
+export function autoFocus(bubbles: readonly SceneBubble[], initial: number, mode: SceneMode | null, reported: boolean): BossId | null {
+  if (reported || mode === null) return null;
+  return bubbles[initial]?.boss ?? null;
 }
 
 /**
@@ -37,16 +48,18 @@ export function useBossFocus(bubbles: readonly SceneBubble[], { initial = 0, mod
   const reported = useRef(false);
 
   useEffect(() => {
-    if (reported.current || !bubbles[initial]) return;
+    const boss = autoFocus(bubbles, initial, mode, reported.current);
+    if (!boss || mode === null) return;
     reported.current = true;
-    onFocus?.(bubbles[initial].boss, "auto", mode);
+    onFocus?.(boss, "auto", mode);
   }, [bubbles, initial, mode, onFocus]);
 
   const select = useCallback(
     (i: number, how: Exclude<FocusHow, "auto">) => {
       if (i === open || !bubbles[i]) return;
       setOpen(i);
-      onFocus?.(bubbles[i].boss, how, mode);
+      // Until the mode is decided, the 2D scene is the one on screen.
+      onFocus?.(bubbles[i].boss, how, mode ?? "2d");
     },
     [bubbles, open, mode, onFocus],
   );

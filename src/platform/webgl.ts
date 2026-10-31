@@ -1,6 +1,7 @@
 /**
- * Whether this browser can draw the 3D station. three.js (r163 on) needs
- * WebGL 2, so a WebGL 1-only browser gets the static picture too.
+ * Whether this browser can draw the 3D scenes (the station, the Decide
+ * bosses). three.js (r163 on) needs WebGL 2, so a WebGL 1-only browser gets
+ * the still pictures too.
  */
 export function canRenderWebGL2(doc: Pick<Document, "createElement"> = document): boolean {
   try {
