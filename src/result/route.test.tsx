@@ -3,8 +3,13 @@ import { createRoutesStub } from "react-router";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { getOutcome, submitPlan } from "~/game/game.server";
-import type { LeverId } from "~/simulation/types";
+import tables from "~/bookshop/data.json";
+import { joinBookshop } from "~/bookshop/joins";
+import type { BookshopTables } from "~/bookshop/types";
+import { q2Candidates, simulateQ2 } from "~/simulation/q2";
+import type { LeverId, Q2Plan } from "~/simulation/types";
 import { earnedDiscoveries } from "./discoveries.server";
+import type { ResultData } from "./result-data";
 import type { Route } from "./+types/route";
 import Result from "./route";
 
@@ -27,10 +32,46 @@ function render(...levers: LeverId[]) {
   } });
   submitPlan(request, { levers });
   const outcome = getOutcome(request)!;
-  const loaderData = { outcome, lastQ1: 95245.8, lastQ4: 161524.7, reference: [], discoveries: earnedDiscoveries(outcome.discoveries) };
+  const loaderData: ResultData = {
+    quarter: "2194-Q1",
+    outcome,
+    sameQuarterLastYear: 95245.8,
+    previousQuarter: 161524.7,
+    reference: [],
+    discoveries: earnedDiscoveries(outcome.discoveries),
+    next: null,
+    canPlayAgain: false,
+    halfYear: null,
+  };
+  return { html: show(loaderData), outcome };
+}
+
+function show(loaderData: ResultData) {
   const props = { loaderData } as unknown as Route.ComponentProps;
   const Stub = createRoutesStub([{ path: "/result", Component: () => <Result {...props} /> }]);
-  return { html: renderToString(<Stub initialEntries={["/result"]} />), outcome };
+  return renderToString(<Stub initialEntries={["/result"]} />);
+}
+
+const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/\s+/g, " ");
+
+const data = joinBookshop(tables as BookshopTables);
+const LAND_WATER_SKY_SPACE = q2Candidates(data).find((c) => c.title === "Land Water Sky Space" && c.format === "Hardcover")!.isbn;
+const QUIET: Q2Plan = { picks: [LAND_WATER_SKY_SPACE, null, null], levers: ["events"] };
+
+/** Q2's screen, from the real engine; the half-year review as the game would give it. */
+function renderQ2(plan: Q2Plan = QUIET, halfYear: ResultData["halfYear"] = null) {
+  const outcome = { ...simulateQ2(plan, 3, data).outcome, discoveries: ["F" as const] };
+  return show({
+    quarter: "2194-Q2",
+    outcome,
+    sameQuarterLastYear: 164436.9,
+    previousQuarter: 100_000,
+    reference: [{ month: "01", revenue: 30_000 }, { month: "02", revenue: 32_000 }, { month: "03", revenue: 38_000 }],
+    discoveries: earnedDiscoveries(outcome.discoveries, "2194-Q2"),
+    next: null,
+    canPlayAgain: halfYear !== null,
+    halfYear,
+  });
 }
 
 describe("the result screen", () => {
@@ -74,5 +115,72 @@ describe("the result screen", () => {
   it("drops the comparison column when the plan was to hold course", () => {
     expect(render().html).not.toContain(`<th scope="col">If you had held course</th>`);
     expect(render("sale").html).toContain(`<th scope="col">If you had held course</th>`);
+  });
+
+  it("after Q1, offers Continue to Q2 to the station, but only while Q2 is still to play", () => {
+    const { outcome } = render("events");
+    const base: ResultData = { quarter: "2194-Q1", outcome, sameQuarterLastYear: 95245.8, previousQuarter: 161524.7, reference: [], discoveries: earnedDiscoveries([]), next: "2194-Q2", canPlayAgain: false, halfYear: null };
+    const html = show(base);
+    expect(html).toMatch(/<a[^>]*href="\/"[^>]*>Continue to Q2<\/a>/);
+    expect(text(html)).toContain("Back to the ledgers");
+    // Once Q2 has started, Q1's screen is still there, without it, and nothing replaces it (q2.md, #139).
+    expect(show({ ...base, next: null })).not.toContain("Continue to Q2");
+  });
+});
+
+describe("Q2's result screen", () => {
+  it("is Q1's screen for Q2: its title, columns, goals note, reference line and season note", () => {
+    const page = text(renderQ2());
+    expect(page).toContain("Q2 2194: the results");
+    expect(page).toContain("Q2 2193 + new volume");
+    expect(page).toContain("Each goal is Q2 2193, plus the new volume's expected effect, plus 5%. Matching Q2 2193 plus the new volume scores 70 (C\u2212). Meeting the goal scores 100 (A+).");
+    expect(page).toContain("Q1 2194 (for reference)");
+    expect(page).not.toContain("Q4 2193");
+    expect(page).toMatch(/Q2 revenue was \d+% above Q1 2194\. Last year, Q2 was the busier quarter: \$164,437, 73% above Q1\. To judge your plan, compare it with holding course, not with Q1\./);
+  });
+
+  it("shows Q2's discoveries, D to F, and keeps the ledgers link for the review", () => {
+    const page = text(renderQ2());
+    expect(page).toContain("You compared your first quarter with last year's.");
+    expect(page).toContain("Look at the average rating, title by title.");
+    expect(page).toContain("1 of 3 found.");
+    expect(page).not.toContain("Weekdays emptied");
+    // Without the review (not both quarters yet), no Play again, and no ledgers link in What happened.
+    expect(page).not.toContain("Play again");
+    expect(page).not.toContain("Back to the ledgers");
+    expect(page).not.toContain("Continue to Q2");
+  });
+
+  it("says holding course when there are no picks and no move, and not when there's only a pick", () => {
+    expect(text(renderQ2({ picks: [null, null, null], levers: [] }))).toContain("Your plan was to hold course");
+    expect(text(renderQ2({ picks: [null, LAND_WATER_SKY_SPACE, null], levers: [] }))).not.toContain("Your plan was to hold course");
+  });
+
+  it("closes with the half-year review: a row per quarter in scores, the game's half-year score, the Administrator, and a new game", () => {
+    const measures = (score: number) => (["profit", "readers", "happiness", "culture"] as const).map((id, i) => ({ id, score: score + i, grade: "C" as const, result: 0, lastYear: 0, goal: 0, met: false, exceeds: false }));
+    const html = renderQ2(QUIET, {
+      quarters: [
+        { quarter: "2194-Q1", measures: measures(80), overall: { score: 80, grade: "B-" } },
+        { quarter: "2194-Q2", measures: measures(71), overall: { score: 71, grade: "C-" } },
+      ],
+      score: 76,
+      grade: "C+",
+    });
+    const page = text(html);
+    expect(page).toContain("Half-year review");
+    expect(html).toMatch(/<th scope="col">Quarter<\/th><th scope="col">Profit<\/th><th scope="col">Readers served<\/th><th scope="col">Happiness<\/th><th scope="col">Culture<\/th><th scope="col">Overall<\/th>/);
+    expect(html).toMatch(/<th scope="row">Q1 2194<\/th><td>80 \(C\)<\/td><td>81 \(C\)<\/td><td>82 \(C\)<\/td><td>83 \(C\)<\/td><td>80 \(B\u2212\)<\/td>/);
+    expect(html).toMatch(/<th scope="row">Q2 2194<\/th><td>71 \(C\)<\/td>.*<td>71 \(C\u2212\)<\/td>/);
+    // The game's score, as given: never averaged again here.
+    expect(page).toContain("Half-year score: 76 (C+)");
+    expect(page).toContain("HALF-YEAR SCORE: 76. THE SHOP CONTINUES. THIS IS ALSO A LOOK.");
+    expect(page).toContain("That's the end of the first half of 2194. Thanks for minding the shop.");
+    const form = html.match(/<form[^>]*>.*?<\/form>/)?.[0] ?? "";
+    expect(form).toMatch(/action="\/game\/new"/);
+    expect(form).toMatch(/method="post"/);
+    expect(form).toMatch(/<button type="submit"[^>]*>Play again<\/button>/);
+    expect(html).toMatch(/<a[^>]*href="\/investigate"[^>]*>Back to the ledgers<\/a>/);
+    // Play again sits after the review's closing line, and the review after the discoveries.
+    expect(page.indexOf("of 3 found.")).toBeLessThan(page.indexOf("Half-year review"));
   });
 });
