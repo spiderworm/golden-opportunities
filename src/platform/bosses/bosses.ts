@@ -13,6 +13,8 @@ export interface Boss {
   tint: string;
   /** public/bosses/<id>.webp, 256 px square, by Orbit (provenance.json beside them); without one, the placeholder face. */
   portrait?: string;
+  /** public/bosses/full/<id>.webp: the full figure for scenes, 600 px tall on one shared scale (Orbit); without one, the portrait stands in. */
+  figure?: string;
 }
 
 const [blue, orange, green, amber, pink] = chartTheme.categorical as readonly string[];

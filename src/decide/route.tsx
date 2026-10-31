@@ -8,7 +8,9 @@ import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
-import { BossBubble } from "~/platform/bosses/BossBubble";
+import { BossBriefing } from "~/platform/bosses/BossBriefing";
+import type { BossId } from "~/platform/bosses/bosses";
+import type { FocusHow, SceneMode } from "~/platform/bosses/useBossFocus";
 import { DECIDE_COPY as COPY, MOVES, type BriefingBubble, type FactLine } from "./copy";
 import { PlanRefused, readPlan } from "./read-plan.server";
 import styles from "./Decide.module.css";
@@ -108,22 +110,22 @@ export default function Decide() {
 
   return (
     <div className={styles.page}>
-      {/* The brief, from the bosses (m1-copy section 3): the joke in capitals, the facts in each strip. */}
+      {/* The brief, from the bosses together (m1-copy section 3): one bubble open at a time, the Administrator's first. */}
       <section className={styles.briefing} aria-labelledby="plan-heading">
-        <h2 id="plan-heading" className={styles.memoHeading}>
-          {COPY.heading}
-        </h2>
-        <div className={styles.bubbles}>
-          {COPY.briefing.map((b, i) => (
-            <BossBubble key={i} boss={b.boss} order={i} facts={<Facts bubble={b} />}>
-              {b.line}
-            </BossBubble>
-          ))}
+        <div>
+          <h2 id="plan-heading" className={styles.memoHeading}>
+            {COPY.heading}
+          </h2>
+          <p className={styles.hint}>{COPY.hint}</p>
         </div>
+        <BossBriefing bubbles={SCENE} onFocus={onBubbleFocused} />
       </section>
 
-      <fieldset className={styles.moves} disabled={step !== "choose"} aria-describedby="moves-status">
+      <fieldset className={styles.moves} disabled={step !== "choose"} aria-describedby="moves-rule moves-status">
         <legend className={styles.movesHeading}>{COPY.movesHeading}</legend>
+        <p id="moves-rule" className={styles.rule}>
+          <FactText line={COPY.rule} />
+        </p>
         <div className={styles.options}>
           {MOVES.map((m) => {
             const selected = chosen.includes(m.id);
@@ -199,6 +201,13 @@ export default function Decide() {
       {step === "playing" && <PlayOut done={fetcher.state === "idle" && fetcher.data?.ok === true} />}
     </div>
   );
+}
+
+/** The scene's bubbles, in Plot's order: teaser, full line and fact strip for each boss. */
+const SCENE = COPY.briefing.map((b) => ({ boss: b.boss, teaser: b.teaser, line: b.line, facts: <Facts bubble={b} /> }));
+
+function onBubbleFocused(boss: BossId, how: FocusHow, mode: SceneMode) {
+  track("bubble_focused", { boss, how, mode });
 }
 
 /** A bubble's fact strip: its sentence, with the key figures in bold, and bubble 6's scheduled picks. */
