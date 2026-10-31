@@ -63,15 +63,15 @@ David's direction: the brief is delivered by the robot bosses in speech bubbles,
 
 | # | Speaker | Boss's line | Fact strip |
 | --- | --- | --- | --- |
-| 1 | The Station Administrator | `ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. WE HAVE PREPARED REMARKS. THE REMARKS ARE MANDATORY.` | `Your plan runs from **January 1 to March 31, 2194**.` |
-| 2 | The Commerce Office | `WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT.` | `You're graded on **Profit, Readers served, Happiness and Culture**. Each goal is **last year's first quarter plus 5%**.` |
-| 3 | The Station Administrator | `YOUR SCORE IS YOUR WEAKEST MEASURE. IF ONE MEASURE FAILS, YOU FAIL. WE CALL THIS TEAMWORK.` | `Your score is your **lowest measure**. Raise one by sinking another, and your score sinks with it.` |
-| 4 | The Commerce Office | `BOOKS ARE NOT FREE. WE CHECKED. TWICE.` | `Profit is revenue minus what the books cost you. Books cost the store **60% of their list price**.` |
-| 5 | The Ministry of Culture | `AUTHORS MAY BE INVITED. AUTHORS REQUIRE A SHUTTLE FARE. CULTURE IS EXPENSIVE. PLEASE PURCHASE SOME ANYWAY.` | `An author night costs **$200**: the author's shuttle fare and the room.` |
-| 6 | The Readers' Guild survey drone | `THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. THE DRONE DOES NOT SPECULATE.` | `Already scheduled, Book of the Month at **15% off** for the whole month: **January** The Mallemaroking (mass market paperback), **February** Rystwyth (hardcover), **March** Portmeirion (mass market paperback).` |
-| 7 | The Throughput Subcommittee | `SELECT UP TO TWO MOVES. SELECTING THREE IS NOT PERMITTED. WE HAVE TESTED THIS PERSONALLY.` | `Choose **up to two** moves below, or none to hold course.` |
+| 1 | The Station Administrator | `ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. YOUR SCORE WILL BE YOUR WEAKEST MEASURE. WE CALL THIS TEAMWORK.` | `Your plan runs from **January 1 to March 31, 2194**. Your score is your **lowest measure**: raise one by sinking another, and your score sinks with it.` |
+| 2 | The Commerce Office | `WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT. ALSO, BOOKS ARE NOT FREE. WE CHECKED.` | `You're graded on **Profit, Readers served, Happiness and Culture**. Each goal is **last year's first quarter plus 5%**. Profit is revenue minus what the books cost, and books cost the store **60% of their list price**.` |
+| 3 | The Ministry of Culture | `AUTHORS MAY BE INVITED. AUTHORS REQUIRE A SHUTTLE FARE. CULTURE IS EXPENSIVE. PLEASE PURCHASE SOME ANYWAY.` | `An author night costs **$200**: the author's shuttle fare and the room.` |
+| 4 | The Readers' Guild survey drone | `THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. THE DRONE DOES NOT SPECULATE.` | `Already scheduled, Book of the Month at **15% off** for the whole month: **January** The Mallemaroking (mass market paperback), **February** Rystwyth (hardcover), **March** Portmeirion (mass market paperback).` |
+| 5 | The Throughput Subcommittee | `SELECT UP TO TWO MOVES. SELECTING THREE IS NOT PERMITTED. WE HAVE TESTED THIS PERSONALLY.` | `Choose **up to two** moves below, or none to hold course.` |
 
-In bubble 6, the three picks may be set as a three-line list inside the strip if that scans better on screen.
+Each boss speaks once. Five bubbles, rather than seven, keep the moves near the top of the screen.
+
+In bubble 4, the three picks may be set as a three-line list inside the strip if that scans better on screen.
 
 **Portraits (for Orbit; until they exist, use the caption alone).** These are the same characters as the Result screen's bosses, in the game's dark navy and violet, bust-length and facing the player:
 - **The Station Administrator:** a tall, thin unit in a desk-shaped chassis, with one large round lens and a clipboard arm. It's slightly too formal.
