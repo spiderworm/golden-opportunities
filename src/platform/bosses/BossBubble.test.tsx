@@ -46,6 +46,9 @@ describe("BossBubble", () => {
       expect(boss.figure).toBe(`/bosses/full/${id}.webp`);
       expect(existsSync(`public${boss.figure}`)).toBe(true);
     }
+    // The room they stand in (BossLayout's .room), at 1x and 2x.
+    expect(existsSync("public/bosses/backdrop-1200.webp")).toBe(true);
+    expect(existsSync("public/bosses/backdrop.webp")).toBe(true);
     expect(renderToString(<BossBubble boss="culture">CULTURE IS EXPENSIVE.</BossBubble>)).toContain('<img src="/bosses/culture.webp" alt=""');
   });
 });
