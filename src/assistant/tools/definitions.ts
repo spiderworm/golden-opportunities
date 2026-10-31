@@ -84,8 +84,8 @@ export const TOOLS = [
       properties: {
         measure: queryProperties.measure,
         across: { type: "string", enum: DIMENSIONS, description: "The dimension whose two values are compared." },
-        from: { type: "string", minLength: 1, maxLength: QUERY_LIMITS.filterValueLength, description: "The earlier or baseline value, exactly as the terminal labels it (e.g. 2193-Q3)." },
-        to: { type: "string", minLength: 1, maxLength: QUERY_LIMITS.filterValueLength, description: "The value compared with it (e.g. 2193-Q4)." },
+        from: { type: "string", minLength: 1, maxLength: QUERY_LIMITS.filterValueLength, description: "The earlier or baseline value, exactly as the terminal labels it (e.g. 2193-Q3, or a month like 2193-03)." },
+        to: { type: "string", minLength: 1, maxLength: QUERY_LIMITS.filterValueLength, description: "The value compared with it (e.g. 2193-Q4, or a month like 2193-04)." },
         by: { type: "array", items: { type: "string", enum: DIMENSIONS }, maxItems: 1, description: "Optionally, one dimension to break the comparison down by; empty for the overall figures." },
         filter: queryProperties.filter,
       },
