@@ -30,7 +30,7 @@
 .figure img {
   width: auto;
   max-width: 100%;
-  height: 90%;
+  height: calc(100% - var(--robot-headroom, 12px));
   object-fit: contain;
   object-position: bottom center;
   user-select: none;

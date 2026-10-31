@@ -139,7 +139,7 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
         </div>
       </aside>
 
-      <div className={styles.main}>
+      <div className={styles.main} data-bleed={bleed || undefined}>
         {/* The full player floats over the page from here; the dock is in the menu. */}
         <div ref={musicLayer} className={styles.musicLayer} />
         <header className={styles.header}>
@@ -160,9 +160,7 @@ export function Shell({ stationDate, notifications, standingOrder, onAlertSeen, 
             onOpenLedgers={() => track("alert_strip_clicked", { action: "ledgers" })}
           />
         )}
-        <main className={styles.content} data-bleed={bleed || undefined}>
-          {children}
-        </main>
+        <main className={styles.content}>{children}</main>
         {standingOrder && <Transmission open={memoOpen} onOpenLedgers={openLedgers} onLater={() => void closeMemo("later")} />}
       </div>
     </div>

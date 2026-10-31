@@ -6,7 +6,9 @@
   --pad: 18px;
   --gap: 14px;
   /* The room fills the window under the shell's header; a short window keeps a usable minimum. */
-  --scene-height: max(520px, calc(100dvh - 118px));
+  --scene-height: max(520px, calc(100dvh - 92px));
+  /* The space kept over the tallest boss's head for the tags (Orbit's 3D camera reads it too). */
+  --robot-headroom: 52px;
   container: scene / inline-size;
 }
 
@@ -16,7 +18,7 @@
 .room {
   /* The floor's row takes what the banner and tags leave, so the bosses have a definite height to fill. */
   display: grid;
-  grid-template-rows: auto auto minmax(160px, 1fr);
+  grid-template-rows: auto minmax(220px, 1fr);
   gap: 10px;
   min-height: var(--scene-height);
   padding: 12px var(--pad) 0;
@@ -33,7 +35,7 @@
 .banner {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 8fr);
-  align-items: start;
+  align-items: stretch;
   gap: 16px;
   padding: 12px 14px 14px;
   border: 1px solid rgb(255 255 255 / 0.1);
@@ -43,10 +45,11 @@
   backdrop-filter: blur(10px) saturate(1.1);
 }
 
+/* The briefing: the heading, then the open boss's panel filling the banner's height (the form sets it). */
 .briefing {
   display: grid;
-  align-content: start;
-  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
   min-width: 0;
 }
 
@@ -54,7 +57,11 @@
   min-width: 0;
 }
 
+/* The tags hang over the top of the floor, above the bosses' heads (the floor keeps --robot-headroom clear). */
 .cast {
+  z-index: 1;
+  grid-area: 2 / 1;
+  align-self: start;
   display: grid;
   grid-template-columns: repeat(var(--count, 5), minmax(0, 1fr));
   gap: var(--gap);
@@ -138,6 +145,12 @@
 
 /* On a short window the tags show the speaker only, to leave the bosses their height; the teaser stays in the
    button's accessible name. */
+@media (min-height: 820px) {
+  .scene {
+    --robot-headroom: 92px;
+  }
+}
+
 @media (max-height: 819px) {
   .teaserLine {
     position: absolute;
@@ -156,6 +169,7 @@
 
 /* The floor takes the rest of the room: the bosses (2D figures or the 3D canvas) fill it. */
 .floor {
+  grid-area: 2 / 1;
   position: relative;
   min-height: 0;
 }
@@ -164,18 +178,32 @@
 /* The open boss's briefing. Every panel is laid out in the same cell, so the box is always the tallest one's
    size, whichever is open. */
 .panels {
-  display: grid;
+  position: relative;
+  min-height: 140px;
 }
 
 .panel {
-  grid-area: 1 / 1;
+  position: absolute;
+  inset: 0;
   display: grid;
   gap: 6px;
   align-content: start;
   padding-left: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-left: 3px solid var(--tint);
   visibility: hidden;
   opacity: 0;
+}
+
+.panel:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* More below: the panel's foot fades, as a hint to scroll. */
+.panel[data-more] {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
 }
 
 /* Only the opening panel fades in; the closing one goes at once, so two never overlap. */
@@ -234,8 +262,19 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .panels {
+    min-height: 0;
+    display: grid;
+  }
+
+  .panel {
+    position: static;
+    grid-area: 1 / 1;
+    overflow: visible;
+  }
+
   .floor {
-    min-height: 200px;
+    min-height: 260px;
   }
 }
 

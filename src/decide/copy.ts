@@ -74,6 +74,10 @@ export const DECIDE_COPY = {
     { month: "March", title: "Portmeirion", format: "mass market paperback" },
   ],
   movesHeading: "Your moves (choose up to two)",
+  /** The button that pins a move's whole line open: its visible label, closed and open, and its fixed name. */
+  more: "More",
+  less: "Less",
+  moreLabel: "Full description:",
   /** The moves as a requisition form the bosses issue: its chrome is decoration (aria-hidden); the checkboxes carry the choice. */
   form: {
     issuer: ["THROUGHPUT SUBCOMMITTEE", "FORM TS-2: REQUISITION OF MOVES"],
@@ -97,12 +101,13 @@ export const DECIDE_COPY = {
 } as const;
 
 /** The moves, in LEVER_IDS order. */
-export const MOVES: { id: LeverId; title: string; line: string }[] = [
+export const MOVES: { id: LeverId; title: string; line: string; /** A key figure kept on the title line, so the line's clamp never hides it. */ figure?: string }[] = [
   {
     id: "repick",
     title: "Re-pick Book of the Month",
+    figure: "3 hardcovers",
     line: "Feature Kalakalal Avenue (January), Can I Be Honest? (February) and Who Did You Think You Were Kidding? (March), all in hardcover, instead of the scheduled picks (The Mallemaroking, Rystwyth and Portmeirion).",
   },
-  { id: "events", title: "Weekday author nights", line: "Host 12 author nights, one each week on a Tuesday, Wednesday or Thursday, at $200 each." },
-  { id: "sale", title: "Station-wide sale", line: "15% off every book, all quarter. The Book of the Month runs at the same 15%." },
+  { id: "events", title: "Weekday author nights", figure: "$200 a night", line: "Host 12 author nights, one each week on a Tuesday, Wednesday or Thursday, at $200 each." },
+  { id: "sale", title: "Station-wide sale", figure: "15% off", line: "15% off every book, all quarter. The Book of the Month runs at the same 15%." },
 ];

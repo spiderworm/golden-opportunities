@@ -78,6 +78,10 @@ export default function Decide() {
   const [tooMany, setTooMany] = useState(false);
   const [refused, setRefused] = useState(false);
   const [step, setStep] = useState<Step>("choose");
+  // The move whose full line shows over the scene: peeked by hover or focus, or pinned by its "more" button.
+  const [more, setMore] = useState<{ id: LeverId; pinned: boolean } | null>(null);
+  const peek = (id: LeverId) => setMore((m) => (m?.pinned ? m : { id, pinned: false }));
+  const unpeek = (id: LeverId) => setMore((m) => (m && m.id === id && !m.pinned ? null : m));
   // In LEVER_IDS order, whatever order they were ticked in.
   const plan = planOf(chosen) ?? { levers: [] };
   const chosenMoves = MOVES.filter((m) => plan.levers.includes(m.id));
@@ -131,18 +135,55 @@ export default function Decide() {
               {MOVES.map((m, i) => {
                 const selected = chosen.includes(m.id);
                 return (
-                  <label key={m.id} className={styles.option} data-selected={selected || undefined}>
+                  <div
+                    key={m.id}
+                    className={styles.option}
+                    data-selected={selected || undefined}
+                    data-more={more?.id === m.id || undefined}
+                    onMouseEnter={() => peek(m.id)}
+                    onMouseLeave={() => unpeek(m.id)}
+                    onFocus={() => peek(m.id)}
+                    onBlur={(event) => !event.currentTarget.contains(event.relatedTarget as Node | null) && setMore(null)}
+                    onKeyDown={(event) => event.key === "Escape" && more && (event.stopPropagation(), setMore(null))}
+                  >
                     <span className={styles.itemNumber} aria-hidden="true">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <input type="checkbox" name="levers" value={m.id} checked={selected} onChange={() => toggle(m.id)} />
-                    <span className={styles.optionTitle}>{m.title}</span>
-                    <span className={styles.optionLine}>{m.line}</span>
+                    <label className={styles.optionLabel}>
+                      <input
+                        type="checkbox"
+                        name="levers"
+                        value={m.id}
+                        checked={selected}
+                        onChange={() => toggle(m.id)}
+                        aria-describedby={`move-line-${m.id}`}
+                      />
+                      <span className={styles.optionTitle}>{m.title}</span>
+                      {m.figure && <span className={styles.optionFigure}>{m.figure}</span>}
+                    </label>
+                    {/* The whole line, clamped to two at rest; it describes the checkbox, so screen readers get all of it. */}
+                    <p id={`move-line-${m.id}`} className={styles.optionLine}>
+                      {m.line}
+                    </p>
+                    <button
+                      type="button"
+                      className={styles.more}
+                      aria-expanded={more?.id === m.id && more.pinned}
+                      aria-controls={`move-more-${m.id}`}
+                      aria-label={`${COPY.moreLabel} ${m.title}`}
+                      onClick={() => setMore(more?.id === m.id && more.pinned ? null : { id: m.id, pinned: true })}
+                    >
+                      {more?.id === m.id && more.pinned ? COPY.less : COPY.more}
+                    </button>
+                    {/* The full line over the scene on hover, focus or a tap on "more": it overlays, so nothing moves. */}
+                    <div id={`move-more-${m.id}`} className={styles.popover} aria-hidden="true">
+                      {m.line}
+                    </div>
                     {/* The bosses' stamp on a chosen move: its space is always kept, so stamping moves nothing. */}
                     <span className={styles.stamp} aria-hidden="true">
                       {COPY.form.stamp}
                     </span>
-                  </label>
+                  </div>
                 );
               })}
             </div>
