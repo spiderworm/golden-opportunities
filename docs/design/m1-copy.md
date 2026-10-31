@@ -28,7 +28,7 @@ The memo arrives three ways: once as a transmission, then as a standing-order st
 
 ### Transmission
 
-Shown once per game, on first arrival at the station. It is a centred card over the scene, in the Decide bubble style: the Commerce Office's portrait and tint, a boss line (the joke), and the memo above as its plain fact strip, with `**Down 41%.**` in bold.
+Shown once per game, on first arrival at the station. It is a centered card over the scene, in the Decide bubble style: the Commerce Office's portrait and tint, a boss line (the joke), and the memo above as its plain fact strip, with `**Down 41%.**` in bold.
 
 | Element | String |
 | --- | --- |
