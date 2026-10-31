@@ -1,0 +1,145 @@
+/* The Q2 calendar on the requisition form: a small section label, then a row per month, each a ruled line
+   with the month and its pick. A month's list opens over the scene, so opening one moves nothing. */
+.calendar {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.label {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.month {
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+}
+
+/* The month's pick, as a field on the form: the edition, or "No pick" in the muted ink. */
+.pick {
+  height: 28px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 26px 0 9px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 6px;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%) right 13px center / 5px 5px no-repeat,
+    linear-gradient(-45deg, transparent 50%, var(--color-text-muted) 50%) right 9px center / 5px 5px no-repeat,
+    rgb(255 255 255 / 0.03);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pick[data-empty] {
+  color: var(--color-text-muted);
+}
+
+.pick:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 0.26);
+}
+
+.pick:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.row[data-open] .pick {
+  border-color: var(--color-accent-soft);
+}
+
+/* The list, over the scene below the form, from the row's field: the search, then the editions. */
+.popup {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 52px;
+  right: 0;
+  z-index: 6;
+  display: grid;
+  gap: 4px;
+  min-width: 280px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #161b2e;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.5);
+}
+
+.search {
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.04);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.search:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 0;
+}
+
+.list {
+  max-height: 240px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.option {
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 13px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.option:hover,
+.option[data-active] {
+  background: rgb(255 255 255 / 0.07);
+}
+
+.option[data-active] {
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+
+.option[aria-selected="true"] {
+  color: var(--color-accent);
+}
+
+.option[aria-disabled="true"] {
+  color: var(--color-text-subtle);
+  cursor: not-allowed;
+}
+
+.taken {
+  font-size: 12px;
+  font-style: italic;
+}
+
+.nothing {
+  padding: 5px 8px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
