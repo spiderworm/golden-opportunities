@@ -25,12 +25,15 @@ export function MusicDock({ collapsed, layer }: { collapsed: boolean; layer: Ref
     // No music on a phone (David): it gets the phone screen, and the game only mounts there for a moment.
     if (isPhoneScreen()) return;
     let live = true;
-    void Promise.all([import("~/platform/music/music.client"), import("@tellim/kit/music/dock")]).then(async ([{ loadMusic }, { createDock }]) => {
-      const music = await loadMusic();
-      if (!live || !music || !spot.current) return;
-      dock.current = createDock(music, spot.current, { layer: layer.current ?? undefined });
-      dock.current.compact(compact.current);
-    }, cutOff("music dock"));
+    // Caught after the whole chain: loadMusic makes a lazy import of its own (the kit's music), and a reload can cut that one off too.
+    void Promise.all([import("~/platform/music/music.client"), import("@tellim/kit/music/dock")])
+      .then(async ([{ loadMusic }, { createDock }]) => {
+        const music = await loadMusic();
+        if (!live || !music || !spot.current) return;
+        dock.current = createDock(music, spot.current, { layer: layer.current ?? undefined });
+        dock.current.compact(compact.current);
+      })
+      .catch(cutOff("music dock"));
     return () => {
       live = false;
       dock.current?.dispose();
