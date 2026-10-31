@@ -113,6 +113,11 @@ test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
   await page.getByRole('checkbox', { name: /Weekday author nights/ }).hover();
   await expect(popover).toBeVisible();
   await expect(popover).toContainText('at $200 each.');
+  // Over the tags below the form, not under them: its foot is what's at its foot.
+  expect(await popover.evaluate(el => {
+    const box = el.getBoundingClientRect();
+    return el.contains(document.elementFromPoint(box.x + box.width / 2, box.bottom - 4));
+  })).toBe(true);
   expect(await layout()).toEqual(before);
   const more = page.getByRole('button', { name: 'More about Weekday author nights' });
   await more.click();

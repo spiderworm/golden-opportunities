@@ -1,34 +1,38 @@
 import { useEffect, useState } from "react";
-import { data, Link, redirect, useFetcher, useNavigate, type ShouldRevalidateFunctionArgs } from "react-router";
+import { data, Link, redirect, useFetcher, useLoaderData, useNavigate, type ShouldRevalidateFunctionArgs } from "react-router";
 
-import { getPlan, submitPlan } from "~/game/game.server";
+import { currentQuarter, getPlan, getQ2Candidates, submitPlan, submitQ2Plan } from "~/game/game.server";
+import type { QuarterId } from "~/game/quarters";
 import { planOf } from "~/simulation/plan";
-import { MAX_LEVERS, type LeverId, type Plan } from "~/simulation/types";
+import { MAX_LEVERS, type LeverId, type Plan, type Q2LeverId, type Q2Plan } from "~/simulation/types";
 import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
 import { BossBriefing } from "~/platform/bosses/BossBriefing";
 import { BossBanner } from "~/platform/bosses/BossLayout";
-import type { BossId } from "~/platform/bosses/bosses";
 import { FactText } from "~/platform/bosses/facts";
-import type { FocusHow, SceneMode } from "~/platform/bosses/useBossFocus";
-import { DECIDE_COPY as COPY, MOVES, type BriefingBubble } from "./copy";
-import { PlanRefused, readPlan } from "./read-plan.server";
+import { DECIDE_COPY as COPY, MOVES } from "./copy";
+import { MoveCard, useMoreLine } from "./MoveCard";
+import { onBubbleFocused, PlayOut, sceneOf } from "./PlanParts";
+import { PlanQ2 } from "./PlanQ2";
+import { PlanRefused, readPlan, readQ2Plan } from "./read-plan.server";
 import styles from "./Decide.module.css";
 
 export const handle: ShellHandle = { title: "Decisions", standingOrder: false, bleed: true };
 
-const MONTH_MS = 900;
 
-export function meta({}: Route.MetaArgs) {
-  return [{ title: "Plan for Q1 2194 | Orbital Books" }];
+export function meta({ loaderData }: Route.MetaArgs) {
+  return [{ title: `Plan for ${loaderData?.quarter === "2194-Q2" ? "Q2" : "Q1"} 2194 | Orbital Books` }];
 }
 
 export function loader({ request }: Route.LoaderArgs) {
-  // One plan per quarter: once it's in, the results are what's left to see.
-  if (getPlan(request)) throw redirect("/result");
-  return null;
+  // One plan per quarter: once the last one's in, the results are what's left to see.
+  const quarter = currentQuarter(request);
+  if (!quarter) throw redirect("/result");
+  if (quarter === "2194-Q1") return { quarter };
+  // Q2's picker: every edition sold in 2193 (Sim's list, by title then format), with only what's printed on it.
+  return { quarter, candidates: getQ2Candidates() };
 }
 
 // After submitting, the loader would redirect straight to the results; the
@@ -38,7 +42,7 @@ export function shouldRevalidate({ formMethod, defaultShouldRevalidate }: Should
 }
 
 /** For analytics: the moves by name, a fixed vocabulary ("repick+events", "hold"). */
-const planLabel = (levers: readonly LeverId[]) => levers.join("+") || "hold";
+const planLabel = (levers: readonly (LeverId | Q2LeverId)[]) => levers.join("+") || "hold";
 
 /** Whether the save holds a plan, asked again after a refusal; false if the save can't be read. */
 function hasPlan(request: Request): boolean {
@@ -50,6 +54,18 @@ function hasPlan(request: Request): boolean {
 }
 
 export async function action({ request }: Route.ActionArgs) {
+  let quarter: QuarterId | null;
+  try {
+    quarter = currentQuarter(request);
+  } catch (error) {
+    if (error instanceof Response) return data({ ok: false as const, played: false }, { status: error.status });
+    throw error;
+  }
+  if (quarter === "2194-Q2") return actionQ2(request);
+  return actionQ1(request);
+}
+
+async function actionQ1(request: Request) {
   let plan: Plan;
   try {
     plan = await readPlan(request);
@@ -67,21 +83,61 @@ export async function action({ request }: Route.ActionArgs) {
     if (error instanceof Response) return data({ ok: false as const, played: hasPlan(request) }, { status: error.status });
     throw error;
   }
-  trackServer("plan_submitted", { levers: planLabel(plan.levers), moves: plan.levers.length });
+  trackServer("plan_submitted", { quarter: "2194-Q1", levers: planLabel(plan.levers), moves: plan.levers.length });
+  return { ok: true as const };
+}
+
+/** Whether Q2's plan is in, asked again after a refusal; false if the save can't be read. */
+function q2Played(request: Request): boolean {
+  try {
+    return currentQuarter(request) !== "2194-Q2";
+  } catch {
+    return false;
+  }
+}
+
+type Q2Problem = "shape" | "unknown-edition" | "same-title";
+
+async function actionQ2(request: Request) {
+  let plan: Q2Plan;
+  try {
+    plan = await readQ2Plan(request);
+  } catch (error) {
+    if (error instanceof PlanRefused) return data({ ok: false as const, played: false, problem: "shape" as const }, { status: error.status });
+    throw error;
+  }
+  try {
+    submitQ2Plan(request, plan);
+  } catch (error) {
+    // A plan the engine refuses (an edition not sold in 2193, one title twice) is a 400 naming why (Frank's
+    // game state, from Sim's q2PlanProblem); otherwise as Q1: a lost race, a busy save, storage trouble.
+    if (error instanceof Response && error.status === 400) {
+      const { problem } = (await error.json().catch(() => ({}))) as { problem?: Q2Problem };
+      return data({ ok: false as const, played: false, problem: problem ?? ("shape" as const) }, { status: 400 });
+    }
+    if (error instanceof Response) return data({ ok: false as const, played: q2Played(request) }, { status: error.status });
+    throw error;
+  }
+  const picks = plan.picks.filter(Boolean).length;
+  trackServer("plan_submitted", { quarter: "2194-Q2", levers: planLabel(plan.levers), moves: plan.levers.length, picks });
   return { ok: true as const };
 }
 
 type Step = "choose" | "confirm" | "playing";
 
 export default function Decide() {
+  // Without a loader (the unit tests' stub), it's Q1's plan.
+  const loaded = useLoaderData<typeof loader>() as Awaited<ReturnType<typeof loader>> | undefined;
+  return loaded?.quarter === "2194-Q2" ? <PlanQ2 candidates={loaded.candidates} /> : <PlanQ1 />;
+}
+
+/** The plan for Q1 2194 (m1-copy section 3): up to two of three moves, on the bosses' requisition form. */
+function PlanQ1() {
   const [chosen, setChosen] = useState<LeverId[]>([]);
   const [tooMany, setTooMany] = useState(false);
   const [refused, setRefused] = useState(false);
   const [step, setStep] = useState<Step>("choose");
-  // The move whose full line shows over the scene: peeked by hover or focus, or pinned by its "more" button.
-  const [more, setMore] = useState<{ id: LeverId; pinned: boolean } | null>(null);
-  const peek = (id: LeverId) => setMore((m) => (m?.pinned ? m : { id, pinned: false }));
-  const unpeek = (id: LeverId) => setMore((m) => (m && m.id === id && !m.pinned ? null : m));
+  const line = useMoreLine();
   // In LEVER_IDS order, whatever order they were ticked in.
   const plan = planOf(chosen) ?? { levers: [] };
   const chosenMoves = MOVES.filter((m) => plan.levers.includes(m.id));
@@ -132,64 +188,9 @@ export default function Decide() {
               <FactText line={COPY.rule} />
             </p>
             <div className={styles.options}>
-              {MOVES.map((m, i) => {
-                const selected = chosen.includes(m.id);
-                return (
-                  <div
-                    key={m.id}
-                    className={styles.option}
-                    data-selected={selected || undefined}
-                    data-more={more?.id === m.id || undefined}
-                    onMouseEnter={() => peek(m.id)}
-                    onMouseLeave={() => unpeek(m.id)}
-                    onFocus={() => peek(m.id)}
-                    onBlur={(event) => !event.currentTarget.contains(event.relatedTarget as Node | null) && setMore(null)}
-                    onKeyDown={(event) => event.key === "Escape" && more && (event.stopPropagation(), setMore(null))}
-                  >
-                    <span className={styles.itemNumber} aria-hidden="true">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <label className={styles.optionLabel}>
-                      <input
-                        type="checkbox"
-                        name="levers"
-                        value={m.id}
-                        checked={selected}
-                        onChange={() => toggle(m.id)}
-                        aria-describedby={`move-line-${m.id}`}
-                      />
-                      <span className={styles.optionTitle}>{m.title}</span>
-                      {m.figure && <span className={styles.optionFigure}>{m.figure}</span>}
-                    </label>
-                    {/* The whole line, clamped to two at rest; it describes the checkbox, so screen readers get all of it. */}
-                    <p id={`move-line-${m.id}`} className={styles.optionLine}>
-                      {m.line}
-                    </p>
-                    <button
-                      type="button"
-                      className={styles.more}
-                      aria-expanded={more?.id === m.id && more.pinned}
-                      aria-controls={`move-more-${m.id}`}
-                      onClick={() => setMore(more?.id === m.id && more.pinned ? null : { id: m.id, pinned: true })}
-                    >
-                      {more?.id === m.id && more.pinned ? COPY.less : COPY.more}
-                      {/* Its name starts with what it says ("More about ..."), so voice control can use it (WCAG 2.5.3). */}
-                      <span className={styles.visuallyHidden}>
-                        {" "}
-                        {COPY.moreAbout} {m.title}
-                      </span>
-                    </button>
-                    {/* The full line over the scene on hover, focus or a tap on "more": it overlays, so nothing moves. */}
-                    <div id={`move-more-${m.id}`} className={styles.popover} aria-hidden="true">
-                      {m.line}
-                    </div>
-                    {/* The bosses' stamp on a chosen move: its space is always kept, so stamping moves nothing. */}
-                    <span className={styles.stamp} aria-hidden="true">
-                      {COPY.form.stamp}
-                    </span>
-                  </div>
-                );
-              })}
+              {MOVES.map((m, i) => (
+                <MoveCard key={m.id} move={m} number={i + 1} selected={chosen.includes(m.id)} onToggle={() => toggle(m.id)} line={line} />
+              ))}
             </div>
             <div className={styles.formFoot}>
               <div className={styles.formNotes}>
@@ -262,7 +263,7 @@ export default function Decide() {
           )}
       {step === "playing" && (
         <div className={styles.cover}>
-          <PlayOut done={fetcher.state === "idle" && fetcher.data?.ok === true} />
+          <PlayOut lines={COPY.playing} done={fetcher.state === "idle" && fetcher.data?.ok === true} />
         </div>
       )}
     </div>
@@ -273,67 +274,11 @@ export default function Decide() {
       {/* The brief, from the bosses together (m1-copy section 3), and the plan, in one scene. */}
       <section className={styles.briefing} aria-labelledby="plan-heading">
         <BossBanner.Provider value={{ heading, form }}>
-          <BossBriefing bubbles={SCENE} onFocus={onBubbleFocused} />
+          <BossBriefing bubbles={Q1_SCENE} onFocus={onBubbleFocused} />
         </BossBanner.Provider>
       </section>
     </div>
   );
 }
 
-/** The scene's bubbles, in Plot's order: teaser, full line and fact strip for each boss. */
-const SCENE = COPY.briefing.map((b) => ({ boss: b.boss, teaser: b.teaser, line: b.line, facts: <Facts bubble={b} /> }));
-
-function onBubbleFocused(boss: BossId, how: FocusHow, mode: SceneMode) {
-  track("bubble_focused", { boss, how, mode });
-}
-
-/** A bubble's fact strip: its sentence, with the key figures in bold, and the survey drone's scheduled picks. */
-function Facts({ bubble }: { bubble: BriefingBubble }) {
-  return (
-    <>
-      <p>
-        <FactText line={bubble.facts} />
-      </p>
-      {bubble.picks && (
-        <ul>
-          {COPY.scheduled.map((pick) => (
-            <li key={pick.month}>
-              <strong>{pick.month}</strong> <cite className={styles.bookTitle}>{pick.title}</cite> ({pick.format})
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
-  );
-}
-
-/** January... February... March..., then the quarter closes and the results open. */
-function PlayOut({ done }: { done: boolean }) {
-  const [shown, setShown] = useState(1);
-  const navigate = useNavigate();
-  const lines = [...COPY.playing, COPY.closed];
-  const closed = shown >= lines.length;
-
-  useEffect(() => {
-    if (shown < COPY.playing.length || (shown === COPY.playing.length && done)) {
-      const timer = setTimeout(() => setShown(shown + 1), MONTH_MS);
-      return () => clearTimeout(timer);
-    }
-  }, [shown, done]);
-
-  useEffect(() => {
-    if (!closed) return;
-    const timer = setTimeout(() => navigate("/result"), MONTH_MS);
-    return () => clearTimeout(timer);
-  }, [closed, navigate]);
-
-  return (
-    <div className={styles.playout} role="status" aria-live="polite">
-      {lines.slice(0, shown).map((line, i) => (
-        <p key={line} className={i === lines.length - 1 ? styles.closed : styles.month}>
-          {line}
-        </p>
-      ))}
-    </div>
-  );
-}
+const Q1_SCENE = sceneOf(COPY.briefing);
