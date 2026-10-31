@@ -1,8 +1,8 @@
 // The music's Web Audio context, as Pizza gives it one. Through it the player
-// sets its level with a gain node, so the player's saved volume holds from the
-// first note. Without one, the studio package leaves its <audio> at full
-// volume until the slider moves (Audit on #65). Made only when the player
-// first plays, which is on a tap or key press, so no sound starts before one.
+// sets its level with a gain node, smoothly as the slider moves, and a game
+// could add its own effects after it. Made only when the player first plays,
+// which is on a tap or key press, so no sound starts before one. Without Web
+// Audio the player falls back to the <audio> element's own volume.
 
 let context: AudioContext | null | undefined;
 
