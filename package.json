@@ -17,6 +17,8 @@
     "@react-router/serve": "8.5.1",
     "@react-three/drei": "10.7.9",
     "@react-three/fiber": "9.8.2",
+    "@recast-navigation/core": "0.43.1",
+    "@recast-navigation/generators": "0.43.1",
     "@tellim/analytics": "file:packages/analytics",
     "@tellim/music": "file:packages/music",
     "echarts": "6.1.0",
