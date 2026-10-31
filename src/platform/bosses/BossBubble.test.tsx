@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { BossAvatar, BossBubble } from "./BossBubble";
@@ -36,5 +37,13 @@ describe("BossBubble", () => {
     expect(Object.keys(BOSSES).sort()).toEqual(["culture", "happiness", "overall", "profit", "readers"]);
     const bosses = Object.values(BOSSES);
     expect(new Set(bosses.map((b) => b.tint)).size).toBe(bosses.length);
+  });
+
+  it("gives every boss its own portrait, and each portrait is in public/bosses/", () => {
+    for (const [id, boss] of Object.entries(BOSSES)) {
+      expect(boss.portrait).toBe(`/bosses/${id}.webp`);
+      expect(existsSync(`public${boss.portrait}`)).toBe(true);
+    }
+    expect(renderToString(<BossBubble boss="culture">CULTURE IS EXPENSIVE.</BossBubble>)).toContain('<img src="/bosses/culture.webp" alt=""');
   });
 });
