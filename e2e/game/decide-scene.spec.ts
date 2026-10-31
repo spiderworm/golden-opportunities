@@ -81,7 +81,7 @@ test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
     bubbles: [...document.querySelectorAll('[data-tag]')].map(el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }),
     form: (({ x, y, width, height }) => [x, y, width, height])((document.querySelector('fieldset') as HTMLElement).getBoundingClientRect()),
   }));
-  // Nor does any boss reach into a neighbour's column, the open one stepping forward included (David's rule):
+  // Nor does any boss reach into a neighbour's column, the open one stepping forward included (Goldy's ruling, 31 Oct):
   // each cutout's drawn picture, inside its contained image, lies within its tag's column.
   const overreach = () => page.evaluate(() => {
     const columns = [...document.querySelectorAll('[data-tag]')].map(tag => tag.closest('li')!.getBoundingClientRect());
@@ -169,7 +169,7 @@ test('in 3D, a robot opens its bubble when clicked, and opening bubbles moves no
   await page.waitForTimeout(800); // the scene's entrance
   const before = await layout();
 
-  // No boss reaches into a neighbour's column (David's rule, as in 2D): each one's span on the page lies
+  // No boss reaches into a neighbour's column (Goldy's ruling, as in 2D): each one's span on the page lies
   // within its tag's column.
   const spans = await page.evaluate(() => {
     const stage = document.querySelector<HTMLElement>('[data-robots]')!;
