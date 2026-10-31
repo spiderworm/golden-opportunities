@@ -2,69 +2,40 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import {
   AdditiveBlending,
-  CapsuleGeometry,
-  Color,
-  ConeGeometry,
-  CylinderGeometry,
   DoubleSide,
   MeshBasicMaterial,
   MeshStandardMaterial,
   Object3D,
-  RepeatWrapping,
-  SphereGeometry,
   SpriteMaterial,
-  TorusGeometry,
+  Vector3,
   type BufferGeometry,
   type InstancedMesh,
+  type Mesh,
   type Sprite,
 } from "three";
 
 import { box, merged } from "./geometry";
 import { BERTH_ORIGIN, RING_RADIUS, RING_TUBE, ROOM, WINDOW } from "./layout";
-import { glowTexture, signTexture, solarTexture } from "./textures";
+import { selfLit, useModelParts } from "./models";
+import { glowTexture, signTexture } from "./textures";
 import { MAX_SHUTTLES } from "../scene-params";
 
-// The station from outside: a hub, four spokes, a ring of modules and the
-// bookstore's berth on the rim. Static pieces that share a material are
-// merged, so the whole hull is a handful of draw calls.
+// The station from outside: the generated station model (hub, spokes and a
+// ring of modules), and the bookstore's berth on the rim, built here so its
+// window opens onto the real shop inside.
+
+/**
+ * Fitting the station model (a unit across, standing on y = 0) to the scene:
+ * its ring's outer edge at the ring's radius, the ring's middle at y = 0, and
+ * turned so a gap between its pods faces the berth.
+ */
+const STATION_MODEL = { scale: (RING_RADIUS + RING_TUBE) / 0.49, ringHeight: 0.31, turn: 0 };
 
 const HALF_W = ROOM.width / 2;
 const HALF_D = ROOM.depth / 2;
 const WALL = 0.3;
-/** Angles (around the ring) of the other modules, leaving the berth's own spot (0) clear. */
-const MODULE_ANGLES = Array.from({ length: 16 }, (_, i) => (i + 0.5) * ((2 * Math.PI) / 16)).filter(
-  (a) => Math.min(a, 2 * Math.PI - a) > 0.25,
-);
-const SPOKE_ANGLES = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
-
-/** Places a piece at an angle round the ring, `out` beyond its center line. */
-function onRing(piece: BufferGeometry, angle: number, out: number): BufferGeometry {
-  return piece.translate(0, 0, RING_RADIUS + out).rotateY(angle);
-}
-
-function hullGeometry(): BufferGeometry {
+function berthGeometry(): BufferGeometry {
   const pieces: BufferGeometry[] = [];
-  // Hub, its end caps and a docking collar.
-  pieces.push(new CylinderGeometry(10, 10, 26, 40));
-  pieces.push(new ConeGeometry(10, 8, 40).translate(0, 17, 0));
-  pieces.push(new ConeGeometry(10, 8, 40).rotateX(Math.PI).translate(0, -17, 0));
-  pieces.push(new CylinderGeometry(3, 3, 14, 20).translate(0, 26, 0));
-  pieces.push(new TorusGeometry(5.5, 1, 12, 32).rotateX(Math.PI / 2).translate(0, 31, 0));
-  pieces.push(new CylinderGeometry(0.4, 0.4, 20, 8).translate(0, -28, 0));
-  // The ring, its rails, and the spokes out to it.
-  pieces.push(new TorusGeometry(RING_RADIUS, RING_TUBE, 20, 180).rotateX(Math.PI / 2));
-  pieces.push(new TorusGeometry(RING_RADIUS, 0.6, 6, 180).rotateX(Math.PI / 2).translate(0, 4.6, 0));
-  pieces.push(new TorusGeometry(RING_RADIUS, 0.6, 6, 180).rotateX(Math.PI / 2).translate(0, -4.6, 0));
-  for (const a of SPOKE_ANGLES) {
-    pieces.push(new CylinderGeometry(1.6, 1.6, RING_RADIUS - 10, 12).rotateX(Math.PI / 2).translate(0, 0, (RING_RADIUS + 10) / 2).rotateY(a));
-    pieces.push(new CylinderGeometry(0.5, 0.5, RING_RADIUS - 10, 6).rotateX(Math.PI / 2).translate(0, 5, (RING_RADIUS + 10) / 2).rotateY(a));
-  }
-  // The other modules on the rim, each a pod with a roof fin.
-  MODULE_ANGLES.forEach((a, i) => {
-    const w = i % 3 === 0 ? 14 : 10;
-    pieces.push(onRing(box(0, 0, 0, w, 6, 7), a, RING_TUBE + 2.5));
-    pieces.push(onRing(box(0, 3.6, -1, w * 0.6, 1.2, 3), a, RING_TUBE + 2.5));
-  });
   // The berth's shell, with an opening for the window.
   const berth: BufferGeometry[] = [
     box(0, -WALL / 2, 0, ROOM.width + 2 * WALL, WALL, ROOM.depth + 2 * WALL),
@@ -89,70 +60,21 @@ function hullGeometry(): BufferGeometry {
   return merged(pieces);
 }
 
-/** Lit windows: strips on every module and portholes along the ring. */
-function windowsGeometry(): BufferGeometry {
-  const pieces: BufferGeometry[] = [];
-  MODULE_ANGLES.forEach((a, i) => {
-    const w = i % 3 === 0 ? 14 : 10;
-    pieces.push(onRing(box(0, 0.6, 3.52, w * 0.8, 1.1, 0.1), a, RING_TUBE + 2.5));
-  });
-  for (let i = 0; i < 72; i++) {
-    const a = (i / 72) * 2 * Math.PI;
-    if (Math.min(a, 2 * Math.PI - a) < 0.12) continue;
-    pieces.push(onRing(box(0, 1.2, 0, 1.2, 0.8, 0.4), a, RING_TUBE - 0.9));
-  }
-  for (let i = 0; i < 10; i++) pieces.push(box(0, -8 + i * 2.2, 0, 1.2, 0.7, 20.4).rotateY((i * Math.PI) / 5));
-  return merged(pieces);
-}
-
-function solarGeometry(): BufferGeometry {
-  const pieces: BufferGeometry[] = [];
-  for (const side of [-1, 1]) {
-    pieces.push(box(side * 32, 24, 0, 40, 0.3, 12));
-    pieces.push(box(side * 32, -24, 0, 40, 0.3, 12));
-  }
-  return merged(pieces);
-}
-
-function trussGeometry(): BufferGeometry {
-  return merged([box(0, 24, 0, 104, 0.8, 0.8), box(0, -24, 0, 104, 0.8, 0.8)]);
-}
-
-/** Red and green lights on the ring's rim and the hub's mast. */
-function navLightsGeometry(): BufferGeometry {
-  const pieces: BufferGeometry[] = [];
-  for (let i = 0; i < 8; i++) pieces.push(onRing(new SphereGeometry(0.7, 8, 6).translate(0, 5.2, 0), (i / 8) * 2 * Math.PI + 0.2, 0));
-  pieces.push(new SphereGeometry(0.8, 8, 6).translate(0, 38, 0));
-  pieces.push(new SphereGeometry(0.8, 8, 6).translate(0, -38, 0));
-  return merged(pieces);
-}
-
 export function Exterior({ glow }: { glow: number }) {
   const parts = useMemo(
-    () => ({
-      hull: hullGeometry(),
-      windows: windowsGeometry(),
-      solar: solarGeometry(),
-      truss: trussGeometry(),
-      nav: navLightsGeometry(),
-    }),
+    () => ({ berth: berthGeometry() }),
     [],
   );
+  const station = useModelParts("station-exterior");
   const materials = useMemo(() => {
-    const solar = solarTexture();
-    solar.repeat.set(6, 2);
-    solar.wrapS = solar.wrapT = RepeatWrapping;
     return {
       hull: new MeshStandardMaterial({ color: "#c9cedd", metalness: 0.25, roughness: 0.5 }),
-      windows: new MeshBasicMaterial({ color: new Color("#ffd59a").multiplyScalar(1.6), toneMapped: false }),
-      solar: new MeshStandardMaterial({ map: solar, color: "#9fb4ff", metalness: 0.7, roughness: 0.25, emissive: "#0c1a45" }),
-      truss: new MeshStandardMaterial({ color: "#7d8398", metalness: 0.6, roughness: 0.5 }),
-      nav: new MeshBasicMaterial({ color: "#ff4d6a", toneMapped: false }),
+      station: selfLit(station.material, 0.12),
       sign: new MeshBasicMaterial({ map: signTexture(), toneMapped: false, side: DoubleSide }),
       beacon: new SpriteMaterial({ map: glowTexture(), color: "#a99fff", blending: AdditiveBlending, depthWrite: false, toneMapped: false }),
       glass: new MeshStandardMaterial({ color: "#9fc4ff", transparent: true, opacity: 0.08, roughness: 0.05, metalness: 0.2, depthWrite: false }),
     };
-  }, []);
+  }, [station]);
 
   useEffect(
     () => () => {
@@ -165,26 +87,38 @@ export function Exterior({ glow }: { glow: number }) {
     [parts, materials],
   );
 
-  // The sign follows the shop's busyness; the nav lights blink.
+  // The sign follows the shop's busyness.
   useEffect(() => {
     materials.sign.color.setScalar(0.6 + 0.9 * glow);
   }, [glow, materials]);
   const beacon = useRef<Sprite>(null);
-  useFrame(({ clock }) => {
+  const hull = useRef<Mesh>(null);
+  const eye = useMemo(() => new Vector3(), []);
+  useFrame(({ clock, camera }) => {
+    // From inside the shop the station's hull is all behind the walls (the
+    // window looks away from the ring), and drawing it there tripled frame
+    // times on software rendering; it's hidden while the camera is in the shop.
+    const station = hull.current;
+    if (station?.parent) {
+      station.parent.worldToLocal(eye.copy(camera.position)).sub(BERTH_ORIGIN);
+      station.visible = !(Math.abs(eye.x) < HALF_W && eye.y > 0 && eye.y < ROOM.height && Math.abs(eye.z) < HALF_D);
+    }
     // The berth's beacon pulses slowly, so the shop can be found from anywhere outside.
     beacon.current?.scale.setScalar(12 + 4 * Math.sin(clock.elapsedTime * 1.6));
-    const blink = Math.sin(clock.elapsedTime * 3) > 0.6 ? 1.8 : 0.15;
-    materials.nav.color.setRGB(blink, blink * 0.3, blink * 0.42);
   });
 
   const front = ROOM.depth / 2 + WALL / 2;
   return (
     <>
-      <mesh geometry={parts.hull} material={materials.hull} />
-      <mesh geometry={parts.windows} material={materials.windows} />
-      <mesh geometry={parts.solar} material={materials.solar} />
-      <mesh geometry={parts.truss} material={materials.truss} />
-      <mesh geometry={parts.nav} material={materials.nav} />
+      <mesh
+        ref={hull}
+        geometry={station.geometry}
+        material={materials.station}
+        position={[0, -STATION_MODEL.ringHeight * STATION_MODEL.scale, 0]}
+        rotation={[0, STATION_MODEL.turn, 0]}
+        scale={STATION_MODEL.scale}
+      />
+      <mesh geometry={parts.berth} material={materials.hull} />
       <group position={BERTH_ORIGIN}>
         <mesh position={[0, ROOM.height + 1.2, ROOM.depth / 2 - 0.3]} material={materials.sign}>
           <planeGeometry args={[8.4, 1.3]} />
@@ -198,17 +132,20 @@ export function Exterior({ glow }: { glow: number }) {
   );
 }
 
+const SHUTTLE_SCALE = 7;
+
 /** Shuttles circling the station, more of them when the shop is busy. They fly in world space. */
 export function Shuttles({ count }: { count: number }) {
   const ref = useRef<InstancedMesh>(null);
-  const { geometry, material } = useMemo(() => {
-    const body = new CapsuleGeometry(1.1, 4, 4, 10).rotateX(Math.PI / 2);
-    const wings = box(0, 0, 0.8, 5, 0.25, 1.6);
-    return {
-      geometry: merged([body, wings]),
-      material: new MeshStandardMaterial({ color: "#e8ebf5", metalness: 0.4, roughness: 0.35, emissive: "#3a2f8f", emissiveIntensity: 0.4 }),
-    };
-  }, []);
+  const model = useModelParts("shuttle");
+  const { geometry, material } = useMemo(
+    () => ({
+      // About six and a half meters nose to tail, centered on its flight path.
+      geometry: model.geometry.clone().translate(0, -0.21, 0).scale(SHUTTLE_SCALE, SHUTTLE_SCALE, SHUTTLE_SCALE),
+      material: selfLit(model.material, 0.25),
+    }),
+    [model],
+  );
   const orbits = useMemo(
     () =>
       Array.from({ length: MAX_SHUTTLES }, (_, i) => ({

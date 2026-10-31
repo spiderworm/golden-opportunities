@@ -1,11 +1,33 @@
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useLoader } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import { AdditiveBlending, BackSide, BufferAttribute, BufferGeometry, Color, ShaderMaterial, type Mesh } from "three";
+import {
+  AdditiveBlending,
+  BackSide,
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  MeshBasicMaterial,
+  ShaderMaterial,
+  SRGBColorSpace,
+  TextureLoader,
+  type Mesh,
+  type Texture,
+} from "three";
 
 import { PLANET_POSITION, PLANET_RADIUS, SUN_DIRECTION } from "./layout";
 
 // Everything far away: the planet, its atmosphere, the sun and the stars.
-// All procedural (shaders), so none of it costs a download.
+// The planet's day and night maps and the starfield behind the stars are
+// pictures from Gemini (public/textures/station/, provenance.json); its
+// clouds, atmosphere, the sun and the stars themselves are shaders.
+
+const TEXTURES = ["planet-day", "planet-night", "starfield"].map((name) => `/textures/station/${name}.jpg`);
+
+/** Equirectangular maps, wrapped once round a sphere by its own UVs (so mipmaps leave no seam). */
+function prepare(texture: Texture): Texture {
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
 
 const NOISE = /* glsl */ `
   float hash(vec3 p) {
@@ -34,17 +56,19 @@ const NOISE = /* glsl */ `
   }
 `;
 
-function Planet() {
+function Planet({ day, night }: { day: Texture; night: Texture }) {
   const surface = useRef<Mesh>(null);
   const material = useMemo(
     () =>
       new ShaderMaterial({
-        uniforms: { sun: { value: SUN_DIRECTION.clone() }, time: { value: 0 } },
+        uniforms: { sun: { value: SUN_DIRECTION.clone() }, time: { value: 0 }, dayMap: { value: prepare(day) }, nightMap: { value: prepare(night) } },
         vertexShader: /* glsl */ `
           varying vec3 vLocal;
           varying vec3 vNormal;
+          varying vec2 vUv;
           void main() {
             vLocal = position;
+            vUv = uv;
             vNormal = normalize(mat3(modelMatrix) * normal);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
@@ -52,18 +76,16 @@ function Planet() {
         fragmentShader: /* glsl */ `
           uniform vec3 sun;
           uniform float time;
+          uniform sampler2D dayMap;
+          uniform sampler2D nightMap;
           varying vec3 vLocal;
           varying vec3 vNormal;
+          varying vec2 vUv;
           ${NOISE}
           void main() {
             vec3 p = normalize(vLocal);
-            float land = fbm(p * 2.6 + 4.0);
-            float detail = fbm(p * 11.0);
-            vec3 ocean = mix(vec3(0.03, 0.10, 0.26), vec3(0.06, 0.28, 0.42), detail);
-            vec3 ground = mix(vec3(0.20, 0.32, 0.18), vec3(0.52, 0.42, 0.30), detail);
-            ground = mix(ground, vec3(0.86, 0.88, 0.92), smoothstep(0.78, 0.92, abs(p.y)));
-            float isLand = smoothstep(0.52, 0.55, land);
-            vec3 color = mix(ocean, ground, isLand);
+            vec2 uv = vUv;
+            vec3 color = texture2D(dayMap, uv).rgb;
             // Clouds drift with time against the turning surface.
             float c = fbm(p * 4.0 + vec3(time * 0.004, 0.0, time * 0.002));
             float clouds = smoothstep(0.5, 0.75, c);
@@ -71,14 +93,16 @@ function Planet() {
             float light = dot(normalize(vNormal), sun);
             float day = smoothstep(-0.08, 0.25, light);
             vec3 lit = color * (0.06 + 1.15 * max(light, 0.0));
-            // City lights on the night side's land.
-            float cities = isLand * (1.0 - clouds) * smoothstep(0.62, 0.72, fbm(p * 38.0)) * (1.0 - day);
-            gl_FragColor = vec4(lit + vec3(1.0, 0.72, 0.38) * cities * 0.9, 1.0);
+            // City lights from the night map (only its warm lights, not its grey ice or blue sea),
+            // on the night side, under the clouds.
+            vec3 night = texture2D(nightMap, uv).rgb;
+            vec3 cities = min(night * smoothstep(0.08, 0.3, night.r - night.b), vec3(0.28)) * (1.0 - clouds) * (1.0 - day);
+            gl_FragColor = vec4(lit + cities, 1.0);
             #include <colorspace_fragment>
           }
         `,
       }),
-    [],
+    [day, night],
   );
   const atmosphere = useMemo(
     () =>
@@ -192,6 +216,19 @@ function Stars() {
   return <points geometry={geometry} material={material} frustumCulled={false} />;
 }
 
+/** Gemini's nebula (its stars filtered out), faint, on a sphere beyond the point stars. */
+function Nebula({ map }: { map: Texture }) {
+  const material = useMemo(
+    () => new MeshBasicMaterial({ map: prepare(map), side: BackSide, depthWrite: false, color: new Color(0.55, 0.55, 0.6), toneMapped: false }),
+    [map],
+  );
+  return (
+    <mesh material={material} frustumCulled={false} renderOrder={-1}>
+      <sphereGeometry args={[7000, 48, 24]} />
+    </mesh>
+  );
+}
+
 /** A soft glow where the sun is; it follows the camera so it never gets closer. */
 function Sun() {
   const ref = useRef<Mesh>(null);
@@ -233,11 +270,13 @@ function Sun() {
 }
 
 export function Sky() {
+  const [day, night, starfield] = useLoader(TextureLoader, TEXTURES);
   return (
     <>
+      <Nebula map={starfield!} />
       <Stars />
       <Sun />
-      <Planet />
+      <Planet day={day!} night={night!} />
     </>
   );
 }

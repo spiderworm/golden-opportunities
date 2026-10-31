@@ -20,8 +20,9 @@ const FACING: Record<Placement["model"], number> = { armchair: 90, globe: 0, hou
 const PLACEMENTS: Placement[] = [
   { model: "armchair", height: 1.05, position: [-6.3, 0, 4.1], turn: 2.4 },
   { model: "armchair", height: 1.05, position: [-5.0, 0, 2.3], turn: 0.4 },
-  { model: "globe", height: 0.5, position: [4.0, 1.06, 1.0], turn: -0.6 },
-  { model: "hourglass", height: 0.32, position: [4.05, 1.06, 0.15], turn: 0 },
+  // Along the counter, clear of its register terminal (the +z end) and the console.
+  { model: "globe", height: 0.5, position: [4.05, 1.06, 0.55], turn: -0.6 },
+  { model: "hourglass", height: 0.32, position: [4.0, 1.06, 0.0], turn: 0 },
   { model: "rocket", height: 1.3, position: [4.6, 0.7, 4.4], turn: -0.5 },
 ];
 
