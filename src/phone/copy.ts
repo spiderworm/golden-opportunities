@@ -6,4 +6,6 @@ export const PHONE_COPY = {
   fact: "Orbital Books needs a laptop or desktop computer. Open this page on one to play.",
   /** The scene's accessible name. */
   scene: "A robot reaches out of the screen and grabs your phone.",
+  /** The still picture's (no WebGL 2, a failed scene, or the 3D code still loading): it stands, it doesn't grab. */
+  still: "A robot glares at your phone.",
 } as const;

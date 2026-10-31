@@ -26,11 +26,12 @@ describe("the phone screen", () => {
 
   it("serves the boss's words, the plain fact and the scene's name before any script runs", () => {
     const html = renderToString(<PhoneScreen active={false} />);
-    expect(html).toContain(`role="img" aria-label="${PHONE_COPY.scene}"`);
+    // The still picture is what's there until a 3D scene draws, so it's the still picture's name.
+    expect(html).toContain(`role="img" aria-label="${PHONE_COPY.still}"`);
     expect(html).toContain(PHONE_COPY.line);
     expect(html).toContain(`>${PHONE_COPY.fact}</p>`);
     // Without the scene, the Subcommittee stands there in full, saying it already.
-    expect(html).toContain('<img src="/bosses/full/readers.webp" alt=""');
+    expect(html).toContain('<img src="/bosses/full/readers.webp" alt="" loading="lazy"');
     expect(html).toMatch(/data-speaking="true"/);
   });
 });

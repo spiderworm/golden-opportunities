@@ -8,14 +8,16 @@ import { createMusic, type Music } from "@tellim/music/player";
 import "@tellim/music/music.css";
 
 import { track } from "~/platform/analytics/analytics.client";
+import { isPhoneScreen } from "~/platform/phone";
 import { musicContext } from "./audio-context";
 import { MANIFEST_URL, parseManifest } from "./manifest";
 
 let loading: Promise<Music | null> | undefined;
 
-/** The music, or null when there are no songs (or no browser). Made once. */
+/** The music, or null when there are no songs (or no browser, or it's a phone). Made once. */
 export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> {
-  if (typeof window === "undefined") return Promise.resolve(null);
+  // No music on a phone (David): it gets the phone screen instead of the game.
+  if (typeof window === "undefined" || isPhoneScreen()) return Promise.resolve(null);
   loading ??= (async () => {
     let manifest;
     try {
