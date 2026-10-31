@@ -75,7 +75,12 @@ function withFilter(filters: Filters): Pick<Query, "filter"> {
   return Object.keys(filters).length ? { filter: filters } : {};
 }
 
-export function investigate(state: InvestigateState, runQuery: RunQuery, view: QueryView): Investigation {
+export function investigate(state: InvestigateState, runQuery: RunQuery, view: QueryView,
+  observe?: (query: Query, result: QueryResult) => void): Investigation {
+  const displayed: { query: Query; result: QueryResult }[] = [];
+  const rendered = (query: Query) => {
+    const result = runQuery(query, view); displayed.push({ query, result }); return result;
+  };
   const run = (query: Query) => runQuery(query, view);
   const option = (dimension: keyof FilterOptions) => values(run({ measure: "units", by: [dimension] }), dimension);
   const options: FilterOptions = {
@@ -93,8 +98,8 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
   );
 
   const chartBy = state.compare ? ([state.by, "quarter"] as const) : ([state.by] as const);
-  const chart = run({ measure: state.measure, by: chartBy, ...withFilter(filtersExcept(state.filters, [state.by])) });
-  const heatmap = run({
+  const chart = rendered({ measure: state.measure, by: chartBy, ...withFilter(filtersExcept(state.filters, [state.by])) });
+  const heatmap = rendered({
     measure: state.measure,
     by: ["weekday", "month"],
     ...withFilter(filtersExcept(state.filters, ["weekday", "month"])),
@@ -104,9 +109,10 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
   const titleView = title
     ? {
         title,
-        result: run({ measure: state.measure, by: ["month"], ...withFilter(filtersExcept(state.filters, ["month"])) }),
+        result: rendered({ measure: state.measure, by: ["month"], ...withFilter(filtersExcept(state.filters, ["month"])) }),
       }
     : null;
 
+  for (const { query, result } of displayed) observe?.(query, result);
   return { tiles, chart, heatmap, titleView, options };
 }

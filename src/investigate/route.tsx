@@ -12,6 +12,7 @@ import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
 import { runQuery } from "~/query/run-query.server";
+import { recordDiscoveries, type ObservedQuery } from "~/game/discoveries.server";
 import { getGameSession } from "~/game/session.server";
 import { getPlan } from "~/game/game.server";
 import {
@@ -41,8 +42,13 @@ export function meta({}: Route.MetaArgs) {
 export function loader({ request }: Route.LoaderArgs) {
   const started = performance.now();
   const state = parseState(new URL(request.url).searchParams);
-  // The server decides what the player can see; Frank's game state will resolve it per save.
-  const investigation = investigate(state, runQuery, getGameSession(request).queryView);
+  const session = getGameSession(request);
+  const observed: ObservedQuery[] = [];
+  const investigation = investigate(state, runQuery, session.queryView, (query, result) => observed.push({ query, result }));
+  // Normalized controls, not an arbitrary URL flag: the default page earns nothing.
+  const intentional = state.measure !== DEFAULT_STATE.measure || state.by !== DEFAULT_STATE.by
+    || state.compare || Object.keys(state.filters).length > 0;
+  if (intentional) recordDiscoveries(session.save, session.queryView, observed);
   trackServer("investigate_loaded", {
     durationMs: Math.round(performance.now() - started),
     measure: state.measure,
