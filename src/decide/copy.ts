@@ -1,10 +1,8 @@
 // The decision screen's words, exactly as Plot wrote them
 // (docs/design/m1-copy.md, section 3). Change them there first.
 import type { BossId } from "~/platform/bosses/bosses";
+import type { FactLine } from "~/platform/bosses/facts";
 import type { LeverId } from "~/simulation/types";
-
-/** A fact strip's sentence: plain text, with the key figures in bold. */
-export type FactLine = (string | { strong: string })[];
 
 export interface BriefingBubble {
   boss: BossId;

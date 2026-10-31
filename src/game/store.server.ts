@@ -25,6 +25,7 @@ function validate(save: GameSave, id: string): void {
     || !Number.isSafeInteger(save.revision) || save.revision < 0
     || (save.queryRevision !== undefined && (!Number.isSafeInteger(save.queryRevision) || save.queryRevision < 0 || save.queryRevision > save.revision))
     || (save.discoveryEvidence !== undefined && !validEvidence(save.discoveryEvidence))
+    || (save.alertSeen !== undefined && save.alertSeen !== true)
     || !Array.isArray(save.discoveries) || save.discoveries.length > 3
     || new Set(save.discoveries).size !== save.discoveries.length
     || !save.discoveries.every(d => ['A', 'B', 'C'].includes(d))

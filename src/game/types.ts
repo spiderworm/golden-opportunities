@@ -15,6 +15,8 @@ export interface GameSave {
   discoveryEvidence?: Record<string, string[]>;
   discoveries: DiscoveryId[];
   played: PlayedQuarter[];
+  /** Set once the player has seen the Commerce Office's opening transmission; absent before, and in older saves. */
+  alertSeen?: true;
   /** Absent until the quarter transaction commits; old unplayed saves remain valid. */
   completion?: { outcomeId: string; outcome: Outcome };
 }

@@ -1,0 +1,115 @@
+/* The transmission: a card over the station, the scene dimmed but still there behind it. */
+.dialog {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  overflow: auto;
+}
+
+.dialog::backdrop {
+  background: rgb(8 11 22 / 0.55);
+}
+
+.card {
+  display: grid;
+  gap: 16px;
+  padding: 22px 24px 24px;
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-down);
+  border-radius: var(--radius-panel);
+  background: var(--color-space);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.5);
+  animation: arrive 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.kicker {
+  margin: 0;
+  color: var(--color-down);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.memo {
+  display: grid;
+  gap: 10px;
+}
+
+/* The letterhead: who, about what, and when. */
+.memoHeader {
+  display: grid;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+}
+
+/* A figure stays on one line. */
+.memo strong {
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.primary:hover {
+  background: var(--color-accent-soft);
+}
+
+.secondary {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.secondary:hover {
+  background: var(--color-panel-raised);
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+@media (max-width: 560px) {
+  .card {
+    padding: 18px 16px 20px;
+  }
+
+  .actions > * {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}
