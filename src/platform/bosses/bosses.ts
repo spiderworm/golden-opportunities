@@ -11,16 +11,16 @@ export interface Boss {
   name: string;
   /** The placeholder's color, and an accent around the portrait. */
   tint: string;
-  /** public/bosses/<id>.webp, 256 px square, once Orbit makes it: one line here swaps out the placeholder. */
+  /** public/bosses/<id>.webp, 256 px square, by Orbit (provenance.json beside them); without one, the placeholder face. */
   portrait?: string;
 }
 
 const [blue, orange, green, amber, pink] = chartTheme.categorical as readonly string[];
 
 export const BOSSES: Record<BossId, Boss> = {
-  profit: { name: "The Commerce Office", tint: green! },
-  readers: { name: "The Throughput Subcommittee", tint: blue! },
-  happiness: { name: "The Readers' Guild survey drone", tint: pink! },
-  culture: { name: "The Ministry of Culture", tint: amber! },
-  overall: { name: "The Station Administrator", tint: orange! },
+  profit: { name: "The Commerce Office", tint: green!, portrait: "/bosses/profit.webp" },
+  readers: { name: "The Throughput Subcommittee", tint: blue!, portrait: "/bosses/readers.webp" },
+  happiness: { name: "The Readers' Guild survey drone", tint: pink!, portrait: "/bosses/happiness.webp" },
+  culture: { name: "The Ministry of Culture", tint: amber!, portrait: "/bosses/culture.webp" },
+  overall: { name: "The Station Administrator", tint: orange!, portrait: "/bosses/overall.webp" },
 };
