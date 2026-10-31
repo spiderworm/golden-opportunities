@@ -55,6 +55,7 @@ test("remember: after a reload it carries on with the same song, and a pause the
 
   const again = createMusic({ key: "r", songs: list, base: "", storage, remember: true });
   assert.equal(again.state().song?.id, playing);
+  assert.equal(again.state().paused, true); // so the dock's play resumes it (a tap won't)
   again.start(); // a tap: but the player paused it
   assert.equal(FakeAudio.made.at(-1)!.src, "");
   assert.equal(JSON.parse(m.get("r.music.session")!).t, 42);
@@ -77,4 +78,12 @@ test("pauseWhenHidden: a hidden page starts no music, unless the game says it ma
   } finally {
     delete (globalThis as any).document;
   }
+});
+
+test("the app's storage, from @tellim/platform, is where its choices are kept", () => {
+  const m = new Map([["cubeberg.music", JSON.stringify({ volume: 0.3 })]]);
+  const storage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  createMusic({ app: { id: "waddleberg", storagePrefix: "cubeberg" }, songs, base: "", storage }).setVolume(0.4);
+  assert.equal(JSON.parse(m.get("cubeberg.music")!).volume, 0.4);
+  assert.throws(() => createMusic({ songs, base: "" }));
 });
