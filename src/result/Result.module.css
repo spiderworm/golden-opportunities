@@ -177,6 +177,14 @@
   line-height: 1.5;
 }
 
+/* The issuer's small print: decorative, so it stays quiet. */
+.issuer {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
 .disclosure {
   margin-top: 18px;
   padding-top: 14px;
