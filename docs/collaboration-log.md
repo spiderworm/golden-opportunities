@@ -97,3 +97,4 @@ Orbit built the Station screen to open outside the station and glide into the sh
   - The picker shows only title, format and price.
   - Q2's best plan grades about B−, below M1's B+, so Q2 is harder.
   - December's 173-copy pick stays in the lift draws.
+  - Still open: whether Alma adds a scripted stretch in Q2, and how the ending is framed ("the first half of 2194", or a pointer to quarters to come).
