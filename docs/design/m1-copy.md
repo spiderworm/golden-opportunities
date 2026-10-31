@@ -53,26 +53,32 @@ These are the strings Chart will apply to the Investigate screen in a follow-up.
 
 ## 3. Decision screen
 
-```
-PLAN FOR Q1 2194
+David's direction: the brief is delivered by the robot bosses in speech bubbles, "giving their feedback, instructions, being all uncaring condescending unintentionally funny robot bosses", and it must stay "simple for the user to understand".
 
-Your bosses grade the quarter on four measures: Profit, Readers served, Happiness and Culture. Each goal is last year's first quarter plus 5%.
+**How the facts stay legible.** Every bubble has two parts:
+- **The boss's line:** capitals, in the same voice as the Result screen's boss lines. This is the joke.
+- **The fact strip:** one plain sentence-case line under the joke, on a lighter panel inside the bubble, with its key figures in bold. A player who reads only the fact strips gets the whole brief. Each fact appears exactly once, in one strip.
 
-Your score is your lowest measure. Raise one measure by sinking another, and your score sinks with it.
+**Layout.** The heading `PLAN FOR Q1 2194`, then the bubbles stacked in the order below, all visible at once (no clicking through). A short staggered fade-in under one second is fine; with reduced motion, there's no animation. Each bubble carries its speaker's name as a caption, plus a portrait once Orbit's portraits exist. Then the moves.
 
-What you need to know
-- Profit is revenue minus what the books cost you.
-- Books cost the store 60% of their list price.
-- An author night costs $200: the author's shuttle fare and the room.
-- Your plan runs from January 1 to March 31.
-- Choose up to two moves, or none to hold course.
+| # | Speaker | Boss's line | Fact strip |
+| --- | --- | --- | --- |
+| 1 | The Station Administrator | `ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. WE HAVE PREPARED REMARKS. THE REMARKS ARE MANDATORY.` | `Your plan runs from **January 1 to March 31, 2194**.` |
+| 2 | The Commerce Office | `WE WILL GRADE YOU ON FOUR MEASURES. WE CONSIDERED THREE. THREE SEEMED LENIENT.` | `You're graded on **Profit, Readers served, Happiness and Culture**. Each goal is **last year's first quarter plus 5%**.` |
+| 3 | The Station Administrator | `YOUR SCORE IS YOUR WEAKEST MEASURE. IF ONE MEASURE FAILS, YOU FAIL. WE CALL THIS TEAMWORK.` | `Your score is your **lowest measure**. Raise one by sinking another, and your score sinks with it.` |
+| 4 | The Commerce Office | `BOOKS ARE NOT FREE. WE CHECKED. TWICE.` | `Profit is revenue minus what the books cost you. Books cost the store **60% of their list price**.` |
+| 5 | The Ministry of Culture | `AUTHORS MAY BE INVITED. AUTHORS REQUIRE A SHUTTLE FARE. CULTURE IS EXPENSIVE. PLEASE PURCHASE SOME ANYWAY.` | `An author night costs **$200**: the author's shuttle fare and the room.` |
+| 6 | The Readers' Guild survey drone | `THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. THE DRONE DOES NOT SPECULATE.` | `Already scheduled, Book of the Month at **15% off** for the whole month: **January** The Mallemaroking (mass market paperback), **February** Rystwyth (hardcover), **March** Portmeirion (mass market paperback).` |
+| 7 | The Throughput Subcommittee | `SELECT UP TO TWO MOVES. SELECTING THREE IS NOT PERMITTED. WE HAVE TESTED THIS PERSONALLY.` | `Choose **up to two** moves below, or none to hold course.` |
 
-Already scheduled by the previous manager
-Book of the Month, 15% off for the whole month:
-- January: The Mallemaroking (mass market paperback)
-- February: Rystwyth (hardcover)
-- March: Portmeirion (mass market paperback)
-```
+In bubble 6, the three picks may be set as a three-line list inside the strip if that scans better on screen.
+
+**Portraits (for Orbit; until they exist, use the caption alone).** These are the same characters as the Result screen's bosses, in the game's dark navy and violet, bust-length and facing the player:
+- **The Station Administrator:** a tall, thin unit in a desk-shaped chassis, with one large round lens and a clipboard arm. It's slightly too formal.
+- **The Commerce Office:** seven identical grey filing-cabinet robots in a row, each with one green status light, sharing one speaker grille. One unit is shown in the bubble's portrait slot, with six faint copies behind it.
+- **The Ministry of Culture:** an ornate robot with a marble-bust head, a monocle, and a tiny scroll in one hand.
+- **The Readers' Guild survey drone:** a small hovering drone with a single swiveling eye, a clipboard and a five-star rating dial.
+- **The Throughput Subcommittee:** a turnstile-shaped robot with a digital counter on its chest showing a number.
 
 Moves (checkboxes; title, then one line). Lever names in code: `repick`, `events`, `sale`.
 
