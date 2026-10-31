@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_PLAN_BODY, PlanRefused, readPlan } from "./read-plan.server";
+import { MAX_PLAN_BODY, PlanRefused, readPlan, readQ2Plan } from "./read-plan.server";
 
 const URL_ = "http://localhost:5173/decide";
 
@@ -11,9 +11,9 @@ function post(body: BodyInit, headers: Record<string, string> = {}) {
   });
 }
 
-async function status(request: Request, deadlineMs?: number) {
+async function status(request: Request, deadlineMs?: number, read: typeof readPlan | typeof readQ2Plan = readPlan) {
   try {
-    await readPlan(request, deadlineMs);
+    await read(request, deadlineMs);
     return 200;
   } catch (error) {
     return (error as PlanRefused).status;
@@ -60,5 +60,39 @@ describe("readPlan", () => {
     const stalled = new ReadableStream({ start() {} });
     const request = new Request(URL_, { method: "POST", body: stalled, duplex: "half", headers: { origin: "http://localhost:5173", "content-type": "application/x-www-form-urlencoded" } } as RequestInit);
     expect(await status(request, 50)).toBe(408);
+  });
+});
+
+describe("readQ2Plan", () => {
+  const A = "989-28-79-70597-8";
+  const B = "989-28-654-6930-3";
+  const q2 = (body: string) => status(post(body), undefined, readQ2Plan);
+
+  it("reads three months, each an ISBN or no pick, and up to one more move", async () => {
+    expect(await readQ2Plan(post(`picks=${A}%2C%2C${B}&levers=events`))).toEqual({ picks: [A, null, B], levers: ["events"] });
+    expect(await readQ2Plan(post(`levers=sale&picks=${A}%2C${B}%2C`))).toEqual({ picks: [A, B, null], levers: ["sale"] });
+    // Holding course: no picks and no other move.
+    expect(await readQ2Plan(post("picks=%2C%2C&levers="))).toEqual({ picks: [null, null, null], levers: [] });
+  });
+
+  it("fits three ISBNs and a move well inside the cap", () => {
+    expect(new URLSearchParams({ picks: [A, A, A].join(","), levers: "events" }).toString().length).toBeLessThan(MAX_PLAN_BODY / 4);
+  });
+
+  it("refuses the wrong number of months, one ISBN twice, two moves, Q1's moves, and other fields", async () => {
+    expect(await q2(`picks=${A}%2C${B}&levers=`)).toBe(400);
+    expect(await q2(`picks=${A}%2C${B}%2C%2C&levers=`)).toBe(400);
+    expect(await q2(`picks=${A}%2C${A}%2C&levers=`)).toBe(400);
+    expect(await q2("picks=%2C%2C&levers=events%2Csale")).toBe(400);
+    expect(await q2("picks=%2C%2C&levers=repick")).toBe(400);
+    expect(await q2("picks=%2C%2C&levers=&extra=1")).toBe(400);
+    expect(await q2("picks=%2C%2C&picks=%2C%2C&levers=")).toBe(400);
+    expect(await q2("levers=")).toBe(400);
+    expect(await q2(`picks=${"9".repeat(40)}%2C%2C&levers=`)).toBe(400);
+  });
+
+  it("keeps the door's checks: other sites, and an oversized body", async () => {
+    expect(await status(post("picks=%2C%2C&levers=", { origin: "https://elsewhere.example" }), undefined, readQ2Plan)).toBe(403);
+    expect(await q2(`picks=%2C%2C&levers=&pad=${"x".repeat(MAX_PLAN_BODY)}`)).toBe(413);
   });
 });
