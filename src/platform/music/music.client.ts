@@ -1,46 +1,28 @@
-// The game's music: the studio's player (@tellim/music), made once in the
-// browser and only if public/music/songs.json lists any songs. Shared by the
-// shell's dock and the Settings panel. It starts on the player's first tap
-// or key press (the package waits for one), plays nothing at volume 0 (the
-// player's own saved choice, applied from the first note), and reports through the platform's track,
-// by song id, never title.
+// The game's music: the studio's player, through the studio's kit
+// (../kit.client), made once in the browser and only if
+// public/music/songs.json lists any songs. Shared by the shell's dock and the
+// Settings panel. It starts on the player's first tap or key press (the
+// package waits for one), plays nothing at volume 0 (the player's own saved
+// choice, applied from the first note), and reports through the platform's
+// track, by song id, never title.
 //
-// It carries on after a reload, a closed tab or a crash (remember), and
-// plays in one tab at a time (oneTab) (David, 30 Oct 2026), and keeps playing
-// behind other tabs and desktops on a computer, though not on a tablet
-// (David, 31 Oct 2026): the desktop player's defaults.
-import { createDesktopMusic } from "@tellim/music/desktop";
-import type { Music } from "@tellim/music/player";
-import "@tellim/music/music.css";
+// The kit's desktop defaults (David, 30 and 31 Oct 2026): it carries on after
+// a reload, a closed tab or a crash; the game's tabs are one app, heard in the
+// tab the player is on; and it keeps playing behind other tabs and desktops
+// on a computer, though not on a tablet.
+import type { Music } from "@tellim/kit/music/player";
+import "@tellim/kit/music/music.css";
 
-import { track } from "~/platform/analytics/analytics.client";
+import { studio } from "~/platform/kit.client";
 import { isPhoneScreen } from "~/platform/phone";
 import { musicContext } from "./audio-context";
-import { MANIFEST_URL, parseManifest } from "./manifest";
-
-let loading: Promise<Music | null> | undefined;
+import { MANIFEST_URL } from "./manifest";
 
 /** The music, or null when there are no songs (or no browser, or it's a phone). Made once. */
 export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> {
   // No music on a phone (David): it gets the phone screen instead of the game.
   if (typeof window === "undefined" || isPhoneScreen()) return Promise.resolve(null);
-  loading ??= (async () => {
-    let manifest;
-    try {
-      const response = await fetcher(MANIFEST_URL, { cache: "no-cache" });
-      manifest = parseManifest(response.ok ? await response.json() : null);
-    } catch {
-      manifest = parseManifest(null);
-    }
-    if (manifest.skipped) track("music_manifest_skipped", { skipped: manifest.skipped });
-    if (!manifest.songs.length) return null;
-    // Through Web Audio, so the saved volume holds from the first note (audio-context.ts).
-    return createDesktopMusic({ key: "orbital-books", base: "/music/", songs: manifest.songs, track, context: musicContext });
-  })();
-  return loading;
-}
-
-/** For tests: forget the music made. */
-export function resetMusic(): void {
-  loading = undefined;
+  // A computer's web app: the kit's desktop defaults. Through Web Audio, so the
+  // saved volume holds from the first note (audio-context.ts).
+  return studio().music({ songs: { manifest: MANIFEST_URL, fetcher }, base: "/music/", context: musicContext });
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Music } from "@tellim/music/player";
+import type { Music } from "@tellim/kit/music/player";
 
 import { cutOff } from "~/platform/lazy/cut-off";
 import { isPhoneScreen } from "~/platform/phone";
@@ -26,7 +26,7 @@ export function MusicSettings({ load }: { load?: () => Promise<Music | null> }) 
     if (!music || !holder.current) return;
     let panel: { el: HTMLElement; dispose: () => void } | undefined;
     let live = true;
-    void import("@tellim/music/panel").then(({ createMusicPanel }) => {
+    void import("@tellim/kit/music/panel").then(({ createMusicPanel }) => {
       if (!live || !holder.current) return;
       panel = createMusicPanel(music);
       holder.current.append(panel.el);
