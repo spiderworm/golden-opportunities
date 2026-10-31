@@ -1,0 +1,14 @@
+{
+  "name": "@tellim/platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Who an app is, for every studio package: its id, name, build and storage, the studio's list of apps, and the app's other tabs",
+  "type": "module",
+  "exports": {
+    "./app": "./src/app/app.ts",
+    "./presence": "./src/presence/presence.ts"
+  },
+  "scripts": {
+    "test": "node --test 'src/**/*.test.ts'"
+  }
+}

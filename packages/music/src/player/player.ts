@@ -11,11 +11,12 @@
 // volume.
 //
 // A game may have it carry on after a reload, a closed tab or a crash
-// (`remember`), and play in one of its tabs at a time (`oneTab`, ../tabs);
-// Orbital Books does both (David, 30 Oct 2026).
+// (`remember`), and keep its tabs as one app, heard in one of them, without
+// playing over another app (`oneTab`, ../sync); Orbital Books does both
+// (David, 30 and 31 Oct 2026).
 
 import { createQueue, type QueuePlace, type Song } from "../queue/queue.ts";
-import { createTabs, type TabsOptions } from "../tabs/tabs.ts";
+import { createSync, type Shared, type SyncOptions } from "../sync/sync.ts";
 import { loadPrefs, meetSongs, ordered, savePrefs, type Prefs } from "../prefs/prefs.ts";
 
 export type { Song };
@@ -29,8 +30,10 @@ export type Cause = "auto" | "skip" | "back" | "restored";
 export type Where = "popup" | "dock" | "settings";
 
 export type MusicOptions = {
-  /** prefix for its storage key, as for createAnalytics, e.g. "cubeberg" */
-  key: string;
+  /** the app, from @tellim/platform's defineApp: what its data is kept under */
+  app?: { id: string; storagePrefix: string };
+  /** before `app`: the prefix for its storage keys, e.g. "cubeberg" (the app's wins) */
+  key?: string;
   /** the game's songs; pinned ones first, in this order */
   songs: Song[];
   /** where `file` is found, e.g. BASE_URL + "music/" */
@@ -57,10 +60,12 @@ export type MusicOptions = {
    * longer ago than `maxAgeMs` (true: 6 hours) starts afresh, as an app
    * opening does: the pinned songs first again. */
   remember?: boolean | { maxAgeMs: number };
-  /** Play in one of the game's tabs at a time (../tabs): a tab opened while
-   * another has the music doesn't start by itself, and the player's play
-   * takes it from the other tab, or says it can't. */
-  oneTab?: boolean | TabsOptions;
+  /** The app's tabs are one app, and one tab is heard (../sync): the song,
+   * the place, the pause and the playlist are the same in every tab, and the
+   * tab the player is on plays. Another app on the host that's playing isn't
+   * played over: this one doesn't start by itself, and the player's play
+   * stops the other, or says it can't. */
+  oneTab?: boolean | SyncOptions;
   /** Pause while the page is hidden (another tab, another desktop, the app
    * put away), and carry on when it's back: true, the default, as a game's
    * music should. A web app whose music is a backdrop keeps playing behind
@@ -79,17 +84,19 @@ export type MusicState = {
   volume: number;
   /** the game has hushed it (setQuiet) */
   quiet: boolean;
-  /** another tab of the game has the music (oneTab): play takes it */
+  /** another app has the music (oneTab): play takes it */
   elsewhere: boolean;
 };
 
 export function createMusic(o: MusicOptions) {
+  const key = o.app?.storagePrefix ?? o.key;
+  if (!key) throw new Error("createMusic: give the app (or a key)");
   const store = o.storage ?? (() => { try { return globalThis.localStorage; } catch { return undefined; } })();
   const track = o.track ?? (() => {});
   const gapMs = o.gapMs ?? 500;
   const loudness = o.loudness ?? 0.55;
-  let prefs: Prefs = meetSongs(loadPrefs(o.key, store, o.legacyVolume), o.songs.map((s) => s.id));
-  const save = () => savePrefs(o.key, store, prefs, o.saveFailed);
+  let prefs: Prefs = meetSongs(loadPrefs(key, store, o.legacyVolume), o.songs.map((s) => s.id));
+  const save = () => savePrefs(key, store, prefs, o.saveFailed);
   save();
 
   const ids = o.songs.map((s) => s.id);
@@ -99,7 +106,7 @@ export function createMusic(o: MusicOptions) {
     order: () => ordered(prefs, ids),
     shuffled: () => prefs.shuffle,
   });
-  const tabs = o.oneTab && typeof window !== "undefined" ? createTabs(o.key, typeof o.oneTab === "object" ? o.oneTab : {}) : null;
+  const sync = o.oneTab && typeof window !== "undefined" ? createSync(o.app?.id ?? key, typeof o.oneTab === "object" ? o.oneTab : {}) : null;
   const deck = new Audio();
   deck.preload = "auto";
   let wired: { gain: GainNode } | null = null;
@@ -109,7 +116,8 @@ export function createMusic(o: MusicOptions) {
   let loaded = false; // the deck has the current song's file
   let started = false; // the player has touched the page
   let paused = false; // the player paused it
-  let yielded = false; // another tab has the music (oneTab): only the player's play takes it
+  let yielded = false; // another app has the music (oneTab): only the player's play takes it
+  let sounding = false; // this tab is the one heard (oneTab)
   let resumeAt = 0; // seconds into the song restored (remember)
   let quiet = false; // the game hushed it
   // Why the game is away, by reason: no sound starts while any is set.
@@ -126,7 +134,9 @@ export function createMusic(o: MusicOptions) {
     typeof document !== "undefined" && document.hidden && (typeof o.pauseWhenHidden === "function" ? o.pauseWhenHidden() : o.pauseWhenHidden !== false);
   const level = () => prefs.volume ** 2 * loudness; // squared, so the slider feels even
   const audible = () => prefs.volume > 0 && !quiet && !paused && !yielded && started && !away.size && !hidden();
-  const state = (): MusicState => ({ song, playing: !deck.paused && !!song, volume: prefs.volume, quiet, elsewhere: yielded });
+  // with the app's tabs together, playing is the app's: a tab not heard shows what the heard one does
+  const playing = () => !!song && (sync && !sounding ? !paused && !yielded && !!sync.latest()?.running : !deck.paused);
+  const state = (): MusicState => ({ song, playing: playing(), volume: prefs.volume, quiet, elsewhere: yielded });
   const changed = () => listeners.forEach((f) => f(state()));
 
   function wire() {
@@ -154,11 +164,17 @@ export function createMusic(o: MusicOptions) {
   // play (or carry on with) the current song, if it may be heard
   function play() {
     if (!audible() || wait) return;
-    // one tab at a time: not if another has it; take it if it's free (in
-    // this same tap: the lock follows, and if another tab won after all, stop)
-    if (tabs && !tabs.mine()) {
-      if (tabs.elsewhere()) return yieldTo("held_back");
-      void tabs.claimIfFree().then((ok) => ok || yieldTo("held_back"));
+    if (sync) {
+      // another app playing: this one doesn't start by itself
+      if (!sounding && !sync.heardHere() && sync.elsewhere()) return yieldTo("held_back");
+      // another tab of the app is the one to be heard
+      if (!sync.chosen()) return;
+      // from where the app's music is now, not where this tab last had it
+      if (!sounding && song) {
+        const t = now();
+        if (!loaded) resumeAt = t;
+        else if (Math.abs(t - deck.currentTime) > 1.5) deck.currentTime = t;
+      }
     }
     if (!song) return advance("auto", o.leadMs ?? 0);
     wire();
@@ -174,25 +190,23 @@ export function createMusic(o: MusicOptions) {
     deck.play().catch(() => {});
   }
 
-  // another tab has the music: stop, and wait for the player's own play
+  // another app has the music: stop, and wait for the player's own play
   function yieldTo(why: "held_back" | "taken") {
     if (yielded) return;
     yielded = true;
     deck.pause();
+    share(false); // where it stopped, before it's no longer this tab's
+    quietHere();
     track("music_other_tab", { action: why });
     changed();
   }
-  tabs?.onTaken(() => {
-    remember(); // the place, as this tab leaves it
-    yieldTo("taken");
-  });
 
   // remember: where it is, saved by the tab that has the music
   const rememberFor = o.remember ? (typeof o.remember === "object" ? o.remember.maxAgeMs : SIX_HOURS) : 0;
-  const sessionKey = `${o.key}.music.session`;
+  const sessionKey = `${key}.music.session`;
   function remember() {
-    if (!rememberFor || !song || (tabs && !tabs.mine() && !paused)) return;
-    const s: Session = { at: Date.now(), id: song.id, t: Math.round(deck.currentTime || resumeAt), paused, place: queue.place() };
+    if (!rememberFor || !song) return;
+    const s: Session = { at: Date.now(), id: song.id, t: Math.round(now()), paused, place: queue.place() };
     try {
       store?.setItem(sessionKey, JSON.stringify(s));
     } catch (error) {
@@ -230,57 +244,142 @@ export function createMusic(o: MusicOptions) {
       if (Date.now() - last < 5000) return;
       last = Date.now();
       remember();
+      if (sounding) share();
     });
     if (typeof addEventListener !== "undefined") addEventListener("pagehide", remember);
   }
 
-  // Paused out of sight, a tab lets go of the music (oneTab), and the tab
-  // that shows carries on where the last one was, unless the player paused
-  // it (David, 31 Oct 2026). A tab playing on out of sight (pauseWhenHidden
-  // false) keeps it.
-  function hide() {
-    deck.pause();
-    if (!tabs?.mine() || paused) return;
-    remember();
-    tabs.release();
+  // seconds into the song: the deck's, or, in a tab not heard, the heard tab's as last shared
+  function now() {
+    const l = sync?.latest();
+    if (sync && !sounding && l && l.id === song?.id) return l.t + (l.running ? (Date.now() - l.at) / 1000 : 0);
+    return deck.currentTime || resumeAt;
   }
-  function show() {
-    if (!tabs || tabs.mine() || paused || !started) return play();
-    void tabs.claimWhenFree().then((ok) => {
-      if (!ok) return; // another tab plays on: this one stays held back
-      if (hidden()) return tabs.release(); // hidden again meanwhile
-      yielded = false;
-      if (rememberFor && (!loaded || deck.paused)) restore();
-      if (paused) return (tabs.release(), changed()); // the player paused it in another tab
+
+  // The app's tabs together (oneTab): what changes here, every tab has.
+  function share(running = sounding && !paused && !yielded) {
+    if (!sync) return;
+    sync.share({ id: song?.id ?? null, place: song ? queue.place() : null, t: now(), at: Date.now(), running, paused, held: yielded });
+  }
+  // this tab stops being the one heard
+  function quietHere() {
+    if (!sounding) return;
+    sounding = false;
+    sync?.heard(false);
+  }
+  // what another tab of the app changed
+  function follow(s: Shared) {
+    if (s.id && s.id !== song?.id) {
+      const to = o.songs.find((x) => x.id === s.id);
+      if (to) {
+        if (s.place) queue.resume(s.place);
+        song = queue.current()?.id === s.id ? queue.current() : to;
+        announced = song; // it started in that tab
+        loaded = false;
+        clearTimeout(wait);
+        wait = 0;
+        deck.pause();
+        deck.removeAttribute("src");
+        quietHere();
+      }
+    } else if (s.place) queue.resume(s.place);
+    resumeAt = Math.max(0, s.t + (s.running ? (Date.now() - s.at) / 1000 : 0));
+    // the heard tab's place, if it moved (back to the top, say)
+    if (sounding && loaded && Math.abs(resumeAt - deck.currentTime) > 1.5 && s.by !== sync?.tab) deck.currentTime = resumeAt;
+    // the app plays (in another tab, or did, out of sight): this one may carry it on
+    if (s.id && !s.paused && !s.held && !sounding) started = true;
+    paused = s.paused;
+    yielded = s.held;
+    if (paused || yielded) {
+      deck.pause();
+      quietHere();
+    }
+    steer();
+    changed();
+  }
+  // which tab is heard: this one, if it's the one, and may be
+  function steer() {
+    if (!sync) return;
+    if (audible() && sync.chosen()) {
+      if (!sounding || deck.paused) play();
+      return;
+    }
+    // it may not be heard here (hidden, put away, hushed, paused): stop. If
+    // only another tab should be heard, play on until that one is.
+    if (sounding && !audible()) {
+      deck.pause();
+      share(false);
+      quietHere();
       changed();
-      play();
+    }
+  }
+  if (sync) {
+    sync.onShared(follow);
+    sync.onSteer(steer);
+    sync.onTook(() => {
+      deck.pause();
+      quietHere();
+      changed();
+    });
+    // another app's player pressed play: this app stops, and waits for its player's play
+    sync.onStopAsked((from) => {
+      yieldTo("taken");
+      sync.stopped(from);
+    });
+    deck.addEventListener("playing", () => {
+      if (!sounding) {
+        sounding = true;
+        sync.heard(true);
+      }
+      share();
+    });
+    // where this tab stands: seen, used, allowed to play out of sight
+    const behind = () => (typeof o.pauseWhenHidden === "function" ? !o.pauseWhenHidden() : o.pauseWhenHidden === false);
+    const stand = (used: boolean) => sync.stand({ visible: !document.hidden, behind: behind(), ...(used ? { at: Date.now() } : {}) });
+    stand(!document.hidden);
+    document.addEventListener("visibilitychange", () => (stand(!document.hidden), steer()));
+    addEventListener("focus", () => (stand(true), steer()));
+    for (const g of ["pointerdown", "keydown"]) addEventListener(g, () => stand(true), true);
+    // the playlist, hearts and volume chosen in another tab
+    addEventListener("storage", (e) => {
+      if (e.key !== `${key}.music` || !e.newValue) return;
+      prefs = meetSongs(loadPrefs(key, store, o.legacyVolume), ids);
+      setLevel();
+      steer();
+      changed();
+    });
+    addEventListener("pagehide", () => {
+      if (!sounding) return;
+      deck.pause();
+      share(false);
+      quietHere();
     });
   }
 
-  // the player's own play (or skip, or back): take the music from another
-  // tab first; false if it wouldn't let go
+  // the player's own play (or skip, or back): stop another app playing
+  // first; false if it wouldn't
   async function take(): Promise<boolean> {
-    if (!tabs || tabs.mine()) return true;
-    const was = yielded || tabs.elsewhere();
-    if (!(await tabs.claim())) {
+    if (!sync) return true;
+    sync.stand({ at: Date.now() });
+    const was = yielded;
+    if (sync.elsewhere() && !(await sync.stopOthers())) {
       track("music_other_tab", { action: "blocked" });
       blockedListeners.forEach((f) => f());
       return false;
     }
     if (was) track("music_other_tab", { action: "took_over" });
     yielded = false;
-    // carry on where the other tab was, if this one hasn't played yet
-    if (was && rememberFor && (!loaded || deck.paused)) {
-      restore();
-      paused = false;
-    }
     return true;
   }
   const blockedListeners = new Set<() => void>();
-  // do it now, or once the music is taken from another tab
+  // do it now (in the tap, which a browser may need to start sound), or once another app has stopped
   function withMusic(f: () => void): Promise<boolean> {
-    if (!tabs || tabs.mine()) return (f(), Promise.resolve(true));
-    return take().then((ok) => (ok && f(), ok));
+    if (!sync || !sync.elsewhere()) {
+      sync?.stand({ at: Date.now() });
+      yielded = false;
+      return (f(), share(), Promise.resolve(true));
+    }
+    return take().then((ok) => (ok && (f(), share()), ok));
   }
 
   /** the end of the current song, for analytics */
@@ -302,10 +401,12 @@ export function createMusic(o: MusicOptions) {
     by = where;
     announced = null;
     loaded = false;
+    resumeAt = 0;
     deck.pause();
     deck.removeAttribute("src");
     clearTimeout(wait);
     wait = 0;
+    share();
     changed();
     if (delay > 0) {
       wait = window.setTimeout(() => {
@@ -354,7 +455,7 @@ export function createMusic(o: MusicOptions) {
     };
     for (const g of gestures) addEventListener(g, start, true);
     deck.addEventListener("playing", () => gestures.forEach((g) => removeEventListener(g, start, true)), { once: true });
-    document.addEventListener("visibilitychange", () => (hidden() ? hide() : show()));
+    if (!sync) document.addEventListener("visibilitychange", () => (hidden() ? deck.pause() : play()));
   }
 
   const has = (list: string[], id: string) => list.includes(id);
@@ -380,7 +481,8 @@ export function createMusic(o: MusicOptions) {
       deck.pause();
       track("music_paused", { id: song.id, where });
       remember();
-      tabs?.release();
+      share();
+      quietHere();
       changed();
     },
     /** the player's play: after their pause, or with another tab's music
@@ -433,6 +535,7 @@ export function createMusic(o: MusicOptions) {
       setLevel();
       if (prefs.volume > 0) play();
       else deck.pause();
+      steer();
       changed();
     },
     /** the slider has settled: one event, not one a step */
@@ -517,6 +620,7 @@ export function createMusic(o: MusicOptions) {
       else away.delete(reason);
       if (away.size) deck.pause();
       else play();
+      steer();
       changed();
     },
     /** the game hushes the music (Pizza's "quiet") or lets it play again */
@@ -524,10 +628,11 @@ export function createMusic(o: MusicOptions) {
       quiet = on;
       if (on) deck.pause();
       else play();
+      steer();
       changed();
     },
     /** seconds into the song playing (Pizza's title follows the theme's hits) */
-    time: () => deck.currentTime,
+    time: () => now(),
     /** the panel or pop-up opened */
     opened(from: Where) {
       track("music_player_opened", { from });

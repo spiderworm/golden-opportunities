@@ -10,7 +10,8 @@ all games."). The plan, and why, is in `plans/music-player.md`.
 | `src/prefs/` | What the player chose, kept on the device: volume, excluded, hearted, their order, Shuffle, and the songs known (so an update's songs are New). |
 | `src/player/` | `createMusic()`: streams the songs through one `<audio>`, through Web Audio when the game gives its context (and its effects), starts on the first touch, pauses out of sight, skips a song that won't load, and sends every choice to the game's `track()`. |
 | `src/player/desktop.ts` | `createDesktopMusic()`: `createMusic()` with a computer's web app defaults (`desktopDefaults`), each overridable: `remember`, `oneTab`, and playing on behind other tabs (paused when hidden only on a touch screen). |
-| `src/tabs/` | `createTabs()`, for `oneTab`: the tab that has the music holds a Web Lock (gone with the tab, even a crashed one); a tab asks it over a BroadcastChannel to stop. |
+| `src/manifest/` | `parseManifest()` / `loadManifest(url)`: a song list read at run time (a web app's `songs.json`), every entry checked, a bad one left out and counted. |
+| `src/sync/` | `createSync()`, for `oneTab`: an app's tabs share the music over the app's channel (newest change wins) and pick the one heard; the tab heard holds a Web Lock in the app's name (gone with the tab, even a crashed one), so other apps on the host know, and ask it over the studio's channel to stop. |
 | `src/ui/popup.ts` | `createPopup()`: as a song starts, a pill: back, pause, the song's name, heart, next. Tapping the name opens the full player where the pill was (volume, the song playing, the playlist); a tap outside, Escape or the close button shuts it. The game places the pill and says when it must wait; `full(open)` tells it the full player opened, e.g. to pause. `dispose()` when the page or component that holds it goes. |
 | `src/ui/dock.ts` | `createDock(music, root, { layer })`: the pill kept for good in a place of the game's own (Orbital Books' sidebar): the name above back, pause, heart and next; "Music" and a play button before the first song. Its name opens the full player over `layer` (a fixed layer over the page), where the dock is. `compact(true)` keeps only pause / play, for a collapsed sidebar. `dispose()` when it goes. |
 | `src/ui/panel.ts` | `createMusicPanel()`: for Settings. The music volume (this is the game's music volume setting), the song playing, and a Playlist row that opens the playlist in its place. |
@@ -25,7 +26,7 @@ all games."). The plan, and why, is in `plans/music-player.md`.
    import { createMusic } from "@tellim/music/player";
    import "@tellim/music/music.css";
    const music = createMusic({
-     key: "pizza",
+     app, // @tellim/platform's defineApp({ id: "pizza", ... }); before it, key: "pizza"
      base: import.meta.env.BASE_URL + "music/",
      songs: [{ id: "triumph-of-the-brave", file: "theme.mp3", title: "Triumph of the Brave", pinned: true }, ...],
      track,
@@ -55,12 +56,17 @@ all games."). The plan, and why, is in `plans/music-player.md`.
    - `remember: true` carries on after a reload, a closed tab or a crash (the song, the place in
      it, the queue, a pause the player chose; a session older than 6 hours, or `{ maxAgeMs }`,
      starts afresh, pinned songs first again).
-   - `oneTab: true` plays in one of the app's tabs at a time: a tab opened while another has the
-     music doesn't start by itself; the player's play (or skip, or back) takes it from the other
-     tab, carrying on where that one was; a tab that won't let go keeps it, and the pop-up, dock or
-     panel says so. Where the browser can't tell (no Web Locks, another site), it just plays.
-     A tab paused out of sight lets go of the music, and the tab that shows carries on where the
-     last one was, unless the player paused it (with `remember`, in any tab).
+   - `oneTab: true`: the app's tabs are one app (David, 31 Oct 2026). The song, the place in it,
+     the pause and the playlist (hearts, order, songs off, volume) are the same in every tab, and
+     one tab is heard: the visible one used last, or, with none in sight and the app allowed to
+     play out of sight, the one used last. The tab to be heard starts from the app's place, and the
+     one heard before stops once it's sounding, so a tab the browser won't let play yet (never
+     touched) leaves the music where it was. Give `app` (@tellim/platform), since apps are told
+     apart by id. Another app on the host that's playing isn't played over: this one doesn't start
+     by itself; the player's play stops the other (which waits for its own player's play, not
+     starting again by itself); one that doesn't answer keeps playing, and the pop-up, dock or
+     panel says so. A browser shows a page only its own host's tabs, so an app elsewhere is never
+     known, and where it can't tell at all (no Web Locks) it just plays.
    - `pauseWhenHidden`: the music pauses while the page is hidden (another tab, another desktop,
      the app put away), as a game's should, and that's `createMusic()`'s default. On a computer
      it's a backdrop, so the desktop player plays on behind other tabs, and pauses only on a touch
@@ -78,8 +84,9 @@ All through the game's `track()`:
 `song_hearted` / `song_unhearted {id, where}`, `song_moved {id, from, to, where}`, `music_shuffle_set {on, where}`,
 `music_player_opened {from}` (the full player from the pop-up or dock, or the playlist in Settings),
 `music_volume_set {level, where}` (once the slider is let go). `where` is `popup`, `dock` or `settings`.
-With `oneTab`, `music_other_tab {action}`: `held_back` (another tab has it, so this one didn't start),
-`taken` (another tab took it), `took_over` (this tab took it), `blocked` (the other tab wouldn't let go).
+With `oneTab`, `music_other_tab {action}`, about another app: `held_back` (it was playing, so this one
+didn't start), `taken` (it took the music), `took_over` (this app took it), `blocked` (it wouldn't let
+go). The app's own tabs passing the music between them send nothing.
 
 ## Tests
 

@@ -231,3 +231,23 @@ test("release waits while sharing is off; discard deletes unsent", () => {
   a.discard("agent_text");
   assert.equal(a.held("agent_text").length, 0);
 });
+
+test("an app gives the game, storage key, build and version; explicit options override it", async () => {
+  const storage = memory();
+  const bodies: any[] = [];
+  const send = async (_u: string, body: string) => (bodies.push(JSON.parse(body)), true);
+  const app = { id: "waddleberg", storagePrefix: "cubeberg", build: "20261031120000", version: "0.1.13-alpha" };
+  const a = createAnalytics({ app, endpoint: "https://x", platform: "web", storage, send });
+  a.track("one");
+  await a.flush();
+  assert.deepEqual([bodies[0].game, bodies[0].build, bodies[0].version], ["waddleberg", "20261031120000", "0.1.13-alpha"]);
+  assert.ok(storage.m.has("cubeberg.install"), "stored under the app's older prefix");
+
+  const b = createAnalytics({ app: { id: "pizza", build: "b2" }, key: "pizza.test", endpoint: "https://x", platform: "web", storage, send });
+  b.track("two");
+  await b.flush();
+  assert.equal(bodies[1].game, "pizza");
+  assert.ok(storage.m.has("pizza.test.install"), "an explicit key wins (Pizza's local runs)");
+
+  assert.throws(() => createAnalytics({ platform: "web", storage } as any), /needs an app/);
+});

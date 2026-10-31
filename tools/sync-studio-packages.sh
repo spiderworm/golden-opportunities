@@ -6,7 +6,7 @@ set -euo pipefail
 
 studio="${1:-$HOME/Projects/games-studio/research}"
 here="$(cd "$(dirname "$0")/.." && pwd)"
-packages=(music analytics)
+packages=(music analytics platform kit)
 
 if [ -n "$(git -C "$studio" status --porcelain -- "${packages[@]/#/packages/}")" ]; then
   echo "The studio's packages have uncommitted changes in $studio; commit them first." >&2

@@ -181,7 +181,7 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     const d = t.closest<HTMLElement>("[data-do]")?.dataset.do;
     const song = music.state().song;
     if (!d) return;
-    // (unless another tab has the music: then this play is the player's own, and takes it)
+    // (unless another app has the music: then this play is the player's own, and takes it)
     if (d === "play" && starting && !music.state().elsewhere) return;
     if (d === "back") void music.back(where).then(said);
     if (d === "skip") void music.skip(where).then(said);
