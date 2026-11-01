@@ -91,6 +91,11 @@ boundary, documented rather than chased.
   Such text states no number, but it can still mislead. The prompt forbids it; nothing enforces that.
 - Claims without a quantity (a pattern, a cause, "most of these are Fiction") rest on the prompt alone, as
   before.
+- Rank and ordinal words pass ("came second", "placed last", "led the list", "the first quarter"), and that's
+  accepted (Probe's review of #163, Goldy's call; the denylist isn't reopened). Such a rank is the model's own
+  reading of rows it was shown, not a ref: it can be wrong, or read off a capped result, which a ranking ref
+  (`max`, `largest_*`) would refuse. It carries no figure, so the risk is a wrong order, not a figure the data
+  didn't return. Only refs guarantee a ranking.
 - The full stop after a percent ref was lost in one of Probe's runs (X3). The renderer keeps punctuation that
   follows a ref, even when the ref is split across chunks (tested), so the model must have left it out.
 

@@ -49,6 +49,8 @@ describe("the prompt", () => {
     // A monthly lookup restated as "from 2193-Q1 to 2193-Q4" lost a true sentence to the gate (q2-digit-title).
     expect(RULES).toMatch(/a lookup by month returns months, not quarters, so after one don't name a quarter or a year/);
     expect(RULES).toContain("{{a1.month}}");
+    // Only a table in month order has the range at its ends (Probe's review of #163).
+    expect(RULES).toMatch(/in a table by month and in month order, name its first and last rows by ref/);
     expect(RULES).not.toContain("from 2193-Q1 to 2193-Q4");
   });
 
