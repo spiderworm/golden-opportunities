@@ -189,4 +189,11 @@ describe("months name their year, so like quarters they are period names", () =>
     expect(say("In 2194-01, units were {{m1}}.", r)).toBe("In 2194-01, units were 2,597.");
     expect(say("In 2193-01, units were {{m1}}.", r)).toBe(WITHHELD);
   });
+
+  it("after a lookup by month, its months name the range, not quarters it didn't return (q2-digit-title)", () => {
+    const year = ["query_data", { measure: "units", by: ["month"] }, { ref: "y", complete: true, columns: [], rows: [{ ref: "y1", month: "2193-01", units: 210 }, { ref: "y2", month: "2193-12", units: 330 }], total: 540, source: SOURCE }] as const;
+    const r = refs(year);
+    expect(say("I looked up units by month, from {{y1.month}} to {{y2.month}}.", r)).toBe("I looked up units by month, from 2193-01 to 2193-12.");
+    expect(say("I looked up units by month, from 2193-Q1 to 2193-Q4.", r)).toBe(WITHHELD);
+  });
 });

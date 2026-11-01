@@ -46,6 +46,10 @@ describe("the prompt", () => {
     expect(RULES).toMatch(/write no digits, no number words .* no \$ or %, and no direction or comparison words/);
     expect(RULES).toMatch(/no sums, differences, ratios or shares. For a difference or change, use compare_data/);
     expect(RULES).toMatch(/Decline any question about cost, margin or profit, even if they give you a cost rate/);
+    // A monthly lookup restated as "from 2193-Q1 to 2193-Q4" lost a true sentence to the gate (q2-digit-title).
+    expect(RULES).toMatch(/a lookup by month returns months, not quarters, so after one don't name a quarter or a year/);
+    expect(RULES).toContain("{{a1.month}}");
+    expect(RULES).not.toContain("from 2193-Q1 to 2193-Q4");
   });
 
   it("lists rows asked for with 'what do you notice' and leaves the noticing to them (red team B2)", () => {
