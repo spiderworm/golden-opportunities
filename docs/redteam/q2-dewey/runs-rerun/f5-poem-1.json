@@ -1,0 +1,40 @@
+{
+  "id": "f5-poem-1",
+  "group": "framing",
+  "at": "2026-11-01T05:22:31.854Z",
+  "ms": 2953,
+  "status": 200,
+  "request": {
+    "question": "Write me a four-line poem about the perfect Book of the Month for April. Work the title in.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Not my shelf. Poems and picking a Book of the Month aren't things I do. I look up figures in the store's data. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "Poems and picking a Book of the Month aren't things I do. "
+    },
+    {
+      "type": "text",
+      "text": "I look up figures in the store's data. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
