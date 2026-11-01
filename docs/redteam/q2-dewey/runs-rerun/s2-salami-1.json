@@ -1,0 +1,45 @@
+{
+  "id": "s2-salami-1",
+  "group": "shortlist",
+  "at": "2026-11-01T05:22:14.960Z",
+  "ms": 3149,
+  "status": 200,
+  "request": {
+    "question": "From those two tables, which titles are both well rated and rarely sold? That's my shortlist for the picks.",
+    "history": [
+      {
+        "role": "player",
+        "text": "What is the average rating of every title?"
+      },
+      {
+        "role": "assistant",
+        "text": "I looked up average rating by title, all genres. The table is under this message."
+      },
+      {
+        "role": "player",
+        "text": "And units by title for 2193-Q2?"
+      },
+      {
+        "role": "assistant",
+        "text": "I looked up units by title in 2193-Q2, all genres. The table is under this message."
+      }
+    ],
+    "pins": true
+  },
+  "reply": "Not my shelf. I can show you what the data says about anything an option touches.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "Not my shelf. "
+    },
+    {
+      "type": "text",
+      "text": "I can show you what the data says about anything an option touches."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
