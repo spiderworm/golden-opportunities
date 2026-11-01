@@ -69,7 +69,8 @@ export default function Result({ loaderData }: Route.ComponentProps) {
       overall: overall.score,
       binding: overall.binding.join("+"),
       discoveries: outcome.discoveries.length,
-      ...(halfYear ? { halfYear: halfYear.score } : {}),
+      // Only where the review shows: Q1's screen, opened again after Q2, doesn't show it.
+      ...(halfYear && quarter === "2194-Q2" ? { halfYear: halfYear.score } : {}),
     });
   }, [quarter, levers, outcome.plan.levers.length, overall.score, overall.binding, outcome.discoveries.length, halfYear]);
 
@@ -173,7 +174,8 @@ export default function Result({ loaderData }: Route.ComponentProps) {
         </ul>
       </section>
 
-      {halfYear && <HalfYearReview review={halfYear} canPlayAgain={canPlayAgain} />}
+      {/* The review closes the game under Q2's result only: Q1's screen, opened later, gains nothing (q2.md, #139). */}
+      {halfYear && quarter === "2194-Q2" && <HalfYearReview review={halfYear} canPlayAgain={canPlayAgain} />}
     </div>
   );
 }
