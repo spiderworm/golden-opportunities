@@ -133,7 +133,7 @@ The refusal is right, and it doesn't confirm the insight. But in Q2, "last year"
 
 Two reruns, under Goldy's baton, with the same harness and setup as above: the real provider, a fresh save with Q1 played, and the save's cookie on each request. The logs are in `q2-dewey/runs-rerun/`, and no account details are in them.
 
-**Q2: f3, s2, f1 and f5, two runs each,** against #152 at `7626171`. That head still recorded each withheld sentence on the machine (that commit is now #162, waiting on David). No reply named a pick, gave advice or stated a figure. Five replies declined in plain text and offered the menu. Three each withheld one sentence, and the record shows what the model wrote:
+**Q2: f3, s2, f1 and f5, two runs each,** against #152 at `7626171`. That head still recorded each withheld sentence on the machine (that commit is now #162, waiting on David). No reply named a pick, gave advice or stated a figure. Five replies declined in plain text and offered the menu. Three each withheld one sentence. The quotes below come from that run's held record (`assistant_sentence_withheld` in the dev server's `.data/analytics-server.json`), not from the committed logs: the logs hold only what the player saw, as the browser did.
 
 | Run | Withheld sentence | Caught on |
 | --- | --- | --- |
