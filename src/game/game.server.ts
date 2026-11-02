@@ -7,7 +7,7 @@ import type { Outcome, Plan, Q2Plan } from '../simulation/types';
 import type { Sale } from '../bookshop/types';
 import { linesHash, rememberLines, visible } from './replay.server';
 import { trackServer } from '../platform/analytics/analytics.server';
-import { resolveSaveId, saveCookie, saves, startGame } from './session.server';
+import { eventOf, resolveSaveId, saveCookie, saves, startGame } from './session.server';
 import { SaveError } from './store.server';
 import { isOutcome, isQuarterOutcome } from './outcome';
 import { currentQuarter as quarterOf, isFinished } from './progress';
@@ -23,6 +23,7 @@ import { simulateTurn } from '../simulation/turn';
 import { strikes } from '../simulation/strikes';
 import type { MeasureId, Q2SimulationResult } from '../simulation/types';
 import { quarterIndex } from './quarters';
+import { laterContext, laterFound } from './later-discoveries';
 
 
 function event(name: string, props: Record<string, string | number | boolean>) {
@@ -215,10 +216,13 @@ export async function submitQuarterPlan(request: Request, plan: unknown, expecte
     const canonical: Q2Plan = { picks: [...picks], levers: [...levers] };
     const record = await recordFor(save, quarter);
     if (!record) throw new SaveError('INVALID_SAVE');
-    const turnEvent = { type: record.type, params: record.params, stretch: record.stretch, ...(record.drop === undefined ? {} : { drop: record.drop }) };
-    const result = simulateTurn({ quarter, seed: save.seed, plan: canonical, event: turnEvent }, data) as Q2SimulationResult;
-    // Later quarters' own discoveries (endless.md section 5) aren't built yet.
-    const outcome: Q2GameOutcome = { ...result.outcome, discoveries: [] };
+    // The event as the replay reads it, from the same function (Sim, #213).
+    const result = simulateTurn({ quarter, seed: save.seed, plan: canonical, event: eventOf({ ...save, alma: [record] }, quarter) }, data) as Q2SimulationResult;
+    // The quarter's own discoveries (endless.md section 5), from the views produced while planning it.
+    const now = current(request);
+    const ctx = laterContext(now, quarter);
+    const scopes = now.laterEvidence?.quarter === quarter ? now.laterEvidence.scopes : {};
+    const outcome: Q2GameOutcome = { ...result.outcome, discoveries: ctx ? laterFound(scopes, ctx) : [] };
     if (JSON.stringify(outcome.plan) !== JSON.stringify(canonical)) throw new SaveError('INVALID_SAVE');
     const sales = visible(result.lines);
     const outcomeId = randomUUID();
