@@ -14,12 +14,13 @@ export const CHART_MEASURES = [
 export type ChartMeasure = (typeof CHART_MEASURES)[number];
 
 /**
- * What each measure is counted in. A chart shows at most two units, one per axis (David, 2 Nov 2026: "multiple
- * labels on the y-axis, color-coded"; three measures on two axes).
+ * Each measure's axis: measures on the same one share it. A chart shows at most two (David, 2 Nov 2026: "multiple
+ * labels on the y-axis, color-coded"; three measures on two axes). Totals and averages never share one, even in
+ * the same unit (David, 2 Nov 2026): average order value on revenue's axis is too small to see.
  */
-export const MEASURE_UNITS: Record<ChartMeasure, "dollars" | "count" | "rate" | "percent"> = {
+export const MEASURE_UNITS: Record<ChartMeasure, "dollars" | "count" | "order value" | "rate" | "percent"> = {
   revenue: "dollars",
-  avg_order_value: "dollars",
+  avg_order_value: "order value",
   units: "count",
   orders: "count",
   orders_per_day: "rate",
