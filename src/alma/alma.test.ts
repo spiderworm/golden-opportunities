@@ -226,6 +226,21 @@ describe("the scripted flavor", () => {
       }
     }
   });
+
+  it("has a story for every genre, weekday and format, and a reason for every measure", () => {
+    const ctx: QuarterContext = { quarter: "2194-Q3", previous: [], strikes: 0 };
+    const values: Record<string, readonly string[]> = { genre: GENRES, weekday: WEEKDAYS, format: FORMATS };
+    for (const type of EVENT_TYPES) {
+      const keyed = Object.keys(type.params).find((name) => name in values);
+      for (const value of keyed ? values[keyed] : [undefined]) for (const measure of MEASURE_IDS.filter((m) => !type.against.includes(m))) {
+        const params = Object.fromEntries(Object.entries(type.params).map(([name, spec]) => [name, name === keyed ? value! : spec.kind === "enum" ? spec.values[0] : spec.min]));
+        const c: Candidate = { type: type.id, params, stretch: { measure, percent: 15 } };
+        const flavor = scriptedFlavor(c, ctx);
+        expect(flavor.story, `${type.id} ${value}`).toBeTruthy();
+        expect(checkAnswer(JSON.stringify({ candidate: 0, ...flavor }), [c, c, c], ctx, checks), `${type.id} ${value} ${measure}`).toMatchObject({ ok: true });
+      }
+    }
+  });
 });
 
 describe("what Alma sees", () => {
