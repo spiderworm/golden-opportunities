@@ -9,7 +9,16 @@ describe("pin specs", () => {
   it("keeps a chart's other measures only while they fit one chart, and tells such pins apart", () => {
     const two = { ...copy(spec), also: ["units"] };
     expect(parsePinSpec(two)).toEqual(two);
-    expect(parsePinSpec({ ...copy(spec), also: ["units", "avg_discount"] })).toBeNull();
+    // Saved under an older rule, or a third axis: the pin keeps what fits rather than going.
+    expect(parsePinSpec({ ...copy(spec), also: ["units", "avg_order_value"] })).toEqual({ ...spec, also: ["units"] });
+    expect(parsePinSpec({ ...copy(spec), also: ["units", "avg_discount"] })).toEqual({ ...spec, also: ["units"] });
+    expect(parsePinSpec({ ...copy(spec), query: { measure: "units", by: ["quarter"] }, also: ["avg_discount", "avg_order_value"] })).toEqual({
+      ...spec,
+      query: { measure: "units", by: ["quarter"] },
+      also: ["avg_discount"],
+    });
+    expect(parsePinSpec({ ...copy(spec), also: ["units", "orders", "avg_order_value"] })).toBeNull();
+    expect(parsePinSpec({ ...copy(spec), also: ["bogus"] })).toBeNull();
     expect(parsePinSpec({ ...copy(spec), also: ["revenue"] })).toBeNull();
     expect(parsePinSpec({ ...copy(spec), also: [] })).toBeNull();
     expect(parsePinSpec({ ...copy(spec), query: { measure: "avg_rating", by: ["quarter"] }, also: ["units"] })).toBeNull();

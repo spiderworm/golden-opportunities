@@ -1,7 +1,7 @@
 // Pinned charts: what a pin holds, and checks for pins read back from storage.
 import { yearMonth } from "~/query/months";
 import { DIMENSIONS, MEASURES, QUERY_LIMITS, type Dimension, type Measure, type Query } from "~/query/types";
-import { canAddMeasure, CHART_MEASURES, type ChartMeasure } from "../state";
+import { CHART_MEASURES, fittingMeasures, MAX_MEASURES, type ChartMeasure } from "../state";
 
 export const CHART_PIN_KINDS = ["bar", "line", "table"] as const;
 export const PIN_KINDS = [...CHART_PIN_KINDS, "comparison"] as const;
@@ -19,15 +19,13 @@ export interface ChartPinSpec {
   also?: ChartMeasure[];
 }
 
-/** A pin's other measures, kept only if they and the query's measure fit one chart (canAddMeasure). */
+/** A pin's other measures: null if malformed; else those that still fit one chart with the query's measure (fittingMeasures). */
 export function parseAlso(measure: Measure, value: unknown): ChartMeasure[] | null {
   if (!Array.isArray(value) || value.length === 0 || !CHART_MEASURES.includes(measure as ChartMeasure)) return null;
-  const kept: ChartMeasure[] = [measure as ChartMeasure];
-  for (const m of value) {
-    if (!CHART_MEASURES.includes(m) || kept.includes(m) || canAddMeasure(kept, m) !== "ok") return null;
-    kept.push(m);
-  }
-  return kept.slice(1);
+  const all = [measure, ...value];
+  if (all.length > MAX_MEASURES || new Set(all).size !== all.length || !all.every((m) => CHART_MEASURES.includes(m))) return null;
+  // A pin saved under an older rule (an average on a total's axis, before 2 Nov 2026) keeps what still fits.
+  return fittingMeasures(all as ChartMeasure[]).slice(1);
 }
 
 /**
@@ -122,7 +120,8 @@ export function parsePinSpec(value: unknown): PinSpec | null {
   if (!query) return null;
   if (value.also === undefined) return { title: value.title, kind: value.kind as ChartPinSpec["kind"], query };
   const also = parseAlso(query.measure, value.also);
-  return also && { title: value.title, kind: value.kind as ChartPinSpec["kind"], query, also };
+  if (!also) return null;
+  return { title: value.title, kind: value.kind as ChartPinSpec["kind"], query, ...(also.length ? { also } : {}) };
 }
 
 /** Pins as stored; anything malformed is dropped rather than trusted. */
