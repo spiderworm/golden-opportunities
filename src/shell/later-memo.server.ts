@@ -9,12 +9,11 @@ import type { GameSave } from "~/game/types";
 import { quarterAt, quarterIndex, quarterMonths, type QuarterId } from "~/game/quarters";
 import { BOSSES } from "~/platform/bosses/bosses";
 import { STRIKE_BELOW, strikes } from "~/simulation/strikes";
-import { FORMAT_WORDS, GENRE_WORDS } from "~/simulation/words";
+import { bellItem, eventTitle } from "~/game/event-title";
 import { ALERT_COPY, type AlertCopy } from "./alert-copy";
 
 /** "2194-Q3" as "Q3 2194". */
 const name = (quarter: string) => `${quarter.slice(5)} ${quarter.slice(0, 4)}`;
-const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** "July, August and September". */
 const monthList = (quarter: QuarterId) => {
   const months = quarterMonths(quarter).map((m) => MONTHS[Number(m.slice(5)) - 1]!);
@@ -26,27 +25,8 @@ const measureList = (ids: readonly (keyof typeof MEASURE_NAMES)[]) => {
   return list.length < 2 ? (list[0] ?? "") : `${list.slice(0, -1).join(", ")} and ${list.at(-1)}`;
 };
 
-/** An event's short title, for the bell and the service record (endless-copy.md section 1). */
-export function shortTitle(record: Pick<AlmaRecord, "quarter" | "type" | "params">): string {
-  const p = record.params;
-  const month = typeof p.month === "number" ? MONTHS[Number(quarterMonths(record.quarter)[p.month - 1]!.slice(5)) - 1] : "";
-  switch (record.type) {
-    case "genre_surge":
-      return `${capital(GENRE_WORDS[String(p.genre)] ?? String(p.genre))} orders rising in ${month}`;
-    case "genre_slump":
-      return `${capital(GENRE_WORDS[String(p.genre)] ?? String(p.genre))} orders falling in ${month}`;
-    case "quiet_days":
-      return `Quiet ${p.weekday}s`;
-    case "author_fares":
-      return `Author nights at $${p.cost}`;
-    case "format_costs":
-      return `${capital(FORMAT_WORDS[String(p.format)] ?? String(p.format))} costs at ${p.percent}%`;
-    case "quiet_quarter":
-      return "A quiet quarter";
-    default:
-      return "An Orbitplace lot";
-  }
-}
+/** An event's short title (endless-copy.md section 1): the shared one in src/game/event-title.ts. */
+export const shortTitle = (record: Pick<AlmaRecord, "quarter" | "type" | "params">) => eventTitle(record.quarter, record);
 
 /** The Administrator's strike lines (endless.md section 7), in place of Alma's boss line. */
 const STRIKE_LINES = {
@@ -103,6 +83,6 @@ export function laterMemo(save: GameSave, quarter: QuarterId, record: AlmaRecord
         : `Standing order from the Commerce Office: submit your picks and a plan for ${name(quarter)}.`],
       short: [two ? `Standing order: one more strike ends your tenure. Plan due for ${name(quarter)}.` : `Standing order: plan due for ${name(quarter)}.`],
     },
-    bell: { title: `${name(quarter)}: ${shortTitle(record)}`, detail: `Read the memo, then submit your picks and a plan for ${name(quarter)}.` },
+    bell: (({ title, detail }) => ({ title, detail }))(bellItem(quarter, record)),
   };
 }

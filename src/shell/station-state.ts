@@ -3,7 +3,8 @@ import { quarterIndex, type QuarterId } from "~/game/quarters";
 import { getGameSession } from "~/game/session.server";
 import type { Grade, MeasureId } from "~/simulation/types";
 import { ALERT_COPY, Q2_ALERT_COPY, type AlertCopy } from "./alert-copy";
-import { laterMemo, shortTitle } from "./later-memo.server";
+import { laterMemo } from "./later-memo.server";
+import { bellItem } from "~/game/event-title";
 import type { StationNotification } from "./NotificationsBell";
 
 export interface StationState {
@@ -37,9 +38,7 @@ export function getStationState(request: Request): StationState {
   const reached = quarter ? quarterIndex(quarter) : save.played.length - 1;
   for (const record of save.alma ?? []) {
     if (quarterIndex(record.quarter) < 2 || quarterIndex(record.quarter) > reached) continue;
-    const name = `${record.quarter.slice(5)} ${record.quarter.slice(0, 4)}`;
-    alerts.unshift({ id: `${record.quarter}-memo`, title: `${name}: ${shortTitle(record)}`, detail: `Read the memo, then submit your picks and a plan for ${name}.`,
-      unread: !seen.includes(record.quarter), to: "/investigate" });
+    alerts.unshift({ ...bellItem(record.quarter, record), unread: !seen.includes(record.quarter), to: "/investigate" });
   }
   const current = quarter && quarterIndex(quarter) >= 2 ? save.alma?.find((r) => r.quarter === quarter) : undefined;
   return {
