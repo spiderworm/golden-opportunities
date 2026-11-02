@@ -194,7 +194,7 @@ export async function getQuarterBrief(request: Request): Promise<QuarterBrief | 
  * Any quarter after Q1, as Q2 is played: a plan the player got wrong is a 400 naming the problem; from Q3 the
  * quarter's Alma record sets its event, and the engine plays it through simulateTurn. Q2 keeps its own path.
  */
-export async function submitQuarterPlan(request: Request, plan: unknown): Promise<{ outcomeId: string }> {
+export async function submitQuarterPlan(request: Request, plan: unknown, expected?: QuarterId): Promise<{ outcomeId: string }> {
   const started = performance.now();
   let quarter: QuarterId | null = null;
   try {
@@ -203,6 +203,9 @@ export async function submitQuarterPlan(request: Request, plan: unknown): Promis
     quarter = quarterOf(save);
     if (quarter === '2194-Q1') throw new Response('Play the first quarter first.', { status: 409 });
     if (!quarter) throw alreadyPlayed();
+    // A form names the quarter it was written for: one left open from Q3, sent once Q4 is open, mustn't play Q4
+    // with July's picks. Its quarter is played already, so it's a 409, as for a repeat.
+    if (expected !== undefined && expected !== quarter) throw alreadyPlayed();
     if (quarter === '2194-Q2') return submitQ2Plan(request, plan);
     const data = loadBookshop();
     const problem = q2PlanProblem(plan, data);

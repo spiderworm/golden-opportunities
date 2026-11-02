@@ -71,6 +71,16 @@ describe('quarters past Q2', { timeout: 30_000 }, () => {
     await expect(submitQuarterPlan(req, hold)).rejects.toMatchObject({ status: 409 });
   });
 
+  it("refuse a form written for another quarter: one left open from Q2, sent once Q3 is open, doesn't play Q3", async () => {
+    const save = saves.create(); const req = request(save.id);
+    submitPlan(req, { levers: [] });
+    submitQ2Plan(req, hold);
+    await expect(submitQuarterPlan(req, hold, '2194-Q2')).rejects.toMatchObject({ status: 409 });
+    expect(saves.read(save.id).played).toHaveLength(2);
+    await submitQuarterPlan(req, hold, '2194-Q3');
+    expect(saves.read(save.id).played).toHaveLength(3);
+  });
+
   it('refuse a plan the player got wrong with Q2\'s 400, and a quarter out of turn with a 409', async () => {
     const save = saves.create(); const req = request(save.id);
     await expect(submitQuarterPlan(req, hold)).rejects.toMatchObject({ status: 409 });
