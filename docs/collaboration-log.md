@@ -106,5 +106,6 @@ Goldy put the open questions in `docs/requirements.md` to David.
 
 - **David's direction: keep Dewey's withheld sentences.** Sage's #162 records each sentence Dewey's figures gate withholds, kept on this computer under `agent_text` like the player's questions, and never sent. That widens the one exception to "events say what happened, never content". David: "It seems helpful to have a record of those. It's just a little bit of data."
 - **David's direction: `npm start` listens on this computer only.** It listened on every interface, so other devices on the network could reach it. Asked whether it should listen on this computer only, David said: "As opposed to opening it up to network calls? For now, yes". Sage is making the change.
-- **The phone grab is low priority.** David: "I'm working directly with Orbit on this. It's low prio". He and Orbit are working on #121's grip and the camera's framing directly.
-- Still open: the scripted event in Q2 and the ending's framing. Goldy is explaining both to David.
+- **The phone grab is low priority.** David: "I'm working directly with Orbit on this. It's low prio". It's #121.
+- **Pushback: Alma for the take-home.** Goldy had recommended no event director for the take-home, as in Q1 and Q2. David: "Alma: Oh just do it. We've got time."
+- **Pushback: the ending.** Goldy had recommended keeping Q2's result screen as the ending, framed as "the first half of 2194". David: "There's no ending. With Alma in play, this can go on and on forever until the player does such a bad job that the panel of robots decides to remove them from the position." Plot, Sim and Sage are designing it in `docs/design/endless.md`.
