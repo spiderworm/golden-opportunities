@@ -17,8 +17,9 @@ export function loader({ request }: Route.LoaderArgs) {
 export default function ShellLayout({ loaderData }: Route.ComponentProps) {
   const seen = useFetcher();
   const { pathname } = useLocation();
-  // Before any child's effects run, so a pin fetched on mount is filed under this version. Only in the browser:
-  // the cache module is client-only. Idempotent: the same version keeps the cache.
+  // In render, before any child's effects run, so a pin fetched on mount is filed under this version (Frank's
+  // note on #189). Only in the browser: the cache module is client-only. Idempotent: setting the version it
+  // already has keeps the cache, so a re-render or React's double render in development changes nothing.
   if (typeof document !== "undefined") queryCache.setVersion(loaderData.dataVersion);
 
   useEffect(() => {

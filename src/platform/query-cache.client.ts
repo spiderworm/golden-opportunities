@@ -195,8 +195,17 @@ export function queryKey(query: Query): string {
   return JSON.stringify([query.measure, query.by, sortedFilter(query.filter), query.sort ?? null, query.limit ?? null]);
 }
 
-/** The page a cache summary is for: the first path segment, a fixed route name, never the query string. */
-export const pageOf = (pathname: string) => pathname.split("/")[1] || "station";
+const PAGES = ["investigate", "decide", "result", "settings"] as const;
+
+/**
+ * The page a cache summary is for, from a fixed list (Frank's note on #189): a path the list doesn't name is
+ * "other", so a route added later can't send its path's text.
+ */
+export function pageOf(pathname: string): string {
+  const first = pathname.split("/")[1] ?? "";
+  if (first === "") return "station";
+  return (PAGES as readonly string[]).includes(first) ? first : "other";
+}
 
 /** One summary per page view, not one event per hit: sent when the player leaves the page, if it used the cache. */
 export function flushQueryCacheStats(cache: QueryCache, track: Track, page: string) {
