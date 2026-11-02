@@ -256,5 +256,5 @@ Nothing the player typed ever reaches Alma: no Dewey conversation, no investigat
 4. **No piling on:** on a strike, Alma may choose only a mild event (section 2).
 5. **Each quarter's discoveries come from its event,** plus "your last quarter on the record" and "your weakest measure" (section 5).
 6. **Removal is two strikes in a row,** a strike being an overall score under 70 (section 7). The alternatives are A (four-quarter average), B (any F) and C (three in four).
-8. **Goals don't ratchet:** every year's goals start from 2193's replay of that quarter, plus events and stretch, so a strong year doesn't raise the bar for the next (section 8). The alternatives are a full or a half ratchet. Sim's calibration of goals against removal settles 6 and 8 together.
-7. **The service record replaces the half-year review,** with an annual review after each Q4 (section 6).
+7. **Goals don't ratchet:** every year's goals start from 2193's replay of that quarter, plus events and stretch, so a strong year doesn't raise the bar for the next (section 8). The alternatives are a full or a half ratchet. Sim's calibration of goals against removal settles 6 and 7 together.
+8. **The service record replaces the half-year review,** with an annual review after each Q4 (section 6).
