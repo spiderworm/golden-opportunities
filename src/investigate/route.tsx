@@ -22,6 +22,7 @@ import {
   parseState,
   setAward,
   setDiscount,
+  setSeries,
   setFilter,
   toggleCell,
   toggleFilterValue,
@@ -107,6 +108,12 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             const listed = typeof choice === "object" && options.award.includes(choice.award);
             track("investigate_award_filtered", typeof choice === "object" ? { choice: "award", ...(listed ? { award: choice.award } : {}) } : { choice });
             update(setAward(state, choice));
+          }}
+          onSeries={(choice) => {
+            // A volume number is a fixed value from the data, like a discount rate: not content. Only a listed one is sent.
+            const listed = typeof choice === "object" && options.volume.includes(choice.volume);
+            track("investigate_series_filtered", typeof choice === "object" ? { choice: "volume", ...(listed ? { volume: choice.volume } : {}) } : { choice });
+            update(setSeries(state, choice));
           }}
           onClear={() => {
             track("investigate_filters_cleared");
