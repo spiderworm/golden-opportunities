@@ -361,7 +361,6 @@ const BANNED = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS
  * only whole valid numerals, so "DID", "MILD" and "CIVIL" pass. "MIX" is the one common word that's also one.
  */
 const ROMAN = /\b(?!MIX\b)(?=[MDCLXVI]{2,}\b)M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})(?<=\b[MDCLXVI]{2,})\b/u;
-/** The whole ban, for other text a player is shown as fact-free flavor (Alma's): run it on NFKC-folded text. */
 /**
  * Look-alike letters (Probe's and Audit's reviews of #229 and #235). The checks read a plain copy, with accents
  * and other marks stripped ("hìgher" is "higher"), and any letter that's still not A to Z withholds the text:
@@ -374,10 +373,14 @@ const banned = (text: string) => {
   const p = plain(text);
   return FOREIGN.test(p) || BANNED.test(p) || ROMAN.test(p);
 };
-export const hasBannedWord = (folded: string) => banned(folded);
 // Exact phrases allowed despite their words, in exact contexts only.
-const ALLOWED = /\blook(?:s|ed|ing)? (?:(?:it|them|that) )?up\b|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))/giu;
+const ALLOWED = /\blook(?:s|ed|ing)? (?:(?:it|them|that|things|everything) )?up\b|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))/giu;
 const REF = /\{\{([^{}]{1,40})\}\}/g;
+/**
+ * The whole ban, for other text a player is shown as fact-free flavor (Alma's): the allowed phrases ("I look
+ * things up") are cleared first, as in Dewey's prose. Run it on NFKC-folded text.
+ */
+export const hasBannedWord = (folded: string) => banned(folded.replace(ALLOWED, " "));
 
 /** Text as it will be read: compatibility forms ("７", "½") folded to plain ones before any check. */
 // Invisible characters (a soft hyphen, a zero-width space, a word joiner, bidi controls) are dropped first: NFKC
