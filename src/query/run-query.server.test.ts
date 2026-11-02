@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { loadBookshop } from '../bookshop/loader.server';
 import type { DeepReadonly, SaleLine } from '../bookshop/types';
 import { runQuery } from './run-query.server';
-import { BASELINE_VIEW } from './view.server';
+import { BASELINE_VIEW, MAX_SIMULATED_LINES, MAX_VIEW_PERIODS, validateView } from './view.server';
 import type { Query, QueryView } from './types';
 
 const quiet = () => {};
@@ -204,5 +204,13 @@ describe('server-owned visibility and cache isolation', () => {
     expect(() => run({ measure: 'units', by: [] }, { periods: ['2193-Q1', '2193-Q1'], includeUndated: false })).toThrow(expect.objectContaining({ code: 'INVALID_VIEW' }));
     const view: QueryView = { periods: ['2194-Q1'], includeUndated: false, simulatedSales: [sale({ format: 'x'.repeat(201) })] };
     expect(() => run({ measure: 'units', by: ['format'] }, view)).toThrow(expect.objectContaining({ code: 'RESULT_TOO_LARGE' }));
+  });
+  it("accepts an endless game's long save: every playable quarter, and five years' lines (Frank, 2 Nov)", () => {
+    const quarters = Array.from({ length: MAX_VIEW_PERIODS - 4 }, (_, i) => `${2194 + Math.floor(i / 4)}-Q${((i % 4) + 1) as 1 | 2 | 3 | 4}` as const);
+    const line = sale({});
+    const long: QueryView = { periods: ['2193-Q1', '2193-Q2', '2193-Q3', '2193-Q4', ...quarters], includeUndated: true, simulatedSales: Array(300_000).fill(line) };
+    expect(() => validateView(long)).not.toThrow();
+    expect(() => validateView({ ...long, periods: [...long.periods, '2294-Q1'] })).toThrow(expect.objectContaining({ code: 'INVALID_VIEW' }));
+    expect(() => validateView({ ...long, simulatedSales: Array(MAX_SIMULATED_LINES + 1).fill(line) })).toThrow(expect.objectContaining({ code: 'INVALID_VIEW' }));
   });
 });
