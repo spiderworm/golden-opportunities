@@ -149,6 +149,12 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
   if (event.name === "query_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.source === "string") {
     return { type: "data", columns: output.columns, rows: output.rows, total: output.total as number | null, source: output.source, ...pinFor(event) } as WireEvent;
   }
+  if (event.name === "show_chart" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.source === "string") {
+    // The chart is the model's input checked again, and titled from its query: nothing the model wrote is shown.
+    const chart = lookupPin(event.name, event.input);
+    if (!chart || chart.kind === "comparison") return null;
+    return { type: "chart", chart, pin: chart, columns: output.columns, rows: output.rows, total: output.total as number | null, source: output.source } as WireEvent;
+  }
   if (event.name === "compare_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.total === "object" && typeof output.source === "string") {
     return { type: "comparison", columns: output.columns, rows: output.rows, total: output.total, source: output.source, ...pinFor(event) } as WireEvent;
   }
@@ -195,7 +201,7 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     slot.charge();
     const provider = providerFor({ pins: input.pins });
     const started = now();
-    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, pins: 0, chars: 0, withheld: 0, figures: 0 };
+    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, charts: 0, pins: 0, chars: 0, withheld: 0, figures: 0 };
     let outcome = "aborted";
     const nonce = randomBytes(6).toString("hex");
     const prompt = buildPrompt(input.question, input.history, { pins: input.pins }, nonce);
@@ -220,7 +226,8 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
               afterTool = true;
               if (!event.isError) {
                 try {
-                  refs.addTool(event.name, event.input, JSON.parse(event.output));
+                  // A chart's lookup is a query_data lookup to the figures gate: the same refs, cited the same way.
+                  refs.addTool(event.name === "show_chart" ? "query_data" : event.name, event.input && typeof event.input === "object" ? ((event.input as { query?: unknown }).query ?? event.input) : event.input, JSON.parse(event.output));
                 } catch {
                   // Not JSON: nothing measured.
                 }
@@ -246,6 +253,7 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
               continue;
             }
             if (wire.type === "data") stats.lookups++;
+            if (wire.type === "chart") stats.charts++;
             if (wire.type === "comparison") {
               stats.comparisons++;
               // Its column headings are the values the model compared: shown only where the data had something.

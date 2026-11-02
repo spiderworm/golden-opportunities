@@ -1,8 +1,9 @@
 // The chat panel: ask the station's reference assistant about the data. Replies stream in; every lookup it ran
-// is shown under the reply with its source, so a figure without a source stands out. Minimal for now: results
-// are tables until the dashboard's chart components can draw them.
+// is shown under the reply with its source, so a figure without a source stands out. Lookups are tables; a chart
+// Dewey drew (show_chart) is drawn by the page's own chart components, or shown as its table without them.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
+import type { QueryResult } from "~/query/types";
 import { useRouteLoaderData } from "react-router";
 import type { WireEvent } from "../events.ts";
 import { track as platformTrack } from "~/platform/analytics/analytics.client";
@@ -16,7 +17,7 @@ import { askAssistant } from "./stream.ts";
 export type PanelTrack = (event: string, props?: Record<string, string | number | boolean>, options?: { hold?: "agent_text" }) => void;
 
 /** A pin also records whether the page took it (the dashboard can refuse a spec, or there may be none). */
-type Lookup = Extract<WireEvent, { type: "data" | "comparison" | "lookup_failed" }> | (Extract<WireEvent, { type: "pin" }> & { placed: boolean });
+type Lookup = Extract<WireEvent, { type: "data" | "comparison" | "chart" | "lookup_failed" }> | (Extract<WireEvent, { type: "pin" }> & { placed: boolean });
 interface Reply {
   question: string;
   text: string;
@@ -31,8 +32,12 @@ const SAVE_EVERY_MS = 1_000;
 const QUESTION_MAX = 500;
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
+/** Draws a chart Dewey showed, with the page's own chart components. */
+export type ChartRenderer = ComponentType<{ chart: ChartSpec; result: QueryResult }>;
+
 export function AssistantPanel({
   track = platformTrack,
+  ChartView,
   onPin,
   onPinLookup,
   isPinned,
@@ -41,6 +46,8 @@ export function AssistantPanel({
   instance,
 }: {
   track?: PanelTrack;
+  /** Draws Dewey's charts; without it they show as tables. */
+  ChartView?: ChartRenderer;
   onPin?: (chart: ChartSpec) => boolean | void;
   /** The player pinning a lookup shown here; no Pin buttons without it. The page can refuse one. */
   onPinLookup?: (pin: LookupPin) => boolean | void;
@@ -120,7 +127,7 @@ export function AssistantPanel({
     try {
       for await (const event of askAssistant(text, history.slice(-6), onPin !== undefined, controller.signal, fetcher)) {
         if (event.type === "text") update((r) => ({ ...r, text: r.text + event.text }));
-        else if (event.type === "data" || event.type === "comparison" || event.type === "lookup_failed") update((r) => ({ ...r, lookups: [...r.lookups, event] }));
+        else if (event.type === "data" || event.type === "comparison" || event.type === "chart" || event.type === "lookup_failed") update((r) => ({ ...r, lookups: [...r.lookups, event] }));
         else if (event.type === "pin" && onPin) {
           // Pins are only offered when onPin is wired; the page can still refuse one (Chart's pins.add).
           const placed = onPin(event.chart) !== false;
@@ -182,7 +189,7 @@ export function AssistantPanel({
             {r.text && <p style={styles.answer}>{r.text}</p>}
             {r.state === "streaming" && !r.text && <p style={styles.muted}>Looking...</p>}
             {r.lookups.map((l, j) => (
-              <LookupView key={j} lookup={l} pinning={onPinLookup && { onPin: pinLookup, isPinned }} />
+              <LookupView key={j} lookup={l} ChartView={ChartView} pinning={onPinLookup && { onPin: pinLookup, isPinned }} />
             ))}
             {r.error && <p style={styles.error}>{r.error}</p>}
             {r.state === "stopped" && <p style={styles.muted}>Stopped.</p>}
@@ -225,13 +232,25 @@ interface Pinning {
   isPinned?: (pin: LookupPin) => boolean;
 }
 
-export function LookupView({ lookup, pinning }: { lookup: Lookup; pinning?: Pinning }) {
+export function LookupView({ lookup, pinning, ChartView }: { lookup: Lookup; pinning?: Pinning; ChartView?: ChartRenderer }) {
   if (lookup.type === "lookup_failed") return <p style={styles.muted}>A lookup didn't work: {lookup.message}</p>;
   if (lookup.type === "pin") {
     return (
       <figure style={styles.lookup}>
         <figcaption>{lookup.placed ? `Pinned to Investigate, below: ${lookup.chart.title}` : `Couldn't pin that chart: ${lookup.chart.title}`}</figcaption>
         <p style={styles.source}>Source: {lookup.source}</p>
+      </figure>
+    );
+  }
+  if (lookup.type === "chart" && ChartView) {
+    const { chart, pin, type: _type, ...result } = lookup;
+    return (
+      <figure style={styles.lookup} aria-label={chart.title}>
+        <figcaption style={styles.chartTitle}>{chart.title}</figcaption>
+        <ChartView chart={chart} result={result} />
+        {result.total !== null && result.columns.length > 1 && <p style={styles.muted}>Total: {number.format(result.total)}</p>}
+        <p style={styles.source}>Source: {result.source}</p>
+        {pinning && pin && <PinButton pin={pin} pinning={pinning} />}
       </figure>
     );
   }
@@ -267,7 +286,7 @@ export function LookupView({ lookup, pinning }: { lookup: Lookup; pinning?: Pinn
           </tbody>
         </table>
       </div>
-      {lookup.type === "data" && lookup.total !== null && lookup.columns.length > 1 && <p style={styles.muted}>Total: {number.format(lookup.total)}</p>}
+      {(lookup.type === "data" || lookup.type === "chart") && lookup.total !== null && lookup.columns.length > 1 && <p style={styles.muted}>Total: {number.format(lookup.total)}</p>}
       <p style={styles.source}>Source: {lookup.source}</p>
       {pinning && lookup.pin && <PinButton pin={lookup.pin} pinning={pinning} />}
     </figure>
@@ -295,6 +314,7 @@ const styles = {
   offlineMessage: { margin: 0 },
   quiet: { marginLeft: "auto", padding: "2px 8px", background: "none", color: "var(--color-text-muted)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-control)", cursor: "pointer", fontSize: 12 },
   muted: { color: "var(--color-text-muted)", margin: 0, fontSize: 13 },
+  chartTitle: { fontSize: 13, fontWeight: 600 },
   log: { display: "flex", flexDirection: "column", gap: 16, maxHeight: 480, overflowY: "auto" },
   turn: { display: "flex", flexDirection: "column", gap: 8 },
   question: { margin: 0, alignSelf: "flex-end", background: "var(--color-accent-soft)", padding: "6px 10px", borderRadius: "var(--radius-control)" },

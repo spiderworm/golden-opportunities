@@ -6,6 +6,7 @@ import type { ShellHandle } from "~/shell/Shell";
 import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { Route } from "./+types/route";
+import { DeweyChart } from "./charts/DeweyChart";
 import { FilterBar } from "./FilterBar";
 import { DIMENSION_LABELS, ledgersTitle, MEASURE_LABELS, measuresLabel } from "./format";
 import { Heatmap } from "./Heatmap";
@@ -225,7 +226,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
       </div>
       {/* Dewey: a column beside the dashboard on wide screens, after it below that. */}
       <aside className={styles.assistant} aria-label="Dewey">
-        <AssistantPanel onPin={(chart) => pins.add(chart, "dewey")} onPinLookup={(pin) => pins.add(pin, "player")} isPinned={pins.has} />
+        <AssistantPanel ChartView={DeweyChart} onPin={(chart) => pins.add(chart, "dewey")} onPinLookup={(pin) => pins.add(pin, "player")} isPinned={pins.has} />
       </aside>
     </div>
   );
