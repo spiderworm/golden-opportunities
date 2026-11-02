@@ -245,3 +245,16 @@ describe("titles the data returned may be named in prose, digits and all (Probe'
     expect(say("At 15%, units were {{d1}}.", refs(rates))).toBe(WITHHELD);
   });
 });
+
+describe("invisible characters (Probe)", () => {
+  it("are dropped before the checks, so a word split by one is still caught", () => {
+    for (const hidden of ["\u00AD", "\u200B", "\u2060", "\uFEFF", "\u200D"]) {
+      expect(say(`Fi${hidden}ve units sold.`), JSON.stringify(hidden)).toBe(WITHHELD);
+      expect(say(`Revenue was hig${hidden}her in {{a4.quarter}}.`), JSON.stringify(hidden)).toBe(WITHHELD);
+    }
+  });
+
+  it("and from what's shown", () => {
+    expect(say("Reve\u00ADnue in {{a4.quarter}} was {{a4}}.")).toBe("Revenue in 2193-Q4 was $161,524.69.");
+  });
+});
