@@ -8,6 +8,7 @@ import { compareQuarters, isQuarterId, isQuarterName, nextQuarter, playableQuart
 import { LATER_KEYS } from './later-discoveries.ts';
 import { alertsSeenOf, currentQuarter } from './progress.ts';
 import { isAlmaLog } from '../alma/record.ts';
+import { isBackstoryRecord } from '../alma/backstory-record.ts';
 import { EVIDENCE_KEYS, MAX_EVIDENCE_SCOPES, discoveriesFromBuckets, q2DiscoveriesFromBuckets, witnessScopes } from './discovery-evidence.ts';
 
 const ID = /^[A-Za-z0-9_-]{43}$/;
@@ -59,6 +60,7 @@ function validate(save: GameSave, id: string): void {
     || !Array.isArray(save.played) || save.played.length > playableQuarters()
     || (save.laterEvidence !== undefined && !validLaterEvidence(save.laterEvidence))
     // Alma's records reach no further than the next unplayed quarter, so none before a quarter is played.
+    || (save.backstory !== undefined && !isBackstoryRecord(save.backstory))
     || (save.alma !== undefined && (!save.played.length || !isAlmaLog(save.alma, nextQuarter(save.played.at(-1)!.period))))) throw new SaveError('INVALID_SAVE');
   // Sale ids are unique across quarters, not just within one.
   const ids = new Set<string>();

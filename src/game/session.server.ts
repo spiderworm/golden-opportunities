@@ -8,6 +8,7 @@ import { RELEASE, releaseBook } from '../simulation/release';
 import { BASELINE_VIEW } from '../query/view.server';
 import { DATA_DIR } from '../platform/analytics/instance.server';
 import { trackServer } from '../platform/analytics/analytics.server';
+import { onGameStarted } from '../alma/backstory.server';
 import { createSaveStore, isSaveId, SaveError } from './store.server';
 import { quarterLines } from './replay.server';
 import type { TurnEvent } from '../simulation/turn';
@@ -80,9 +81,11 @@ export function startGame(): string {
   if (Date.now() - creationWindow >= 60_000) { creationWindow = Date.now(); creations = 0; }
   if (creations >= NEW_GAMES_PER_MINUTE) throw new Response('Too many new games. Try again shortly.', { status: 429, headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' } });
   creations++;
-  const id = saves.create().id;
+  const save = saves.create();
   trackServer('game_save_created', { version: 1 });
-  return id;
+  // Alma writes the station's backstory in the background; the arrival never waits for it (src/alma).
+  onGameStarted({ saveId: save.id, seed: save.seed }, { saves });
+  return save.id;
 }
 /** One bootstrap before parallel shell/child loaders; never creates saves for API callers or POSTs. */
 export const gameSessionMiddleware: MiddlewareFunction<Response> = async ({ request }, next) => {
