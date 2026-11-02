@@ -1,4 +1,4 @@
-import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { rmSync } from 'node:fs';
 const directory = await vi.hoisted(async () => {
   const { mkdtempSync } = await import('node:fs');
@@ -7,6 +7,7 @@ const directory = await vi.hoisted(async () => {
 });
 vi.mock('../platform/analytics/instance.server', () => ({ DATA_DIR: directory }));
 vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }));
+import { PLAYABLE_QUARTERS, setPlayableQuarters } from './quarters';
 import { currentQuarter, resetGame, submitPlan, submitQ2Plan } from './game.server';
 import { saves } from './session.server';
 import { trackServer } from '../platform/analytics/analytics.server';
@@ -25,6 +26,9 @@ async function refusal(action: () => unknown, code: number) {
 const newId = (cookie: string) => /^orbital_save=([A-Za-z0-9_-]{43});/.exec(cookie)![1]!;
 afterEach(() => vi.clearAllMocks());
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
+// The game as Q1 and Q2 built it, ending after Q2: the endless loop's own tests are endless.server.test.ts.
+beforeAll(() => setPlayableQuarters(2));
+afterAll(() => setPlayableQuarters(PLAYABLE_QUARTERS));
 
 describe('resetting the game', () => {
   it.each([

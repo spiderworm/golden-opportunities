@@ -6,7 +6,7 @@ import { isQuarterName, quarterAt, quarterIndex, type QuarterId } from '../simul
 export { FIRST_QUARTER, compareQuarters, isQuarterName, nextQuarter, quarterAt, quarterIndex, quarterMonths, quarterNumber, type QuarterId } from '../simulation/quarters.ts';
 
 /** How many quarters the game plays by default, from Q1 2194: Q1 and Q2 until every endless screen is in. */
-export const PLAYABLE_QUARTERS = 2;
+export const PLAYABLE_QUARTERS = 400;
 let playable = PLAYABLE_QUARTERS;
 /** How many quarters the game can play now. */
 export const playableQuarters = () => playable;

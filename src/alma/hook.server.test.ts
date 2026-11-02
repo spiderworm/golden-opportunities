@@ -1,4 +1,4 @@
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { rmSync } from "node:fs";
 const directory = await vi.hoisted(async () => {
   const { mkdtempSync } = await import("node:fs");
@@ -9,6 +9,7 @@ vi.mock("../platform/analytics/instance.server", () => ({ DATA_DIR: directory })
 vi.mock("../platform/analytics/analytics.server", () => ({ trackServer: vi.fn() }));
 import { getQ2Candidates, submitPlan, submitQ2Plan } from "~/game/game.server";
 import { saves } from "~/game/session.server";
+import { PLAYABLE_QUARTERS, setPlayableQuarters } from "~/game/quarters";
 import { SaveError } from "~/game/store.server";
 import type { GameSave, PlayedQuarter } from "~/game/types";
 import { trackServer } from "~/platform/analytics/analytics.server";
@@ -29,6 +30,9 @@ const request = (id: string) => new Request("http://localhost/decide", { method:
 
 describe("Alma in the game", () => {
   it("spends nothing on a quarter the game can't play yet: no turn for Q3 before it exists (Audit)", async () => {
+    // As before the endless loop was switched on: two quarters playable.
+    setPlayableQuarters(2);
+    onTestFinished(() => setPlayableQuarters(PLAYABLE_QUARTERS));
     const save = saves.create();
     submitPlan(request(save.id), { levers: [] });
     submitQ2Plan(request(save.id), { picks: [getQ2Candidates()[0]!.isbn, null, null], levers: [] });

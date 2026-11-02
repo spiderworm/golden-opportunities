@@ -20,12 +20,11 @@ describe('quarter names, past the two the game has built (endless.md)', () => {
 });
 
 describe('the quarters the game plays today', () => {
-  it('are Q1 and Q2 2194 until the endless loop is built, as before', () => {
-    expect(PLAYABLE_QUARTERS).toBe(2);
-    expect(playableQuarters()).toBe(2);
-    expect(isQuarterId('2194-Q2')).toBe(true);
-    expect(isQuarterId('2194-Q3')).toBe(false);
-    expect([0, 1, 2].map(quarterAfter)).toEqual(['2194-Q1', '2194-Q2', null]);
+  it('run on past Q2, now that the endless loop is on, until the panel removes the player', () => {
+    expect(PLAYABLE_QUARTERS).toBe(400);
+    expect(playableQuarters()).toBe(400);
+    expect(isQuarterId('2194-Q3')).toBe(true);
+    expect([0, 1, 2].map(quarterAfter)).toEqual(['2194-Q1', '2194-Q2', '2194-Q3']);
     // Each quarter opens on its first day; after the last playable one, the station's date is the next quarter's.
     expect([0, 1, 2, 3, 4].map(stationDate)).toEqual(['2194-01-01', '2194-04-01', '2194-07-01', '2194-10-01', '2195-01-01']);
   });
