@@ -191,7 +191,7 @@ The half-year review comes off Q2's result screen. Every result screen from Q2 o
 - Q1 counts. Holding course every quarter (about 67, 66, then 62 to 66) is removed by the end of 2194 in all 20 seeds: at Q3 in 19, and at Q4 in the seed that scored 70 in Q1. The trap picks are the same, and the sale goes at Q3 in all 20. Coasting is a bad job, and that's what David asked the bosses to catch ("make coasting impossible", 30 Oct).
 
 Why this rule, from Sim's numbers (section 8):
-- **It removes the bad jobs and spares the sensible ones.** Over five years, quiet picks plus author nights every quarter was never removed, and neither was picks only. Holding course, the sale and the trap picks go in the first year, every time. Author nights only, the weakest sensible plan, loses half its players within five years.
+- **It removes the bad jobs and spares the sensible ones.** Over five years, quiet picks plus author nights every quarter was never removed with random candidates, and lost 1 of 20 players when Alma always chose the hardest. Holding course, the sale and the trap picks go in the first year, every time. Author nights only and picks only, the weakest sensible plans, lose at most 2 of 20 players within five years, even when Alma always chooses the hardest candidate (section 8).
 - **Two in a row removed sensible players in the first year.** Q3 and Q4 are the hard quarters (section 8): picks only strikes in 83% of Q3s and 99% of Q4s, so a player making one sensible move each quarter was usually removed at Q4 2194. That isn't "such a bad job".
 - **Q1 and Q2 stay exactly as built.** No one can be removed before Q3, so the shipped Q1 to Q2 flow is unchanged. Under two in a row, holding course would end the game at Q2's result.
 - **A single bad quarter, such as trying the sale once, is survivable,** and so is a second. The player can experiment and recover.
@@ -295,33 +295,37 @@ The swing of each type's expected effect on holding course, as a share of the qu
 
 The rules applied to the same runs, with no ratchet. Each cell is how many of the 20 seeds were removed by the end of 2194, 2195, 2196 and 2198, and the median quarter of removal. "Quiet picks + author nights" chooses, each month, the best-rated hardcover that sold 2 copies or fewer in that month of 2193, which is Q2's quiet-picks idea in any quarter.
 
-| Plan, every quarter | Two strikes in a row (the alternative) | Three strikes in any four (proposal) |
-| --- | --- | --- |
-| Hold course | 20, 20, 20, 20 of 20; Q2 2194 | 20 of 20; Q3 2194 |
-| The sale | 20 of 20; Q2 2194 | 20 of 20; Q3 2194 |
-| Bestseller picks (Q2's trap) | 20 of 20; Q2 2194 | 20 of 20; Q3 2194 |
-| Author nights only | 17, 20, 20, 20; Q4 2194 | 2, 4, 9, 10; Q1 to Q2 2196 |
-| Picks only (quiet) | 16, 19, 20, 20; Q4 2194 | 0 of 20 |
-| Quiet picks + author nights | 0, 0, 1, 1 of 20; Q1 2196 | 0 of 20 |
+*Rerun on November 2* with Alma's three candidates (section 2): mild ones only while two strikes count, and generated copies joining orders (#175). **Random** takes the first candidate. **Hardest** takes, each quarter, the candidate that gives that plan its lowest score. That's a worst case Alma can't reach, because it would need the quarter's result before choosing.
 
-**How often a reasonable plan collects a strike,** from Q3 2194 on (the share of quarters under 70, and the score range):
+| Plan, every quarter | Two in a row, random | Two in a row, hardest | Three in any four (proposal), random | Three in any four, hardest |
+| --- | --- | --- | --- | --- |
+| Hold course | 20 of 20; Q2 2194 | 20 of 20; Q2 2194 | 20 of 20 by the end of 2194; median Q3 2194 | The same |
+| The sale | 20 of 20; Q2 2194 | 20 of 20; Q2 2194 | 20 of 20; Q3 2194 | The same |
+| Bestseller picks (Q2's trap) | 20 of 20; Q2 2194 | 20 of 20; Q2 2194 | 20 of 20 by the end of 2194; median Q3 2194 | The same |
+| Author nights only | 19, 20, 20, 20; Q4 2194 | 20 of 20; Q4 2194 | 0, 0, 1, 2 | 0, 0, 0, 2 |
+| Picks only (quiet) | 18, 20, 20, 20; Q4 2194 | 19, 20, 20, 20; Q4 2194 | 0, 1, 2, 2 | 0, 0, 1, 1 |
+| Quiet picks + author nights | 0, 0, 0, 1; Q4 2197 | 1, 3, 3, 5; median Q4 2195 | 0 of 20 | 0, 1, 1, 1; Q4 2195 |
+
+**How often a reasonable plan collects a strike,** from Q3 2194 on (random candidates; the share of quarters under 70, and the score range):
 
 | Plan | Q1 | Q2 | Q3 | Q4 |
 | --- | --- | --- | --- | --- |
-| Quiet picks + author nights | 1% (69–89) | 3% (67–83) | 10% (66–77) | 23% (64–82) |
-| Picks only | 0% (70–75) | 0% (70–74) | 83% (67–72) | 99% (64–70) |
-| Author nights only | 8% (66–85) | 9% (63–79) | 79% (63–71) | 95% (60–73) |
-| Hold course | 100% (68–69) | 100% (64–67) | 100% (62–66) | 100% (60–63) |
+| Quiet picks + author nights | 0% (70–89) | 1% (69–82) | 7% (67–77) | 20% (66–80) |
+| Picks only | 0% (70–76) | 3% (69–74) | 95% (67–71) | 100% (63–69) |
+| Author nights only | 1% (68–85) | 4% (65–79) | 77% (64–72) | 93% (61–74) |
+| Hold course | 100% (68–69) | 100% (64–67) | 100% (62–66) | 100% (61–63) |
 
-- **Two strikes in a row meets the first draft's target** (Sim's reading of the first draft; section 7 now proposes C, see Plot's note below). The good plan was removed in 1 of 20 games over five years, by a Q4-then-Q1 pair. Holding course, the sale and the trap picks are removed at the end of Q2 2194, every time.
+With the hardest candidate every quarter, the good plan's strike rate rises to 1%, 5%, 14% and 34%.
+
+- **Two strikes in a row meets the first draft's target** (Sim's reading of the first draft; section 7 now proposes C, see Plot's note below). The good plan was removed in 1 of 20 games over five years, but in 5 of 20 when Alma always chooses the hardest candidate. Holding course, the sale and the trap picks are removed at the end of Q2 2194, every time.
 - **The cost: Q3 and Q4 are the hard quarters.** 2193's Q3 and Q4 had busy Books of the Month (December's sold 173 extra copies), so their anchors sit well above an empty calendar, and Q2's two levers are weaker there. A player making one sensible move each quarter is usually removed at Q4 2194. The event discoveries (section 5) should help a player who uses them: the prototype's good plan ignores the event, so these bands are a floor.
-- **C (three in any four) is the forgiving rule.** It removes coasting a quarter later and spares the one-move players, except author nights only, half of whom go within five years. If David wants "a bad job" to mean D's every quarter, not one move a quarter, C is the rule.
+- **C (three in any four) is the forgiving rule.** It removes coasting a quarter later and spares the one-move players: at most 2 of 20 go within five years, and the good plan at most 1 of 20, even against the hardest candidates. That's because mild candidates protect a player with two strikes counting. Without that rule (the first run), author nights only lost half its players within five years. If David wants "a bad job" to mean D's every quarter, not one move a quarter, C is the rule.
 - **"No piling on" can't change these numbers.** With anchored goals, events don't cause strikes, so the rule only keeps the story kind.
 - **Two in a row under 60** was also measured. It removes only the sale and half the trap-pick players, so coasting survives forever. It isn't a candidate.
 
 *Plot, after these numbers:* section 7 now proposes C, three strikes in any four, with two in a row as the alternative. A player making one sensible move each quarter isn't doing "such a bad job", and under C no one can be removed before Q3, so Q1 and Q2 stay as built.
 
-**Still to measure (Sim):** the bands above drew events and stretches at random. Alma now chooses among three server-drawn candidates (section 9), so the removal bands should be rerun with Alma always choosing the hardest candidate for the player. With two strikes counting, the candidates are mild and carry no stretch, so the removing strike can't come from Alma's choice.
+**Measured (Sim): the bands hold against the hardest candidates.** Under C, holding course, the sale and the trap picks are still removed in the first year, every time, and no sensible plan loses more than 2 of 20 players in five years. The protection is the mild-candidates rule: the removing strike can't come from Alma's choice. **The recovery cap keeps these bands valid.** A goal only moves scores above 70, because 70 is the anchor, so neither a stretch nor a capped recovery goal can turn a quarter into a strike. And at the anchor plus 20%, a recovery goal is never harder than the stretches drawn in these runs.
 
 ### What the engine exposes
 
@@ -398,6 +402,6 @@ Nothing the player typed ever reaches Alma: no Dewey conversation, no investigat
 3. **Goals count each event's expected effect, except the stretch** (section 2). The alternative: unanchored events, with Weathered the Storm for beating them.
 4. **Alma chooses among three fair draws and writes flavor; the server writes the facts** (sections 2, 3 and 9). With two strikes counting, the draws are mild and there's no extra stretch. The alternative is Alma choosing the type, params and stretch itself, within limits, which lets it aim them at a player.
 5. **Each quarter's discoveries come from its event,** plus "your last quarter on the record" and "your weakest measure" (section 5).
-6. **Removal is three strikes in any four quarters,** a strike being an overall score under 70 (section 7). Calibrated over five years: quiet picks plus author nights, and picks only, are never removed; holding course, the sale and the trap picks are removed by the end of 2194, every time, nearly always at Q3 (section 8). The alternatives are two strikes in a row (harsher: most one-move players go at Q4 2194), A (a four-quarter average) and B (any F).
+6. **Removal is three strikes in any four quarters,** a strike being an overall score under 70 (section 7). Calibrated over five years: quiet picks plus author nights loses at most 1 of 20 players, and one move a quarter at most 2 of 20, even when Alma always chooses the hardest candidate; holding course, the sale and the trap picks are removed by the end of 2194, every time, nearly always at Q3 (section 8). The alternatives are two strikes in a row (harsher: most one-move players go at Q4 2194), A (a four-quarter average) and B (any F).
 7. **Goals don't ratchet:** every year's goals start from 2193's replay of that quarter, plus events and stretch, so a strong year doesn't raise the bar for the next (section 8). A recovery goal is the one place a past result counts, and it's capped at the anchor plus 20%, the largest extra stretch (section 2). The alternatives are a full ratchet, which flattens every plan to 68 to 70 from 2195, and a half ratchet, which removes 7 of 20 good players within five years (section 8).
 8. **The service record replaces the half-year review,** with an annual review after each Q4 (section 6).
