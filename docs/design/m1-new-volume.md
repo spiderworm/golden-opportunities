@@ -24,7 +24,7 @@ Status: **decided (David, October 31, 2026):** he approved `q2.md` ("127 LGTM"),
 
 **Launch:** three times the rate in the first week, and twice the rate in the second. **Generated**: no series released a volume in 2193, so the data can't show a launch.
 
-**In the model:** each copy is a new one-line order at full price. Each day's count is the rate times the launch multiplier, scaled by that day's share of baseline orders, so the release follows the weekday pattern. It draws from its own seeded stream, so holding course and the plan get the same release. Over seeds 1 to 20, the release sells 309 to 319 copies by March 31 (median 313).
+**In the model:** each copy sells at full price. It joins one of that day's baseline orders with volume 2's 2193 multi-item share (21%, over both its editions), and otherwise it's a new one-line order. Each day's count is the rate times the launch multiplier, scaled by that day's share of baseline orders, so the release follows the weekday pattern. It draws from its own seeded stream, so holding course and the plan get the same release. Over seeds 1 to 20, the release sells 309 to 319 copies by March 31 (median 313).
 
 ## How the player learns of it
 
@@ -61,6 +61,7 @@ With unchanged goals, author nights alone outscores the strong plan, and holding
 - **Expected effect** is the mean, over a fixed set of seeds (101 to 120, independent of the player's seed), of holding course with the release minus holding course without it. Sim computes it the same way. On those seeds it is profit +$2,889, readers +314, culture +308 and happiness −0.45.
 - **Goals, approximately:** profit $42,558 (was $39,524), readers served 7,496 (was 7,166), happiness 67.85 (was 68.32) and culture 18,560 (was 18,236).
 - **Calibration holds.** Every band in the table above matches the current one to within a point or two. Re-pick plus author nights is still the strong plan, and the sale still fails, a little harder.
+- **Since copies join orders** (Sim, November 2): about a fifth of the release's copies now join an existing order, so it adds fewer readers. Its measured effect is readers +255.55 and happiness −0.40, with profit and culture unchanged, and the readers and happiness goals are 7,435 and 67.90. With the goals counting it, the bands that moved are `repick` 70–76 (median 71), `events` 70–90 (median 73) and `repick` + `events` 85–91 (median 86.5). The rest are unchanged.
 
 In the story, the Commerce Office knows the volume is coming and plans for it. That is the bosses' forecast, not Dewey's.
 

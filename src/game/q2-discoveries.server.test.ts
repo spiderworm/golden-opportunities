@@ -37,10 +37,12 @@ afterAll(() => rmSync(directory, { recursive: true, force: true }));
 describe("D's picks", () => {
   it("are 2193's Books of the Month, busy at 100 or more copies an average other month and quiet under 25", () => {
     const data = loadBookshop();
+    // One history per quarter, not per month: each is slow to build, and 12 took over 5 s on one worker (Sim).
+    const histories = ([1, 2, 3, 4] as const).map(q => historyOf(data, q));
     // Every month's pick: those in D_PICKS are busy or quiet as listed, and the rest (January's) neither, so the list is complete.
     for (let m = 1; m <= 12; m++) {
       const month = String(m).padStart(2, '0'); const key = `2193-${month}`;
-      const line = data.saleLines.find(l => l.isbn === historyOf(data, Math.ceil(m / 3) as 1 | 2 | 3 | 4).observedPick(month))!;
+      const line = data.saleLines.find(l => l.isbn === histories[Math.ceil(m / 3) - 1].observedPick(month))!;
       const rows = runQuery({ measure: 'units', by: ['month'], filter: { title: [line.title], format: [line.format] } }, BASELINE_VIEW).rows;
       const average = rows.filter(r => r.month !== key).reduce((sum, r) => sum + Number(r.units), 0) / 11;
       const p = D_PICKS.find(d => d.month === m);

@@ -21,6 +21,7 @@ import {
   filtersExcept,
   parseState,
   setDiscount,
+  setSeries,
   setFilter,
   toggleCell,
   toggleFilterValue,
@@ -100,6 +101,12 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             // Rates are labels like "15%", not content; "all", "full" and "any" are fixed choices.
             track("investigate_discount_filtered", { choice });
             update(setDiscount(state, choice));
+          }}
+          onSeries={(choice) => {
+            // A volume number is a fixed value from the data, like a discount rate: not content. Only a listed one is sent.
+            const listed = typeof choice === "object" && options.volume.includes(choice.volume);
+            track("investigate_series_filtered", typeof choice === "object" ? { choice: "volume", ...(listed ? { volume: choice.volume } : {}) } : { choice });
+            update(setSeries(state, choice));
           }}
           onClear={() => {
             track("investigate_filters_cleared");

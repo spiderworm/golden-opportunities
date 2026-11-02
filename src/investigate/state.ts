@@ -25,6 +25,7 @@ export const GROUPINGS = [
   "publisher",
   "weekday",
   "discount_rate",
+  "volume",
   "title",
 ] as const satisfies readonly Dimension[];
 export type Grouping = (typeof GROUPINGS)[number];
@@ -40,6 +41,8 @@ export const FILTER_DIMENSIONS = [
   "month",
   "weekday",
   "title",
+  "in_series",
+  "volume",
 ] as const satisfies readonly Dimension[];
 export type FilterDimension = (typeof FILTER_DIMENSIONS)[number];
 
@@ -129,6 +132,24 @@ export function setDiscount(state: InvestigateState, choice: DiscountChoice): In
   if (choice === "all") return cleared;
   if (choice === "any") return setFilter(cleared, "discounted", ["yes"]);
   return setFilter(cleared, "discount_rate", [choice === "full" ? FULL_PRICE : choice]);
+}
+
+/** The series filter is one choice too: every book, books in a series, standalone books, or one volume number. */
+export type SeriesChoice = "all" | "yes" | "no" | { volume: string };
+
+export function seriesChoice(filters: Filters): SeriesChoice {
+  if (filters.volume?.length === 1 && !filters.in_series) return { volume: filters.volume[0]! };
+  if (filters.in_series?.length === 1 && !filters.volume) {
+    const inSeries = filters.in_series[0];
+    if (inSeries === "yes" || inSeries === "no") return inSeries;
+  }
+  return "all";
+}
+
+export function setSeries(state: InvestigateState, choice: SeriesChoice): InvestigateState {
+  const cleared = setFilter(setFilter(state, "in_series", []), "volume", []);
+  if (choice === "all") return cleared;
+  return typeof choice === "object" ? setFilter(cleared, "volume", [choice.volume]) : setFilter(cleared, "in_series", [choice]);
 }
 
 /** Drills into one heatmap cell, or back out if it's the only cell selected. */

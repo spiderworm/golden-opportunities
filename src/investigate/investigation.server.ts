@@ -20,6 +20,8 @@ export interface FilterOptions {
   format: string[];
   publisher: string[];
   discount_rate: string[];
+  /** Volume numbers ("1" to "7"), in order. */
+  volume: string[];
 }
 
 export interface Investigation {
@@ -101,6 +103,7 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
     format: option("format"),
     publisher: option("publisher"),
     discount_rate: option("discount_rate"),
+    volume: option("volume").sort((a, b) => Number(a) - Number(b)),
   };
 
   const tileFilter = withFilter(filtersExcept(state.filters, ["quarter"]));
