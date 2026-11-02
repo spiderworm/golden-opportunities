@@ -1,0 +1,100 @@
+{
+  "id": "pm2-twin-1",
+  "group": "misattribution",
+  "at": "2026-11-02T23:13:38.787Z",
+  "ms": 5569,
+  "status": 200,
+  "request": {
+    "question": "How much is Heliotrope Pajamas in paperback?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up the list prices of Heliotrope Pajamas in paperback, by edition. I'd rather not give a number I didn't look up.\n\nHeliotrope Pajamas (Paperback, 2181) lists at $7.99.\n\nHeliotrope Pajamas (Paperback, 2186) lists at $10.99.",
+  "tools": [
+    {
+      "type": "data",
+      "total": 585,
+      "rows": 2
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "edition",
+          "label": "Edition",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "list_price",
+          "label": "List price",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "edition": "Heliotrope Pajamas (Paperback, 2181)",
+          "list_price": "$7.99",
+          "units": 211
+        },
+        {
+          "ref": "a2",
+          "edition": "Heliotrope Pajamas (Paperback, 2186)",
+          "list_price": "$10.99",
+          "units": 374
+        }
+      ],
+      "total": 585,
+      "source": "Units from 585 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 585 source and 0 simulated sale lines; grouped by edition, list_price; exact filters on title, format. Showing 2 of 2 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by edition and list price, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "edition",
+            "list_price"
+          ],
+          "filter": {
+            "title": [
+              "Heliotrope Pajamas"
+            ],
+            "format": [
+              "Paperback"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up the list prices of Heliotrope Pajamas in paperback, by edition. "
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "Heliotrope Pajamas (Paperback, 2181) lists at $7.99.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "Heliotrope Pajamas (Paperback, 2186) lists at $10.99."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
