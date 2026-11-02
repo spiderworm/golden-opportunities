@@ -82,6 +82,12 @@ export interface Certificate {
   id: CertificateId;
   /** The measure it's for: Exceeds Requirements and Comeback. */
   measure?: MeasureId;
+  /** Comeback: the quarter the measure fell in, "2195-Q2". */
+  previous?: string;
+  /** Weathered the Storm: the measures the event works against, every one at or above its goal, in card order. */
+  measures?: MeasureId[];
+  /** Weathered the Storm: the event it was earned despite. */
+  event?: { type: string; params: Record<string, string | number> };
 }
 
 export interface ReportCard {
