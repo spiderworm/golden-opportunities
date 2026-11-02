@@ -99,11 +99,34 @@ function typeAllowed(type: EventType, context: QuarterContext, repeats: boolean)
   return pilingOn(context) || stretchMeasures(type, repeats ? context : { ...context, previous: [] }).length > 0;
 }
 
-function draw(type: EventType, context: QuarterContext, next: () => number, repeats: boolean): Candidate | null {
+/** Fares this far apart, or more, are different offers. */
+const FARES_APART = 50;
+
+/**
+ * Whether two candidates are really different offers (Plot, on the live check's $150 and $149 fares): another
+ * type, or the same type with another genre, weekday or format, or fares at least $50 apart.
+ */
+export function apart(a: Candidate, b: Candidate): boolean {
+  if (a.type !== b.type) return true;
+  for (const key of ["genre", "weekday", "format"]) if (key in a.params && a.params[key] !== b.params[key]) return true;
+  if (a.type === "author_fares") return Math.abs((a.params.cost as number) - (b.params.cost as number)) >= FARES_APART;
+  return false;
+}
+
+function draw(type: EventType, context: QuarterContext, next: () => number, repeats: boolean, siblings: readonly Candidate[] = []): Candidate | null {
   const params: Record<string, string | number> = {};
   for (const [name, spec] of Object.entries(type.params)) {
-    const max = pilingOn(context) && type.id === "author_fares" && spec.kind === "int" ? Math.min(spec.max, GENTLE_FARES) : spec.kind === "int" ? spec.max : 0;
-    params[name] = spec.kind === "enum" ? pick(spec.values, next) : spec.min + Math.floor(next() * (max - spec.min + 1));
+    // Values the same type's other candidates don't have, where there are any.
+    const taken = siblings.map((c) => c.params[name]);
+    if (spec.kind === "enum") {
+      const free = spec.values.filter((v) => !taken.includes(v));
+      params[name] = pick(free.length ? free : spec.values, next);
+    } else {
+      const max = pilingOn(context) && type.id === "author_fares" ? Math.min(spec.max, GENTLE_FARES) : spec.max;
+      const all = Array.from({ length: max - spec.min + 1 }, (_, i) => spec.min + i);
+      const free = type.id === "author_fares" ? all.filter((v) => taken.every((t) => Math.abs(v - (t as number)) >= FARES_APART)) : all;
+      params[name] = pick(free.length ? free : all, next);
+    }
   }
   let stretch: Stretch = null;
   if (!pilingOn(context)) {
@@ -139,8 +162,10 @@ export function drawCandidates(seed: number, context: QuarterContext): [Candidat
       const total = from.reduce((s, t) => s + weight(t), 0);
       let r = next() * total;
       const type = from.find((t) => (r -= weight(t)) < 0) ?? from.at(-1)!;
-      const candidate = draw(type, context, next, repeats);
-      if (candidate && !chosen.some((c) => JSON.stringify(c) === JSON.stringify(candidate))) chosen.push(candidate);
+      const candidate = draw(type, context, next, repeats, chosen.filter((c) => c.type === type.id));
+      // Really different offers while the tries last; at the end, any distinct one (two strikes can leave only
+      // fares, and three fares can't all be $50 apart between $100 and $200 unless they're exactly that).
+      if (candidate && chosen.every((c) => (tries < 150 ? apart(c, candidate) : JSON.stringify(c) !== JSON.stringify(candidate)))) chosen.push(candidate);
     }
     if (chosen.length === 3) return chosen as [Candidate, Candidate, Candidate];
   }
