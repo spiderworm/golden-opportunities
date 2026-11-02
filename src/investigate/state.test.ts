@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_STATE, discountChoice, filtersExcept, monthsInScope, parseState, setDiscount, toggleCell, toggleFilterValue, toSearchParams } from "./state";
+import { DEFAULT_STATE, discountChoice, filtersExcept, monthsInScope, parseState, setDiscount, setSeries, seriesChoice, toggleCell, toggleFilterValue, toSearchParams } from "./state";
 
 describe("investigate state", () => {
   it("round-trips through the URL", () => {
@@ -54,6 +54,23 @@ describe("investigate state", () => {
     expect(setDiscount(any, "full").filters).toEqual({ discount_rate: ["0%"] });
     expect(discountChoice(setDiscount(any, "full").filters)).toBe("full");
     expect(setDiscount(any, "all").filters).toEqual({});
+  });
+
+  it("keeps one series choice: in a series, standalone, or one volume, never two at once", () => {
+    const state = { ...DEFAULT_STATE, filters: { genre: ["Fiction"] } };
+    expect(seriesChoice(state.filters)).toBe("all");
+    const third = setSeries(state, { volume: "3" });
+    expect(third.filters).toEqual({ genre: ["Fiction"], volume: ["3"] });
+    expect(seriesChoice(third.filters)).toEqual({ volume: "3" });
+    const standalone = setSeries(third, "no");
+    expect(standalone.filters).toEqual({ genre: ["Fiction"], in_series: ["no"] });
+    expect(seriesChoice(setSeries(standalone, "yes").filters)).toBe("yes");
+    expect(setSeries(standalone, "all").filters).toEqual({ genre: ["Fiction"] });
+    expect(seriesChoice({ in_series: ["yes"], volume: ["1"] })).toBe("all");
+    expect(seriesChoice({ volume: ["1", "2"] })).toBe("all");
+    const parsed = parseState(new URLSearchParams("by=volume&in_series=yes"));
+    expect(parsed).toMatchObject({ by: "volume", filters: { in_series: ["yes"] } });
+    expect(toSearchParams(parsed).toString()).toBe("by=volume&in_series=yes");
   });
 
   it("lists the months in the quarters in scope", () => {

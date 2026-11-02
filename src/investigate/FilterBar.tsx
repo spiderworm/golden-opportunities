@@ -3,12 +3,14 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "~/shell/icons";
 import { DIMENSION_LABELS, formatDimensionValue } from "./format";
 import type { FilterOptions } from "./investigation.server";
-import { discountChoice, FILTER_DIMENSIONS, type DiscountChoice, type FilterDimension, type Filters } from "./state";
+import { discountChoice, FILTER_DIMENSIONS, seriesChoice, type DiscountChoice, type FilterDimension, type Filters, type SeriesChoice } from "./state";
 import styles from "./Investigate.module.css";
 
 const MENUS = ["quarter", "genre", "format", "publisher"] as const satisfies readonly (keyof FilterOptions)[];
 /** Dimensions with their own menu; the rest show as chips. */
-const IN_MENUS: readonly FilterDimension[] = [...MENUS, "discount_rate", "discounted"];
+/** The series menu's two dimensions: one choice sets one of them. */
+const SERIES: readonly FilterDimension[] = ["in_series", "volume"];
+const IN_MENUS: readonly FilterDimension[] = [...MENUS, "discount_rate", "discounted", ...SERIES];
 /** What a menu says when nothing in it is chosen (m1-copy section 2). */
 const ALL: Record<(typeof MENUS)[number], string> = { quarter: "All quarters", genre: "All genres", format: "All formats", publisher: "All publishers" };
 
@@ -17,14 +19,17 @@ export interface FilterBarProps {
   options: FilterOptions;
   onChange: (dimension: FilterDimension, values: string[]) => void;
   onDiscount: (choice: DiscountChoice) => void;
+  onSeries: (choice: SeriesChoice) => void;
   onClear: () => void;
 }
 
 /** One row of filters above everything they scope. */
-export function FilterBar({ filters, options, onChange, onDiscount, onClear }: FilterBarProps) {
+export function FilterBar({ filters, options, onChange, onDiscount, onSeries, onClear }: FilterBarProps) {
   const any = FILTER_DIMENSIONS.some((d) => filters[d]?.length);
-  // Menus show their own selections; chips cover the rest (the heatmap's weekday and month).
-  const chipped = FILTER_DIMENSIONS.filter((d) => !IN_MENUS.includes(d) && filters[d]?.length);
+  // Menus show their own selections; chips cover the rest (the heatmap's weekday and month), and a one-choice
+  // menu's filters when no single choice names them (a link with both, or two volumes).
+  const unnamed: readonly FilterDimension[] = seriesChoice(filters) === "all" ? SERIES : [];
+  const chipped = FILTER_DIMENSIONS.filter((d) => (!IN_MENUS.includes(d) || unnamed.includes(d)) && filters[d]?.length);
 
   return (
     <div className={styles.filterBar} role="group" aria-label="Filters">
@@ -43,6 +48,7 @@ export function FilterBar({ filters, options, onChange, onDiscount, onClear }: F
           />
         ))}
         <DiscountMenu choice={discountChoice(filters)} rates={options.discount_rate} onChange={onDiscount} />
+        <SeriesMenu choice={seriesChoice(filters)} volumes={options.volume} onChange={onSeries} />
       </div>
       {any && (
         <ul className={styles.chips} aria-label="Other filters">
@@ -178,6 +184,53 @@ function DiscountMenu({ choice, rates, onChange }: { choice: DiscountChoice; rat
               type="radio"
               name={panelId}
               checked={choice === c.value}
+              onChange={() => {
+                onChange(c.value);
+                setOpen(false);
+              }}
+            />
+            {c.label}
+          </label>
+        ))}
+      </fieldset>
+    </div>
+  );
+}
+
+/** One choice: every book, books in a series, standalone books, or one volume number. */
+function SeriesMenu({ choice, volumes, onChange }: { choice: SeriesChoice; volumes: string[]; onChange: (choice: SeriesChoice) => void }) {
+  const { open, setOpen, rootRef, panelId } = usePopover();
+  const key = (c: SeriesChoice) => (typeof c === "object" ? `volume:${c.volume}` : c);
+  const choices: { value: SeriesChoice; label: string }[] = [
+    { value: "all", label: "Any book" },
+    { value: "yes", label: formatDimensionValue("in_series", "yes") },
+    { value: "no", label: formatDimensionValue("in_series", "no") },
+    ...volumes.map((volume) => ({ value: { volume }, label: formatDimensionValue("volume", volume) })),
+  ];
+  const summary = choices.find((c) => key(c.value) === key(choice))?.label ?? "Any book";
+
+  return (
+    <div className={styles.filterMenu} ref={rootRef}>
+      <button
+        type="button"
+        className={styles.filterButton}
+        data-active={choice !== "all" || undefined}
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen(!open)}
+      >
+        <span className={styles.filterName}>Series</span>
+        <span className={styles.filterSummary}>{summary}</span>
+        <Icon name="chevronDown" size={16} />
+      </button>
+      <fieldset id={panelId} className={styles.filterPanel} hidden={!open}>
+        <legend className={styles.visuallyHidden}>Series</legend>
+        {choices.map((c) => (
+          <label key={key(c.value)} className={styles.filterOption}>
+            <input
+              type="radio"
+              name={panelId}
+              checked={key(choice) === key(c.value)}
               onChange={() => {
                 onChange(c.value);
                 setOpen(false);
