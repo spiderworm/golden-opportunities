@@ -53,7 +53,7 @@ The brief allows "data of your own choosing", and David decided that generated d
 - **How it's marked:** `generated: true` in the code. The game doesn't label it as generated, by David's decision.
 - **How it's used:** the engine's sale lines and the game's ledgers both join through these records.
 
-**2. Each game's 2194 sales.** When the player plans a quarter, the simulation (`src/simulation/`) generates that quarter's sale lines. They have the same columns as 2193's (date, ISBN, discount, order and item IDs), and the save keeps them (`.data/saves/<id>.json`).
+**2. Each game's 2194 sales.** When the player plans a quarter, the simulation (`src/simulation/`) generates that quarter's sale lines. They have the same columns as 2193's (date, ISBN, discount, order and item IDs). The save (`.data/saves/<id>.json`) keeps each quarter's plan and result and a SHA-256 hash and count of its lines, not the lines: the server replays them from the plan and the save's seed, and refuses a replay that doesn't match the hash (`src/game/replay.server.ts`). At about 188 bytes a line, stored lines would fill the save's 16 MiB in under two years of the endless game. Saves from before keep their stored lines.
 - **What they're made from:** the 2193 data, the save's seed (a random 32-bit number made with the save) and the plan. Nothing else.
 - **Q1:** 2194 replays Q1 2193 day by day, 364 days on (the same weekday), or 371 if 364 would leave the month (`replayedDay`), with ±3% noise on orders. 2193's Books of the Month are removed, the new volume's copies are added, and then the plan's moves are applied.
 - **The new volume's copies:** at full price, from their own seeded stream, so every plan gets the same ones. In Q1 they start on 4 February, at the launch rate and then 4.5 a day. In Q2 they run all quarter at 4.5 a day.
@@ -62,7 +62,7 @@ The brief allows "data of your own choosing", and David decided that generated d
 - **Reproducible:** the same seed and plan always give the same lines.
   - `src/simulation/model.test.ts` pins a SHA-256 fingerprint of Q1's output for every plan on seeds 1 to 3.
   - `src/simulation/q2.test.ts` checks that Q2 is deterministic.
-  - To regenerate a game's lines, call `simulateQuarter(plan, seed, data)` or `simulateQ2(plan, seed, data)` with the save's `seed` and plan.
+  - To regenerate a game's lines, call `simulateQuarter(plan, seed, data)` or `simulateQ2(plan, seed, data)` with the save's `seed` and plan, as `replayLines` in `src/game/replay.server.ts` does.
 - **The assumptions:** everything the 2193 data can't say is a named constant in `src/simulation/` (`model.ts`, `measures.ts`, `release.ts`), and is shown in "See the assumptions" with its source. Most are marked *assumed*: for example the sale's response (`SALE_RESPONSE = 0.2`), author nights' extra orders (30 to 70) and the 60% cost of goods. The replay and its small day-to-day noise (±3%, `NOISE`) are marked *setup*. A Book of the Month's extra copies, drawn from 2193's twelve observed picks (`OBSERVED_EXTRAS`), are marked *data* (Sim).
 
 **A sample to open without playing: `data/generated/`.** `npm run data:sample` writes the simulation's 2194 sales for one fixed seed (`SAMPLE_SEED = 1`, `src/simulation/sample-data.ts`) as CSV:

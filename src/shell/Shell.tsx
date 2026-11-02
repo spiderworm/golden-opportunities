@@ -10,6 +10,7 @@ import { ALERT_COPY, q2AlertCopy, type FirstQuarter } from "./alert-copy";
 import { StandingOrder } from "./StandingOrder";
 import { Transmission } from "./Transmission";
 import type { Track } from "~/platform/analytics/track";
+import type { QuarterId } from "~/game/quarters";
 import styles from "./Shell.module.css";
 
 /** Routes name their page in the header with `handle = { title }`, fixed or from their loader data. */
@@ -29,7 +30,7 @@ export interface ShellProps {
    * The Commerce Office's standing order for the quarter being planned: its transmission plays once, on
    * first arrival at the station, and its strip stays until the plan is in. Q1's memo unless `quarter` says Q2.
    */
-  standingOrder?: { seen: boolean; submitted: boolean; quarter?: "2194-Q1" | "2194-Q2" | null };
+  standingOrder?: { seen: boolean; submitted: boolean; quarter?: QuarterId | null };
   /** Q1's report card, which Q2's memo quotes. */
   q1?: FirstQuarter | null;
   /** Records that the transmission was seen, opened or put off, so it doesn't play again; settles once the shell has reloaded. */

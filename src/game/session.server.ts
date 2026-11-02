@@ -9,6 +9,7 @@ import { BASELINE_VIEW } from '../query/view.server';
 import { DATA_DIR } from '../platform/analytics/instance.server';
 import { trackServer } from '../platform/analytics/analytics.server';
 import { createSaveStore, isSaveId, SaveError } from './store.server';
+import { quarterLines } from './replay.server';
 import type { GameSave } from './types';
 import { saveDate } from './progress';
 
@@ -42,7 +43,8 @@ export function resolveSaveId(request: Request): string {
   saves.read(id); return id;
 }
 export function queryViewForSave(save: GameSave): QueryView {
-  const sales = save.played.flatMap(q => q.sales);
+  // Each quarter's lines, replayed and checked once per process (replay.server.ts), or as an older save stored them.
+  const sales = save.played.flatMap(q => quarterLines(save.id, save.seed, q, loadBookshop));
   if (!sales.length) return { ...BASELINE_VIEW, periods: [...BASELINE_VIEW.periods, ...save.played.map(q => q.period)] };
   const data = loadBookshop();
   // The new volume is generated, not in the data: the engine's records join it (src/simulation/release.ts).
@@ -56,9 +58,16 @@ export function queryViewForSave(save: GameSave): QueryView {
       listPrice: edition.listPrice, revenue: edition.listPrice * (1 - sale.discount) };
   }) };
 }
+/**
+ * The request's save, its date, and its query view. The view replays the played quarters' lines, so it's built
+ * only when read: the shell's loader on every page reads just the save and the date, and a save whose replay no
+ * longer matches (REPLAY_MISMATCH) still opens every page that doesn't need lines, Settings' Reset game
+ * included (Plot, #198).
+ */
 export function getGameSession(request: Request) {
   const save = saves.read(resolveSaveId(request));
-  return { save, queryView: queryViewForSave(save), date: saveDate(save) };
+  let view: QueryView | undefined;
+  return { save, date: saveDate(save), get queryView() { return (view ??= queryViewForSave(save)); } };
 }
 /** A new save, under the per-minute limit shared by first visits and Play again. The caller sets its cookie. */
 export function startGame(): string {

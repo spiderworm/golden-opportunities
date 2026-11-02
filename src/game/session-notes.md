@@ -29,7 +29,7 @@ loss before disk sync. Candidate directories left before publication do not hold
 Save IDs are validated before filesystem access; malformed/unknown API sessions fail.
 An unknown page cookie starts a new save on GET only. Corrupt saves fail rather than reset.
 Bootstrap is limited to 30 new saves per process per minute. ORBITAL_NEW_GAMES_PER_MINUTE (a positive integer) changes it; e2e/server.mjs raises it, real play keeps 30. Saves are bounded to 16 MiB,
-100,000 sale facts per played quarter, and the quarters in `QUARTERS`. The browser cookie lasts 30 days. Storage holds at most 200 saves and 256 MiB.
+100,000 sale facts per played quarter, and the quarters in `QUARTERS`. A quarter played now keeps its lines' hash and count, and its lines are replayed and checked on read (`replay.server.ts`, REPLAY_MISMATCH when they don't match); older saves keep stored lines. The browser cookie lasts 30 days. Storage holds at most 200 saves and 256 MiB.
 Reads refresh a durable last-used timestamp (file mtime); saves untouched for 30 days
 expire on the next store operation, including direct reads. Admission evicts the least
 recently used other saves first, never the requester or a save with a legacy update lock.

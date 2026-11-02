@@ -3,7 +3,9 @@ import { loadBookshop } from '../bookshop/loader.server';
 import { isPlan } from '../simulation/plan';
 import { q2Candidates, q2PlanProblem, simulateQ2 } from '../simulation/q2';
 import { simulateQuarter } from '../simulation/simulate';
-import type { Outcome, Plan, Q2Plan, SimulatedLine } from '../simulation/types';
+import type { Outcome, Plan, Q2Plan } from '../simulation/types';
+import type { Sale } from '../bookshop/types';
+import { linesHash, rememberLines, visible } from './replay.server';
 import { trackServer } from '../platform/analytics/analytics.server';
 import { resolveSaveId, saveCookie, saves, startGame } from './session.server';
 import { SaveError } from './store.server';
@@ -23,6 +25,8 @@ function failure(error: unknown): never {
     if (error.code === 'MISSING_SAVE') throw new Response('Start a game.', { status: 401, headers: { 'Cache-Control': 'no-store' } });
     if (['SAVE_BUSY', 'STALE_SAVE'].includes(error.code)) throw new Response('Game state changed. Reload and try again.', { status: 409, headers: { 'Cache-Control': 'no-store' } });
     if (error.code === 'SAVE_CAPACITY') throw new Response('Save storage is full. Try again later.', { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    // The engine changed since a quarter was played: this version can't replay the save, and won't rescore it.
+    if (error.code === 'REPLAY_MISMATCH') throw new Response("This game was saved by an earlier version, and can't be replayed. Start over from Settings.", { status: 409, headers: { 'Cache-Control': 'no-store' } });
   }
   throw new Response('The game could not be saved.', { status: 500, headers: { 'Cache-Control': 'no-store' } });
 }
@@ -54,15 +58,19 @@ export function currentQuarter(request: Request): QuarterId | null {
 export function getQ2Candidates() {
   return q2Candidates(loadBookshop()).map(({ isbn, bookId, title, format, listPrice }) => ({ isbn, bookId, title, format, listPrice }));
 }
-const visible = (lines: readonly SimulatedLine[]) => lines.map(({ id, sourceSheet, sourceRow, date, quarter, isbn, discount, itemId, orderId }) =>
-  ({ id, sourceSheet, sourceRow, date, quarter, isbn, discount, itemId, orderId }));
-/** The short revision-checked transaction both quarters share: it appends the quarter only if it's still the one to play. */
-function commit(save: GameSave, quarter: PlayedQuarter) {
-  if (!isQuarterOutcome(quarter.period, quarter.outcome) || quarter.outcome.totals.plan.units !== quarter.sales.length) throw new SaveError('INVALID_SAVE');
+/**
+ * The short revision-checked transaction both quarters share: it appends the quarter only if it's still the one to
+ * play. The save keeps the lines' hash and count, not the lines (replay.server.ts); the lines just played are
+ * remembered, so the quarter's first queries don't replay it.
+ */
+function commit(save: GameSave, quarter: Omit<PlayedQuarter, 'lines' | 'sales'> & Pick<PlayedQuarter, 'period'>, sales: Sale[]) {
+  const kept = { ...quarter, lines: { hash: linesHash(sales), count: sales.length } } as PlayedQuarter;
+  if (!isQuarterOutcome(kept.period, kept.outcome) || kept.outcome.totals.plan.units !== sales.length) throw new SaveError('INVALID_SAVE');
   saves.update(save.id, save.revision, draft => {
-    if (quarterOf(draft) !== quarter.period) throw alreadyPlayed();
-    draft.played.push(quarter);
+    if (quarterOf(draft) !== kept.period) throw alreadyPlayed();
+    draft.played.push(kept);
   });
+  rememberLines(save.id, kept, sales);
   // Alma prepares the next quarter in the background (src/alma): it never waits, and never throws into the submit.
   onQuarterCommitted({ saveId: save.id, quarter: quarter.period, seed: save.seed });
 }
@@ -80,7 +88,7 @@ export function submitPlan(request: Request, plan: Plan): { outcomeId: string } 
     if (!isOutcome(outcome) || JSON.stringify(outcome.plan) !== JSON.stringify(canonical)) throw new SaveError('INVALID_SAVE');
     const sales = visible(result.lines);
     const outcomeId = randomUUID();
-    commit(save, { period: '2194-Q1', sales, outcomeId, outcome });
+    commit(save, { period: '2194-Q1', outcomeId, outcome }, sales);
     event('game_quarter_committed', { quarter: 'Q1', leverCount: canonical.levers.length, units: sales.length, durationMs: performance.now() - started });
     return { outcomeId };
   } catch (error) {
@@ -111,7 +119,7 @@ export function submitQ2Plan(request: Request, plan: unknown): { outcomeId: stri
     if (JSON.stringify(outcome.plan) !== JSON.stringify(canonical)) throw new SaveError('INVALID_SAVE');
     const sales = visible(result.lines);
     const outcomeId = randomUUID();
-    commit(save, { period: '2194-Q2', sales, outcomeId, outcome });
+    commit(save, { period: '2194-Q2', outcomeId, outcome }, sales);
     event('game_quarter_committed', { quarter: 'Q2', leverCount: canonical.levers.length, pickCount: canonical.picks.filter(p => p !== null).length,
       units: sales.length, durationMs: performance.now() - started });
     return { outcomeId };
@@ -143,7 +151,7 @@ export function resetGame(request: Request): string {
     try {
       reached = quarterOf(current(request))?.slice(5) ?? 'finished';
     } catch (error) {
-      if (!(error instanceof SaveError) || !['MISSING_SAVE', 'INVALID_SAVE'].includes(error.code)) throw error;
+      if (!(error instanceof SaveError) || !['MISSING_SAVE', 'INVALID_SAVE', 'REPLAY_MISMATCH'].includes(error.code)) throw error;
       reached = 'unknown';
     }
     const cookie = saveCookie(startGame(), request);

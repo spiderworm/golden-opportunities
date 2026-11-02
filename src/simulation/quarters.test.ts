@@ -1,0 +1,32 @@
+import { describe, expect, it } from 'vitest';
+import { compareQuarters, isQuarterName, nextQuarter, quarterAt, quarterIndex, quarterMonths, quarterNumber } from './quarters';
+import { isQuarterId, PLAYABLE_QUARTERS, QUARTERS, quarterAfter, stationDate } from '../game/quarters';
+
+describe('quarter names, past the two the game has built (endless.md)', () => {
+  it('count from Q1 2194, and run on across years', () => {
+    expect(quarterIndex('2194-Q1')).toBe(0);
+    expect(quarterIndex('2195-Q1')).toBe(4);
+    expect(quarterAt(7)).toBe('2195-Q4');
+    for (let i = 0; i < 40; i++) expect(quarterIndex(quarterAt(i))).toBe(i);
+    expect(nextQuarter('2194-Q4')).toBe('2195-Q1');
+    expect(['2195-Q1', '2194-Q3', '2194-Q4'].sort((a, b) => compareQuarters(a as never, b as never))).toEqual(['2194-Q3', '2194-Q4', '2195-Q1']);
+    expect(quarterMonths('2195-Q4')).toEqual(['2195-10', '2195-11', '2195-12']);
+    expect(quarterNumber('2196-Q3')).toBe(3);
+  });
+  it('accept well-formed names from 2194 only', () => {
+    for (const ok of ['2194-Q1', '2194-Q3', '2199-Q4']) expect(isQuarterName(ok)).toBe(true);
+    for (const bad of ['2193-Q4', '2194-Q5', '2194-Q0', 'Q1', '2194-q1', ' 2194-Q1', 20194, null]) expect(isQuarterName(bad)).toBe(false);
+  });
+});
+
+describe('the quarters the game plays today', () => {
+  it('are Q1 and Q2 2194 until the endless loop is built, as before', () => {
+    expect(PLAYABLE_QUARTERS).toBe(2);
+    expect(QUARTERS).toEqual(['2194-Q1', '2194-Q2']);
+    expect(isQuarterId('2194-Q2')).toBe(true);
+    expect(isQuarterId('2194-Q3')).toBe(false);
+    expect([0, 1, 2].map(quarterAfter)).toEqual(['2194-Q1', '2194-Q2', null]);
+    // Each quarter opens on its first day; after the last playable one, the station's date is the next quarter's.
+    expect([0, 1, 2, 3, 4].map(stationDate)).toEqual(['2194-01-01', '2194-04-01', '2194-07-01', '2194-10-01', '2195-01-01']);
+  });
+});

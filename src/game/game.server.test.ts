@@ -11,6 +11,7 @@ vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() 
 import { getOutcome, getPlan, submitPlan } from './game.server';
 import { getGameSession, saves, queryViewForSave } from './session.server';
 import { createSaveStore } from './store.server';
+import { forgetReplays } from './replay.server';
 import { runQuery } from '../query/run-query.server';
 import * as simulation from '../simulation/simulate';
 import type { Plan } from '../simulation/types';
@@ -47,7 +48,10 @@ describe('persisted quarter transaction', () => {
     const reopened = createSaveStore(path.join(directory, 'saves')).read(save.id);
     expect(reopened.played[0]).toMatchObject({ period: '2194-Q1', outcomeId, outcome });
     expect(reopened.revision).toBe(2);
-    expect(reopened.played[0].sales).toHaveLength(outcome.totals.plan.units);
+    // The save keeps the lines' hash and count; the lines are replayed (replay.server.ts).
+    expect(reopened.played[0]).toMatchObject({ lines: { hash: expect.stringMatching(/^[0-9a-f]{64}$/), count: outcome.totals.plan.units } });
+    expect(reopened.played[0]).not.toHaveProperty('sales');
+    forgetReplays();
     expect(runQuery(query, queryViewForSave(reopened)).total).toBeCloseTo(outcome.totals.plan.revenue, 6);
     expect(getGameSession(req).date).toBe('2194-04-01');
     expect(getOutcome(request(other.id))).toBeNull();
