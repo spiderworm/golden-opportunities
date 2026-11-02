@@ -75,7 +75,9 @@ export function q2EvidenceFromQuery(query: Query, view: QueryView, result: Query
     const month = monthOf2193(row.month ?? single(query.filter?.month));
     const quarter = row.quarter ?? single(query.filter?.quarter) ?? (periods.length === 1 ? periods[0] : undefined);
     if (query.measure === 'units' && whole && month) {
-      // The rows must identify the edition: by title and format, or by edition itself (Plot, #179).
+      // The rows must identify the edition: by title and format, or by edition itself (Plot, #179). A pick's edition
+      // label is its title and format because no pick has a twin in its format; only a twin gets its year added
+      // (Heliotrope Pajamas), and the "D's picks" test checks each label (Audit, #182).
       const title = row.title ?? single(query.filter?.title); const format = row.format ?? single(query.filter?.format);
       const edition = row.edition ?? single(query.filter?.edition);
       const pick = D_PICKS.find(p => (p.title === title && p.format === format) || `${p.title} (${p.format})` === edition);
