@@ -26,7 +26,7 @@ import {
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import { BOSSES, type BossId } from "./bosses";
-import { BossLayout } from "./BossLayout";
+import { failedLoad, softFailFor, type Failed } from "./soft-load";
 import type { BossSceneProps } from "./BossScene2D";
 import styles from "./BossScene3D.module.css";
 
@@ -42,11 +42,17 @@ import styles from "./BossScene3D.module.css";
 // shown it can draw WebGL 2.
 
 export interface BossScene3DProps extends BossSceneProps {
+  /** BossLayout's columns, which each boss stands under (BossBriefing keeps the layout, this scene its floor). */
+  columns: RefObject<(HTMLLIElement | null)[]>;
   /** Still poses: no idling, leaning or bobbing. */
   reducedMotion: boolean;
   /** Called once its bubbles are up. */
   onShown?: () => void;
+  /** A model didn't arrive: the scene draws nothing, and BossBriefing shows the 2D one. */
+  onFailed?: () => void;
 }
+
+type Loaded = { scene: Group; animations: AnimationClip[] } | Failed;
 
 /**
  * Each boss's model, its height in the scene (the Administrator, the
@@ -61,6 +67,8 @@ const MODELS: Record<BossId, { height: number; hover?: number }> = {
   readers: { height: 0.86 },
 };
 const modelUrl = (boss: BossId) => `/models/bosses/${boss}.glb`;
+// Its loads, and only its, fail quietly (soft-load.ts).
+const softFail = softFailFor((Object.keys(MODELS) as BossId[]).map(modelUrl));
 
 /** How far the open boss leans in and grows, where it stands. */
 const LEAN = 0.14;
@@ -76,13 +84,13 @@ const COPIES: [number, number][] = [
   [0, -0.9],
 ];
 
-export default function BossScene3D({ bubbles, open, onSelect, reducedMotion, onShown }: BossScene3DProps) {
-  const columns = useRef<(HTMLLIElement | null)[]>([]);
+/** The 3D bosses on BossLayout's floor, under the columns it gives them. */
+export default function BossScene3D({ bubbles, open, onSelect, columns, reducedMotion, onShown, onFailed }: BossScene3DProps) {
   const stage = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => onShown?.(), [onShown]);
   // The same list while the bubbles are, so the robots are made once.
   const bosses = useMemo(() => bubbles.map((b) => b.boss), [bubbles]);
-  const floor = (
+  return (
     <div ref={stage} className={styles.stage} aria-hidden="true">
       <Canvas dpr={[1, 1.75]} camera={{ fov: FOV, near: 0.1, far: 30, position: [0, 0.6, 2.35] }} gl={{ antialias: true, alpha: true }}>
         <CameraFit stage={stage} />
@@ -90,21 +98,10 @@ export default function BossScene3D({ bubbles, open, onSelect, reducedMotion, on
         <directionalLight position={[1.5, 3, 4]} intensity={1.6} color="#fff3e2" />
         {/* The models load here, inside the canvas: the bubbles are up already. */}
         <Suspense fallback={null}>
-          <Bosses bosses={bosses} open={open} onSelect={onSelect} columns={columns} stage={stage} reducedMotion={reducedMotion} />
+          <Bosses bosses={bosses} open={open} onSelect={onSelect} columns={columns} stage={stage} reducedMotion={reducedMotion} onFailed={onFailed} />
         </Suspense>
       </Canvas>
     </div>
-  );
-  return (
-    <BossLayout
-      bubbles={bubbles}
-      open={open}
-      onSelect={onSelect}
-      floor={floor}
-      columnRef={(i) => (el) => {
-        columns.current[i] = el;
-      }}
-    />
   );
 }
 
@@ -180,6 +177,7 @@ function Bosses({
   columns,
   stage,
   reducedMotion,
+  onFailed,
 }: {
   bosses: BossId[];
   open: number;
@@ -187,12 +185,21 @@ function Bosses({
   columns: RefObject<(HTMLLIElement | null)[]>;
   stage: RefObject<HTMLDivElement | null>;
   reducedMotion: boolean;
+  onFailed?: () => void;
 }) {
-  const models = useGLTF(bosses.map(modelUrl), false);
+  const urls = useMemo(() => bosses.map(modelUrl), [bosses]);
+  const models = useGLTF(urls, false, undefined, softFail) as unknown as Loaded[];
+  const failed = models.some(failedLoad);
   const figures = useMemo(
-    () => bosses.map((boss, i) => makeFigure(boss, models[i]!)),
-    [bosses, models],
+    () => (failed ? [] : bosses.map((boss, i) => makeFigure(boss, models[i] as Exclude<Loaded, Failed>))),
+    [bosses, models, failed],
   );
+  // Forgotten, so the next visit to Decide loads them afresh rather than failing again from the cache.
+  useEffect(() => {
+    if (!failed) return;
+    useGLTF.clear(urls);
+    onFailed?.();
+  }, [failed, urls, onFailed]);
   useEffect(() => () => figures.forEach((f) => f.owned.forEach((m) => m.dispose())), [figures]);
   const { gl } = useThree();
   const hovered = useRef(-1);
@@ -334,6 +341,7 @@ function Bosses({
     if (hoverTint) rings[1]!.color.set(hoverTint);
   });
 
+  if (failed) return null;
   return (
     <>
       {figures.map((f, i) => (
@@ -486,4 +494,4 @@ function faint(object: Object3D): Material[] {
   return made;
 }
 
-for (const boss of Object.keys(MODELS) as BossId[]) useGLTF.preload(modelUrl(boss), false);
+for (const boss of Object.keys(MODELS) as BossId[]) useGLTF.preload(modelUrl(boss), false, undefined, softFail);

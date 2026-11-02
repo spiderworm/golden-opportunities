@@ -107,6 +107,10 @@ describe("the model's own prose: no figures, no directions (every bypass so far)
     ["a ranking of its own", "SciFi/Fantasy fell the most."],
     ["a count claim (B2)", "Each month has one title."],
     ["a bare year", "The terminal only holds 2193."],
+    ["a multiplier (Audit's review of #170)", "Memoir sales quadrupled."],
+    ["'trebled'", "Orders trebled."],
+    ["a Roman numeral", "Volume XX sold well."],
+    ["a folded Roman numeral", "Volume \u216B sold well."],
     ["a period no lookup returned", "There is no 2192-Q4 to compare."],
     ["stray braces", "It was {{a4} or so."],
   ])("withholds %s", (_, sentence) => {

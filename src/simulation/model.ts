@@ -3,7 +3,7 @@
 // replays the same quarter of 2193, without 2193's Books of the Month, then
 // each option pulls its levers. M1 plays Q1; every function takes the quarter.
 import type { BookshopData, DeepReadonly, SaleLine } from "~/bookshop/types";
-import { cloneOrder, itemOf, ordersOf, type Item, type Order } from "./orders";
+import { cloneOrder, itemOf, ordersOf, type Item, type Order, type OrderKind } from "./orders";
 import { integer, pick, roundRandomly, sampleIndexes, stream, weightedIndex, type Random } from "./random";
 import { has } from "./plan";
 import { RELEASE, RELEASE_DAY, RELEASE_RATE, releaseLaunch, releaseLine } from "./release";
@@ -78,6 +78,46 @@ export interface History {
   isbnOf: (spec: PickSpec) => string;
   /** The 2193 Book of the Month edition, by month (01 to 12). */
   observedPick: (month: string) => string;
+  /** The share of an edition's 2193 copies sold with other books: the chance a generated copy joins an existing order. */
+  joinShare: (isbn: string) => number;
+}
+
+/** Below this many 2193 copies, an edition's own share is too noisy, and 2193's share over every copy stands in. */
+export const JOIN_MIN_COPIES = 100;
+
+const joinShares = new WeakMap<DeepReadonly<BookshopData>, (isbn: string) => number>();
+
+/** History.joinShare for a dataset, counted once on first use. */
+function joinSharesOf(data: DeepReadonly<BookshopData>): (isbn: string) => number {
+  return (isbn) => {
+    let share = joinShares.get(data);
+    if (!share) {
+      const orderSize = new Map<string, number>();
+      for (const line of data.saleLines) orderSize.set(line.orderId, (orderSize.get(line.orderId) ?? 0) + 1);
+      // Copies of each edition, and of each title, and how many of them shared an order with another book.
+      const shared = new Map<string, { copies: number; joined: number }>();
+      const count = (key: string, joined: boolean) => {
+        const c = shared.get(key) ?? { copies: 0, joined: 0 };
+        c.copies += 1;
+        if (joined) c.joined += 1;
+        shared.set(key, c);
+      };
+      for (const line of data.saleLines) {
+        const joined = orderSize.get(line.orderId)! > 1;
+        count(line.isbn, joined);
+        count(`book:${line.book.id}`, joined);
+        count("all", joined);
+      }
+      // The new volume shares as often as volume 2, over both its editions.
+      share = (id) => {
+        const own = shared.get(id === RELEASE.edition.isbn ? `book:${RELEASE.ratedLike}` : id);
+        const { copies, joined } = own && own.copies >= JOIN_MIN_COPIES ? own : shared.get("all")!;
+        return joined / copies;
+      };
+      joinShares.set(data, share);
+    }
+    return share(isbn);
+  };
 }
 
 export function historyOf(data: DeepReadonly<BookshopData>, quarter: QuarterNumber = 1): History {
@@ -115,6 +155,7 @@ export function historyOf(data: DeepReadonly<BookshopData>, quarter: QuarterNumb
       if (isbns.length !== 1) throw new Error(`Expected one Book of the Month in month ${month}, found ${isbns.length}`);
       return isbns[0];
     },
+    joinShare: joinSharesOf(data),
   };
 }
 
@@ -156,9 +197,33 @@ export function baseline(history: History, seed: number): Order[] {
 }
 
 /**
- * The baseline with the new volume's copies added: each a one-line order at full
- * price, at its rate times its launch, scaled by the day's share of the quarter's
- * orders, so it follows the weekday pattern. Its own stream: every plan gets the same release.
+ * Places a generated copy: with its edition's 2193 share it joins one of the
+ * day's orders (`hosts`, indexes into `orders`), otherwise it arrives as its own
+ * one-item order. A host is replaced by a copy, so orders shared with other runs never change.
+ */
+function place(orders: Order[], hosts: readonly number[], day: string, item: Item, kind: OrderKind, share: number, random: Random) {
+  if (hosts.length > 0 && random() < share) {
+    const i = hosts[Math.floor(random() * hosts.length)];
+    orders[i] = { ...orders[i], items: [...orders[i].items, item] };
+  } else orders.push({ day, items: [item], kind });
+}
+
+/** Each day's orders, as indexes into `orders`. */
+function indexByDay(orders: readonly Order[]): Map<string, number[]> {
+  const byDay = new Map<string, number[]>();
+  orders.forEach((o, i) => {
+    const day = byDay.get(o.day);
+    if (day) day.push(i);
+    else byDay.set(o.day, [i]);
+  });
+  return byDay;
+}
+
+/**
+ * The baseline with the new volume's copies added, each at full price, at its
+ * rate times its launch, scaled by the day's share of the quarter's orders, so it
+ * follows the weekday pattern. Each copy joins an order or arrives alone (place).
+ * Its own streams: every plan gets the same release.
  */
 export function withRelease(history: History, base: readonly Order[], seed: number): Order[] {
   const days = quarterDays(YEAR, history.quarter);
@@ -166,12 +231,15 @@ export function withRelease(history: History, base: readonly Order[], seed: numb
   for (const order of base) perDay.set(order.day, (perDay.get(order.day) ?? 0) + 1);
   const meanDay = base.length / days.length;
   const random = stream(seed, streamName(history.quarter, "release"));
+  const joins = stream(seed, streamName(history.quarter, "release-join"));
   const template = history.template(RELEASE.edition.isbn);
+  const share = history.joinShare(RELEASE.edition.isbn);
   const orders = [...base];
+  const hosts = indexByDay(base);
   for (const day of days) {
     if (day < RELEASE_DAY) continue;
     const expected = RELEASE_RATE * releaseLaunch((timeOf(day) - timeOf(RELEASE_DAY)) / DAY) * ((perDay.get(day) ?? 0) / meanDay);
-    for (let i = roundRandomly(random, expected); i > 0; i--) orders.push({ day, items: [itemOf(template)], kind: "release" });
+    for (let i = roundRandomly(random, expected); i > 0; i--) place(orders, hosts.get(day) ?? [], day, itemOf(template), "release", share, joins);
   }
   return orders;
 }
@@ -219,6 +287,8 @@ export function leversFor(plan: Plan, saleResponse = SALE_RESPONSE): Levers {
  */
 export function run(history: History, base: readonly Order[], seed: number, levers: Levers): Run {
   const orders = base.map((o) => cloneOrder(o));
+  // An extra copy joins one of its day's baseline orders, never an author night's, so every plan makes the same joins.
+  const hosts = indexByDay(orders);
 
   const nights: Run["nights"] = [];
   if (levers.events) {
@@ -248,9 +318,13 @@ export function run(history: History, base: readonly Order[], seed: number, leve
     const days = quarterDays(YEAR, history.quarter).filter((d) => monthOf(d) === month);
     const weights = days.map((d) => base.filter((o) => o.day === d).length);
     const template = history.template(isbn);
+    // Joins draw from their own stream, so the extra copies' count and days don't depend on them.
+    const joins = stream(seed, `pick-join:${month}`);
+    const share = history.joinShare(isbn);
     for (let i = 0; i < extra; i++) {
-      const item: Item = { ...itemOf(template), discount: PICK_DISCOUNT };
-      orders.push({ day: days[weightedIndex(random, weights)], items: [item], kind: "pick-extra" });
+      const item: Item = { ...itemOf(template), discount: PICK_DISCOUNT, extra: true };
+      const day = days[weightedIndex(random, weights)];
+      place(orders, hosts.get(day) ?? [], day, item, "pick-extra", share, joins);
     }
   });
 

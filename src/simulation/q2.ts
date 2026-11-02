@@ -46,15 +46,14 @@ function pickFacts(r: Run, months: readonly string[], candidates: ReadonlyMap<st
     for (const order of r.orders) {
       // The sale's clones are the sale's doing, not the pick's.
       if (order.saleClone || order.day.slice(5, 7) !== month) continue;
-      if (order.kind === "pick-extra") {
-        if (order.items[0].isbn === isbn) facts.extra += 1;
-        continue;
-      }
-      for (const item of order.items)
-        if (item.isbn === isbn) {
+      for (const item of order.items) {
+        if (item.isbn !== isbn) continue;
+        if (item.extra) facts.extra += 1;
+        else {
           facts.baseCopies += 1;
           facts.discountCost += PICK_DISCOUNT * item.listPrice;
         }
+      }
     }
     return facts;
   });

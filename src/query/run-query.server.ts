@@ -10,7 +10,7 @@ import { QUERY_LIMITS } from './types';
 import type { Dimension, Measure, Query, QueryResult, QueryRow, QueryTrack, QueryView } from './types';
 
 const labels: Record<Dimension | Measure, string> = {
-  quarter: 'Quarter', month: 'Month', weekday: 'Weekday', genre: 'Genre', format: 'Format', publisher: 'Publisher', series: 'Series', title: 'Title', author: 'Author', discounted: 'Discounted', discount_rate: 'Discount rate', stars: 'Stars', awarded: 'Award winner', award: 'Award',
+  quarter: 'Quarter', month: 'Month', weekday: 'Weekday', genre: 'Genre', format: 'Format', publisher: 'Publisher', series: 'Series', title: 'Title', author: 'Author', discounted: 'Discounted', discount_rate: 'Discount rate', stars: 'Stars', awarded: 'Award winner', award: 'Award', volume: 'Volume', in_series: 'In a series',
   revenue: 'Revenue', units: 'Units', orders: 'Orders', avg_discount: 'Average discount', avg_rating: 'Average rating', checkouts: 'Checkouts', avg_order_value: 'Average order value', orders_per_day: 'Orders per day', ratings: 'Ratings',
 };
 const weekdayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -21,7 +21,8 @@ const cache = new Map<string, QueryResult>();
 
 function bookDimensions(book: DeepReadonly<JoinedBook> | null): Dimensions {
   return { genre: book?.info?.genre ?? null, series: book?.series?.name ?? null, title: book?.title ?? null,
-    author: book ? `${book.author.firstName} ${book.author.lastName}` : null, awarded: book ? (book.awards.length ? 'yes' : 'no') : null };
+    author: book ? `${book.author.firstName} ${book.author.lastName}` : null, awarded: book ? (book.awards.length ? 'yes' : 'no') : null,
+    volume: book?.series && book.info?.volume != null ? String(book.info.volume) : null, in_series: book ? (book.series ? 'yes' : 'no') : null };
 }
 /** A book's award names, for the filter-only award dimension: a fact matches if any of them is in the filter. */
 const awardsOf = (book: DeepReadonly<JoinedBook> | null): readonly string[] => book?.awards.map(award => award.name) ?? [];
@@ -116,7 +117,7 @@ function execute(query: Query, view: QueryView): QueryResult {
   const calculation = { avg_order_value: 'sum of revenue / distinct OrderID', orders_per_day: `distinct OrderID / eligible calendar days including zero-sale days; total denominator ${days.length} days; group denominators use only calendar dimensions`, revenue: 'sum of price × (1 - discount), without per-line rounding', units: 'one unit per sale line', orders: 'distinct OrderID; total counted independently of groups', avg_discount: 'arithmetic mean of sale-line discount fractions', avg_rating: 'arithmetic mean of individual ratings, joined directly to books', checkouts: 'sum of Number of Checkouts, joined directly to books', ratings: 'count of individual ratings, joined directly to books' }[query.measure];
   const scope = undated(query.measure) ? 'undated source snapshot; no observed year or sales-quarter attribution' : `allowed periods: ${[...view.periods].sort().join(', ') || 'none'}; ${total.count - simulated} source and ${simulated} simulated sale lines`;
   const source = `${labels[query.measure]} from ${total.count.toLocaleString('en-US')} visible matching ${grain}: ${calculation}; ${scope}${query.by.length ? `; grouped by ${query.by.join(', ')}` : ''}${filters.length ? `; exact filters on ${filters.map(([dimension]) => dimension).join(', ')}` : ''}. Showing ${visibleRows.length} of ${rows.length} groups; total is before the row limit.`;
-  return { truncated: visibleRows.length < rows.length, columns: [...query.by.map(key => ({ key, label: labels[key], type: 'string' as const, nullable: ['genre', 'series', 'title', 'author', 'awarded'].includes(key) })),
+  return { truncated: visibleRows.length < rows.length, columns: [...query.by.map(key => ({ key, label: labels[key], type: 'string' as const, nullable: ['genre', 'series', 'title', 'author', 'awarded', 'volume', 'in_series'].includes(key) })),
     { key: query.measure, label: labels[query.measure], type: 'number', nullable: query.measure.startsWith('avg_') || query.measure === 'orders_per_day' }], rows: visibleRows, total: value(total, query.measure, days.length), source };
 }
 

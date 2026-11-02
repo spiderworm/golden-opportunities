@@ -9,11 +9,13 @@ export interface Item {
   genre: string | null;
   listPrice: number;
   discount: number;
+  /** A Book of the Month's extra copy. It may share an order with books that would have sold anyway. */
+  extra?: boolean;
   /** A real sale line of the same edition, for its joined catalog fields. */
   template: DeepReadonly<SaleLine>;
 }
 
-/** "release": a copy of the new volume (release.ts). */
+/** "pick-extra" and "release": a generated copy that arrived as its own order (release.ts). */
 export type OrderKind = "replay" | "pick-extra" | "event" | "release";
 
 export interface Order {
