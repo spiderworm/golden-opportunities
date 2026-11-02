@@ -91,6 +91,10 @@ boundary, documented rather than chased.
   labels, or a one-title filter the data confirmed; only once that lookup had come back; and only a title with
   words in it, so a made-up or bare-number "title" still can't carry a figure. Other dimensions' values (a
   "15%" discount rate) stay the model's.
+- What's checked is what's shown: invisible characters (soft hyphens, zero-width spaces, word joiners, bidi
+  controls) are dropped first, and the ban reads a plain copy with accents stripped, so "fi\u00ADve" and
+  "hìgher" are caught. A letter from another script ("fivе" with a Cyrillic е) is withheld; the catalog's
+  one accent, the é in Karénine, is Latin and allowed (Probe's reviews of #229).
 - A denylist can't cover all of English. Quantities and directions can still be implied without a listed word
   ("a handful", "slightly", "barely any", "stood out", "Thursday took the hit"), or written in another language.
   Such text states no number, but it can still mislead. The prompt forbids it; nothing enforces that.
@@ -110,9 +114,16 @@ boundary, documented rather than chased.
 discount rate, so no price of the model's own can show. Three more checks, in `priceProblem`:
 - A price is paired with its own book. An edition row's price needs its edition named in the sentence (by ref,
   or its exact label), a title row's its title. No other edition or title from this answer may be named, and any
-  format word must be the edition's own, matched whole: "paperback" isn't a trade paperback (Audit). A price
-  with no book (a breakdown by price, a confirmed filter) sits only with no book named. Two prices in one
-  sentence are withheld; the prompt asks for one sentence each.
+  format word, by ref or in prose, must be the price row's own, matched whole: "paperback" isn't a trade
+  paperback (Audit), "hardback" is a hardcover, and "softcover", which fits several formats, fits none. The
+  title inside an edition label counts as a book named. A price with no book (a breakdown by price or format,
+  a confirmed filter) sits only with no book named. Two prices in one sentence are withheld; the prompt asks
+  for one sentence each.
+- A book's price can't carry over to another: carry-over words ("too", "the same as", "like", "the other
+  editions", "every"…) withhold a sentence citing a book's price, and the sentence after it, if it has no price
+  of its own, is withheld for one too, or for naming another book ("…costs $27.99. The Lantern Hours does
+  too."). A price group's sentence keeps them: "every title in $27.99" is true. Unlisted phrasings
+  ("matching", "along with") are left to the real-model red-team (Probe).
 - A price word ("costs", "priced", "lists at", "paid", "charged", "worth"…) with a dollar figure that isn't a
   price (revenue, average order value) is withheld: there's no average price.
 - Price comparatives and judgments ("cheapest", "pricier", "bargain", "budget"…) join the direction words, and
