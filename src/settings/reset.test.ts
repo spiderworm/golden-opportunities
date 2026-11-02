@@ -38,9 +38,8 @@ describe("a reset in this browser", () => {
     const post = vi.fn(async (_url: string, _init: RequestInit) => ({ type: "opaqueredirect", status: 0 }) as Response);
     expect(await resetGame("inst-1", () => storage, post as typeof fetch)).toBe(true);
     const [url, init] = post.mock.calls[0]!;
-    expect(url).toBe("/game/new");
-    expect(init).toMatchObject({ method: "POST", redirect: "manual" });
-    expect((init.body as FormData).get("reset")).toBe("1");
+    expect(url).toBe("/game/new?reset=1");
+    expect(init).toEqual({ method: "POST", redirect: "manual" });
     expect(items.has("orbital-books:pins:v1")).toBe(false);
 
     for (const answer of [async () => new Response("Game state changed.", { status: 409 }), async () => { throw new TypeError("offline"); }]) {

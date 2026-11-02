@@ -3,7 +3,7 @@ import { STORAGE_KEY as PINS_KEY } from "~/investigate/pins/usePins";
 import { KEY as STATION_VIEW_KEY } from "~/station/view-memory";
 
 // Reset game, from Settings (David, 2 Nov 2026): the server starts a new save
-// (POST /game/new with reset=1, the Play again path), and this browser forgets
+// (POST /game/new?reset=1, the Play again path), and this browser forgets
 // what it kept of the old game. The memos, their seen flags and the station's
 // arrival are in the save, so the new one has them fresh. What belongs to the
 // person, not the game, stays: the instance and install numbers, the
@@ -30,11 +30,9 @@ export function clearGameStorage(storage: () => Pick<Storage, "removeItem"> | un
  * with a redirect, not followed, so its cookie lands without loading the page twice); false if it refused.
  */
 export async function resetGame(instance: string, storage: () => Pick<Storage, "removeItem"> | undefined, post = fetch): Promise<boolean> {
-  const body = new FormData();
-  body.set("reset", "1");
   let response: Response;
   try {
-    response = await post("/game/new", { method: "POST", body, redirect: "manual" });
+    response = await post("/game/new?reset=1", { method: "POST", redirect: "manual" });
   } catch {
     return false;
   }

@@ -15,15 +15,14 @@ import { action } from '../shell/new-game';
 // Reset game, from Settings (David, 2 Nov 2026): a new save from 1 January at any point, where Play again waits
 // for the half year to be played.
 
-function request(id?: string, method = 'POST', origin = 'http://localhost', body?: FormData) {
-  return new Request('http://localhost/game/new', { method, body, headers: { origin, ...(id ? { cookie: 'orbital_save=' + id } : {}) } });
+function request(id?: string, method = 'POST', origin = 'http://localhost', url = 'http://localhost/game/new') {
+  return new Request(url, { method, headers: { origin, ...(id ? { cookie: 'orbital_save=' + id } : {}) } });
 }
 async function refusal(action: () => unknown, code: number) {
   try { await action(); } catch (e) { expect(e).toBeInstanceOf(Response); expect((e as Response).status).toBe(code); return; }
   throw new Error('Expected refusal');
 }
 const newId = (cookie: string) => /^orbital_save=([A-Za-z0-9_-]{43});/.exec(cookie)![1]!;
-const reset = () => { const form = new FormData(); form.set('reset', '1'); return form; };
 afterEach(() => vi.clearAllMocks());
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 
@@ -62,9 +61,9 @@ describe('resetting the game', () => {
     expect(trackServer).not.toHaveBeenCalledWith('game_reset', expect.anything());
   });
 
-  it('is what POST /game/new does with reset=1; without it, Play again still waits for the half year', async () => {
+  it('is what POST /game/new?reset=1 does; without it, Play again still waits for the half year', async () => {
     const save = saves.create();
-    const response = await action({ request: request(save.id, 'POST', 'http://localhost', reset()) } as never);
+    const response = await action({ request: request(save.id, 'POST', 'http://localhost', 'http://localhost/game/new?reset=1') } as never);
     expect(response.status).toBe(303);
     expect(response.headers.get('Location')).toBe('/');
     expect(newId(response.headers.get('Set-Cookie')!)).not.toBe(save.id);
