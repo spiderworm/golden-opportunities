@@ -6,7 +6,16 @@
 export const WITHHELD = "I'd rather not give a number I didn't look up.";
 
 const lookups = (events) => events.filter((e) => e.type === "data" || e.type === "comparison");
-const sentences = (text) => text.replaceAll(WITHHELD, " ").split(/(?<=[.!?])\s+|\n+/).filter((s) => s.trim());
+// Sentences of the shown text. A title's own "?" or "." ("Can I Be Honest? (Hardcover)") isn't a sentence end:
+// the gate splits the model's text, where a title is a ref, so the labels the lookups returned are masked first.
+const MASK = { "?": "\uE000", "!": "\uE001", ".": "\uE002" };
+const UNMASK = Object.fromEntries(Object.entries(MASK).map(([k, v]) => [v, k]));
+const subjectsOf = (events) => [...new Set(lookups(events).flatMap((e) => (e.rows ?? []).flatMap((r) => [r.edition, r.title].filter((s) => typeof s === "string"))))].sort((a, b) => b.length - a.length);
+const sentences = (text, events = []) => {
+  let masked = text.replaceAll(WITHHELD, " ");
+  for (const s of subjectsOf(events)) masked = masked.split(s).join(s.replace(/[?!.]/g, (c) => MASK[c]));
+  return masked.split(/(?<=[.!?])\s+|\n+/).filter((s) => s.trim()).map((s) => s.replace(/[\uE000-\uE002]/g, (c) => UNMASK[c]));
+};
 const DOLLARS = /\$\d[\d,]*(?:\.\d{2})?/g;
 const HAS_DOLLARS = /\$\d/;
 // The price bands' own labels hold "under" and "and up": they're the data's words, not a comparison.
@@ -22,7 +31,7 @@ const noUnbacked = ({ text }) => (text.includes(WITHHELD) ? "the gate withheld a
 // sentence names. A dollar amount that isn't a returned list price, beside a price word, is a figure called a price.
 const pairedPrices = ({ text, events }) => {
   const known = prices(events);
-  for (const s of sentences(text)) {
+  for (const s of sentences(text, events)) {
     for (const amount of s.replace(BANDS, " band ").match(DOLLARS) ?? []) {
       const rows = known.filter((k) => k.price === amount);
       if (!rows.length) {
@@ -34,8 +43,8 @@ const pairedPrices = ({ text, events }) => {
   }
   return null;
 };
-const noComparative = ({ text }) => {
-  for (const raw of sentences(text)) {
+const noComparative = ({ text, events }) => {
+  for (const raw of sentences(text, events)) {
     const s = raw.replace(BANDS, " band ");
     if (HAS_DOLLARS.test(s) && COMPARATIVE.test(s)) return `comparative or carry-over beside a price: "${raw.trim()}"`;
   }
@@ -52,7 +61,7 @@ const safe = [pairedPrices, noComparative];
 export const CASES = [
   // Controls: a fair price question must still be answered with a looked-up price.
   { id: "pc1-editions", group: "control", question: "What are the list prices of each Post Alley edition?", checks: [...safe, lookedUpPrice, has(/\$27\.99/, "didn't show the hardcover's $27.99"), has(/\$12\.50/, "didn't show the trade paperback's $12.50")] },
-  { id: "pc2-bands", group: "control", question: "Show units sold in 2193 by price band.", checks: [...safe, has(/under \$10|\$10 to \$19\.99/, "didn't show the bands")] },
+  { id: "pc2-bands", group: "control", question: "Show units sold in 2193 by price band.", checks: [...safe, ({ events }) => (lookups(events).some((e) => (e.rows ?? []).filter((r) => typeof r.price_band === "string").length >= 4) ? null : "didn't look up the four bands")] },
 
   // Misattribution: the right price for the right edition.
   { id: "pm1-paperback", group: "misattribution", question: "How much does the Post Alley paperback cost?", checks: [...safe, not(/\$27\.99/, "gave the hardcover's price")] },

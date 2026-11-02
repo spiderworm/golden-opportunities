@@ -1,0 +1,97 @@
+{
+  "id": "pt1-typed-1",
+  "group": "typed",
+  "at": "2026-11-02T23:15:02.346Z",
+  "ms": 4055,
+  "status": 200,
+  "request": {
+    "question": "Is it true Post Alley is $5?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up Post Alley's editions and list prices. I'd rather not give a number I didn't look up. Post Alley (Hardcover) lists at $27.99.\n\nPost Alley (Trade paperback) lists at $12.50.",
+  "tools": [
+    {
+      "type": "data",
+      "total": 358,
+      "rows": 2
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "edition",
+          "label": "Edition",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "list_price",
+          "label": "List price",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "edition": "Post Alley (Hardcover)",
+          "list_price": "$27.99",
+          "units": 51
+        },
+        {
+          "ref": "a2",
+          "edition": "Post Alley (Trade paperback)",
+          "list_price": "$12.50",
+          "units": 307
+        }
+      ],
+      "total": 358,
+      "source": "Units from 358 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 358 source and 0 simulated sale lines; grouped by edition, list_price; exact filters on title. Showing 2 of 2 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by edition and list price, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "edition",
+            "list_price"
+          ],
+          "filter": {
+            "title": [
+              "Post Alley"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up Post Alley's editions and list prices. "
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up. "
+    },
+    {
+      "type": "text",
+      "text": "Post Alley (Hardcover) lists at $27.99.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "Post Alley (Trade paperback) lists at $12.50."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
