@@ -218,6 +218,7 @@ describe("a later quarter's result screen (endless-copy.md section 4)", () => {
         lastYearLabel: "Q3 2193",
         referenceLabel: "Q2 2194",
         record: [row("2194-Q1", 66, "D"), row("2194-Q2", 74, "C"), row("2194-Q3", 81, "B-", { type: "quiet_days", params: { weekday: "Tuesday", percent: 15 } })],
+        // The engine's grades are ASCII ("B-"); the screen shows them through scoreText ("B\u2212").
         removed: null,
         goalStretch: null,
         season2193: { quarter: 274036.2, before: 164436.9, beforeLabel: "Q2 2193" },
@@ -245,7 +246,28 @@ describe("a later quarter's result screen (endless-copy.md section 4)", () => {
     expect(page).toContain("Quiet Tuesdays");
     expect(page).toContain("The new Inspector Ryeslton volume");
     expect(page).toContain("Manager since January 1, 2194: 3 quarters. Average overall score: 74 (C).");
-    expect(page).toContain("Best quarter: Q3 2194, 81 (B-).");
+    expect(page).toContain("Best quarter: Q3 2194, 81 (B\u2212).");
+    expect(page).not.toMatch(/\([A-D]-\)/);
+  });
+
+  it("switches Q2's screen from the half-year review to the service record once Q3 is playable (Plot, on #215)", () => {
+    const outcome = { ...simulateQ2(QUIET, 3, data).outcome, discoveries: [] };
+    const base = {
+      quarter: "2194-Q2" as const, outcome, sameQuarterLastYear: 164436.9, previousQuarter: 100_000, reference: [],
+      discoveries: earnedDiscoveries([], "2194-Q2"), lastYearLabel: "Q2 2193", referenceLabel: "Q1 2194",
+      record: [row("2194-Q1", 66, "D"), row("2194-Q2", 74, "C")], removed: null, goalStretch: null,
+      season2193: { quarter: 164436.9, before: 95245.8, beforeLabel: "Q1 2193" },
+    };
+    // Today: Q2 ends the game, with the review and Play again.
+    const ending = text(show({ ...base, next: null, canPlayAgain: true, halfYear: { quarters: [], score: 70, grade: "C-" as never } }));
+    expect(ending).toContain("Half-year review");
+    expect(ending).not.toContain("Service record");
+    // Once Frank's step 4 opens Q3: no review, the service record, and Continue to Q3 2194.
+    const going = text(show({ ...base, next: "2194-Q3", canPlayAgain: false, halfYear: null }));
+    expect(going).not.toContain("Half-year review");
+    expect(going).toContain("Service record");
+    expect(going).toContain("Continue to Q3 2194");
+    expect(going).not.toContain("Play again");
   });
 
   it("doesn't offer to continue from a quarter that isn't the last one played", () => {
