@@ -235,6 +235,71 @@
   background: var(--color-accent-wash);
 }
 
+/* A filter on the bar: its menu and the "x" that takes it off, joined as one control. */
+.filterItem {
+  display: flex;
+  align-items: stretch;
+}
+
+.filterItem .filterButton {
+  border-right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.filterRemove {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-left: 1px solid transparent;
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.filterItem:has(.filterButton[data-active]) .filterRemove {
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+
+.filterRemove:hover {
+  background: var(--color-panel-raised);
+  color: var(--color-text);
+}
+
+/* "Add a filter": an action, not a filter, so a dashed outline. */
+.addFilter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-accent-soft);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.addFilter:hover,
+.addFilter[aria-expanded="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+
+.filterEmpty {
+  max-width: 260px;
+  margin: 4px 6px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
 /* Metric tiles */
 
 .tiles {

@@ -210,3 +210,55 @@ export function monthsInScope(visibleQuarters: readonly string[], selectedQuarte
 export function isTotal(measure: Measure): boolean {
   return !measure.startsWith("avg_");
 }
+
+/**
+ * The filters a player can add to the bar, in the bar's order (David, 2 Nov 2026: an "+ add a filter" list, each
+ * filter with an "x"). Some are one control over two dimensions (Discount, Awards, Series volume).
+ */
+export const FILTERS = ["quarter", "genre", "format", "publisher", "discount", "awards", "series", "month", "weekday", "title"] as const;
+export type FilterId = (typeof FILTERS)[number];
+
+export const FILTER_PARTS: Record<FilterId, readonly FilterDimension[]> = {
+  quarter: ["quarter"],
+  genre: ["genre"],
+  format: ["format"],
+  publisher: ["publisher"],
+  discount: ["discount_rate", "discounted"],
+  awards: ["awarded", "award"],
+  series: ["in_series", "volume"],
+  month: ["month"],
+  weekday: ["weekday"],
+  title: ["title"],
+};
+
+/** The URL parameter listing the filters the player added, values or not: `show=genre&show=awards`. */
+export const SHOW_PARAM = "show";
+
+/**
+ * The filters on the bar: the ones the player added, and any that hold values (a drilldown, an old link), so
+ * nothing applies unseen. A filter added with nothing chosen filters nothing.
+ */
+export function shownFilters(params: URLSearchParams, filters: Filters): FilterId[] {
+  const listed = params.getAll(SHOW_PARAM);
+  return FILTERS.filter((id) => listed.includes(id) || FILTER_PARTS[id].some((d) => filters[d]?.length));
+}
+
+/** The URL's parameters with these filters shown (in the bar's order), replacing any `show` already there. */
+export function withShown(params: URLSearchParams, shown: readonly FilterId[]): URLSearchParams {
+  const next = new URLSearchParams(params);
+  next.delete(SHOW_PARAM);
+  for (const id of FILTERS) if (shown.includes(id)) next.append(SHOW_PARAM, id);
+  return next;
+}
+
+/** Taking a filter off the bar clears what it had chosen. */
+export function removeFilter(state: InvestigateState, id: FilterId): InvestigateState {
+  return FILTER_PARTS[id].reduce((next, dimension) => setFilter(next, dimension, []), state);
+}
+
+/** Whether two URLs differ only in which filters are shown: that changes no data, so nothing is asked again. */
+export function onlyShownChanged(from: URL, to: URL): boolean {
+  if (from.pathname !== to.pathname || from.search === to.search) return false;
+  const strip = (url: URL) => withShown(url.searchParams, []).toString();
+  return strip(from) === strip(to);
+}
