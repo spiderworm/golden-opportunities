@@ -42,6 +42,8 @@ These are used on the bell, as `{Quarter}: {short title}`, and in the service re
 | Bell, title | `{Quarter}: {short title}` (section 1) |
 | Bell, detail | `Read the memo, then submit your picks and a plan for {quarter}.` |
 
+**The score line** names the quarter: `{Last quarter} overall score: {score} ({grade}). Lowest measure: {measures}.`, for example `Q2 2194 overall score: 72 (C−). Lowest measure: Culture.` Ties list every binding measure (`Profit and Culture`). When every measure met its goal, the second sentence reads `Every measure met its goal.` (Frank, #214).
+
 **The order in the memo** when several things happen at once:
 1. The score line.
 2. This quarter's strike line, if it was a strike.
