@@ -181,6 +181,8 @@ describe("the text checks", () => {
     expect(textProblem("story", "Write to [address removed] today.", rules())).toBe("address");
     expect(textProblem("story", "A club has formed 📚.", rules())).toBe("emoji");
     expect(textProblem("story", "A club‮ has formed.", rules())).toBe("control");
+    // Invisible characters that aren't format characters, inside a banned word (Audit's review of #229).
+    for (const hidden of ["\u034F", "\uFE0F", "\u180B", "\u3164", "\u115F"]) expect(textProblem("bossLine", `WE SOLD FI${hidden}VE BOOKS.`, rules()), JSON.stringify(hidden)).toBe("control");
     expect(textProblem("story", "A CLUB HAS FORMED.", rules())).toBe("voice");
     expect(textProblem("reason", "The arts panel wants it.", rules())).toBe("voice");
     expect(textProblem("story", "Zoolander would approve of the club.", rules())).toBe("zoolander");

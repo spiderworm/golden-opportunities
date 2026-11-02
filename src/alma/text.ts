@@ -28,7 +28,9 @@ export function textProblem(field: TextField, text: unknown, rules: TextRules): 
   if (typeof text !== "string") return "not_text";
   if (!text.trim()) return "empty";
   if (text.length > TEXT_LIMITS[field]) return "too_long";
-  if (/[\p{Cc}\p{Cf}]/u.test(text)) return "control";
+  // Control, format and every other invisible character: one inside a word would hide it from the ban
+  // ("FI\u034FVE", Audit's review of #229).
+  if (/[\p{Cc}\p{Cf}\p{Default_Ignorable_Code_Point}]/u.test(text)) return "control";
   if (/\p{Extended_Pictographic}/u.test(text)) return "emoji";
   // Claude Code puts the account's email in the model's context; no address, placeholder or @ may reach a player.
   if (text.includes("@") || text.includes(REDACTED) || redactEmails(text) !== text) return "address";
