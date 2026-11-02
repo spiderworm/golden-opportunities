@@ -178,7 +178,7 @@ The rotating lines name no event, no direction and no figure that changes with t
 
 | Element | String |
 | --- | --- |
-| Footer | `{found} of {total} found.` (the total is 2 or 3: a quiet quarter, or author fares never run, offers no event discovery) |
+| Footer | `{found} of {total} found.` (the total is 2 or 3: a quiet quarter and author fares offer no event discovery) |
 
 **Not-found texts** say where to look, never what's there, as in M1:
 
@@ -186,11 +186,14 @@ The rotating lines name no event, no direction and no figure that changes with t
 | --- | --- |
 | Genre surge or slump | `Break {genre} down by title for {the quarter a year before}.` |
 | Quiet days | `Break a past quarter's orders down by weekday.` |
-| Author fares | `Look at what your author nights brought in, quarter by quarter.` |
+| Author fares | None for now: author fares has no event discovery (`endless.md` section 5) |
 | Format costs | `Break {the quarter a year before} down by format.` |
 | Orbitplace lot | `Look at the lot's title month by month, over the last four quarters.` |
 | Your last quarter, on the record | `Compare a measure for {last quarter} with {the quarter a year before}.` |
-| Your weakest measure | `Look into {measure} for {last quarter}, by month or by title.` |
+| Your weakest measure: Profit | `Look at revenue for {last quarter}, by month or by title.` |
+| Your weakest measure: Readers served | `Look at orders for {last quarter}, by month or by title.` |
+| Your weakest measure: Happiness | `Look at average rating for {last quarter}, by month or by title.` |
+| Your weakest measure: Culture | `Look at units by title for {last quarter}.` |
 
 ## 5. Who builds what
 
