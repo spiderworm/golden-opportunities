@@ -45,7 +45,7 @@ test('Q1, then Q2 with a pick, then the half-year review, then Play again', asyn
   await settle(page);
   await page.goto('/decide?analytics-test=1');
   await expect(page.getByRole('heading', { name: 'PLAN FOR Q1 2194' })).toBeVisible();
-  await settle(page);
+  // No settling in Decide: submitting while the bosses' models download is no page error (#172).
   await page.getByRole('button', { name: 'Submit plan', exact: true }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Submit', exact: true }).click();
   await expect(page).toHaveURL(/\/result(?:\?|$)/, { timeout: 20_000 });
@@ -89,9 +89,7 @@ test('Q1, then Q2 with a pick, then the half-year review, then Play again', asyn
   await settle(page);
   await page.goto('/decide?analytics-test=1');
   await expect(page.getByRole('heading', { name: 'PLAN FOR Q2 2194' })).toBeVisible();
-  // The bosses' scene loads its models first: typing before then can lose the picker's focus, and Submit
-  // would cut a model's fetch off.
-  await settle(page);
+  // Typing while the bosses' scene loads: the 3D swap keeps the picker, its text and focus (#172).
   await page.getByRole('button', { name: /^April/ }).click();
   await page.getByRole('combobox', { name: 'Find a title: April' }).fill('Land Water');
   const pick = 'Land Water Sky Space (hardcover), $48.00';
