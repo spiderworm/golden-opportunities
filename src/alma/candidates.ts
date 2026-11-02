@@ -167,7 +167,8 @@ export function drawCandidates(seed: number, context: QuarterContext, accept: (c
       const candidate = draw(type, context, next, repeats, chosen.filter((c) => c.type === type.id));
       // Really different offers while the tries last; at the end, any distinct one (two strikes can leave only
       // fares, and three fares can't all be $50 apart between $100 and $200 unless they're exactly that).
-      if (candidate && (!checked || accept(candidate)) && chosen.every((c) => (tries < 150 ? apart(c, candidate) : JSON.stringify(c) !== JSON.stringify(candidate)))) chosen.push(candidate);
+      // The server's check last: it can cost an anchor computation, so a duplicate never pays for one (Audit).
+      if (candidate && chosen.every((c) => (tries < 150 ? apart(c, candidate) : JSON.stringify(c) !== JSON.stringify(candidate))) && (!checked || accept(candidate))) chosen.push(candidate);
     }
     if (chosen.length === 3) return chosen as [Candidate, Candidate, Candidate];
   }
