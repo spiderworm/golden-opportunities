@@ -52,6 +52,14 @@ const query: Query = { measure: 'revenue', by: ['quarter'] };
   book or the unknown one. Investigate-only.
 - in_series: `yes` if the book belongs to a series, else `no`; null for the
   unknown book. Investigate-only.
+- edition: the sale line's edition, as title and format (`Post Alley
+  (Hardcover)`). Where a book has two editions in one format, the label adds
+  the publication year (`Heliotrope Pajamas (Paperback, 2181)`). Sales only.
+  Investigate-only.
+- list_price: the edition's list price before any discount, to the cent
+  (`$27.99`). Sorts as an amount. Sales only. Investigate-only.
+- price_band: `under $10`, `$10 to $19.99`, `$20 to $29.99` or `$30 and up`,
+  sorted in that order. Sales only. Investigate-only.
 
 Filters are exact, case-sensitive matches. Values within one dimension are OR;
 different dimensions are AND. Each filter contains 1–50 strings of at most 200
@@ -89,8 +97,8 @@ also apply to direct `runQuery` results, not only the HTTP endpoint.
 Ratings/checkouts join directly to Book → Author/Info/Series, never through
 sales or editions. This avoids multiplying ratings or checkouts by sales volume
 or edition count. CH392's unmatched rows remain, with null book dimensions.
-Edition, discount, and sales-calendar dimensions are rejected for ratings and
-checkouts, except the observed checkout month. Stars apply to the ratings count
+Edition (format, edition, list price, price band), discount, and
+sales-calendar dimensions are rejected for ratings and checkouts, except the observed checkout month. Stars apply to the ratings count
 only: an average rating by stars would be the stars themselves. A book with no
 ratings has no row, as with any group without facts. An average over no facts is
 null; empty sums/counts are zero. Total is over all filtered visible facts before
@@ -117,7 +125,8 @@ Until then it's Investigate-only: left out of the tool schemas and
 is the measure, a grouping, a filter or the sort. Browser queries may use it.
 
 Investigate-only now: the `ratings` measure, and the `stars`, `awarded`,
-`award`, `volume` and `in_series` dimensions (#169).
+`award`, `volume`, `in_series`, `edition`, `list_price` and `price_band`
+dimensions (#169).
 
 ## Visibility and access
 
