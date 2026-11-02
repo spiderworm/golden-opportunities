@@ -150,7 +150,7 @@ describe('persisted quarter transaction', () => {
 it('runs the Decide and Result route loop against the same cookie-owned save', async () => {
   const save = saves.create();
   const args = { request: request(save.id, 'GET') };
-  expect(decideLoader(args as DecideRoute.LoaderArgs)).toEqual({ quarter: '2194-Q1' });
+  expect(await decideLoader(args as DecideRoute.LoaderArgs)).toEqual({ quarter: '2194-Q1' });
   try { resultLoader(args as ResultRoute.LoaderArgs); throw Error('Expected redirect'); }
   catch (e) { expect(e).toBeInstanceOf(Response); expect((e as Response).headers.get('location')).toBe('/decide'); }
   const post = () => ({ request: new Request('http://localhost/decide', { method: 'POST', headers: {
@@ -159,7 +159,7 @@ it('runs the Decide and Result route loop against the same cookie-owned save', a
   expect(await decideAction(post())).toEqual({ ok: true });
   expect(await decideAction(post())).toMatchObject({ init: { status: 409 }, data: { ok: false } });
   // With Q1 played, Decide plans Q2 (#144).
-  expect(decideLoader(args as DecideRoute.LoaderArgs)).toMatchObject({ quarter: '2194-Q2' });
+  expect(await decideLoader(args as DecideRoute.LoaderArgs)).toMatchObject({ quarter: '2194-Q2' });
   const result = resultLoader(args as ResultRoute.LoaderArgs);
   expect(result.outcome.plan).toEqual({ levers: ['events'] });
   expect(result.reference).toHaveLength(3);
