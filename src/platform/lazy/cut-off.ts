@@ -42,9 +42,6 @@ export function whenStayed(): Promise<void> {
   return new Promise((resolve) => stayedWaiters.push(resolve));
 }
 
-/** Whether the page is going away (a reload or navigation): what fails to load now is nobody's error. */
-export const pageLeaving = () => leaving;
-
 /**
  * The rejection handler for a lazy import (the music, the charts), by what
  * it loads. A reload or navigation can cut the import off, and WebKit then
