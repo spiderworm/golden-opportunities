@@ -73,6 +73,8 @@ interface RefInfo {
   price?: { own: string[]; subject: string | null; format: string | null };
   /** An edition or title label. */
   subject?: string;
+  /** A format label, as running text says it ("trade paperback"). */
+  format?: string;
 }
 /** The format in an edition label, "Post Alley (Trade paperback)" or "Heliotrope Pajamas (Paperback, 2181)", as running text says it. */
 const editionFormat = (edition: string) => {
@@ -159,6 +161,7 @@ export class Refs {
       info.price = { own, subject: own[0] ?? null, format };
     }
     if (field === "edition" || field === "title") info.subject = at(field);
+    if (field === "format") info.format = FORMAT_WORDS[at("format") ?? ""] ?? at("format")?.toLowerCase();
     return info;
   }
 
@@ -374,8 +377,9 @@ const wholeLabel = (text: string, flags: string) => new RegExp(`(?<![\\p{L}\\p{N
  * - it has a price word and a dollar figure that isn't a price (revenue or average order value called a price);
  * - a list price isn't paired with its own book: an edition row's price needs its edition named (by ref, or its
  *   exact label), a title row's its title; no other edition or title from this answer may be named; and any
- *   format word must be the edition's own, matched whole ("paperback" isn't a trade paperback). A price with no
- *   book (a breakdown by price alone, or a confirmed filter) may sit only with no book named.
+ *   format word, by ref or in prose, must be the price row's own format, matched whole ("paperback" isn't a trade
+ *   paperback), for a book's price or a group's (a breakdown by format). A price with no book (a breakdown by
+ *   price or format, or a confirmed filter) may sit only with no book named.
  */
 function priceProblem(folded: string, refs: Refs, known: number): boolean {
   const cited = [...folded.matchAll(REF)].map((m) => ({ at: m.index!, info: refs.describe(m[1]!.trim(), known) }));
@@ -394,7 +398,8 @@ function priceProblem(folded: string, refs: Refs, known: number): boolean {
       rest = rest.replace(pattern, " ");
     }
   }
-  const formats: string[] = [];
+  // Format words: cited by ref ({{f1.format}}) or in the prose, whole phrases, longest first.
+  const formats = cited.flatMap(({ info }) => (info?.format ? [info.format] : []));
   for (const f of FORMATS) {
     const pattern = wholeLabel(f, "giu");
     if (pattern.test(rest)) {
@@ -403,12 +408,14 @@ function priceProblem(folded: string, refs: Refs, known: number): boolean {
     }
   }
   for (const price of prices) {
+    // Every price, a book's or a group's: a format named beside it must be its own, and one without a format
+    // can't be given one (Audit's review of #228: "Hardcovers at {{f2.list_price}}", f2 the trade paperback).
+    if (formats.some((f) => f !== price.format)) return true;
     if (!price.subject) {
       if (named.length) return true;
       continue;
     }
     if (!named.includes(price.subject) || named.some((n) => !price.own.includes(n))) return true;
-    if (formats.some((f) => f !== price.format)) return true;
   }
   return false;
 }
