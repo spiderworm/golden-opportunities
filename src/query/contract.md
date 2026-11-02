@@ -132,7 +132,10 @@ dimensions (#169).
 
 `dataVersion(save)` (`data-version.server.ts`) is an opaque 16-hex string that
 changes exactly when what a save's queries can see changes: a plan commit, a
-reset or new game (a new save), or a new server process. Discovery, evidence and
+reset or new game (a new save), or a new server process. It also changes when
+the open quarter's Alma record lands, because from Q3 what a view proves for the
+quarter's discoveries depends on that record's event: a view shown before it
+landed reaches the server again after (Audit). Discovery, evidence and
 alert-seen writes keep it. It's a hash, never the save ID. The shell layout's
 loader returns it (`dataVersion`, route `shell/layout`), and every successful
 `/api/query` response carries the version its result was computed under, in

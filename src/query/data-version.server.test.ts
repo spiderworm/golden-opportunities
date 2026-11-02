@@ -15,6 +15,7 @@ import { PLAYABLE_QUARTERS, setPlayableQuarters } from '../game/quarters';
 import { createQueryHandler } from './http.server';
 import { DATA_VERSION_HEADER, dataVersion } from './data-version.server';
 import { runQuery } from './run-query.server';
+import { pendingTurn } from '../alma/hook.server';
 
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 const request = (id: string, url = 'http://localhost/decide') =>
@@ -60,6 +61,29 @@ describe("a save's data version", () => {
     const reset = idOf(resetGame(request(again, 'http://localhost/settings/reset')));
     const fresh = saves.create();
     expect(new Set([finished, version(again), version(reset), version(fresh.id)]).size).toBe(4);
+  });
+
+  it("changes when the open quarter's Alma record lands, so a view shown before it reaches the server again (Audit)", async () => {
+    const save = saves.create(); const req = request(save.id);
+    submitPlan(req, { levers: [] });
+    submitQ2Plan(req, { picks: [null, null, null], levers: [] });
+    // Q3 is open, and Alma's record for it is still being written in the background.
+    const turn = pendingTurn(save.id, '2194-Q3');
+    expect(turn).toBeDefined();
+    expect(saves.read(save.id).alma).toBeUndefined();
+    const before = version(save.id);
+    const handle = createQueryHandler({ track: () => {} });
+    const ask = () => handle(new Request('http://localhost:3000/api/query', { method: 'POST',
+      headers: { cookie: 'orbital_save=' + save.id, origin: 'http://localhost:3000', 'content-type': 'application/json' },
+      body: JSON.stringify({ measure: 'revenue', by: ['month'] }) }));
+    // The record lands: a new version, so a browser cache keyed on the old one asks the server again.
+    expect(await turn).toMatchObject({ quarter: '2194-Q3' });
+    const after = version(save.id);
+    expect(after).not.toBe(before);
+    expect((await ask()).headers.get(DATA_VERSION_HEADER)).toBe(after);
+    // Writes that don't change what a view proves still keep it.
+    markAlertSeen(req);
+    expect(version(save.id)).toBe(after);
   });
 
   it('comes back with every query result, from the same save as its view', async () => {
