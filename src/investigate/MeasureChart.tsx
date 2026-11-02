@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
-import { categoryHeight, categoryModel, categoryOption, legendItems, TOP_RANKED, type CategoryModel } from "./charts/category-chart";
+import { categoryHeight, categoryModel, categoryOption, legendItems, nothingToDraw, TOP_RANKED, type CategoryModel } from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
 import { Dropdown } from "~/platform/ui/Dropdown";
 import { Legend } from "./charts/Legend";
@@ -166,7 +166,7 @@ export function MeasureChart({ state, result, also = [], quarters, onMeasures, o
         </div>
       </header>
 
-      {result.rows.length === 0 ? (
+      {result.rows.length === 0 || (!table && nothingToDraw(many ? { series: many.measures } : model)) ? (
         <p className={styles.empty}>No sales match these filters.</p>
       ) : many && manyOption ? (
         table ? (
