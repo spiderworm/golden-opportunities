@@ -31,19 +31,39 @@ export function replayLines(quarter: PlayedQuarter, seed: number, data: DeepRead
   return visible(linesOfTurn({ quarter: quarter.period, seed, plan: quarter.outcome.plan, event }, data).lines);
 }
 
-/** Replayed lines by save and quarter, least recently used out: a few dozen quarters of 8,000 to 22,000 lines. */
-const MAX_CACHED = 48;
-const cache = new Map<string, readonly Sale[]>();
+/**
+ * Replayed lines, by save, least recently used save out once the cache holds more than `limit` lines in all, but
+ * never the save being read: a save's quarters stay together, so a long endless game doesn't thrash (Audit, #233).
+ * 1.5 million lines is about five five-year saves (some 290,000 lines each).
+ */
+let limit = 1_500_000;
+interface SaveLines { quarters: Map<string, readonly Sale[]>; lines: number }
+const cache = new Map<string, SaveLines>();
+let total = 0;
 /** By the quarter's hash and count too, so a cached replay is only ever returned for the lines it was checked against. */
-const keyOf = (saveId: string, quarter: PlayedQuarter) => `${saveId}\0${quarter.outcomeId}\0${quarter.lines?.hash}\0${quarter.lines?.count}`;
-function remember(key: string, lines: readonly Sale[]) {
-  cache.delete(key);
-  cache.set(key, lines);
-  for (const oldest of cache.keys()) { if (cache.size <= MAX_CACHED) break; cache.delete(oldest); }
+const keyOf = (quarter: PlayedQuarter) => `${quarter.outcomeId}\0${quarter.lines?.hash}\0${quarter.lines?.count}`;
+/** A save's entry, now the most recently used. */
+function entry(saveId: string): SaveLines {
+  const found = cache.get(saveId) ?? { quarters: new Map(), lines: 0 };
+  cache.delete(saveId);
+  cache.set(saveId, found);
+  return found;
+}
+function remember(saveId: string, key: string, lines: readonly Sale[]) {
+  const save = entry(saveId);
+  const old = save.quarters.get(key);
+  if (old) { save.lines -= old.length; total -= old.length; }
+  save.quarters.set(key, lines);
+  save.lines += lines.length; total += lines.length;
+  for (const [id, other] of cache) {
+    if (total <= limit) break;
+    if (id === saveId) continue;
+    cache.delete(id); total -= other.lines;
+  }
 }
 
 /** Keeps the lines a quarter was just played with, so its first queries don't replay it. */
-export function rememberLines(saveId: string, quarter: PlayedQuarter, lines: readonly Sale[]) { remember(keyOf(saveId, quarter), lines); }
+export function rememberLines(saveId: string, quarter: PlayedQuarter, lines: readonly Sale[]) { remember(saveId, keyOf(quarter), lines); }
 
 /**
  * A played quarter's lines: stored ones as they are; otherwise the cached replay, or a fresh one checked against
@@ -52,14 +72,17 @@ export function rememberLines(saveId: string, quarter: PlayedQuarter, lines: rea
  */
 export function quarterLines(saveId: string, seed: number, quarter: PlayedQuarter, data: () => DeepReadonly<BookshopData>, event: TurnEvent | null = null): readonly Sale[] {
   if (quarter.sales) return quarter.sales;
-  const key = keyOf(saveId, quarter);
-  const cached = cache.get(key);
-  if (cached) { remember(key, cached); return cached; }
+  const key = keyOf(quarter);
+  const cached = cache.get(saveId)?.quarters.get(key);
+  if (cached) { entry(saveId); return cached; }
   const lines = replayLines(quarter, seed, data(), event);
   if (lines.length !== quarter.lines.count || linesHash(lines) !== quarter.lines.hash) throw new SaveError('REPLAY_MISMATCH');
-  remember(key, lines);
+  remember(saveId, key, lines);
   return lines;
 }
 
 /** For tests: forget every replay. */
-export const forgetReplays = () => cache.clear();
+export const forgetReplays = () => { cache.clear(); total = 0; };
+/** For tests: the cache's size, and a smaller bound to exercise it. */
+export const replayCacheSize = () => ({ saves: cache.size, lines: total });
+export function setReplayCacheLimit(lines: number) { limit = lines; }
