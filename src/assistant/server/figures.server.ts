@@ -279,6 +279,11 @@ const DIRECTION_WORDS =
 // Digits in any script and number symbols (after NFKC, so "１６１" and "¾" are caught), fractions written with
 // "quarter", "a couple", and "-fold".
 const BANNED = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS}|${DIRECTION_WORDS})\\b|\\ba quarter\\b|\\bquarters? of\\b|\\ba couple\\b|\\w*-?fold\\b`, "iu");
+/**
+ * The number half of that ban, for text whose directions are the speaker's own truth (Alma's stories, where
+ * "surge" and "slump" are the event): a figure in it must still come from a slot. Run it on NFKC-folded text.
+ */
+export const NUMBER_BAN = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS})\\b|\\ba quarter\\b|\\bquarters? of\\b|\\ba couple\\b|\\w*-?fold\\b`, "iu");
 // Exact phrases allowed despite their words, in exact contexts only.
 const ALLOWED = /\blook(?:s|ed|ing)? (?:(?:it|them|that) )?up\b|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))/giu;
 const REF = /\{\{([^{}]{1,40})\}\}/g;

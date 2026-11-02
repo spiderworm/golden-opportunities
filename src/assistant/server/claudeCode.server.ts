@@ -1,5 +1,6 @@
 // The assistant's engine for now: headless Claude Code (`claude -p`), locked down so the model has our MCP tools
-// and nothing else. David chose Claude Code, run the way his other web UIs drive it on this Mac (subscription
+// and nothing else. Alma, the event director (src/alma), runs on the same code with no tool server at all: then
+// the locks require no tools and no MCP servers. David chose Claude Code, run the way his other web UIs drive it on this Mac (subscription
 // sign-in, no API key); to be revisited before release. The measurements behind every flag are in
 // ../engine-notes.md.
 //
@@ -38,15 +39,15 @@ export interface ToolServer {
   env?: Record<string, string>;
 }
 
-/** The command line, exported for the test that checks every lock is on it. */
-export function claudeArgs(prompt: AssistantPrompt, model: string, server: ToolServer): string[] {
+/** The command line, exported for the test that checks every lock is on it. With no server, no tool is allowed. */
+export function claudeArgs(prompt: AssistantPrompt, model: string, server: ToolServer | null): string[] {
   return [
     "-p",
     "--tools",
     "",
     "--strict-mcp-config",
     "--mcp-config",
-    JSON.stringify({ mcpServers: { [server.name]: { command: server.command, args: server.args } } }),
+    JSON.stringify({ mcpServers: server ? { [server.name]: { command: server.command, args: server.args } } : {} }),
     "--setting-sources",
     "",
     "--disable-slash-commands",
@@ -54,8 +55,7 @@ export function claudeArgs(prompt: AssistantPrompt, model: string, server: ToolS
     "dontAsk",
     "--permission-prompts",
     "none",
-    "--allowedTools",
-    `mcp__${server.name}`,
+    ...(server ? ["--allowedTools", `mcp__${server.name}`] : []),
     "--no-session-persistence",
     "--model",
     model,
@@ -91,14 +91,18 @@ type Line = {
   result?: string;
 };
 
-/** Why an init line fails the locks, or null if it passes. */
-export function lockViolation(line: Line, server: string): string | null {
+/** Why an init line fails the locks, or null if it passes. With no server (null), it may have no tools at all. */
+export function lockViolation(line: Line, server: string | null): string | null {
   const { tools, mcp_servers: servers, skills, slash_commands: commands } = line;
   if (!Array.isArray(tools) || !Array.isArray(servers)) return "it didn't list its tools";
-  const foreign = tools.filter((t) => typeof t !== "string" || !t.startsWith(`mcp__${server}__`));
+  const foreign = tools.filter((t) => typeof t !== "string" || server === null || !t.startsWith(`mcp__${server}__`));
   if (foreign.length) return `it had tools that aren't ours (${foreign.slice(0, 3).join(", ")})`;
-  if (servers.length !== 1 || servers[0]?.name !== server) return "it had MCP servers that aren't ours";
-  if (servers[0].status !== "connected") return "our tool server didn't connect";
+  if (server === null) {
+    if (servers.length) return "it had MCP servers";
+  } else {
+    if (servers.length !== 1 || servers[0]?.name !== server) return "it had MCP servers that aren't ours";
+    if (servers[0].status !== "connected") return "our tool server didn't connect";
+  }
   if (!Array.isArray(skills) || !Array.isArray(commands)) return "it didn't list its skills and commands";
   if (skills.length || commands.length) return "it had skills or commands";
   return null;
@@ -112,7 +116,7 @@ const toolText = (content: unknown): string =>
       : "";
 
 /** Reads claude's stream-json lines into events, enforcing the locks on the first event. */
-export async function* readStream(lines: AsyncIterable<string>, kill: () => void, server: string): AsyncGenerator<ProviderEvent> {
+export async function* readStream(lines: AsyncIterable<string>, kill: () => void, server: string | null): AsyncGenerator<ProviderEvent> {
   let checked = false;
   const calls = new Map<string, { name: string; input: unknown }>();
   const redactor = emailRedactor();
@@ -152,7 +156,7 @@ export async function* readStream(lines: AsyncIterable<string>, kill: () => void
         const call = b.type === "tool_result" && b.tool_use_id ? calls.get(b.tool_use_id) : undefined;
         if (!call) continue;
         yield* text(redactor.flush());
-        yield { type: "tool", name: call.name.slice(`mcp__${server}__`.length), input: redactDeep(call.input), output: redactEmails(toolText(b.content)), isError: b.is_error === true };
+        yield { type: "tool", name: call.name.slice(`mcp__${server ?? ""}__`.length), input: redactDeep(call.input), output: redactEmails(toolText(b.content)), isError: b.is_error === true };
       }
     }
     if (line.type === "result" && line.is_error) {
@@ -171,7 +175,8 @@ export function claudeCodeAssistant({
   timeoutMs = 120_000,
   graceMs = 2_000,
 }: {
-  server: ToolServer;
+  /** null for none: the model gets no tools at all (Alma). */
+  server: ToolServer | null;
   command?: string;
   model?: string;
   timeoutMs?: number;
@@ -185,7 +190,7 @@ export function claudeCodeAssistant({
       if (signal.aborted) return;
       const cwd = mkdtempSync(path.join(tmpdir(), "orbital-assistant-"));
       // Its own process group, so stopping it also stops what it started (our MCP server, anything else).
-      const child = spawn(command, claudeArgs(prompt, model, server), { cwd, env: minimalEnv(process.env, server.env), stdio: ["pipe", "pipe", "pipe"], detached: true });
+      const child = spawn(command, claudeArgs(prompt, model, server), { cwd, env: minimalEnv(process.env, server?.env), stdio: ["pipe", "pipe", "pipe"], detached: true });
       const exited = new Promise<number | null>((resolve) => {
         child.once("exit", (code) => resolve(code));
         child.once("error", () => resolve(null));
@@ -225,7 +230,7 @@ export function claudeCodeAssistant({
         await spawned;
         child.stdin.end(prompt.message);
         let any = false;
-        for await (const event of readStream(createInterface({ input: child.stdout }), kill, server.name)) {
+        for await (const event of readStream(createInterface({ input: child.stdout }), kill, server?.name ?? null)) {
           any = true;
           yield event;
         }
