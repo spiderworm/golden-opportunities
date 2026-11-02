@@ -101,11 +101,10 @@ export function laterEvidenceFromQuery(query: Query, view: QueryView, result: Qu
     if (quarters.has(ctx.last)) keys.add('r:last');
     if (quarters.has(ctx.yearBefore)) keys.add('r:year');
   }
-  for (const measure of ctx.weakest) {
-    const look = WEAKEST[measure];
-    if (query.measure !== look.measure || !look.by.some(d => query.by.includes(d))) continue;
-    if (!look.dated || quarters.has(ctx.last)) keys.add('weakest');
-  }
+  // Only the measure the offer names: with tied binders, the found text must name the one looked at (Plot, #221).
+  const weakest = ctx.weakest[0];
+  const look = weakest && WEAKEST[weakest];
+  if (look && query.measure === look.measure && look.by.some(d => query.by.includes(d)) && (!look.dated || quarters.has(ctx.last))) keys.add('weakest');
   return [...keys];
 }
 
