@@ -1,13 +1,16 @@
-// Alma's turn for one quarter (endless.md section 9): ask the model, check its answer, retry once if the answer
-// was invalid (not after a timeout or a failure), and otherwise fall back to the scripted event. The model is
-// injected, so tests and automated runs never reach the real one (`almaModel` gives none for them).
+// Alma's turn for one quarter (endless.md section 9): draw three candidates, ask the model to pick one and write
+// its flavor, check the answer, retry once if it was invalid (not after a timeout or a failure), and otherwise
+// take the first candidate with scripted flavor. The model is injected, so tests and automated runs never reach
+// the real one (`almaModel` gives none for them).
 
 import { claudeCodeAssistant } from "~/assistant/server/claudeCode.server";
 import { AssistantUnavailable } from "~/assistant/server/provider.server";
+import { accountWords } from "./account.server";
+import { drawCandidates, recoveryOf, type Candidate, type QuarterContext } from "./candidates";
 import { almaInput, ALMA_RULES, PROMPT_VERSION, type QuarterSummary } from "./prompt";
-import type { AlmaChoice, AlmaRecord } from "./record";
-import { scriptedChoice } from "./scripted";
-import { checkAnswer, type ChoiceContext } from "./validate";
+import type { AlmaRecord } from "./record";
+import { scriptedFlavor } from "./scripted";
+import { checkAnswer, type Flavor } from "./validate";
 
 export interface AlmaModel {
   name: string;
@@ -39,37 +42,47 @@ export function almaModel(env: NodeJS.ProcessEnv = process.env): AlmaModel | nul
 
 const failureOf = (error: unknown) => (error instanceof AssistantUnavailable ? `unavailable:${error.kind}` : "unavailable:other");
 
+/**
+ * Alma's turn for a quarter: the server's three candidates, Alma's pick and flavor if they pass, otherwise the
+ * first candidate with scripted flavor. `titles` are the catalog's titles and `account` the signed-in account's
+ * words (account.server.ts), none of which Alma's text may name.
+ */
 export async function chooseEvent(
-  context: ChoiceContext,
+  context: QuarterContext,
   history: readonly QuarterSummary[],
-  { seed, model, timeoutMs = ALMA_TIMEOUT_MS }: { seed: number; model: AlmaModel | null; timeoutMs?: number },
+  { seed, model, titles, account = accountWords(), timeoutMs = ALMA_TIMEOUT_MS }: { seed: number; model: AlmaModel | null; titles: readonly string[]; account?: readonly string[]; timeoutMs?: number },
 ): Promise<AlmaRecord> {
-  const record = (choice: AlmaChoice, rest: Pick<AlmaRecord, "source" | "attempts"> & Partial<AlmaRecord>): AlmaRecord => ({
+  const candidates = drawCandidates(seed, context);
+  const recovery = recoveryOf(context);
+  const record = (candidate: Candidate, flavor: Flavor, rest: Pick<AlmaRecord, "source" | "attempts"> & Partial<AlmaRecord>): AlmaRecord => ({
     quarter: context.quarter,
-    ...structuredClone(choice),
+    type: candidate.type,
+    params: { ...candidate.params },
+    stretch: candidate.stretch && { ...candidate.stretch },
+    ...(recovery && candidate.stretch ? { drop: recovery.drop } : {}),
+    ...flavor,
     promptVersion: PROMPT_VERSION,
-    ...(context.recovery ? { drop: context.recovery.drop } : {}),
     ...rest,
   });
-  const scripted = (attempts: number, failure?: string) => record(scriptedChoice(seed, context), { source: "scripted", attempts, ...(failure ? { failure } : {}) });
+  const scripted = (attempts: number, failure?: string) => record(candidates[0], scriptedFlavor(candidates[0], context), { source: "scripted", attempts, ...(failure ? { failure } : {}) });
   if (!model) return scripted(0);
 
-  const input = almaInput(context, history);
+  const input = almaInput(context, history, candidates);
   let failure = "";
   for (let attempt = 1; attempt <= 2; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let text: string;
     try {
-      text = await model.ask(ALMA_RULES, attempt === 1 ? input : `${input}\n\nYour last answer was rejected (${failure}). Answer again, within the limits and rules.`, controller.signal);
+      text = await model.ask(ALMA_RULES, attempt === 1 ? input : `${input}\n\nYour last answer was rejected (${failure}). Answer again, keeping every rule.`, controller.signal);
     } catch (error) {
       return scripted(attempt, controller.signal.aborted ? "timeout" : failureOf(error));
     } finally {
       clearTimeout(timer);
     }
     if (controller.signal.aborted) return scripted(attempt, "timeout");
-    const checked = checkAnswer(text, context);
-    if (checked.ok) return record(checked.choice, { source: "alma", model: model.name, attempts: attempt });
+    const checked = checkAnswer(text, candidates, context, { titles, account });
+    if (checked.ok) return record(candidates[checked.index], checked.flavor, { source: "alma", model: model.name, attempts: attempt });
     failure = checked.failure;
   }
   return scripted(2, failure);
