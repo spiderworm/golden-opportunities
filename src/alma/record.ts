@@ -3,8 +3,8 @@
 // simulation reads its type, params and stretch, and never asks Alma again, so a reload or a replay gives the
 // same quarter.
 
-import { MEASURE_IDS, type MeasureId } from "./events";
-import { TEXT_LIMITS, TEXT_PROBLEMS } from "./text";
+import { MEASURE_IDS, type MeasureId } from "../simulation/types.ts";
+import { TEXT_LIMITS, TEXT_PROBLEMS } from "./limits.ts";
 
 export interface AlmaRecord {
   /** The quarter it's for, "2194-Q3". */

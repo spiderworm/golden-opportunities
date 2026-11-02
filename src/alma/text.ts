@@ -6,15 +6,10 @@
 import { hasBannedWord } from "~/assistant/server/figures.server";
 import { REDACTED, redactEmails } from "~/assistant/server/redact.server";
 import type { Candidate } from "./candidates";
+import { TEXT_LIMITS, TEXT_PROBLEMS, type TextField, type TextProblem } from "./limits";
 import { nameProblem } from "./names";
 
-export type TextField = "story" | "reason" | "bossLine";
-
-export const TEXT_LIMITS: Record<TextField, number> = { story: 240, reason: 120, bossLine: 160 };
-
-/** Why a field fails: a fixed list, so no model text ever reaches a failure code or a sent event. */
-export const TEXT_PROBLEMS = ["not_text", "empty", "too_long", "control", "emoji", "address", "slot", "number_or_direction", "voice", "zoolander", "alma", "name"] as const;
-export type TextProblem = (typeof TEXT_PROBLEMS)[number];
+export { TEXT_LIMITS, TEXT_PROBLEMS, type TextField, type TextProblem };
 
 export interface TextRules {
   candidate: Candidate;

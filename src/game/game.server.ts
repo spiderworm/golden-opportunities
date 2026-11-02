@@ -12,6 +12,7 @@ import { currentQuarter as quarterOf, isFinished } from './progress';
 import type { QuarterId } from './quarters';
 import { Q1_DISCOVERIES, Q2_DISCOVERIES, type GameSave, type PlayedQuarter, type Q2GameOutcome } from './types';
 import { isLocalBrowserRequest } from '../query/access.server';
+import { onQuarterCommitted } from '../alma/hook.server';
 
 function event(name: string, props: Record<string, string | number | boolean>) {
   try { trackServer(name, props); } catch { /* A transport failure cannot undo a committed quarter. */ }
@@ -62,6 +63,8 @@ function commit(save: GameSave, quarter: PlayedQuarter) {
     if (quarterOf(draft) !== quarter.period) throw alreadyPlayed();
     draft.played.push(quarter);
   });
+  // Alma prepares the next quarter in the background (src/alma): it never waits, and never throws into the submit.
+  onQuarterCommitted({ saveId: save.id, quarter: quarter.period, seed: save.seed });
 }
 /** Pure engine work precedes a short revision-checked transaction. Concurrent/repeat play returns 409. */
 export function submitPlan(request: Request, plan: Plan): { outcomeId: string } {
