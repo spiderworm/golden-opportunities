@@ -57,14 +57,51 @@ describe("the query cache", () => {
   it("files an answer only under the version the server computed it for (Frank, #187)", async () => {
     const cache = createQueryCache();
     cache.setVersion("v1");
-    // Computed after a plan commit the page hasn't seen yet: passed on, not kept under v1.
-    expect(await cache.load("a", () => Promise.resolve({ value: "Q2's rows", bytes: 5, version: "v2" }))).toBe("Q2's rows");
-    expect(cache.peek("a")).toBeUndefined();
-    // No version from the server: not kept either.
+    // No version from the server: not kept.
     await cache.load("b", () => Promise.resolve({ value: "rows", bytes: 5, version: null }));
     expect(cache.peek("b")).toBeUndefined();
     await cache.load("c", () => Promise.resolve({ value: "rows", bytes: 5, version: "v1" }));
     expect(cache.peek("c")).toBe("rows");
+    // Asked under v1 but computed after a commit (v2): passed on, not kept under either; the page moves to v2.
+    expect(await cache.load("a", () => Promise.resolve({ value: "Q2's rows", bytes: 5, version: "v2" }))).toBe("Q2's rows");
+    expect(cache.peek("a")).toBeUndefined();
+    expect(cache.version).toBe("v2");
+  });
+
+  it("moves to a newer version an answer names, and tells the shell, so an overtaken tab catches up (Frank and Audit, #191)", async () => {
+    const cache = createQueryCache();
+    const stale = vi.fn();
+    cache.onStale(stale);
+    cache.setVersion("v1");
+    await cache.load("a", () => Promise.resolve({ value: "Q1's rows", bytes: 5, version: "v1" }));
+    // Another tab committed Q2: this page's next answer is computed under v2.
+    expect(await cache.load("b", () => Promise.resolve({ value: "Q2's rows", bytes: 5, version: "v2" }))).toBe("Q2's rows");
+    expect(stale).toHaveBeenCalledOnce();
+    expect(cache.version).toBe("v2");
+    // Q1's answer is never served again; the next ask goes to the server, and is kept under v2.
+    expect(cache.peek("a")).toBeUndefined();
+    expect(await cache.load("a", () => Promise.resolve({ value: "Q2's rows for a", bytes: 5, version: "v2" }))).toBe("Q2's rows for a");
+    expect(cache.peek("a")).toBe("Q2's rows for a");
+    // The shell renders again with its old data before revalidating: v1 doesn't come back.
+    cache.setVersion("v1");
+    expect(cache.version).toBe("v2");
+    // Nor does a late answer computed before the commit.
+    await cache.load("late", () => Promise.resolve({ value: "Q1's rows", bytes: 5, version: "v1" }));
+    expect(cache.version).toBe("v2");
+    expect(cache.peek("late")).toBeUndefined();
+    expect(stale).toHaveBeenCalledOnce();
+    expect(cache.takeStats().overtaken).toBe(1);
+  });
+
+  it("never goes back to a version it has left after the shell moved on", async () => {
+    const cache = createQueryCache();
+    cache.setVersion("v1");
+    const late = deferred<string>();
+    const asked = cache.load("a", () => late.promise);
+    cache.setVersion("v2"); // this tab committed the plan
+    late.resolve({ value: "Q1's rows", bytes: 5, version: "v1" });
+    await asked;
+    expect(cache.version).toBe("v2");
   });
 
   it("keeps nothing before the version is known", async () => {
@@ -171,7 +208,7 @@ describe("the page's cache summary", () => {
     await cache.load("a", answer("rows", 7));
     flushQueryCacheStats(cache, track, pageOf("/investigate"));
     expect(track).toHaveBeenCalledOnce();
-    expect(track).toHaveBeenCalledWith("query_cache_summary", { page: "investigate", hits: 1, misses: 1, shared: 0, bytesServed: 7, evictions: 0, entries: 1 });
+    expect(track).toHaveBeenCalledWith("query_cache_summary", { page: "investigate", hits: 1, misses: 1, shared: 0, bytesServed: 7, evictions: 0, overtaken: 0, entries: 1 });
     expect(pageOf("/")).toBe("station");
     expect(pageOf("/result")).toBe("result");
     expect(pageOf("/reports/a-players-title")).toBe("other");

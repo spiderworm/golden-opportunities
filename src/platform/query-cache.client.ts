@@ -7,6 +7,10 @@
 // - A different data version drops everything: nothing from another game or an earlier quarter is ever served.
 // - An answer is kept only under the version the server computed it for (its X-Orbital-Data-Version), and only
 //   while that is the page's version, so an answer that raced a plan commit is never filed under the new one.
+// - An answer naming a newer version means the page has been overtaken (a plan committed in another tab): the
+//   cache moves to that version at once, dropping everything, and the shell is told, so it revalidates and the
+//   page shows the new data (Frank's and Audit's findings on #191). A version once left is never returned to, so
+//   a late answer from before a commit can't take the page back.
 // - Two callers asking the same thing at once share one request; one caller giving up never cancels it.
 // - Only successes are kept. An error, or an answer that arrives after the version changed, is passed on, not kept.
 // - Bounded by entries and by bytes, least recently used first out.
@@ -25,6 +29,8 @@ export interface CacheStats {
   bytesServed: number;
   /** Entries dropped to stay within bounds. */
   evictions: number;
+  /** Times an answer showed the page's data was out of date (a plan committed in another tab). */
+  overtaken: number;
 }
 
 export interface Loaded<T> {
@@ -53,12 +59,19 @@ export interface QueryCache {
   load<T>(key: string, fetcher: () => Promise<Loaded<T>>, signal?: AbortSignal): Promise<T>;
   /** Keeps a value fetched elsewhere (a loader's answer), for the version it was fetched under. */
   put(key: string, value: unknown, bytes: number, version: string | null): void;
+  /**
+   * Notes the version an answer names. One the page hasn't had means the data moved on: the cache moves to it,
+   * dropping everything, and `onStale` listeners hear it. One the page has left is ignored.
+   */
+  noteVersion(answered: string | null | undefined): void;
+  /** Called once each time the page is found to be overtaken. Returns a function that stops listening. */
+  onStale(listener: () => void): () => void;
   /** The counts since the last call, then zero. */
   takeStats(): CacheStats;
   readonly size: { entries: number; bytes: number };
 }
 
-const NO_STATS: CacheStats = { hits: 0, misses: 0, shared: 0, bytesServed: 0, evictions: 0 };
+const NO_STATS: CacheStats = { hits: 0, misses: 0, shared: 0, bytesServed: 0, evictions: 0, overtaken: 0 };
 
 function abortError(): Error {
   return new DOMException("The operation was aborted.", "AbortError");
@@ -90,6 +103,27 @@ export function createQueryCache({ maxEntries = 300, maxBytes = 4_000_000 } = {}
   const inFlight = new Map<string, Promise<unknown>>();
   let bytes = 0;
   let stats: CacheStats = { ...NO_STATS };
+  const staleListeners = new Set<() => void>();
+  // Versions the page has left. Data only moves forward, so none comes back: not from the shell rendering again
+  // with its old data before it revalidates, nor from a late answer computed before a commit.
+  const superseded = new Set<string>();
+
+  const moveTo = (next: string | null) => {
+    if (version !== null) superseded.add(version);
+    version = next;
+    entries.clear();
+    inFlight.clear();
+    bytes = 0;
+  };
+
+  const noteVersion = (answered: string | null | undefined) => {
+    if (!answered || answered === version || superseded.has(answered)) return;
+    const overtaken = version !== null;
+    moveTo(answered);
+    if (!overtaken) return;
+    stats.overtaken++;
+    for (const listener of staleListeners) listener();
+  };
 
   const drop = (key: string) => {
     const entry = entries.get(key);
@@ -124,11 +158,8 @@ export function createQueryCache({ maxEntries = 300, maxBytes = 4_000_000 } = {}
 
   return {
     setVersion(next) {
-      if (next === version) return;
-      version = next;
-      entries.clear();
-      inFlight.clear();
-      bytes = 0;
+      if (next === version || (next !== null && superseded.has(next))) return;
+      moveTo(next);
     },
     get version() {
       return version;
@@ -149,6 +180,7 @@ export function createQueryCache({ maxEntries = 300, maxBytes = 4_000_000 } = {}
       const shared = fetcher().then(
         (loaded) => {
           if (inFlight.get(flightKey) === shared) inFlight.delete(flightKey);
+          noteVersion(loaded.version);
           const computedFor = loaded.version === undefined ? asked : loaded.version;
           if (computedFor !== null && asked === version && computedFor === version) keep(key, loaded.value, loaded.bytes);
           return loaded.value;
@@ -164,6 +196,13 @@ export function createQueryCache({ maxEntries = 300, maxBytes = 4_000_000 } = {}
     put(key, value, size, fetchedUnder) {
       if (fetchedUnder === null || fetchedUnder !== version) return;
       keep(key, value, size);
+    },
+    noteVersion,
+    onStale(listener) {
+      staleListeners.add(listener);
+      return () => {
+        staleListeners.delete(listener);
+      };
     },
     takeStats() {
       const taken = stats;
@@ -210,6 +249,6 @@ export function pageOf(pathname: string): string {
 /** One summary per page view, not one event per hit: sent when the player leaves the page, if it used the cache. */
 export function flushQueryCacheStats(cache: QueryCache, track: Track, page: string) {
   const stats = cache.takeStats();
-  if (stats.hits + stats.misses + stats.shared === 0) return;
+  if (stats.hits + stats.misses + stats.shared + stats.overtaken === 0) return;
   track("query_cache_summary", { page, ...stats, entries: cache.size.entries });
 }
