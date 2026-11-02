@@ -1,6 +1,6 @@
 import { gameSessionMiddleware } from "~/game/session.server";
-import { useEffect } from "react";
-import { Outlet, useFetcher, useLocation } from "react-router";
+import { useEffect, useRef } from "react";
+import { Outlet, useFetcher, useLocation, useRevalidator } from "react-router";
 
 import type { Route } from "./+types/layout";
 import { Shell } from "./Shell";
@@ -21,6 +21,23 @@ export default function ShellLayout({ loaderData }: Route.ComponentProps) {
   // note on #189). Only in the browser: the cache module is client-only. Idempotent: setting the version it
   // already has keeps the cache, so a re-render or React's double render in development changes nothing.
   if (typeof document !== "undefined") queryCache.setVersion(loaderData.dataVersion);
+
+  // The page looks again when an answer shows its data is out of date (a plan committed in another tab), and when
+  // the player comes back to this tab, so it learns the new version before serving anything cached (Audit, #191).
+  const revalidator = useRevalidator();
+  const revalidate = useRef(revalidator.revalidate);
+  revalidate.current = revalidator.revalidate;
+  useEffect(() => {
+    const stop = queryCache.onStale(() => void revalidate.current());
+    const shown = () => {
+      if (document.visibilityState === "visible") void revalidate.current();
+    };
+    document.addEventListener("visibilitychange", shown);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", shown);
+    };
+  }, []);
 
   useEffect(() => {
     const page = pageOf(pathname);
