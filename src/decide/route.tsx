@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { data, Link, redirect, useFetcher, useLoaderData, useNavigate, type ShouldRevalidateFunctionArgs } from "react-router";
 
 import { currentQuarter, getPlan, getQ2Candidates, submitPlan, submitQ2Plan } from "~/game/game.server";
-import type { QuarterId } from "~/game/quarters";
+import { compareQuarters, FIRST_QUARTER, type QuarterId } from "~/game/quarters";
 import { planOf } from "~/simulation/plan";
 import { MAX_LEVERS, type LeverId, type Plan, type Q2LeverId, type Q2Plan } from "~/simulation/types";
 import { track } from "~/platform/analytics/analytics.client";
@@ -16,6 +16,7 @@ import { DECIDE_COPY as COPY, MOVES } from "./copy";
 import { MoveCard, useMoreLine } from "./MoveCard";
 import { onBubbleFocused, PlayOut, sceneOf } from "./PlanParts";
 import { PlanQ2 } from "./PlanQ2";
+import { quarterName, type PlanBrief } from "./q2-copy";
 import { PlanRefused, readAnyPlan } from "./read-plan.server";
 import styles from "./Decide.module.css";
 
@@ -23,16 +24,18 @@ export const handle: ShellHandle = { title: "Decisions", standingOrder: false, b
 
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: `Plan for ${loaderData?.quarter === "2194-Q2" ? "Q2" : "Q1"} 2194 | Orbital Books` }];
+  return [{ title: `Plan for ${quarterName(loaderData?.quarter ?? FIRST_QUARTER)} | Orbital Books` }];
 }
 
 export function loader({ request }: Route.LoaderArgs) {
   // One plan per quarter: once the last one's in, the results are what's left to see.
   const quarter = currentQuarter(request);
   if (!quarter) throw redirect("/result");
-  if (quarter === "2194-Q1") return { quarter: "2194-Q1" as const };
-  // Q2's picker: every edition sold in 2193 (Sim's list, by title then format), with only what's printed on it.
-  return { quarter, candidates: getQ2Candidates() };
+  if (quarter === FIRST_QUARTER) return { quarter };
+  // Every later quarter is planned on Q2's form. Its picker: every edition sold in 2193 (Sim's list, by title then
+  // format), with only what's printed on it. The brief's details (stretch, event, strikes) come with Frank's step
+  // 1; until then (Q2 2194, the only later quarter the game plays) there are none.
+  return { quarter, candidates: getQ2Candidates(), brief: null as PlanBrief | null };
 }
 
 // After submitting, the loader would redirect straight to the results; the
@@ -63,7 +66,7 @@ export async function action({ request }: Route.ActionArgs) {
     if (error instanceof PlanRefused) return data({ ok: false as const, played: false, problem: "shape" as const }, { status: error.status });
     throw error;
   }
-  return sent.quarter === "2194-Q2" ? actionQ2(request, sent.plan) : actionQ1(request, sent.plan);
+  return sent.form === "moves" ? actionQ1(request, sent.plan) : actionQ2(request, sent.plan);
 }
 
 function actionQ1(request: Request, plan: Plan) {
@@ -82,13 +85,14 @@ function actionQ1(request: Request, plan: Plan) {
 }
 
 /**
- * Whether Q2's plan is in, asked again after a refusal: Q2 is the last quarter, so no quarter left to plan.
- * False during Q1 (Audit, on #144: a Q2 form sent then would bounce to the results and back), and if the
- * save can't be read.
+ * Whether the quarter this form was written for has been played, asked again after a refusal: the save has moved
+ * past it (or, today, past Q2, the last quarter it plays). False during Q1 (Audit, on #144: a later form sent then
+ * would bounce to the results and back), and if the save can't be read.
  */
-function q2Played(request: Request): boolean {
+function laterPlayed(request: Request, asked: QuarterId | null): boolean {
   try {
-    return currentQuarter(request) === null;
+    const now = currentQuarter(request);
+    return now === null || (asked !== null && now !== FIRST_QUARTER && compareQuarters(now, asked) > 0);
   } catch {
     return false;
   }
@@ -97,6 +101,13 @@ function q2Played(request: Request): boolean {
 type Q2Problem = "shape" | "unknown-edition" | "same-title";
 
 async function actionQ2(request: Request, plan: Q2Plan) {
+  // The quarter this plan is for: the one open now. Read before submitting, for the answer and analytics.
+  let asked: QuarterId | null = null;
+  try {
+    asked = currentQuarter(request);
+  } catch {
+    // Unreadable save: the submit below refuses it with a Response.
+  }
   try {
     submitQ2Plan(request, plan);
   } catch (error) {
@@ -106,11 +117,11 @@ async function actionQ2(request: Request, plan: Q2Plan) {
       const { problem } = (await error.json().catch(() => ({}))) as { problem?: Q2Problem };
       return data({ ok: false as const, played: false, problem: problem ?? ("shape" as const) }, { status: 400 });
     }
-    if (error instanceof Response) return data({ ok: false as const, played: q2Played(request) }, { status: error.status });
+    if (error instanceof Response) return data({ ok: false as const, played: laterPlayed(request, asked) }, { status: error.status });
     throw error;
   }
   const picks = plan.picks.filter(Boolean).length;
-  trackServer("plan_submitted", { quarter: "2194-Q2", levers: planLabel(plan.levers), moves: plan.levers.length, picks });
+  trackServer("plan_submitted", { quarter: asked ?? "unknown", levers: planLabel(plan.levers), moves: plan.levers.length, picks });
   return { ok: true as const };
 }
 
@@ -119,7 +130,7 @@ type Step = "choose" | "confirm" | "playing";
 export default function Decide() {
   // Without a loader (the unit tests' stub), it's Q1's plan.
   const loaded = useLoaderData<typeof loader>() as Awaited<ReturnType<typeof loader>> | undefined;
-  return loaded?.quarter === "2194-Q2" ? <PlanQ2 candidates={loaded.candidates} /> : <PlanQ1 />;
+  return loaded?.candidates ? <PlanQ2 quarter={loaded.quarter} candidates={loaded.candidates} brief={loaded.brief ?? null} /> : <PlanQ1 />;
 }
 
 /** The plan for Q1 2194 (m1-copy section 3): up to two of three moves, on the bosses' requisition form. */

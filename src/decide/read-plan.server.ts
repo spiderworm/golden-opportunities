@@ -16,10 +16,10 @@ export class PlanRefused extends Error {
   }
 }
 
-/** Either quarter's plan, by the fields its form sends; for a save that may have moved on since the form loaded. */
-export async function readAnyPlan(request: Request, deadlineMs = DEADLINE_MS): Promise<{ quarter: "2194-Q1"; plan: Plan } | { quarter: "2194-Q2"; plan: Q2Plan }> {
+/** The plan by the fields its form sends: Q1's moves, or a later quarter's picks; for a save that may have moved on since the form loaded. */
+export async function readAnyPlan(request: Request, deadlineMs = DEADLINE_MS): Promise<{ form: "moves"; plan: Plan } | { form: "picks"; plan: Q2Plan }> {
   const form = await readForm(request, deadlineMs);
-  return form.has("picks") ? { quarter: "2194-Q2", plan: q2PlanFrom(form) } : { quarter: "2194-Q1", plan: planFrom(form) };
+  return form.has("picks") ? { form: "picks", plan: q2PlanFrom(form) } : { form: "moves", plan: planFrom(form) };
 }
 
 /** Q1's plan in one field: `levers=repick,events`, or `levers=` to hold course. */

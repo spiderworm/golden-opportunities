@@ -9,7 +9,8 @@ import type { Q2LeverId } from "~/simulation/types";
 import { MoveCard, useMoreLine } from "./MoveCard";
 import { PickPicker, type Candidate } from "./PickPicker";
 import { onBubbleFocused, PlayOut, sceneOf } from "./PlanParts";
-import { DECIDE_COPY as COPY, DECIDE_Q2_COPY as Q2, editionLabel, MONTHS, Q2_MOVES } from "./q2-copy";
+import type { QuarterId } from "~/simulation/quarters";
+import { DECIDE_COPY as COPY, DECIDE_Q2_COPY as Q2, editionLabel, planCopy, type PlanBrief } from "./q2-copy";
 import styles from "./Decide.module.css";
 
 /** What the Q2 action answers: Frank's shapes, with the engine's reason when it refuses a plan. */
@@ -23,13 +24,15 @@ const planProps = (picks: readonly (string | null)[], lever: Q2LeverId | null) =
   move: lever ?? "none",
 });
 
-const Q2_SCENE = sceneOf(Q2.briefing);
-
 /**
- * The plan for Q2 2194 (q2.md section 5): a Book of the Month for April, May and June, or none, and up to one
- * more move, on the same requisition form in the same scene as Q1's.
+ * The plan for any quarter after Q1, Q2 2194's form (q2.md section 5; endless.md section 4): a Book of the Month
+ * for each of its months, or none, and up to one more move, on the same requisition form in the same scene as
+ * Q1's. Its months, heading, serial, brief and play-out come from the quarter (planCopy).
  */
-export function PlanQ2({ candidates }: { candidates: readonly Candidate[] }) {
+export function PlanQ2({ quarter, candidates, brief = null }: { quarter: QuarterId; candidates: readonly Candidate[]; brief?: PlanBrief | null }) {
+  const plan = useMemo(() => planCopy(quarter, brief), [quarter, brief]);
+  const scene = useMemo(() => sceneOf(plan.briefing), [plan]);
+  const MONTHS = plan.months;
   const [picks, setPicks] = useState<(string | null)[]>([null, null, null]);
   const [lever, setLever] = useState<Q2LeverId | null>(null);
   const [tooMany, setTooMany] = useState(false);
@@ -69,12 +72,12 @@ export function PlanQ2({ candidates }: { candidates: readonly Candidate[] }) {
   const heading = (
     <div className={styles.planHeading}>
       <h2 id="plan-heading" className={styles.memoHeading}>
-        {Q2.heading}
+        {plan.heading}
       </h2>
       <p className={styles.hint}>{COPY.hint}</p>
     </div>
   );
-  const chosenMove = Q2_MOVES.find((m) => m.id === lever);
+  const chosenMove = plan.moves.find((m) => m.id === lever);
   const form = (
     <div className={styles.requisition}>
       <fieldset className={styles.moves} disabled={step !== "choose"} aria-describedby="moves-rule moves-status">
@@ -85,6 +88,7 @@ export function PlanQ2({ candidates }: { candidates: readonly Candidate[] }) {
         <div className={styles.q2Body}>
           <PickPicker
             candidates={candidates}
+            months={plan.months}
             picks={picks}
             disabled={step !== "choose"}
             onPick={(month, isbn) => {
@@ -98,7 +102,7 @@ export function PlanQ2({ candidates }: { candidates: readonly Candidate[] }) {
             <p id="one-more-label" className={styles.sectionLabel}>
               {Q2.moreLabel}
             </p>
-            {Q2_MOVES.map((m, i) => (
+            {plan.moves.map((m, i) => (
               <MoveCard key={m.id} move={m} number={i + 1} selected={lever === m.id} onToggle={() => toggle(m.id)} line={line} />
             ))}
           </div>
@@ -122,7 +126,7 @@ export function PlanQ2({ candidates }: { candidates: readonly Candidate[] }) {
             ))}
             <span className={styles.serial}>
               <span className={styles.barcode} />
-              {Q2.form.serial}
+              {plan.serial}
             </span>
           </div>
           <button
@@ -184,7 +188,7 @@ export function PlanQ2({ candidates }: { candidates: readonly Candidate[] }) {
       )}
       {step === "playing" && (
         <div className={styles.cover}>
-          <PlayOut lines={Q2.playing} done={fetcher.state === "idle" && fetcher.data?.ok === true} />
+          <PlayOut lines={plan.playing} done={fetcher.state === "idle" && fetcher.data?.ok === true} />
         </div>
       )}
     </div>
@@ -194,7 +198,7 @@ export function PlanQ2({ candidates }: { candidates: readonly Candidate[] }) {
     <div className={styles.page}>
       <section className={styles.briefing} aria-labelledby="plan-heading">
         <BossBanner.Provider value={{ heading, form }}>
-          <BossBriefing bubbles={Q2_SCENE} onFocus={onBubbleFocused} />
+          <BossBriefing bubbles={scene} onFocus={onBubbleFocused} />
         </BossBanner.Provider>
       </section>
     </div>
