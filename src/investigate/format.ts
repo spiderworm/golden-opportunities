@@ -14,6 +14,12 @@ export const MEASURE_LABELS: Record<Measure, string> = {
   ratings: "Ratings",
 };
 
+/** Measures named in a title: "Revenue", "Revenue and units sold", "Revenue, units sold and orders". */
+export function measuresLabel(measures: readonly Measure[]): string {
+  const names = measures.map((m, i) => (i === 0 ? MEASURE_LABELS[m] : MEASURE_LABELS[m].toLowerCase()));
+  return names.length < 2 ? names[0]! : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
 export const DIMENSION_LABELS: Record<Dimension, string> = {
   quarter: "Quarter",
   month: "Month",

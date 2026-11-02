@@ -80,6 +80,15 @@ describe("series", () => {
   });
 });
 
+describe("several measures", () => {
+  it("runs one chart query per measure, in the order chosen, and the tiles keep the first", () => {
+    const result = investigate({ ...DEFAULT_STATE, also: ["units", "orders"] }, runQuery, view);
+    expect(result.also.map((r) => r.columns.at(-1)!.key)).toEqual(["units", "orders"]);
+    expect(result.also[0]!.rows).toHaveLength(12);
+    expect(investigate(DEFAULT_STATE, runQuery, view).also).toEqual([]);
+  });
+});
+
 describe("the title view", () => {
   it("appears for exactly one title, by month, ignoring its own month filter", () => {
     expect(investigate(DEFAULT_STATE, runQuery, view).titleView).toBeNull();

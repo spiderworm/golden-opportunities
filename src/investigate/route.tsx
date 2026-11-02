@@ -82,7 +82,7 @@ export function shouldRevalidate({ currentUrl, nextUrl, formMethod, defaultShoul
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {
-  const { state, tiles, chart, heatmap, titleView, options, planned } = loaderData;
+  const { state, tiles, chart, also, heatmap, titleView, options, planned } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const navigation = useNavigation();
   const location = useLocation();
@@ -160,11 +160,16 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
         <MeasureChart
           state={state}
           result={chart}
+          also={also}
           quarters={options.quarter}
-          onMeasure={(measure) => {
-            track("investigate_measure_changed", { measure });
-            update({ ...state, measure });
+          onMeasures={(measures) => {
+            // Measure ids are a fixed list, not content: "revenue+units".
+            track("investigate_measure_changed", { measure: measures[0]!, measures: measures.join("+"), count: measures.length });
+            const [measure, ...rest] = measures;
+            // Several measures can't also compare quarters (David's choice): that switches off.
+            update({ ...state, measure: measure!, also: rest, compare: rest.length ? false : state.compare });
           }}
+          onSeries={(measure, shown) => track("investigate_series_toggled", { measure, shown })}
           onGroup={(by) => {
             track("investigate_regrouped", { by });
             update({ ...state, by });

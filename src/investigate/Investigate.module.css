@@ -607,9 +607,34 @@
 }
 
 .legendSwatch {
+  box-sizing: border-box;
   width: 12px;
   height: 12px;
+  border: 2px solid transparent;
   border-radius: 3px;
+}
+
+/* Several measures' legend: each a toggle, so a series can be hidden to read the others. */
+.legendToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.legendToggle:hover {
+  background: var(--color-panel-raised);
+}
+
+.legendToggle[aria-pressed="false"] {
+  color: var(--color-text-subtle);
+  text-decoration: line-through;
 }
 
 .showAll {
