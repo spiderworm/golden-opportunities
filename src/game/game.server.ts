@@ -75,13 +75,14 @@ export function getQ2Candidates() {
 function commit(save: GameSave, quarter: Omit<PlayedQuarter, 'lines' | 'sales'> & Pick<PlayedQuarter, 'period'>, sales: Sale[]) {
   const kept = { ...quarter, lines: { hash: linesHash(sales), count: sales.length } } as PlayedQuarter;
   if (!isQuarterOutcome(kept.period, kept.outcome) || kept.outcome.totals.plan.units !== sales.length) throw new SaveError('INVALID_SAVE');
-  saves.update(save.id, save.revision, draft => {
+  const after = saves.update(save.id, save.revision, draft => {
     if (quarterOf(draft) !== kept.period) throw alreadyPlayed();
     draft.played.push(kept);
   });
   rememberLines(save.id, kept, sales);
   // Alma prepares the next quarter in the background (src/alma): it never waits, and never throws into the submit.
-  onQuarterCommitted({ saveId: save.id, quarter: quarter.period, seed: save.seed });
+  // Not for a player the panel has just removed: there's no next quarter to prepare.
+  if (quarterOf(after) !== null) onQuarterCommitted({ saveId: save.id, quarter: quarter.period, seed: save.seed });
 }
 /** Pure engine work precedes a short revision-checked transaction. Concurrent/repeat play returns 409. */
 export function submitPlan(request: Request, plan: Plan): { outcomeId: string } {
