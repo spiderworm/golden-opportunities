@@ -149,7 +149,7 @@ Discoveries A to F stay with Q1 and Q2. From Q3 on, each quarter offers **up to 
 | Genre surge or slump | Units by title within that genre, for the same quarter a year earlier, with at least 10 titles | `You looked inside {genre}, title by title.` |
 | Quiet days | Orders by weekday, for at least one past quarter | `You found the {weekday} pattern in last year's orders.` |
 | Author fares | None for now (Frank, building it): the ledger can't tell author-night orders from others, and their figures live on each result's report. A later version could count opening a past result's author-night facts | (`You checked what an author night brings in.`, unused for now) |
-| Format costs | Units or revenue by format, for the same quarter a year earlier | `You checked how much of the shop is {format}.` |
+| Format costs | Units or revenue by format, for the same quarter a year earlier | `You checked how many of the shop's sales are {format} copies.` |
 | Orbitplace lot | Units by month for the lot's edition, over at least the last four quarters | `You checked the lot's title before bidding.` |
 | A quiet quarter | Nothing: there's no event discovery | |
 
