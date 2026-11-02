@@ -2,6 +2,7 @@ import type { Outcome, Q2Outcome } from '../simulation/types';
 import type { Sale } from '../bookshop/types';
 import type { QuarterId } from './quarters';
 import type { AlmaRecord } from '../alma/record';
+import type { BackstoryRecord } from '../alma/backstory-record';
 import type { LaterDiscoveryId } from './later-discoveries';
 
 /** A to C are found in Q1, D to F in Q2 (docs/design/q2.md section 6). */
@@ -43,6 +44,11 @@ export interface GameSave {
    * one Alma prepares). Absent in older saves. Once written, a record is the quarter's truth (src/alma).
    */
   alma?: AlmaRecord[];
+  /**
+   * The station's backstory, written by Alma once the game starts (docs/design/backstory.md). Absent until it's
+   * saved, and in older saves: the game then uses its seeded fallback. Once written, a reload never re-asks.
+   */
+  backstory?: BackstoryRecord;
   /**
    * Evidence for the quarter being planned, from Q3 on (later-discoveries.ts): fixed keys per view shape, as
    * `discoveryEvidence` has for A to F. A new quarter starts afresh; at its submit, it becomes the quarter's discoveries.
