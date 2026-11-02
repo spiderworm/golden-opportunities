@@ -126,6 +126,15 @@ describe("the query endpoint", () => {
     expect(defaultQueryUrl({ ORBITAL_LISTEN_PORT: "5174", ORBITAL_QUERY_URL: "http://127.0.0.1:9/api/query" })).toBe("http://127.0.0.1:9/api/query");
   });
 
+  it("follows npm start's HOST, so Dewey still reaches a server that listens on 127.0.0.1 only (David, 2 Nov)", () => {
+    expect(defaultQueryUrl({ PORT: "3000", HOST: "127.0.0.1" })).toBe("http://127.0.0.1:3000/api/query");
+    expect(defaultQueryUrl({ PORT: "3000", HOST: "0.0.0.0" })).toBe("http://127.0.0.1:3000/api/query");
+    expect(defaultQueryUrl({ PORT: "3000", HOST: "::1" })).toBe("http://[::1]:3000/api/query");
+    expect(defaultQueryUrl({ PORT: "3000", HOST: "::" })).toBe("http://[::1]:3000/api/query");
+    // The dev server's recorded address wins over HOST, as it does over PORT.
+    expect(defaultQueryUrl({ ORBITAL_LISTEN_PORT: "5174", ORBITAL_LISTEN_HOST: "::1", HOST: "127.0.0.1" })).toBe("http://[::1]:5174/api/query");
+  });
+
   it("finds the tool server from source and from the production build, which can't bundle it", () => {
     const source = fileURLToPath(new URL("./server.ts", import.meta.url));
     expect(toolServerPath(new URL("./toolServer.server.ts", import.meta.url))).toBe(source);
@@ -136,9 +145,9 @@ describe("the query endpoint", () => {
     expect(orbitalToolServer("t").args).toEqual([source]);
   });
 
-  it("gets its port from `npm start`, which sets PORT (3000 unless set) rather than leave the server to pick one", () => {
+  it("gets its port and host from `npm start`, which sets PORT (3000 unless set) and HOST (127.0.0.1 unless ORBITAL_HOST)", () => {
     const start: string = JSON.parse(readFileSync(new URL("../../../package.json", import.meta.url), "utf8")).scripts.start;
-    expect(start).toMatch(/^PORT=\$\{PORT:-3000\} react-router-serve /);
+    expect(start).toMatch(/^PORT=\$\{PORT:-3000\} HOST=\$\{ORBITAL_HOST:-127\.0\.0\.1\} react-router-serve /);
   });
 });
 

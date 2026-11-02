@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures';
+import { test, expect, collectPageErrors } from '../fixtures';
 
 test('the bosses brief the plan together: the Administrator first, then whichever bubble is selected', async ({ page, browserName }) => {
   await page.goto('/decide?analytics-test=1');
@@ -113,6 +113,11 @@ test('in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
   await page.getByRole('checkbox', { name: /Weekday author nights/ }).hover();
   await expect(popover).toBeVisible();
   await expect(popover).toContainText('at $200 each.');
+  // Over the tags below the form, not under them: its foot is what's at its foot.
+  expect(await popover.evaluate(el => {
+    const box = el.getBoundingClientRect();
+    return el.contains(document.elementFromPoint(box.x + box.width / 2, box.bottom - 4));
+  })).toBe(true);
   expect(await layout()).toEqual(before);
   const more = page.getByRole('button', { name: 'More about Weekday author nights' });
   await more.click();
@@ -227,4 +232,61 @@ test('in 3D, a robot opens its bubble when clicked, and opening bubbles moves no
   await stage.click({ position: { x, y: y - 40 } });
   await expect(bubbles.nth(2)).toHaveAttribute('aria-expanded', 'true');
   expect(await layout()).toEqual(before);
+});
+
+test('the form keeps what the player is doing when the 3D scene takes over', async ({ page }) => {
+  // Q1 held, so Decide plans Q2; then the 3D scene is held back until the player is mid-word.
+  await page.goto('/decide?analytics-test=1');
+  await page.getByRole('button', { name: 'Submit plan', exact: true }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Submit', exact: true }).click();
+  await expect(page).toHaveURL(/\/result(?:\?|$)/, { timeout: 20_000 });
+  let release!: () => void;
+  const held = new Promise<void>(resolve => (release = resolve));
+  await page.route(/BossScene3D[^/]*\.js$/, async route => {
+    await held;
+    await route.continue();
+  });
+  await page.goto('/decide?analytics-test=1', { waitUntil: 'domcontentloaded' });
+  const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
+  test.skip(!webgl, 'no WebGL 2 here: the 2D scene stays');
+  await page.getByRole('button', { name: 'April No pick' }).click();
+  const search = page.getByRole('combobox', { name: 'Find a title: April' });
+  await search.pressSequentially('Land');
+  release();
+  await expect(page.locator('[aria-hidden="true"] canvas')).toBeVisible({ timeout: 30_000 });
+  // The list is still open, with what was typed, and the typing goes on where it was.
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue('Land');
+  await search.pressSequentially(' Water');
+  await expect(page.getByRole('option', { name: 'Land Water Sky Space (hardcover), $48.00' })).toBeVisible();
+});
+
+test('leaving Decide while the bosses are still loading is no error, and a failed load is tried again next visit', async ({ page, baseURL }) => {
+  const errors: string[] = [];
+  collectPageErrors(page, baseURL!, errors);
+  // The models answer slowly, so they're still on their way when the page goes.
+  let models: 'slow' | 'fail' | 'ok' = 'slow';
+  await page.route(/\.glb$/, async route => {
+    if (models === 'fail') return route.abort();
+    if (models === 'slow') await new Promise(resolve => setTimeout(resolve, 3_000));
+    await route.continue().catch(() => {});
+  });
+  await page.goto('/decide?analytics-test=1');
+  const webgl = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
+  test.skip(!webgl, 'no WebGL 2 here: no models to load');
+  await page.waitForTimeout(1_500);
+  await page.goto('/investigate?analytics-test=1');
+  await page.waitForTimeout(3_500);
+  expect(errors).toEqual([]);
+
+  // A load that fails in the page falls back to 2D, quietly; the next visit loads the models afresh.
+  models = 'fail';
+  await page.goto('/decide?analytics-test=1');
+  await expect(page.locator('[data-boss]')).toHaveCount(5, { timeout: 20_000 });
+  models = 'ok';
+  await page.getByRole('link', { name: 'Investigate' }).click();
+  await expect(page).toHaveURL(/\/investigate/);
+  await page.getByRole('link', { name: 'Decisions' }).click();
+  await expect(page.locator('[data-robots]')).toHaveAttribute('data-robots', /^\d+,\d+(,\d+,\d+){4}$/, { timeout: 30_000 });
+  expect(errors).toEqual([]);
 });

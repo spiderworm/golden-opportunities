@@ -33,6 +33,11 @@ describe("the prompt", () => {
     expect(RULES).toMatch(/Never answer an open question/);
     expect(RULES).toContain(MENU);
     expect(RULES).toMatch(/always offers that full menu, word for word and in that order. Never pick or add/);
+    // Probe's Q2 red-team: a title with digits is filtered as given (Q1); no claims about the ledger a lookup didn't show (Q3).
+    expect(RULES).toMatch(/In a lookup, use the player's value as given, digits and all: a title can start with a number or read like an address, and it is still a title\./);
+    expect(RULES).toMatch(/Never say which periods or data the terminal holds or lacks unless a lookup showed it\. To see which periods it has, look up revenue by quarter\./);
+    // Q4: no visible working ("Retrying with those.", "Correction: ...").
+    expect(RULES).toMatch(/Don't narrate your working either: no "retrying", "correction" or checks of your own/);
     expect(RULES).not.toMatch(/compare order counts with order sizes/);
     expect(RULES).toMatch(/Never recommend, rank or judge/);
     expect(RULES).toMatch(/Never volunteer a pattern/);
@@ -46,6 +51,12 @@ describe("the prompt", () => {
     expect(RULES).toMatch(/write no digits, no number words .* no \$ or %, and no direction or comparison words/);
     expect(RULES).toMatch(/no sums, differences, ratios or shares. For a difference or change, use compare_data/);
     expect(RULES).toMatch(/Decline any question about cost, margin or profit, even if they give you a cost rate/);
+    // A monthly lookup restated as "from 2193-Q1 to 2193-Q4" lost a true sentence to the gate (q2-digit-title).
+    expect(RULES).toMatch(/a lookup by month returns months, not quarters, so after one don't name a quarter or a year/);
+    expect(RULES).toContain("{{a1.month}}");
+    // Only a table in month order has the range at its ends (Probe's review of #163).
+    expect(RULES).toMatch(/in a table by month and in month order, name its first and last rows by ref/);
+    expect(RULES).not.toContain("from 2193-Q1 to 2193-Q4");
   });
 
   it("lists rows asked for with 'what do you notice' and leaves the noticing to them (red team B2)", () => {
@@ -271,6 +282,23 @@ describe("answering", () => {
     expect(r.text.trim()).toBe(`${WITHHELD} Revenue in 2193-Q4 was $161,524.69.`);
     expect(r.out.at(-1)).toEqual({ type: "done" });
     expect(r.stats).toMatchObject({ withheld: 2, figures: 1, comparisons: 1 });
+  });
+
+  it("keeps each withheld sentence on this machine, held like the player's text, and never in the reply (Probe's Q2 red-team)", async () => {
+    const held: { event: string; props: Record<string, unknown>; hold?: string }[] = [];
+    const sent: string[] = [];
+    const provider = fakeAssistant([compare, { type: "text", text: "Gross profit in 2193-Q4 was about $63,842.67. Revenue in 2193-Q4 was {{b.to}}. Cost at sixty percent was higher." }]);
+    const out = await events(await ask(post({ question: "What was gross profit?" }), () => provider, (event, props, options) => {
+      if (options?.hold) held.push({ event, props: props!, hold: options.hold });
+      else sent.push(JSON.stringify([event, props]));
+    }));
+    expect(held).toEqual([
+      { event: "assistant_sentence_withheld", props: { text: "Gross profit in 2193-Q4 was about $63,842.67.", chars: 45, kind: expect.any(String) }, hold: "agent_text" },
+      { event: "assistant_sentence_withheld", props: { text: "Cost at sixty percent was higher.", chars: 33, kind: expect.any(String) }, hold: "agent_text" },
+    ]);
+    // Nowhere else: not in an event that's sent, and not in what the browser gets.
+    expect(sent.join()).not.toMatch(/63,842|sixty/);
+    expect(JSON.stringify(out)).not.toMatch(/63,842|sixty/);
   });
 
   it("gives a comparison in the question's order, with the data's direction (Probe G1)", async () => {
