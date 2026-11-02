@@ -293,6 +293,19 @@ describe("a later quarter's result screen (endless-copy.md section 4)", () => {
     expect(page).not.toContain("Continue to");
     // The ledgers link is under the removal, once: not also in What happened.
     expect(page.match(/Back to the ledgers/g)).toHaveLength(1);
+    // An earlier quarter's screen, opened after the removal, stays as it was: no vote.
+    const earlier = text(
+      show({
+        quarter: "2194-Q3", outcome, sameQuarterLastYear: 274036.2, previousQuarter: 150_000, reference: [],
+        discoveries: earnedDiscoveries([], "2194-Q3"), next: null, canPlayAgain: true, halfYear: null,
+        lastYearLabel: "Q3 2193", referenceLabel: "Q2 2194",
+        record: [row("2194-Q1", 66, "D"), row("2194-Q2", 74, "C"), row("2194-Q3", 62, "D-"), row("2194-Q4", 64, "D")],
+        removed: { at: "2194-Q4", strikes: [{ quarter: "2194-Q1", score: 66 }, { quarter: "2194-Q3", score: 62 }, { quarter: "2194-Q4", score: 64 }] },
+        goalStretch: null, laterDiscoveries: [], discoveryOffers: [], season2193: { quarter: 274036.2, before: 164436.9, beforeLabel: "Q2 2193" },
+      }),
+    );
+    expect(earlier).not.toContain("The panel has voted");
+    expect(earlier).toContain("Service record");
   });
 
   it("doesn't offer to continue from a quarter that isn't the last one played", () => {
