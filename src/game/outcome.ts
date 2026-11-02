@@ -2,6 +2,7 @@ import { isPlan } from '../simulation/plan.ts';
 import type { Outcome } from '../simulation/types';
 import { isQ2Outcome } from '../simulation/outcome-check.ts';
 import type { PlayedQuarter } from './types';
+import { LATER_DISCOVERIES } from './later-discoveries.ts';
 
 const record = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -46,5 +47,6 @@ const discoveryList = (v: unknown) => Array.isArray(v) && v.length <= 3 && v.eve
 export function isQuarterOutcome(period: PlayedQuarter['period'], v: unknown): boolean {
   if (period === '2194-Q1') return isOutcome(v);
   const found = (v as { discoveries?: unknown } | null)?.discoveries;
-  return isQ2Outcome(v, period) && (period === '2194-Q2' ? discoveryList(found) : Array.isArray(found) && found.length === 0);
+  return isQ2Outcome(v, period) && (period === '2194-Q2' ? discoveryList(found)
+    : Array.isArray(found) && found.length <= 3 && found.every(d => (LATER_DISCOVERIES as readonly unknown[]).includes(d)) && new Set(found).size === found.length);
 }

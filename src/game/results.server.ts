@@ -7,14 +7,19 @@ import { getGameSession } from './session.server';
 import { currentQuarter, isFinished, removedQuarter } from './progress';
 import { quarterAt, quarterIndex, quarterNumber, type QuarterId } from './quarters';
 import { STRIKE_BELOW, strikes } from '../simulation/strikes';
+import { LATER_DISCOVERIES, laterContext, laterOffers, type LaterDiscoveryId } from './later-discoveries';
 import type { DiscoveryId, GameSave, PlayedQuarter, Q2GameOutcome } from './types';
 
 export interface HalfYearQuarter { quarter: '2194-Q1' | '2194-Q2'; measures: MeasureScore[]; overall: { score: number; grade: Grade } }
 /** Set once both quarters are played. The score is the mean of the two overall scores, rounded half up (q2.md section 7). */
 export interface HalfYear { quarters: HalfYearQuarter[]; score: number; grade: Grade }
 interface Common {
-  /** The quarter's discoveries, as ids: A to C for Q1. Map them to their words with earnedDiscoveries. */
+  /** The quarter's discoveries, as ids: A to C for Q1, D to F for Q2. Map them to their words with earnedDiscoveries. */
   discoveries: DiscoveryId[];
+  /** From Q3, the quarter's discoveries found ("event", "record", "weakest"); empty before. */
+  laterDiscoveries: LaterDiscoveryId[];
+  /** From Q3, what the quarter offered, with what each text names (endless-copy.md section 4); empty before. */
+  discoveryOffers: { id: LaterDiscoveryId; params: Record<string, string> }[];
   /** Revenue in the same quarter a year earlier: 2193's in 2194, then the player's own. */
   sameQuarterLastYear: number;
   /** That quarter's name ("Q3 2193", "Q3 2194"). */
@@ -111,7 +116,8 @@ export function getResultData(request: Request, period?: QuarterId): ResultData 
   const reference = runQuery({ measure: 'revenue', by: ['month'], filter: { quarter: [previous] } }, queryView).rows
     .map(r => ({ month: r.month ?? '', revenue: r.revenue ?? 0 }));
   const common: Common = {
-    discoveries: [...played.outcome.discoveries],
+    discoveries: played.outcome.discoveries.filter((d): d is DiscoveryId => !(LATER_DISCOVERIES as readonly string[]).includes(d)),
+    laterDiscoveries: played.outcome.discoveries.filter((d): d is LaterDiscoveryId => (LATER_DISCOVERIES as readonly string[]).includes(d)),
     sameQuarterLastYear: revenue(lastYear),
     lastYearLabel: quarterLabel(lastYear),
     previousQuarter: revenue(previous),
@@ -120,6 +126,7 @@ export function getResultData(request: Request, period?: QuarterId): ResultData 
     next: currentQuarter(save),
     canPlayAgain: isFinished(save),
     halfYear: halfYearOf(save),
+    discoveryOffers: (() => { const ctx = laterContext(save, played.period); return ctx ? laterOffers(ctx) : []; })(),
     goalStretch: goalStretchOf(save, played.period),
     season2193: { quarter: revenue(`2193-Q${quarterNumber(played.period)}`), before: revenue(seasonBefore), beforeLabel: quarterLabel(seasonBefore) },
     record: serviceRecord(save),

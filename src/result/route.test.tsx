@@ -42,7 +42,7 @@ function render(...levers: LeverId[]) {
     next: null,
     canPlayAgain: false,
     halfYear: null,
-    lastYearLabel: "Q1 2193", referenceLabel: "Q4 2193", record: [], removed: null, goalStretch: null, season2193: { quarter: 0, before: 0, beforeLabel: "Q4 2193" },
+    lastYearLabel: "Q1 2193", referenceLabel: "Q4 2193", record: [], removed: null, goalStretch: null, laterDiscoveries: [], discoveryOffers: [], season2193: { quarter: 0, before: 0, beforeLabel: "Q4 2193" },
   };
   return { html: show(loaderData), outcome };
 }
@@ -73,7 +73,7 @@ function renderQ2(plan: Q2Plan = QUIET, halfYear: ResultData["halfYear"] = null)
     next: null,
     canPlayAgain: halfYear !== null,
     halfYear,
-    lastYearLabel: "Q2 2193", referenceLabel: "Q1 2194", record: [], removed: null, goalStretch: null, season2193: { quarter: 0, before: 0, beforeLabel: "Q4 2193" },
+    lastYearLabel: "Q2 2193", referenceLabel: "Q1 2194", record: [], removed: null, goalStretch: null, laterDiscoveries: [], discoveryOffers: [], season2193: { quarter: 0, before: 0, beforeLabel: "Q4 2193" },
   });
 }
 
@@ -122,7 +122,7 @@ describe("the result screen", () => {
 
   it("after Q1, offers Continue to Q2 to the station, but only while Q2 is still to play", () => {
     const { outcome } = render("events");
-    const base: ResultData = { quarter: "2194-Q1", outcome, sameQuarterLastYear: 95245.8, previousQuarter: 161524.7, reference: [], discoveries: earnedDiscoveries([]), next: "2194-Q2", canPlayAgain: false, halfYear: null, lastYearLabel: "Q1 2193", referenceLabel: "Q4 2193", record: [], removed: null, goalStretch: null, season2193: { quarter: 0, before: 0, beforeLabel: "Q4 2193" }, };
+    const base: ResultData = { quarter: "2194-Q1", outcome, sameQuarterLastYear: 95245.8, previousQuarter: 161524.7, reference: [], discoveries: earnedDiscoveries([]), next: "2194-Q2", canPlayAgain: false, halfYear: null, lastYearLabel: "Q1 2193", referenceLabel: "Q4 2193", record: [], removed: null, goalStretch: null, laterDiscoveries: [], discoveryOffers: [], season2193: { quarter: 0, before: 0, beforeLabel: "Q4 2193" }, };
     const html = show(base);
     expect(html).toMatch(/<a[^>]*href="\/"[^>]*>Continue to Q2<\/a>/);
     expect(text(html)).toContain("Back to the ledgers");
@@ -220,7 +220,7 @@ describe("a later quarter's result screen (endless-copy.md section 4)", () => {
         record: [row("2194-Q1", 66, "D"), row("2194-Q2", 74, "C"), row("2194-Q3", 81, "B-", { type: "quiet_days", params: { weekday: "Tuesday", percent: 15 } })],
         // The engine's grades are ASCII ("B-"); the screen shows them through scoreText ("B\u2212").
         removed: null,
-        goalStretch: null,
+        goalStretch: null, laterDiscoveries: [], discoveryOffers: [],
         season2193: { quarter: 274036.2, before: 164436.9, beforeLabel: "Q2 2193" },
       }),
     );
@@ -255,7 +255,7 @@ describe("a later quarter's result screen (endless-copy.md section 4)", () => {
     const base = {
       quarter: "2194-Q2" as const, outcome, sameQuarterLastYear: 164436.9, previousQuarter: 100_000, reference: [],
       discoveries: earnedDiscoveries([], "2194-Q2"), lastYearLabel: "Q2 2193", referenceLabel: "Q1 2194",
-      record: [row("2194-Q1", 66, "D"), row("2194-Q2", 74, "C")], removed: null, goalStretch: null,
+      record: [row("2194-Q1", 66, "D"), row("2194-Q2", 74, "C")], removed: null, goalStretch: null, laterDiscoveries: [], discoveryOffers: [],
       season2193: { quarter: 164436.9, before: 95245.8, beforeLabel: "Q1 2193" },
     };
     // Today: Q2 ends the game, with the review and Play again.
