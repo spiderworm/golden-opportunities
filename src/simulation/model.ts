@@ -61,14 +61,33 @@ export function quarterDays(year: number, quarter: QuarterNumber = 1): string[] 
   return days;
 }
 
-/** The 2193 day a 2194 day replays: 364 days earlier (same weekday), a week further back if that leaves the month. */
+const weekdayOf = (time: number) => new Date(time).getUTCDay();
+
+/**
+ * The 2193 day a day replays. In 2194: 364 days earlier (same weekday), a week
+ * further back if that leaves the month. Later, 364 days a year would drift off
+ * the calendar, so: the 2193 day on the same weekday nearest the same date, a
+ * week the other way if that leaves the month.
+ */
 export function replayedDay(day: string): string {
-  const back = dayOf(timeOf(day) - 364 * DAY);
-  return monthOf(back) === monthOf(day) ? back : dayOf(timeOf(day) - 371 * DAY);
+  if (Number(day.slice(0, 4)) === YEAR) {
+    const back = dayOf(timeOf(day) - 364 * DAY);
+    return monthOf(back) === monthOf(day) ? back : dayOf(timeOf(day) - 371 * DAY);
+  }
+  // February 29 rolls over to March 1, 2193; the month check brings it back into February.
+  const target = Date.UTC(HISTORY_YEAR, Number(monthOf(day)) - 1, Number(day.slice(8, 10)));
+  let offset = (weekdayOf(timeOf(day)) - weekdayOf(target) + 7) % 7;
+  if (offset > 3) offset -= 7;
+  const near = dayOf(target + offset * DAY);
+  return monthOf(near) === monthOf(day) ? near : dayOf(target + (offset > 0 ? offset - 7 : offset + 7) * DAY);
 }
 
 export interface History {
+  /** The year being played: 2194, or a later one. */
+  year: number;
   quarter: QuarterNumber;
+  /** A seeded stream's name in this year: 2194 keeps its names, so its draws never change; later years prefix theirs. */
+  streamOf: (name: string) => string;
   /** The quarter's three months, as MM. */
   months: readonly string[];
   /** The quarter of 2193 as it was sold. */
@@ -120,7 +139,7 @@ function joinSharesOf(data: DeepReadonly<BookshopData>): (isbn: string) => numbe
   };
 }
 
-export function historyOf(data: DeepReadonly<BookshopData>, quarter: QuarterNumber = 1): History {
+export function historyOf(data: DeepReadonly<BookshopData>, quarter: QuarterNumber = 1, year = YEAR): History {
   const months = monthsOf(quarter);
   const [from, to] = [`${HISTORY_YEAR}-${months[0]}-01`, quarter === 4 ? `${HISTORY_YEAR + 1}-01-01` : `${HISTORY_YEAR}-${monthsOf((quarter + 1) as QuarterNumber)[0]}-01`];
   const templates = new Map<string, DeepReadonly<SaleLine>>();
@@ -136,7 +155,9 @@ export function historyOf(data: DeepReadonly<BookshopData>, quarter: QuarterNumb
   const release = releaseLine(data);
   templates.set(release.isbn, release);
   return {
+    year,
     quarter,
+    streamOf: (name) => (year === YEAR ? name : `${year}:${name}`),
     months,
     lastYear: data.saleLines.filter((l) => l.date >= from && l.date < to),
     template: (isbn) => {
@@ -166,7 +187,7 @@ export function unpromoted(history: History, seed: number): Order[] {
   history.months.forEach((month) => {
     const isbn = history.observedPick(month);
     const lines = history.lastYear.filter((l) => l.isbn === isbn && monthOf(l.date) === month);
-    const random = stream(seed, `unpromote:${month}`);
+    const random = stream(seed, history.streamOf(`unpromote:${month}`));
     const out = new Set(sampleIndexes(random, lines.length, OBSERVED_EXTRAS[Number(month) - 1]));
     lines.forEach((line, i) => (out.has(i) ? removed : restored).add(line));
   });
@@ -179,13 +200,13 @@ export function unpromoted(history: History, seed: number): Order[] {
   }));
 }
 
-/** The quarter of 2194 as it would go with no Book of the Month: each day replays its 2193 day, with ±3% noise on orders. */
+/** The quarter as it would go with no Book of the Month: each day replays its 2193 day, with ±3% noise on orders. */
 export function baseline(history: History, seed: number): Order[] {
   const byDay = new Map<string, Order[]>();
   for (const order of unpromoted(history, seed)) byDay.set(order.day, [...(byDay.get(order.day) ?? []), order]);
-  const random = stream(seed, streamName(history.quarter, "noise"));
+  const random = stream(seed, history.streamOf(streamName(history.quarter, "noise")));
   const orders: Order[] = [];
-  for (const day of quarterDays(YEAR, history.quarter)) {
+  for (const day of quarterDays(history.year, history.quarter)) {
     const source = byDay.get(replayedDay(day)) ?? [];
     const factor = 1 - NOISE + 2 * NOISE * random();
     const target = roundRandomly(random, source.length * factor);
@@ -223,31 +244,34 @@ function indexByDay(orders: readonly Order[]): Map<string, number[]> {
  * The baseline with the new volume's copies added, each at full price, at its
  * rate times its launch, scaled by the day's share of the quarter's orders, so it
  * follows the weekday pattern. Each copy joins an order or arrives alone (place).
- * Its own streams: every plan gets the same release.
+ * Its own streams: every plan gets the same release. After 2194 it has no launch:
+ * it sells at its rate every day.
  */
 export function withRelease(history: History, base: readonly Order[], seed: number): Order[] {
-  const days = quarterDays(YEAR, history.quarter);
+  const days = quarterDays(history.year, history.quarter);
   const perDay = new Map<string, number>();
   for (const order of base) perDay.set(order.day, (perDay.get(order.day) ?? 0) + 1);
   const meanDay = base.length / days.length;
-  const random = stream(seed, streamName(history.quarter, "release"));
-  const joins = stream(seed, streamName(history.quarter, "release-join"));
+  const random = stream(seed, history.streamOf(streamName(history.quarter, "release")));
+  const joins = stream(seed, history.streamOf(streamName(history.quarter, "release-join")));
+  const launched = history.year === YEAR;
   const template = history.template(RELEASE.edition.isbn);
   const share = history.joinShare(RELEASE.edition.isbn);
   const orders = [...base];
   const hosts = indexByDay(base);
   for (const day of days) {
-    if (day < RELEASE_DAY) continue;
-    const expected = RELEASE_RATE * releaseLaunch((timeOf(day) - timeOf(RELEASE_DAY)) / DAY) * ((perDay.get(day) ?? 0) / meanDay);
+    if (launched && day < RELEASE_DAY) continue;
+    const launch = launched ? releaseLaunch((timeOf(day) - timeOf(RELEASE_DAY)) / DAY) : 1;
+    const expected = RELEASE_RATE * launch * ((perDay.get(day) ?? 0) / meanDay);
     for (let i = roundRandomly(random, expected); i > 0; i--) place(orders, hosts.get(day) ?? [], day, itemOf(template), "release", share, joins);
   }
   return orders;
 }
 
-/** Tuesday to Thursday of each week of a quarter of 2194 that has one: 13 weeks in Q1. */
-export function eventWeeks(quarter: QuarterNumber = 1): string[][] {
+/** Tuesday to Thursday of each week of a quarter that has one: 13 weeks in Q1 2194. */
+export function eventWeeks(quarter: QuarterNumber = 1, year = YEAR): string[][] {
   const weeks = new Map<number, string[]>();
-  for (const day of quarterDays(YEAR, quarter)) {
+  for (const day of quarterDays(year, quarter)) {
     const weekday = new Date(timeOf(day)).getUTCDay();
     if (weekday < 2 || weekday > 4) continue;
     const monday = Math.floor((timeOf(day) - ((weekday + 6) % 7) * DAY) / DAY);
@@ -292,8 +316,8 @@ export function run(history: History, base: readonly Order[], seed: number, leve
 
   const nights: Run["nights"] = [];
   if (levers.events) {
-    const random = stream(seed, streamName(history.quarter, "events"));
-    const weeks = eventWeeks(history.quarter);
+    const random = stream(seed, history.streamOf(streamName(history.quarter, "events")));
+    const weeks = eventWeeks(history.quarter, history.year);
     for (const w of sampleIndexes(random, weeks.length, EVENT_NIGHTS)) {
       const day = pick(random, weeks[w]);
       const count = integer(random, EVENT_ORDERS.min, EVENT_ORDERS.max);
@@ -313,13 +337,13 @@ export function run(history: History, base: readonly Order[], seed: number, leve
     for (const order of orders)
       if (monthOf(order.day) === month) for (const item of order.items) if (item.isbn === isbn) item.discount = PICK_DISCOUNT;
     // Scheduled and re-picked titles draw the same count and days from the same stream; only the title differs.
-    const random = stream(seed, `pick-extra:${month}`);
+    const random = stream(seed, history.streamOf(`pick-extra:${month}`));
     const extra = pick(random, OBSERVED_EXTRAS);
-    const days = quarterDays(YEAR, history.quarter).filter((d) => monthOf(d) === month);
+    const days = quarterDays(history.year, history.quarter).filter((d) => monthOf(d) === month);
     const weights = days.map((d) => base.filter((o) => o.day === d).length);
     const template = history.template(isbn);
     // Joins draw from their own stream, so the extra copies' count and days don't depend on them.
-    const joins = stream(seed, `pick-join:${month}`);
+    const joins = stream(seed, history.streamOf(`pick-join:${month}`));
     const share = history.joinShare(isbn);
     for (let i = 0; i < extra; i++) {
       const item: Item = { ...itemOf(template), discount: PICK_DISCOUNT, extra: true };
@@ -329,7 +353,7 @@ export function run(history: History, base: readonly Order[], seed: number, leve
   });
 
   if (levers.sale !== null) {
-    const random = stream(seed, streamName(history.quarter, "sale"));
+    const random = stream(seed, history.streamOf(streamName(history.quarter, "sale")));
     // One draw per order, so a larger response clones a superset of a smaller one's orders.
     // Clones keep their kind: an author night's clone is still an author-night visit.
     const clones = orders.filter(() => random() < levers.sale!).map((o) => cloneOrder(o, { saleClone: true }));
