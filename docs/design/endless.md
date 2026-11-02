@@ -29,7 +29,7 @@ Alma chooses **one event per quarter** from a fixed list of types, and **one mea
 
 | Type | What changes | Limits (*tune*) | Example story |
 | --- | --- | --- | --- |
-| **Extra stretch** (every quarter, beside the event) | One measure's goal stretches by more than 5% | +10 to 20% instead of 5%; never the same measure two quarters running | `THE COUNCIL HAS READ A STUDY ABOUT FOOT TRAFFIC.` |
+| **Extra stretch** (every quarter, beside the event) | One measure's goal stretches by more than 5% | +10 to 20% instead of 5%, in whole percents (`stretch.percent`, Alma's choice); never the same measure two quarters running, unless it's a recovery goal | `THE COUNCIL HAS READ A STUDY ABOUT FOOT TRAFFIC.` |
 | **Genre surge** | One genre's orders rise in one month | +10 to 30%, one month | A book club on the hydroponics deck has started on mysteries. |
 | **Genre slump** | One genre's orders fall in one month | −10 to −25%, one month | The station's archive has put its romance collection online for free. |
 | **Quiet days** | One weekday's orders fall all quarter | −10 to −25%, one weekday | The Ring C shuttle now docks an hour later on Tuesdays. |
@@ -45,9 +45,19 @@ Alma chooses **one event per quarter** from a fixed list of types, and **one mea
 
 **Limits on choosing** (the server enforces them, not the prompt):
 - No event type two quarters running.
-- No event against the measure that's being stretched. The stretch is the quarter's pressure on that measure, and the event's is elsewhere.
-- **No piling on:** while the player is on a strike (section 7), Alma may choose only a genre surge, author fares or a quiet quarter. A removal should come from the player's plans, not from Alma's dice.
-- **Recovery goals:** if a measure fell by more than 10% against the same quarter a year earlier, the stretch must name it, and the reason is the drop: `HAPPINESS FELL 14%. RESTORE IT.` (`scoring.md`, "Recovery goals").
+- No event against the measure that's being stretched. The stretch is the quarter's pressure on that measure, and the event's is elsewhere. An event works **against** the measures its expected effect lowers on holding course (Sim's bounds, section 8), plus Profit for author fares, which change what author nights cost:
+
+| Type | Against |
+| --- | --- |
+| Genre surge | None |
+| Genre slump | Profit, Readers served, Culture |
+| Quiet days | Profit, Readers served, Culture |
+| Author fares | Profit |
+| Format costs | Profit |
+| A quiet quarter | None |
+
+- **No piling on:** while two strikes count (section 7), Alma may choose only a genre surge, author fares or a quiet quarter. The anchored goals already stop an event from causing a strike; this rule keeps the story from kicking a player who's down.
+- **Recovery goals:** if a measure fell by more than 10% against the same quarter a year earlier, the stretch must name it, and the reason is the drop: `HAPPINESS FELL 14%. RESTORE IT.` (`scoring.md`, "Recovery goals"). **Recovery wins** over "never the same measure two quarters running", when a measure falls two quarters in a row.
 
 **Bound:** an event's expected effect on holding course is at most 10% of any measure's anchor; the server rejects a record past that (section 8). The tier-1 limits stay inside it, with the largest swing at 9.8% (format costs, on profit).
 
@@ -67,19 +77,20 @@ Quarterly review: Orbital Books, Ring C, Berth 14
 
 {Alma's story: one or two sentences, with the server's figures}
 
-The {boss} has stretched its goal for {measure} to {stretch}% above last year. Its reason: "{STRETCH REASON}"
+The {boss} has raised its goal for {measure} by {stretch}% this quarter, instead of the usual 5%. Its reason: "{STRETCH REASON}"
 
 The Book of the Month calendar for {months} is empty. Submit your picks and a plan when you are ready.
 ```
 
 | Element | String |
 | --- | --- |
-| Strike line | `This was a strike: your overall score was under 70. Another one next quarter, and the panel will remove you.` |
-| Strike cleared line | `Your strike is cleared.` |
+| Strike line, one counting | `That was a strike: your overall score was under 70. A strike counts for four quarters, and three at once, and the panel will remove you.` |
+| Strike line, two counting | `That was your second strike in four quarters. One more while both count, and the panel will remove you. The older one expires after {quarter}.` |
+| Strike expired line | `Your strike from {quarter} has expired. Strikes counting: {n}.` |
 | Transmission, boss line | Alma's, one per quarter, in capitals, reviewed against the rules in section 9 |
 | Transmission, boss line when Alma is unavailable | The scripted event's own line (section 9) |
 | Strip | `Standing order from the Commerce Office: submit your picks and a plan for {quarter}.` |
-| Strip, on a strike | `Standing order from the Commerce Office: one more strike ends your tenure. Submit a plan for {quarter}.` |
+| Strip, with two strikes counting | `Standing order from the Commerce Office: one more strike ends your tenure. Submit a plan for {quarter}.` |
 | Bell, title | `{Quarter}: {event's short title}` |
 
 **Every event's figures are in the memo.** The player always knows the event's size before deciding, as `scoring.md` says of goals: "The player always knows the target before deciding." Examples, with the server's figures in bold:
@@ -151,24 +162,24 @@ The half-year review comes off Q2's result screen. Every result screen from Q2 o
 
 ## 7. Removal
 
-**Proposal: two strikes in a row.**
+**Proposal: three strikes in any four quarters** (alternative C in the first draft; Sim's calibration moved it ahead of two in a row).
 - A quarter whose overall score is **under 70** (a D or an F) is a **strike.**
-- A quarter at **70 or above** clears it.
-- A **second strike in a row** ends the game: the panel removes the player.
-- Q1 counts. So holding course twice (about 66 each time) removes a player at the end of Q2. Coasting is a bad job, and that's what David asked the bosses to catch ("make coasting impossible", 30 Oct).
+- A strike counts for **four quarters**: the quarter it was earned and the three after it.
+- A **third strike** while two others still count ends the game: the panel removes the player.
+- Q1 counts. Holding course every quarter (about 67, 66, then 62 to 66) is removed at the end of Q3 2194, in all 20 seeds. So are the sale and Q2's trap picks. Coasting is a bad job, and that's what David asked the bosses to catch ("make coasting impossible", 30 Oct).
 
-Why this rule:
-- It's easy to say, and the memo can say it in a line.
-- A single bad quarter, such as trying the sale once, is survivable, so the player can experiment and recover.
-- The player is always warned one quarter ahead.
-- With section 2's "no piling on" rule, Alma can't hand the second strike out by itself.
+Why this rule, from Sim's numbers (section 8):
+- **It removes the bad jobs and spares the sensible ones.** Over five years, quiet picks plus author nights every quarter was never removed, and neither was picks only. Holding course, the sale and the trap picks go in the first year, every time. Author nights only, the weakest sensible plan, loses half its players within five years.
+- **Two in a row removed sensible players in the first year.** Q3 and Q4 are the hard quarters (section 8): picks only strikes in 83% of Q3s and 99% of Q4s, so a player making one sensible move each quarter was usually removed at Q4 2194. That isn't "such a bad job".
+- **Q1 and Q2 stay exactly as built.** No one can be removed before Q3, so the shipped Q1 to Q2 flow is unchanged. Under two in a row, holding course would end the game at Q2's result.
+- **A single bad quarter, such as trying the sale once, is survivable,** and so is a second. The player can experiment and recover.
+- **The player is always warned** before the strike that would remove them, and the memo keeps count.
+- **Events can't hand out strikes,** because the goals are anchored to each event's expected effect (section 2): holding course and a plan that ignores the event score the same with or without it. That anchoring is what protects the player, so it must not be loosened. "No piling on" only keeps the story kind.
 
 **Alternatives:**
-- **A. Average below 70 over the last four quarters** (after at least four). It's more forgiving and slower, and much harder to explain in a memo.
+- **Two strikes in a row.** Simpler to say, and harsher: it removes the coasting player at Q2 2194, but also most one-move players by Q4 2194. The good plan was removed in 1 of 20 five-year games.
+- **A. Average below 70 over the last four quarters** (after at least four). More forgiving and slower, and harder to explain in a memo.
 - **B. Any F (under 60) removes at once.** One sale ends the game (Q1's sale scores 38 to 45). That's funny the first time and punishing after.
-- **C. Three strikes in any four quarters.** It's in between, but needs a counter the player has to track.
-
-**Calibrated (section 8):** with no ratchet, quiet picks plus author nights every quarter was removed in 1 of 20 games over five years. Holding course, the sale and the trap picks are removed at the end of Q2 2194, every time. The cost is in Q3 and Q4: a player making one sensible move each quarter is usually removed at Q4 2194. Under C, nobody making a sensible move is removed in the first year.
 
 **The removal screen.** It replaces the result screen's buttons once the panel has voted. The whole board speaks, in report-card order, and the facts are plain.
 
@@ -176,18 +187,22 @@ Why this rule:
 | --- | --- |
 | Heading | `The panel has voted` |
 | The Station Administrator | `THE PANEL HAS CONVENED. THE VOTE WAS UNANIMOUS. IT IS ALWAYS UNANIMOUS. WE CHECKED.` |
-| The Commerce Office | `TWO QUARTERS BELOW STANDARD. THE LEDGER HAS NOTED IT. THE LEDGER NOTES EVERYTHING. IT IS NOT A GOOD LOOK.` |
+| The Commerce Office | `THREE QUARTERS BELOW STANDARD. THE LEDGER HAS NOTED IT. THE LEDGER NOTES EVERYTHING. IT IS NOT A GOOD LOOK.` |
 | The Throughput Subcommittee | `YOUR KEYS HAVE BEEN COLLECTED. YOU DID NOT HAVE KEYS. WE COLLECTED THEM ANYWAY.` |
 | The Readers' Guild survey drone | `THE DRONE WILL MISS YOU. THE DRONE HAS NO FEELINGS. THE DRONE WILL MISS YOU ANYWAY.` |
 | The Ministry of Culture | `MR. ZOOLANDER WAS ALSO ASKED TO LEAVE ONCE. HE CAME BACK WITH A LOOK. WE DO NOT EXPECT THIS OF YOU.` |
-| Fact strip (plain) | `You were removed after two quarters in a row with an overall score under 70: {quarter} ({score}) and {quarter} ({score}). You ran Orbital Books for {n} quarters, from Q1 2194 to {last quarter}.` |
+| Fact strip (plain) | `You were removed after three quarters with an overall score under 70 in four: {quarter} ({score}), {quarter} ({score}) and {quarter} ({score}). You ran Orbital Books for {n} quarters, from Q1 2194 to {last quarter}.` |
 | Then | The service record, with a final row: `Removed by the panel, {date}.` |
 | Primary button | `Play again` (a new game from January 1, 2194, with a new seed) |
 | Secondary button | `Back to the ledgers` (read-only: the station stays open to look at, but no plan can be filed) |
 
-**The strike memo's boss line** (the Administrator, after a quarter under 70): `OVERALL SCORE: {score}. THAT IS A STRIKE. ONE MORE, AND THE PANEL CONVENES. THE PANEL HAS ALREADY BOOKED THE ROOM.`
+**The Administrator's strike lines,** in the memo's transmission, in place of Alma's boss line that quarter:
 
-**The strike-cleared line:** `THE STRIKE IS CLEARED. WE HAVE UPDATED THE SPREADSHEET. THE SPREADSHEET IS RELIEVED.`
+| When | Boss line |
+| --- | --- |
+| A first strike counting | `OVERALL SCORE: {score}. THAT IS A STRIKE. THE PANEL ALLOWS TWO. THE PANEL HAS ALREADY BOOKED THE ROOM.` |
+| A second strike counting | `OVERALL SCORE: {score}. THAT IS TWO STRIKES. ONE MORE, AND THE PANEL CONVENES. THE ROOM IS STILL BOOKED.` |
+| A strike has expired | `A STRIKE HAS EXPIRED. WE HAVE UPDATED THE SPREADSHEET. THE SPREADSHEET IS RELIEVED.` |
 
 ## 8. Model (Sim)
 
@@ -258,7 +273,7 @@ The swing of each type's expected effect on holding course, as a share of the qu
 
 The rules applied to the same runs, with no ratchet. Each cell is how many of the 20 seeds were removed by the end of 2194, 2195, 2196 and 2198, and the median quarter of removal. "Quiet picks + author nights" chooses, each month, the best-rated hardcover that sold 2 copies or fewer in that month of 2193, which is Q2's quiet-picks idea in any quarter.
 
-| Plan, every quarter | Two strikes in a row (proposal) | Three strikes in any four (C) |
+| Plan, every quarter | Two strikes in a row (the alternative) | Three strikes in any four (proposal) |
 | --- | --- | --- |
 | Hold course | 20, 20, 20, 20 of 20; Q2 2194 | 20 of 20; Q3 2194 |
 | The sale | 20 of 20; Q2 2194 | 20 of 20; Q3 2194 |
@@ -282,6 +297,8 @@ The rules applied to the same runs, with no ratchet. Each cell is how many of th
 - **"No piling on" can't change these numbers.** With anchored goals, events don't cause strikes, so the rule only keeps the story kind.
 - **Two in a row under 60** was also measured. It removes only the sale and half the trap-pick players, so coasting survives forever. It isn't a candidate.
 
+*Plot, after these numbers:* section 7 now proposes C, three strikes in any four, with two in a row as the alternative. A player making one sensible move each quarter isn't doing "such a bad job", and under C no one can be removed before Q3, so Q1 and Q2 stay as built.
+
 ### What the engine exposes
 
 - One pure call per quarter: `simulateTurn({ year, quarter, seed, plan, conditions, stretch })`, returning Q2's result shape (lines, the holding-course lines, the outcome and the report card). There's no I/O, as now. Frank's save supplies the year, quarter, seed, plan and the event record. Replaying the saved plans and records reproduces every score.
@@ -300,13 +317,13 @@ The rules applied to the same runs, with no ratchet. Each cell is how many of th
 
 Like Dewey, it fails closed on the init line: the run is killed unless the tools list is empty, no MCP server is listed, and skills and slash commands are empty. The model comes from `ORBITAL_ALMA_MODEL` (default `sonnet`, as Dewey's). `ORBITAL_ALMA_PROVIDER=scripted` forces the fallback. Vitest and e2e always use it, so automated runs never call the model.
 
-**When it runs.** Alma runs when the previous quarter is committed, at the plan submit that produces the result. It works in the background while the player reads the result screen. Arriving in the new quarter only reads the record. If the record isn't ready by then, the loader waits out the rest of the budget, then falls back. The record is saved before the memo shows, and a reload never re-rolls it. **Alma starts at Q3 2194:** Q1 and Q2 stay fixed, so it first runs when the Q2 plan is submitted.
+**When it runs.** Alma runs when the previous quarter is committed, at the plan submit that produces the result. It works in the background while the player reads the result screen. Arriving in the new quarter only reads the record. If the record isn't ready by then, the loader waits out the rest of the budget, then falls back. The record is saved before the memo shows, and a reload never re-rolls it. The quarter's anchor (section 8, about 40 holding-course runs) is computed and saved with it, also behind the result screen. **Alma starts at Q3 2194:** Q1 and Q2 stay fixed, so it first runs when the Q2 plan is submitted.
 
 **Timeout.** Dewey's replies with tools took 2 to 14 s in Probe's runs, under a 120 s cap. Alma makes one call with no tools and a short output, so each attempt gets 30 s, with one retry, and only on invalid output, not after a timeout. The worst case is 60 s, mostly hidden behind the result screen.
 
 **What Alma sees.** An input builder, a pure function over the save, with a test that pins its keys:
 - each past quarter's plan, as structured choices (lever ids, and picked titles from the catalog);
-- each quarter's scores, grades and strikes;
+- each quarter's scores, grades and strikes, and how many strikes count now;
 - the past event records (type, params, stretch and source, but not the text).
 
 Nothing the player typed ever reaches Alma: no Dewey conversation, no investigations, no discoveries. Plans are fixed choices, so there's no prompt-injection path from the player. The rules and the type list sit in `--system-prompt`, and the state goes in on stdin.
@@ -315,11 +332,11 @@ Nothing the player typed ever reaches Alma: no Dewey conversation, no investigat
 
 **Output and validation.** The result must parse as exactly one JSON object, with no extra keys:
 
-`{ type, params, stretch: { measure, reason }, story, bossLine }`
+`{ type, params, stretch: { measure, percent, reason }, story, bossLine }`
 
-- `type` must be in section 2's list, and the choosing rules must hold (no repeat type, no event against the stretched measure, no piling on during a strike, the recovery rule).
+- `type` must be in section 2's list, and the choosing rules must hold (no repeat type, no event against the stretched measure, no piling on with two strikes counting, the recovery rule).
 - Each param must fit its type's schema: an enum from a fixed list (a genre, a weekday, a format, an edition), or an integer within the type's limits. There are no free numbers and no clamping: out of range means invalid.
-- `stretch.measure` must be a report-card measure.
+- `stretch.measure` must be a report-card measure, and `stretch.percent` a whole number from 10 to 20.
 - **The text has three fields, each with its own voice:**
   - `story`: plain prose for the memo, one or two sentences;
   - `stretch.reason`: the boss's reason, in capitals ("THE COUNCIL HAS READ A STUDY ABOUT FOOT TRAFFIC.");
@@ -346,8 +363,8 @@ Nothing the player typed ever reaches Alma: no Dewey conversation, no investigat
 1. **The game runs until removal,** with Alma from Q3 2194 on. Q1 and Q2 stay as built, except that the half-year review becomes the service record (sections 1 and 6).
 2. **Tier 1 ships first:** the extra stretch every quarter, plus one of a genre surge, a genre slump, quiet days, author fares, format costs or a quiet quarter. The Orbitplace lot with a rival bid is tier 2, and the full market waits (section 2).
 3. **Goals count each event's expected effect, except the stretch** (section 2). The alternative: unanchored events, with Weathered the Storm for beating them.
-4. **No piling on:** on a strike, Alma may choose only a mild event (section 2).
+4. **No piling on:** with two strikes counting, Alma may choose only a mild event (section 2). The anchored goals, not this rule, are what stop events from causing strikes.
 5. **Each quarter's discoveries come from its event,** plus "your last quarter on the record" and "your weakest measure" (section 5).
-6. **Removal is two strikes in a row,** a strike being an overall score under 70 (section 7). Calibrated: the good plan survives 19 of 20 five-year games, and holding course is removed at the end of Q2 2194; one move a quarter is usually removed at Q4 2194 (section 8). The alternatives are A (four-quarter average), B (any F) and C (three in four), which spares one-move players.
+6. **Removal is three strikes in any four quarters,** a strike being an overall score under 70 (section 7). Calibrated over five years: quiet picks plus author nights, and picks only, are never removed; holding course, the sale and the trap picks are removed at Q3 2194, every time (section 8). The alternatives are two strikes in a row (harsher: most one-move players go at Q4 2194), A (a four-quarter average) and B (any F).
 7. **Goals don't ratchet:** every year's goals start from 2193's replay of that quarter, plus events and stretch, so a strong year doesn't raise the bar for the next (section 8). The alternatives are a full ratchet, which flattens every plan to 68 to 70 from 2195, and a half ratchet, which removes 7 of 20 good players within five years (section 8).
 8. **The service record replaces the half-year review,** with an annual review after each Q4 (section 6).
