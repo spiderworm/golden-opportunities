@@ -358,7 +358,16 @@ const BANNED = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS
  */
 const ROMAN = /\b(?!MIX\b)(?=[MDCLXVI]{2,}\b)M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})(?<=\b[MDCLXVI]{2,})\b/u;
 /** The whole ban, for other text a player is shown as fact-free flavor (Alma's): run it on NFKC-folded text. */
-export const hasBannedWord = (folded: string) => BANNED.test(folded) || ROMAN.test(folded);
+/**
+ * Look-alike letters (Probe's review of #229). The checks read a plain copy: accents and other marks stripped
+ * ("hìgher" is "higher"), and the Latin look-alikes NFKD keeps ("ı", "ȷ", "ɡ") mapped. A letter from another
+ * script ("fivе" with a Cyrillic е) is withheld outright: the catalog has none (its one accent, the é in an
+ * author's name, is Latin and allowed).
+ */
+const plain = (text: string) => text.normalize("NFKD").replace(/\p{M}/gu, "").replace(/ı/g, "i").replace(/ȷ/g, "j").replace(/ɡ/g, "g");
+const FOREIGN = /(?!\p{Script=Latin})\p{L}/u;
+const banned = (text: string) => FOREIGN.test(text) || BANNED.test(plain(text)) || ROMAN.test(plain(text));
+export const hasBannedWord = (folded: string) => banned(folded);
 // Exact phrases allowed despite their words, in exact contexts only.
 const ALLOWED = /\blook(?:s|ed|ing)? (?:(?:it|them|that) )?up\b|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))/giu;
 const REF = /\{\{([^{}]{1,40})\}\}/g;
@@ -472,7 +481,7 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity): 
     .replace(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
     .replace(/\bQ([1-4])\b/g, (q) => (refs.hasQuarter(q, known) ? " " : q))
     .replace(ALLOWED, " ");
-  if (BANNED.test(prose) || ROMAN.test(prose)) return null;
+  if (banned(prose)) return null;
   // "Yes" or "No" is itself a claim: allowed only to open a sentence that is otherwise refs ("No, {{b.to_vs_from}}.").
   const answer = /^\s*(?:yes|no)\b/i.exec(prose);
   if (answer && (count === 0 || /\p{L}/u.test(prose.slice(answer[0].length)))) return null;
