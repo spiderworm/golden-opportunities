@@ -18,7 +18,7 @@
 // them back), so released events go unchanged.
 
 import { deviceProps } from "../device/device.ts";
-import { automation, testLab } from "../environment/environment.ts";
+import { automation, emulator, emulatorSends, testLab } from "../environment/environment.ts";
 
 export type Props = Record<string, string | number | boolean>;
 /** t: when (ms), s: this launch, n: the install's running number (none in logs from before it), e: event, p: props */
@@ -53,9 +53,20 @@ export type Options = {
   send?: (url: string, body: string, leaving: boolean) => Promise<boolean | "refused">;
   /** the game's WebGL context, for the device event's GPU (its own; none is made here) */
   gl?: () => Pick<WebGLRenderingContext, "getExtension" | "getParameter"> | null | undefined;
+  /** link this player across Tellim games (David, 1 Nov 2026): a "linked" event once per startup with one
+   * id for every Tellim game on this device. On Android it's Google Play's app set ID, and on iPhone Apple's
+   * identifierForVendor, both from the app's TellimStudio plugin (../../android/StudioId.md). On the web
+   * it's one id kept by all the studio's games on this site. Off until the game's privacy policy says so. */
+  link?: boolean;
+  /** the native side, for the tests (default: Capacitor's, when the app is native) */
+  native?: Native;
   /** what the device is, for the tests (default: the browser's) */
   env?: { userAgent: string; webdriver: boolean; search: string; session?: Pick<Storage, "getItem" | "setItem"> };
 };
+
+/** where the studio-wide id comes from in a native app: its TellimStudio plugin */
+export type Native = { native: boolean; get?: () => Promise<{ id?: string; source?: string }> };
+const STUDIO_KEY = "tellim.studio"; // no game's prefix: every Tellim game on this site shares it
 
 const OUTBOX_MAX = 5000; // a long time offline: the oldest go first
 const BATCH_BYTES = 12_000; // a request's events, under the endpoint's 16 KB (its edge refuses more)
@@ -94,7 +105,7 @@ export function createAnalytics(given: Options) {
   if (!game || !key || !build) throw new Error("[analytics] createAnalytics needs an app, or game, key and build");
   const options: Resolved = { ...given, game, key, build, version: given.version ?? app?.version };
   // Every game gets these without asking (shared, David 27 Oct 2026): Play's
-  // test robots send as platform "testlab"; automated runs send nothing, in
+  // test robots send as platform "testlab"; automated runs and our emulators send nothing, in
   // a log of their own; and a "device" event goes once per startup.
   const env = options.env ?? {
     userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
@@ -102,14 +113,16 @@ export function createAnalytics(given: Options) {
     search: typeof location === "undefined" ? "" : location.search,
     session: (() => { try { return globalThis.sessionStorage; } catch { return undefined; } })(),
   };
-  const automated = automation(env.webdriver, env.search, options.key, env.session);
+  const store = options.storage ?? (typeof localStorage === "undefined" ? undefined : localStorage);
+  // the Android emulator is always ours: quiet, unless switched on for a test (then labeled)
+  const onEmulator = emulator(env.userAgent);
+  const quiet = automation(env.webdriver, env.search, options.key, env.session) || (onEmulator && !emulatorSends(store));
   const o: Resolved = {
     ...options,
-    key: automated ? `${options.key}.test` : options.key,
-    endpoint: automated ? undefined : options.endpoint,
-    platform: testLab(env.userAgent) ? "testlab" : options.platform,
+    key: quiet ? `${options.key}.test` : options.key,
+    endpoint: quiet ? undefined : options.endpoint,
+    platform: testLab(env.userAgent) ? "testlab" : onEmulator ? "emulator" : options.platform,
   };
-  const store = o.storage ?? (typeof localStorage === "undefined" ? undefined : localStorage);
   const send = o.send ?? post;
   const keep = o.keep ?? 3000;
   const K = { log: `${o.key}.events`, outbox: `${o.key}.outbox`, held: `${o.key}.held`, install: `${o.key}.install`, n: `${o.key}.eventNo`, off: `${o.key}.sharingOff`, early: `${o.key}.earlySent` };
@@ -251,6 +264,10 @@ export function createAnalytics(given: Options) {
       );
     }, DEVICE_MS);
 
+  // one id for this player across the studio's games, once per startup
+  if (o.link && typeof setTimeout !== "undefined")
+    setTimeout(() => void studioId(o.native ?? capacitor(), store).then((s) => s && track("linked", s)), DEVICE_MS);
+
   return {
     track,
     flush,
@@ -341,4 +358,30 @@ export function acceptable(e: Event): boolean {
 function randomId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return Array.from({ length: 4 }, () => Math.random().toString(36).slice(2, 10)).join("-");
+}
+
+function capacitor(): Native {
+  const c = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean; Plugins?: Record<string, { get?: () => Promise<{ id?: string; source?: string }> }> } }).Capacitor;
+  const plugin = c?.Plugins?.TellimStudio;
+  return { native: c?.isNativePlatform?.() === true, get: plugin?.get ? () => plugin.get!() : undefined };
+}
+
+/** the studio-wide id: the native app's (app set ID, identifierForVendor), or on the web one the site's games share. A native app without the plugin has none: an id of its own would link nothing. */
+export async function studioId(n: Native, store?: Pick<Storage, "getItem" | "setItem">): Promise<{ studio: string; source: string } | null> {
+  if (n.native) {
+    try {
+      const r = await n.get?.();
+      return r?.id ? { studio: String(r.id).slice(0, 64), source: String(r.source ?? "appset").slice(0, 16) } : null;
+    } catch {
+      return null;
+    }
+  }
+  try {
+    if (!store) return null; // nowhere to keep it: a new one each time would link nothing
+    let id = store.getItem(STUDIO_KEY);
+    if (!id) store.setItem(STUDIO_KEY, (id = randomId()));
+    return { studio: id, source: "web" };
+  } catch {
+    return null;
+  }
 }

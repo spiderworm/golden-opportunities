@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     "./app": "./src/app/app.ts",
-    "./presence": "./src/presence/presence.ts"
+    "./presence": "./src/presence/presence.ts",
+    "./environment": "./src/environment/environment.ts"
   },
   "scripts": {
     "test": "node --test 'src/**/*.test.ts'"
