@@ -13,7 +13,7 @@ export type TextField = "story" | "reason" | "bossLine";
 export const TEXT_LIMITS: Record<TextField, number> = { story: 240, reason: 120, bossLine: 160 };
 
 /** Why a field fails: a fixed list, so no model text ever reaches a failure code or a sent event. */
-export const TEXT_PROBLEMS = ["not_text", "empty", "too_long", "control", "emoji", "address", "account", "slot", "number_or_direction", "voice", "zoolander", "alma", "name"] as const;
+export const TEXT_PROBLEMS = ["not_text", "empty", "too_long", "control", "emoji", "address", "slot", "number_or_direction", "voice", "zoolander", "alma", "name"] as const;
 export type TextProblem = (typeof TEXT_PROBLEMS)[number];
 
 export interface TextRules {
@@ -21,15 +21,11 @@ export interface TextRules {
   quarter: string;
   /** The catalog's titles: none may be named. */
   titles: readonly string[];
-  /** The signed-in account's words (account.server.ts): none may appear. */
-  account: readonly string[];
   /** Last quarter's boss line named Zoolander, so this one may not: odd, not constant, is the joke (Plot). */
   zoolanderLast?: boolean;
 }
 
 export const namesZoolander = (text: string | undefined) => /zoolander/i.test(text ?? "");
-
-const word = (w: string) => new RegExp(`(?<![\\p{L}\\p{N}])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "iu");
 
 /** Why a field fails, or null if it passes. Alma's answer is folded once when it's parsed, so this is what's stored. */
 export function textProblem(field: TextField, text: unknown, rules: TextRules): TextProblem | null {
@@ -40,7 +36,6 @@ export function textProblem(field: TextField, text: unknown, rules: TextRules): 
   if (/\p{Extended_Pictographic}/u.test(text)) return "emoji";
   // Claude Code puts the account's email in the model's context; no address, placeholder or @ may reach a player.
   if (text.includes("@") || text.includes(REDACTED) || redactEmails(text) !== text) return "address";
-  if (rules.account.some((w) => word(w).test(text))) return "account";
   if (text.includes("{{") || text.includes("}}")) return "slot";
   if (hasBannedWord(text)) return "number_or_direction";
   const capitals = field !== "story";
