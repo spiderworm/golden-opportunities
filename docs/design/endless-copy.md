@@ -27,7 +27,7 @@ These are used on the bell, as `{Quarter}: {short title}`, and in the service re
 | Orbitplace lot (tier 2) | `An Orbitplace lot` | |
 
 - Genre and format names open with a capital here, because they start the title: `Science fiction and fantasy orders rising in August`, `Mass market paperback costs at 66%`.
-- **Earlier quarters in the `Event` column:** Q1 2194 reads `None`, and Q2 2194 reads `The new Inspector Ryeslton volume`.
+- **Earlier quarters in the `Event` column:** Q1 2194 reads `None`, and Q2 2194 reads `The new Inspector Ryeslton volume`. The column names what a quarter's goals were adjusted for. The volume went on sale in Q1, but Q1's goals were Q1 2193 plus 5% with no adjustment, and Q2's were the first to include it.
 
 ## 2. The memo, around section 3's text
 
@@ -167,10 +167,10 @@ The rotating lines name no event, no direction and no figure that changes with t
 | Certificate | When (`scoring.md`) | Text |
 | --- | --- | --- |
 | Comeback | The quarter's recovery goal was met | `Comeback: {measure} fell in {previous quarter}, and you restored it. Certificates don't change your score.` |
-| Weathered the Storm | Goals met in a quarter with a major event | `Weathered the Storm: {measure} met its goal despite {short title, lower case}. Certificates don't change your score.` |
+| Weathered the Storm | Goals met in a quarter with a major event | `Weathered the Storm: you met your goals despite {short title, first letter in lower case}. Certificates don't change your score.` |
 
-- **Weathered the Storm's `{measure}`** is the measure the event works against (`endless.md` section 2's table), so it's earned by meeting that measure's goal.
-- A quiet quarter is never a major event. Whether the others all count is the engine's call (Sim).
+- **Weathered the Storm** is earned when every measure the event works against (`endless.md` section 2's table) meets its goal: Profit for author fares or format costs, and Profit, Readers served and Culture for a slump or quiet days. Example: `Weathered the Storm: you met your goals despite quiet Tuesdays.`
+- Only an event that works against a measure can earn it. A genre surge works against none, and nor does a quiet quarter, so neither is ever a storm. Whether every other event counts as major is the engine's call (Sim).
 
 ### What you found, from Q3 on
 
