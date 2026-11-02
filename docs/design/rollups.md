@@ -52,10 +52,24 @@ the same arithmetic, so every answer is exact. Any change to current answers is 
 - **Built at replay,** where `quarterLines` now yields lines. The rollup replaces the lines in the replay cache,
   and `QueryView.simulatedSales` becomes `simulatedCells`. For the five-year save that's about 3 MB instead of
   about 400 MB. `MAX_SIMULATED_LINES` becomes a cell bound, and 400 quarters (about 600,000 cells) fit.
-- **Not stored in the save, at first.** The save keeps the lines' hash and count, and the hash is checked on the
-  lines before they're rolled up and dropped. The cold replay stays: 0.9 s for five years, about 18 s for 100
-  years. If that matters, storing each quarter's cells in the save (about 45 KB a quarter) is a second step.
+- **Not stored in the save.** The save keeps the lines' hash and count, and the hash is checked on the lines
+  before they're rolled up and dropped. The cold replay stays, at 0.9 s for five years.
 - **2193 is rolled up once per process,** the same way.
+
+## Scope: five years
+
+This is for the interview, and five years is what it's built and measured for. David (2 Nov 2026): "This is
+just for an interview. I don't have a decision to expand this past the interview yet. WE SHALL SEE. But
+caching static generated results in users' indexdb to reduce load time could happen if we want I think". So
+nothing is stored for longer games now.
+
+## Later, if the game outlives the interview
+
+- **Store each quarter's cells in the save** (about 45 KB a quarter), so a cold start reads them instead of
+  replaying every quarter. A hundred years replays in about 18 s.
+- **Cache finished quarters' results in the browser's IndexedDB,** keyed by data version. A played quarter
+  never changes, so a result filed under a version is good for as long as that version is current, across
+  page loads and visits.
 
 ## Proof
 
