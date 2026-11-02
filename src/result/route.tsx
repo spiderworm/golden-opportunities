@@ -7,11 +7,18 @@ import { track } from "~/platform/analytics/analytics.client";
 import { EChart } from "~/platform/charts/EChart";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
+import { gradeFor, roundHalfUp } from "~/simulation/grading";
+import { nextQuarter } from "~/simulation/quarters";
 import { MEASURE_IDS as MEASURE_ORDER, type ReportCard as Card } from "~/simulation/types";
 import {
   administratorLine,
   badgeText,
-  CONTINUE_TO_Q2,
+  continueTo,
+  eventTitle,
+  laterSeasonNote,
+  quarterCopy,
+  quarterName,
+  SERVICE_RECORD,
   bossLine,
   certificateText,
   foundFooter,
@@ -29,7 +36,6 @@ import {
   RESULT_COPY as COPY,
   scoreText,
   seasonNote,
-  type ResultQuarter,
 } from "./copy";
 import { earnedDiscoveries, type EarnedDiscovery } from "./discoveries.server";
 import { OUTCOME_COLORS, outcomeOption } from "./outcome-chart";
@@ -40,7 +46,8 @@ export const handle: ShellHandle = { title: "Results", standingOrder: false };
 
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: `${QUARTER_COPY[loaderData?.quarter ?? "2194-Q1"].title} | Orbital Books` }];
+  const copy = loaderData ? quarterCopy(loaderData.quarter, loaderData.referenceLabel) : QUARTER_COPY["2194-Q1"];
+  return [{ title: `${copy.title} | Orbital Books` }];
 }
 
 /** The latest played quarter, or `?quarter=2194-Q1` for an earlier one; a quarter not played yet goes to Decide. */
@@ -52,8 +59,11 @@ export function loader({ request }: Route.LoaderArgs): ResultData {
 }
 
 export default function Result({ loaderData }: Route.ComponentProps) {
-  const { quarter, outcome, sameQuarterLastYear, previousQuarter, reference, discoveries, next, canPlayAgain, halfYear } = loaderData;
-  const q = QUARTER_COPY[quarter];
+  const { quarter, outcome, sameQuarterLastYear, previousQuarter, reference, referenceLabel, discoveries, next, canPlayAgain, halfYear, record } = loaderData;
+  const q = quarterCopy(quarter, referenceLabel);
+  // The half-year review closes the game under Q2's result while the game ends there (Q1's screen, opened later,
+  // gains nothing: q2.md, #139). Once the endless game goes on past Q2, the service record takes its place.
+  const review = halfYear && quarter === "2194-Q2" ? halfYear : null;
   const [assumptionsOpen, setAssumptionsOpen] = useState(false);
   const assumptionsRef = useRef<HTMLElement>(null);
   const holdingCourse = heldCourse(outcome);
@@ -82,9 +92,9 @@ export default function Result({ loaderData }: Route.ComponentProps) {
         holdCourse: outcome.monthly.map((m) => m.holdCourse.revenue),
         reference,
         referenceLabel: q.reference,
-        referenceYear: quarter === "2194-Q1" ? "2193" : "2194",
+        referenceYear: referenceLabel.slice(-4),
       }),
-    [outcome, reference, q.reference, quarter],
+    [outcome, reference, q.reference, referenceLabel],
   );
 
   function openAssumptions() {
@@ -98,7 +108,7 @@ export default function Result({ loaderData }: Route.ComponentProps) {
       <h2 className={styles.title}>{q.title}</h2>
 
       <ReportCard
-        quarter={quarter}
+        copy={q}
         plan={outcome.reportCard.plan}
         holdCourse={outcome.reportCard.holdCourse}
         holdingCourse={holdingCourse}
@@ -124,7 +134,11 @@ export default function Result({ loaderData }: Route.ComponentProps) {
         </header>
         <EChart option={option} height={300} label={`${COPY.chartTitle}: ${COPY.lines.plan}, ${COPY.lines.holdCourse}, ${q.reference}`} />
         <p className={styles.note}>
-          {quarter === "2194-Q1" ? seasonNote((1 - plan.revenue / previousQuarter) * 100, sameQuarterLastYear) : q2SeasonNote(plan.revenue, previousQuarter)}
+          {quarter === "2194-Q1"
+            ? seasonNote((1 - plan.revenue / previousQuarter) * 100, sameQuarterLastYear)
+            : quarter === "2194-Q2"
+              ? q2SeasonNote(plan.revenue, previousQuarter)
+              : laterSeasonNote(quarter, plan.revenue, previousQuarter, referenceLabel)}
         </p>
       </section>
 
@@ -138,15 +152,16 @@ export default function Result({ loaderData }: Route.ComponentProps) {
           <button type="button" className={styles.button} onClick={openAssumptions} aria-expanded={assumptionsOpen} aria-controls="assumptions">
             {COPY.seeAssumptions}
           </button>
-          {/* After Q2, the way back to the ledgers is under the half-year review. */}
-          {quarter === "2194-Q1" && (
+          {/* Under Q2's half-year review, the way back to the ledgers is in the review. */}
+          {!review && (
             <Link to="/investigate" className={styles.button}>
               {COPY.backToLedgers}
             </Link>
           )}
-          {next === "2194-Q2" && (
+          {/* Only under the quarter just played: an earlier quarter's screen, opened later, gains nothing. */}
+          {next !== null && next === nextQuarter(quarter) && (
             <Link to="/" className={`${styles.button} ${styles.primary}`} onClick={() => track("result_continued", { to: next })}>
-              {CONTINUE_TO_Q2}
+              {continueTo(next)}
             </Link>
           )}
         </div>
@@ -175,12 +190,66 @@ export default function Result({ loaderData }: Route.ComponentProps) {
       </section>
 
       {/* The review closes the game under Q2's result only: Q1's screen, opened later, gains nothing (q2.md, #139). */}
-      {halfYear && quarter === "2194-Q2" && <HalfYearReview review={halfYear} canPlayAgain={canPlayAgain} />}
+      {review && <HalfYearReview review={review} canPlayAgain={canPlayAgain} />}
+      {!review && quarter !== "2194-Q1" && <ServiceRecord record={record} />}
     </div>
   );
 }
 
 /** The game's last word (q2.md section 7): each quarter's scores, the half-year score, and a new game. */
+/**
+ * The service record (endless.md section 6): every quarter played, newest first, with its measures, its overall
+ * (a strike marked), and its event; then the tenure and the best quarter.
+ */
+function ServiceRecord({ record }: { record: ResultData["record"] }) {
+  const c = COPY.reportCard;
+  const rows = [...record].reverse();
+  const mean = roundHalfUp(record.reduce((sum, row) => sum + row.overall.score, 0) / Math.max(1, record.length));
+  const best = record.reduce((top, row) => (row.overall.score > top.overall.score ? row : top), record[0]!);
+  return (
+    <section className={styles.card} aria-labelledby="service-record-heading">
+      <h3 id="service-record-heading" className={styles.cardTitle}>
+        {SERVICE_RECORD.heading}
+      </h3>
+      <div className={styles.tableWrap}>
+        <table className={styles.reportCard}>
+          <thead>
+            <tr>
+              <th scope="col">{SERVICE_RECORD.columns.quarter}</th>
+              {MEASURE_ORDER.map((id) => (
+                <th key={id} scope="col">
+                  {c.measures[id]}
+                </th>
+              ))}
+              <th scope="col">{SERVICE_RECORD.columns.overall}</th>
+              <th scope="col">{SERVICE_RECORD.columns.event}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.quarter} data-strike={row.strike || undefined}>
+                <th scope="row">{quarterName(row.quarter)}</th>
+                {MEASURE_ORDER.map((id) => {
+                  const m = row.measures.find((x) => x.id === id);
+                  return <td key={id}>{m ? scoreText(m.score, m.grade) : ""}</td>;
+                })}
+                <td>{`${scoreText(row.overall.score, row.overall.grade)}${row.strike ? SERVICE_RECORD.strike : ""}`}</td>
+                <td>{eventTitle(row.quarter, row.event)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {record.length > 0 && (
+        <>
+          <p className={styles.happened}>{SERVICE_RECORD.tenure(record.length, mean, gradeFor(mean))}</p>
+          <p className={styles.happened}>{SERVICE_RECORD.best(best.quarter, best.overall.score, best.overall.grade)}</p>
+        </>
+      )}
+    </section>
+  );
+}
+
 function HalfYearReview({ review, canPlayAgain }: { review: HalfYearData; canPlayAgain: boolean }) {
   const c = COPY.reportCard;
   return (
@@ -274,9 +343,8 @@ function LegendItem({ color, label }: { color: string; label: string }) {
  * overall score, the lowest measure's boss on it, the table with that row
  * marked, certificates, and the rest of the bosses tucked away.
  */
-function ReportCard({ quarter, plan, holdCourse, holdingCourse, onBosses }: { quarter: ResultQuarter; plan: Card; holdCourse: Card; holdingCourse: boolean; onBosses: (open: boolean) => void }) {
+function ReportCard({ copy: q, plan, holdCourse, holdingCourse, onBosses }: { copy: ReturnType<typeof quarterCopy>; plan: Card; holdCourse: Card; holdingCourse: boolean; onBosses: (open: boolean) => void }) {
   const c = COPY.reportCard;
-  const q = QUARTER_COPY[quarter];
   const { overall } = plan;
   const certificates = plan.certificates.map(certificateText).filter(Boolean);
   return (
