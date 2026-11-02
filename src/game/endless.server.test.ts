@@ -51,7 +51,8 @@ describe('quarters past Q2', { timeout: 30_000 }, () => {
     const result = getResultData(req)!;
     expect(result).toMatchObject({ quarter: '2194-Q3', lastYearLabel: 'Q3 2193', referenceLabel: 'Q2 2194', next: '2194-Q4', canPlayAgain: false, removed: null });
     expect(result.record.map(r => r.quarter)).toEqual(['2194-Q1', '2194-Q2', '2194-Q3']);
-    expect(result.record[2]!.event).toBe(record.type);
+    expect(result.record[2]!.event).toEqual({ type: record.type, params: record.params });
+    expect(result.record[0]!.event).toBeNull();
   });
 
   it('end when the panel removes the player: three strikes in any four quarters', async () => {

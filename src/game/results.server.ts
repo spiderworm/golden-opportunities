@@ -38,8 +38,14 @@ interface Common {
 /** Narrowed to Q1 and Q2, the quarters the game plays today; Chart's Result PR widens it to any quarter. */
 export type ResultData = Common & ({ quarter: '2194-Q1'; outcome: Outcome } | { quarter: '2194-Q2'; outcome: Q2GameOutcome });
 
-/** One row of the service record: a played quarter's measures and overall, and whether it was a strike. */
-export interface ServiceRow { quarter: QuarterId; measures: MeasureScore[]; overall: { score: number; grade: Grade }; strike: boolean; event: string | null }
+/**
+ * One row of the service record: a played quarter's measures and overall, whether it was a strike, and its Alma
+ * event's type and params, for the short title (endless-copy.md section 1); null in Q1 and Q2, which have none.
+ */
+export interface ServiceRow {
+  quarter: QuarterId; measures: MeasureScore[]; overall: { score: number; grade: Grade }; strike: boolean;
+  event: { type: string; params: Readonly<Record<string, string | number>> } | null;
+}
 
 /** The quarter before, as the ledger names it: 2193-Q4 before Q1 2194. */
 const before = (quarter: QuarterId) => (quarterIndex(quarter) === 0 ? '2193-Q4' : quarterAt(quarterIndex(quarter) - 1));
@@ -48,10 +54,14 @@ const yearEarlier = (quarter: QuarterId) => `${Number(quarter.slice(0, 4)) - 1}$
 /** "2194-Q3" as "Q3 2194". */
 export const quarterLabel = (quarter: string) => `${quarter.slice(5)} ${quarter.slice(0, 4)}`;
 
+const eventRow = (save: GameSave, quarter: QuarterId): ServiceRow['event'] => {
+  const record = save.alma?.find(r => r.quarter === quarter);
+  return record ? { type: record.type, params: { ...record.params } } : null;
+};
 export function serviceRecord(save: GameSave): ServiceRow[] {
   return save.played.map(({ period, outcome }) => ({ quarter: period, measures: outcome.reportCard.plan.measures,
     overall: { score: outcome.reportCard.plan.overall.score, grade: outcome.reportCard.plan.overall.grade },
-    strike: outcome.reportCard.plan.overall.score < STRIKE_BELOW, event: save.alma?.find(r => r.quarter === period)?.type ?? null }));
+    strike: outcome.reportCard.plan.overall.score < STRIKE_BELOW, event: eventRow(save, period) }));
 }
 export function removalOf(save: GameSave): Common['removed'] {
   const at = removedQuarter(save);
