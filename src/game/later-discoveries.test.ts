@@ -52,6 +52,10 @@ describe("a later quarter's discoveries (endless.md section 5, Plot's rulings on
     const culture = ctx({ weakest: ['culture'] });
     expect(keys({ measure: 'units', by: ['title'], filter: { quarter: ['2194-Q2'] } }, [{ title: 'T', units: 3 }], culture)).toContain('weakest');
     expect(keys({ measure: 'units', by: ['month'], filter: { quarter: ['2194-Q2'] } }, [{ month: '2194-05', units: 3 }], culture)).not.toContain('weakest');
+    // Tied binders: only the first, which the offer and its texts name, counts.
+    const tied = ctx({ weakest: ['profit', 'culture'] });
+    expect(keys({ measure: 'units', by: ['title'], filter: { quarter: ['2194-Q2'] } }, [{ title: 'T', units: 3 }], tied)).not.toContain('weakest');
+    expect(keys({ measure: 'revenue', by: ['title'], filter: { quarter: ['2194-Q2'] } }, [{ title: 'T', revenue: 3 }], tied)).toContain('weakest');
     const happiness = ctx({ weakest: ['happiness'] });
     expect(keys({ measure: 'avg_rating', by: ['title'] }, [{ title: 'T', avg_rating: 4.1 }], happiness)).toContain('weakest');
   });
