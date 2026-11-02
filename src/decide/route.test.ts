@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const game = vi.hoisted(() => ({ getPlan: vi.fn(), submitPlan: vi.fn(), currentQuarter: vi.fn(), submitQ2Plan: vi.fn(), getQ2Candidates: vi.fn() }));
+const game = vi.hoisted(() => ({ getPlan: vi.fn(), submitPlan: vi.fn(), currentQuarter: vi.fn(), submitQuarterPlan: vi.fn(), getQuarterBrief: vi.fn() }));
 vi.mock("~/game/game.server", () => game);
 vi.mock("~/platform/analytics/analytics.server", () => ({ trackServer: vi.fn() }));
 
@@ -84,23 +84,27 @@ describe("the Decide action in Q2", () => {
 
   beforeEach(() => {
     game.currentQuarter.mockReset().mockReturnValue("2194-Q2");
-    game.submitQ2Plan.mockReset().mockReturnValue({ outcomeId: "y" });
+    // As the game's submitQuarterPlan: a form for a quarter other than the open one is refused as played (#213).
+    game.submitQuarterPlan.mockReset().mockImplementation((_request: Request, _plan: unknown, expected: string) => {
+      if (expected !== game.currentQuarter()) throw new Response("This quarter has already been played.", { status: 409 });
+      return Promise.resolve({ outcomeId: "y" });
+    });
     game.submitPlan.mockReset();
   });
 
   it("submits the picks and the move", async () => {
     expect(await act(q2())).toEqual({ data: { ok: true }, status: 200 });
-    expect(game.submitQ2Plan).toHaveBeenCalledWith(expect.any(Request), { picks: [A, null, B], levers: ["events"] });
+    expect(game.submitQuarterPlan).toHaveBeenCalledWith(expect.any(Request), { picks: [A, null, B], levers: ["events"] }, "2194-Q2");
     expect(game.submitPlan).not.toHaveBeenCalled();
   });
 
   it("holds course with no picks and no move", async () => {
     expect(await act(q2("picks=%2C%2C&levers="))).toEqual({ data: { ok: true }, status: 200 });
-    expect(game.submitQ2Plan).toHaveBeenCalledWith(expect.any(Request), { picks: [null, null, null], levers: [] });
+    expect(game.submitQuarterPlan).toHaveBeenCalledWith(expect.any(Request), { picks: [null, null, null], levers: [] }, "2194-Q2");
   });
 
   it("says why the engine refused a plan, and refuses a malformed one at the door", async () => {
-    game.submitQ2Plan.mockImplementation(() => {
+    game.submitQuarterPlan.mockImplementation(() => {
       throw Response.json({ problem: "same-title" }, { status: 400 });
     });
     expect(await act(q2())).toEqual({ data: { ok: false, played: false, problem: "same-title" }, status: 400 });
@@ -110,17 +114,17 @@ describe("the Decide action in Q2", () => {
   it("sends a Q1 plan from a tab left open in Q1 to the results: that quarter is played", async () => {
     expect(await act(q2("levers=events"))).toEqual({ data: { ok: false, played: true }, status: 409 });
     expect(game.submitPlan).not.toHaveBeenCalled();
-    expect(game.submitQ2Plan).not.toHaveBeenCalled();
+    expect(game.submitQuarterPlan).not.toHaveBeenCalled();
   });
 
   it("sends a plan that lost the race to the results, and not a busy save", async () => {
-    game.submitQ2Plan.mockImplementation(() => {
+    game.submitQuarterPlan.mockImplementation(() => {
       game.currentQuarter.mockReturnValue(null);
       throw new Response("This quarter has already been played.", { status: 409 });
     });
     expect(await act(q2())).toEqual({ data: { ok: false, played: true }, status: 409 });
     game.currentQuarter.mockReturnValue("2194-Q2");
-    game.submitQ2Plan.mockImplementation(() => {
+    game.submitQuarterPlan.mockImplementation(() => {
       throw new Response("Game state changed. Reload and try again.", { status: 409 });
     });
     expect(await act(q2())).toEqual({ data: { ok: false, played: false }, status: 409 });
@@ -128,7 +132,7 @@ describe("the Decide action in Q2", () => {
 
   it("doesn't send a Q2 plan refused during Q1 to the results", async () => {
     game.currentQuarter.mockReturnValue("2194-Q1");
-    game.submitQ2Plan.mockImplementation(() => {
+    game.submitQuarterPlan.mockImplementation(() => {
       throw new Response("Play the first quarter first.", { status: 409 });
     });
     expect(await act(q2())).toEqual({ data: { ok: false, played: false }, status: 409 });
@@ -138,7 +142,6 @@ describe("the Decide action in Q2", () => {
     // A Q2 form left open in another tab, sent once Q3 is open: Q2 was played, so to the results, and nothing is filed.
     game.currentQuarter.mockReturnValue("2194-Q3");
     expect(await act(q2())).toEqual({ data: { ok: false, played: true }, status: 409 });
-    expect(game.submitQ2Plan).not.toHaveBeenCalled();
     // A form for a quarter not yet open isn't played: back to choosing.
     game.currentQuarter.mockReturnValue("2194-Q2");
     expect(await act(q2(undefined, "2194-Q3"))).toEqual({ data: { ok: false, played: false }, status: 409 });
@@ -151,7 +154,7 @@ describe("the Decide action in Q2", () => {
     const unreadable = () => {
       throw new Response("Start a game.", { status: 401 });
     };
-    game.submitQ2Plan.mockImplementation(unreadable);
+    game.submitQuarterPlan.mockImplementation(unreadable);
     game.currentQuarter.mockImplementation(unreadable);
     expect(await act(q2())).toEqual({ data: { ok: false, played: false }, status: 401 });
   });

@@ -5,6 +5,7 @@
 import { quarterIndex, quarterMonths, quarterNumber, type QuarterId } from "~/simulation/quarters";
 import type { BossId } from "~/platform/bosses/bosses";
 import type { MeasureId, Q2LeverId } from "~/simulation/types";
+import { FORMAT_WORDS } from "~/simulation/words";
 import { DECIDE_COPY, MOVES, type BriefingBubble } from "./copy";
 
 export const MONTHS = ["April", "May", "June"] as const;
@@ -210,7 +211,7 @@ function factsFor(boss: BossId, quarter: QuarterId, brief: PlanBrief | null): Br
         { strong: "5%" },
         ". ",
         ...(brief?.formatCost
-          ? [{ strong: capitalized(brief.formatCost.format) }, " copies cost the store ", { strong: `${percentText(brief.formatCost.percent)} of their list price` }, " this quarter; other books, 60%."]
+          ? [{ strong: capitalized(FORMAT_WORDS[brief.formatCost.format] ?? brief.formatCost.format) }, " copies cost the store ", { strong: `${percentText(brief.formatCost.percent)} of their list price` }, " this quarter; other books, 60%."]
           : ["Books cost the store ", { strong: "60% of their list price" }, "."]),
       ];
     case "culture":

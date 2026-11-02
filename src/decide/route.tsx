@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { data, Link, redirect, useFetcher, useLoaderData, useNavigate, type ShouldRevalidateFunctionArgs } from "react-router";
 
-import { currentQuarter, getPlan, getQ2Candidates, submitPlan, submitQ2Plan } from "~/game/game.server";
+import { currentQuarter, getPlan, getQuarterBrief, submitPlan, submitQuarterPlan } from "~/game/game.server";
 import { compareQuarters, FIRST_QUARTER, type QuarterId } from "~/game/quarters";
 import { planOf } from "~/simulation/plan";
 import { MAX_LEVERS, type LeverId, type Plan, type Q2LeverId, type Q2Plan } from "~/simulation/types";
@@ -27,15 +27,16 @@ export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `Plan for ${quarterName(loaderData?.quarter ?? FIRST_QUARTER)} | Orbital Books` }];
 }
 
-export function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   // One plan per quarter: once the last one's in, the results are what's left to see.
   const quarter = currentQuarter(request);
   if (!quarter) throw redirect("/result");
   if (quarter === FIRST_QUARTER) return { quarter };
-  // Every later quarter is planned on Q2's form. Its picker: every edition sold in 2193 (Sim's list, by title then
-  // format), with only what's printed on it. The brief's details (stretch, event, strikes) come with Frank's step
-  // 1; until then (Q2 2194, the only later quarter the game plays) there are none.
-  return { quarter, candidates: getQ2Candidates(), brief: null as PlanBrief | null };
+  // Every later quarter is planned on Q2's form: the game's brief for it (Frank's getQuarterBrief), with the
+  // picker's editions and, from Q3 on, the quarter's event, stretch and strikes (null in Q2 2194, which has none).
+  const planned = await getQuarterBrief(request);
+  if (!planned) throw redirect("/result");
+  return { quarter: planned.quarter, candidates: planned.candidates, brief: planned.brief as PlanBrief | null };
 }
 
 // After submitting, the loader would redirect straight to the results; the
@@ -101,17 +102,11 @@ function laterPlayed(request: Request, asked: QuarterId | null): boolean {
 type Q2Problem = "shape" | "unknown-edition" | "same-title";
 
 async function actionQ2(request: Request, plan: Q2Plan, asked: QuarterId) {
-  // A plan is filed only for the quarter its form was written for, and only while that quarter is open: a form
-  // left open in another tab, sent once the save has moved on, goes to the results (Frank and Audit, #212).
-  let open: QuarterId | null | undefined;
+  // A plan is filed only for the quarter its form was written for: the game refuses another quarter's with a 409
+  // (Frank's submitQuarterPlan), and a form left open in another tab, sent once the save has moved on, goes to
+  // the results (Frank and Audit, #212). From Q3 on, filing waits for the quarter's Alma record.
   try {
-    open = currentQuarter(request);
-  } catch {
-    // Unreadable save: the submit below refuses it with a Response.
-  }
-  if (open !== undefined && open !== asked) return data({ ok: false as const, played: laterPlayed(request, asked) }, { status: 409 });
-  try {
-    submitQ2Plan(request, plan);
+    await submitQuarterPlan(request, plan, asked);
   } catch (error) {
     // A plan the engine refuses (an edition not sold in 2193, one title twice) is a 400 naming why (Frank's
     // game state, from Sim's q2PlanProblem); otherwise as Q1: a lost race, a busy save, storage trouble.
