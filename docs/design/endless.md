@@ -231,7 +231,7 @@ Nothing the player typed ever reaches Alma: no Dewey conversation, no investigat
   - `story`: plain prose for the memo, one or two sentences;
   - `stretch.reason`: the boss's reason, in capitals ("THE COUNCIL HAS READ A STUDY ABOUT FOOT TRAFFIC.");
   - `bossLine`: the transmission's line, in capitals.
-- **Checks on every text field:** numbers appear only as slots (`{{param}}`), which the server renders from params, formatted for each type, like Dewey's refs. Outside slots, Dewey's lexical ban applies (`figures.server.ts`): no digits, number words, `$` or `%`. There's also a character cap per field, no emoji, email redaction and no `@` at all (Claude Code puts the account's email into the model's context, the same risk as Dewey's).
+- **Checks on every text field:** numbers appear only as slots (`{{param}}`), which the server renders from params, formatted for each type, like Dewey's refs. Outside slots, the number half of Dewey's lexical ban applies (`figures.server.ts`): no digits, number words, fraction words, `$` or `%`. Its direction and comparison words don't: Alma's own event is the story's truth, so "surge" and "slump" are fine. There's also a character cap per field, no emoji, email redaction and no `@` at all (Claude Code puts the account's email into the model's context, the same risk as Dewey's).
 - **Zoolander only in `bossLine`.** Because the fields are separate, this can be checked: `story` and `stretch.reason` are rejected if they name him.
 - Any failure invalidates the whole record. Sentences aren't dropped, since a story with a hole makes no sense. Then one retry, then the scripted fallback.
 
