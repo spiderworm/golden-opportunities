@@ -6,8 +6,12 @@ import type { BookshopTables } from "~/bookshop/types";
 import { quarterDays, replayedDay } from "./model";
 import { q2Candidates } from "./q2";
 import { prepare } from "./simulate";
+import { EVENT_TYPES } from "~/alma/events";
+import { AGAINST } from "./conditions";
+import { isQ2Outcome } from "./outcome-check";
 import {
   anchorFor,
+  endlessCertificates,
   ENGINE_VERSION,
   eventProblem,
   goalsFor,
@@ -265,5 +269,68 @@ describe("recovery goals (section 2)", () => {
     // From the sale's 81 to author nights' 66 is a real fall in Happiness: the plan's, so it earns a recovery goal.
     expect(recoveryFor([sale, better], data)).toMatchObject({ measure: "happiness" });
     expect(recoveryFor([again], data)).toBeUndefined();
+  });
+});
+
+describe("Comeback and Weathered the Storm (endless-copy.md)", () => {
+  const cardWith = (met: Partial<Record<string, boolean>>): ReportCard =>
+    ({ measures: ["profit", "readers", "happiness", "culture"].map((id) => ({ id, met: met[id] ?? false })), certificates: [] }) as unknown as ReportCard;
+  const at = (ev: TurnEvent, plan: Q2Plan = NIGHTS): Turn => turn("2195-Q1", plan, ev);
+
+  it("use the same table of measures each event works against as Alma's choosing rules", () => {
+    expect(Object.fromEntries(EVENT_TYPES.map((t) => [t.id, [...t.against]]))).toEqual(AGAINST);
+  });
+
+  it("award Comeback for a met recovery goal, naming the quarter it fell in", () => {
+    const recovery = event("genre_surge", { genre: "Mystery", month: 1, percent: 20 }, { measure: "readers", percent: 20 }, 14);
+    expect(endlessCertificates(cardWith({ readers: true }), at(recovery), true)).toEqual([{ id: "comeback", measure: "readers", previous: "2194-Q4" }]);
+    expect(endlessCertificates(cardWith({ profit: true }), at(recovery), true)).toEqual([]);
+    // An extra stretch met is no comeback.
+    expect(endlessCertificates(cardWith({ readers: true }), at({ ...recovery, drop: undefined } as TurnEvent), true)).toEqual([]);
+  });
+
+  it("award Weathered the Storm when every measure the event works against met its goal", () => {
+    const slump = event("genre_slump", { genre: "Fiction", month: 2, percent: 20 });
+    expect(endlessCertificates(cardWith({ profit: true, readers: true, culture: true }), at(slump), false)).toEqual([
+      { id: "weathered", measures: ["profit", "readers", "culture"], event: { type: "genre_slump", params: { genre: "Fiction", month: 2, percent: 20 } } },
+    ]);
+    expect(endlessCertificates(cardWith({ profit: true, readers: true }), at(slump), false)).toEqual([]);
+    // A surge and a quiet quarter work against nothing, so they're never a storm.
+    for (const calm of [event("genre_surge", { genre: "Fiction", month: 2, percent: 20 }), QUIET])
+      expect(endlessCertificates(cardWith({ profit: true, readers: true, happiness: true, culture: true }), at(calm), true)).toEqual([]);
+  });
+
+  it("count author fares as a storm only above the usual $200, for a plan that ran author nights", () => {
+    const fares = event("author_fares", { cost: 350 });
+    expect(endlessCertificates(cardWith({ profit: true }), at(fares), true)).toMatchObject([{ id: "weathered", measures: ["profit"] }]);
+    expect(endlessCertificates(cardWith({ profit: true }), at(fares, HOLD), false)).toEqual([]);
+    expect(endlessCertificates(cardWith({ profit: true }), at(event("author_fares", { cost: 200 })), true)).toEqual([]);
+    // Cheaper nights help: quiet picks and author nights at $100 meet Profit's goal, and that's no storm.
+    const quiet = [isbn("Kalakalal Avenue", "Hardcover"), isbn("Can I Be Honest?", "Hardcover"), isbn("Who Did You Think You Were Kidding?", "Hardcover")];
+    const cheap = card(turn("2195-Q1", { picks: quiet, levers: ["events"] }, event("author_fares", { cost: 100 })));
+    expect(measure(cheap, "profit").met).toBe(true);
+    expect(cheap.certificates.some((c) => c.id === "weathered")).toBe(false);
+  });
+
+  it("appear on played quarters exactly when earned", { timeout: 60_000 }, () => {
+    const storms = [event("quiet_days", { weekday: "Saturday", percent: 20 }), event("format_costs", { format: "Hardcover", percent: 69 }), event("author_fares", { cost: 250 })];
+    for (const ev of storms)
+      for (const seed of [1, 2, 3]) {
+        const { outcome } = played(turn("2195-Q1", NIGHTS, ev, seed));
+        const card = outcome.reportCard.plan;
+        const met = AGAINST[ev.type].every((id) => card.measures.find((m) => m.id === id)!.met);
+        expect(card.certificates.some((c) => c.id === "weathered")).toBe(met);
+      }
+  });
+
+  it("are checked field by field when a save is read", () => {
+    // Q2's outcome, which the check reads today, carrying the later quarters' certificates.
+    const { outcome } = played(turn("2194-Q2", NIGHTS, null));
+    const withCertificate = (c: unknown) => ({ ...outcome, reportCard: { ...outcome.reportCard, plan: { ...outcome.reportCard.plan, certificates: [c] } } });
+    expect(isQ2Outcome(withCertificate({ id: "comeback", measure: "profit", previous: "2194-Q4" }))).toBe(true);
+    expect(isQ2Outcome(withCertificate({ id: "weathered", measures: ["profit"], event: { type: "author_fares", params: { cost: 150 } } }))).toBe(true);
+    expect(isQ2Outcome(withCertificate({ id: "comeback", measure: "profit", previous: "last spring" }))).toBe(false);
+    expect(isQ2Outcome(withCertificate({ id: "weathered", measures: ["profit", "profit"] }))).toBe(false);
+    expect(isQ2Outcome(withCertificate({ id: "weathered", note: "extra" }))).toBe(false);
   });
 });
