@@ -1,4 +1,4 @@
-import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 const directory = await vi.hoisted(async () => {
@@ -8,6 +8,7 @@ const directory = await vi.hoisted(async () => {
 });
 vi.mock('../platform/analytics/instance.server', () => ({ DATA_DIR: directory }));
 vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }));
+import { PLAYABLE_QUARTERS, setPlayableQuarters } from './quarters';
 import { currentQuarter, getOutcome, getPlan, getQ2Candidates, markAlertSeen, startNewGame, submitPlan, submitQ2Plan } from './game.server';
 import { getResultData } from './results.server';
 import { getGameSession, saves } from './session.server';
@@ -28,6 +29,9 @@ const byTitle = (title: string, format: string) => candidates.find(c => c.title 
 const quiet: Q2Plan = { picks: [byTitle('Land Water Sky Space', 'Hardcover'), byTitle('Thatchwork Cottage', 'Hardcover'), byTitle('Kalakalal Avenue', 'Hardcover')], levers: ['events'] };
 afterEach(() => vi.clearAllMocks());
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
+// The game as Q1 and Q2 built it, ending after Q2: the endless loop's own tests are endless.server.test.ts.
+beforeAll(() => setPlayableQuarters(2));
+afterAll(() => setPlayableQuarters(PLAYABLE_QUARTERS));
 
 describe('the second quarter', () => {
   it('plays Q1, then Q2, advancing the date and the visible quarters, one plan per quarter', async () => {

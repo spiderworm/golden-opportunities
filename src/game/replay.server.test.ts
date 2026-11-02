@@ -94,7 +94,7 @@ describe('a save whose replay no longer matches', () => {
     saves.update(id, save.revision, draft => { draft.played[0] = { ...draft.played[0]!, lines: { ...draft.played[0]!.lines!, hash: 'f'.repeat(64) } } as PlayedQuarter; });
     forgetReplays();
     const req = request(id, 'http://localhost/settings');
-    expect(getStationState(req)).toMatchObject({ date: '2194-07-01', standingOrder: { quarter: null } });
+    expect(getStationState(req)).toMatchObject({ date: '2194-07-01', standingOrder: { quarter: '2194-Q3' } });
     // Only what needs the lines refuses, and only when it reads them.
     const session = getGameSession(req);
     expect(session.save.id).toBe(id);
