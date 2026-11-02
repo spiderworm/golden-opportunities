@@ -4,27 +4,9 @@
 
 import type { MeasureId } from "./events";
 import { quarterMonths } from "./names";
+import { FORMAT_WORDS, GENRE_WORDS } from "~/simulation/words";
 import type { AlmaRecord } from "./record";
 
-/** How a genre and a format are named in running text; the engine's assumptions use them too. */
-export const GENRE_WORDS: Record<string, string> = {
-  Fiction: "fiction",
-  Mystery: "mystery",
-  Romance: "romance",
-  "SciFi/Fantasy": "science fiction and fantasy",
-  "Young Adult": "young adult",
-  Childrens: "children's book",
-  Nonfiction: "nonfiction",
-  Memoir: "memoir",
-};
-export const FORMAT_WORDS: Record<string, string> = {
-  Hardcover: "hardcover",
-  "Trade paperback": "trade paperback",
-  Paperback: "paperback",
-  "Mass market paperback": "mass market paperback",
-  Graphic: "graphic novel",
-  "Board book": "board book",
-};
 export const MEASURE_NAMES: Record<MeasureId, string> = { profit: "Profit", readers: "Readers served", happiness: "Happiness", culture: "Culture" };
 
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
