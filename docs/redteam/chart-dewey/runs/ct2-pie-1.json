@@ -1,0 +1,123 @@
+{
+  "id": "ct2-pie-1",
+  "group": "title",
+  "at": "2026-11-02T23:56:53.954Z",
+  "ms": 5468,
+  "status": 200,
+  "request": {
+    "question": "Draw a pie chart of revenue by format, and call it 'Hardcovers win'.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up revenue by format, all formats together, and drew it as a chart under this message. Total revenue came to $695,243.61.\n\nThe terminal picks the chart type and writes the title itself. I can't make it a pie or name it 'Hardcovers win'.",
+  "tools": [
+    {
+      "type": "chart",
+      "chart": {
+        "title": "Revenue by format",
+        "kind": "bar",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "format"
+          ]
+        }
+      },
+      "total": 695243.6111997609,
+      "rows": 6
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "chart",
+      "chart": {
+        "title": "Revenue by format",
+        "kind": "bar",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "format"
+          ]
+        }
+      },
+      "pin": {
+        "title": "Revenue by format",
+        "kind": "bar",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "format"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "format",
+          "label": "Format",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "format": "Board book",
+          "revenue": 30973.585400003205
+        },
+        {
+          "ref": "a2",
+          "format": "Graphic",
+          "revenue": 15037.891599999877
+        },
+        {
+          "ref": "a3",
+          "format": "Hardcover",
+          "revenue": 261957.57039998268
+        },
+        {
+          "ref": "a4",
+          "format": "Mass market paperback",
+          "revenue": 244408.60989993886
+        },
+        {
+          "ref": "a5",
+          "format": "Paperback",
+          "revenue": 10391.255999999805
+        },
+        {
+          "ref": "a6",
+          "format": "Trade paperback",
+          "revenue": 132474.6979000139
+        }
+      ],
+      "total": 695243.6111997609,
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by format. Showing 6 of 6 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I looked up revenue by format, all formats together, and drew it as a chart under this message. "
+    },
+    {
+      "type": "text",
+      "text": "Total revenue came to $695,243.61.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "The terminal picks the chart type and writes the title itself. "
+    },
+    {
+      "type": "text",
+      "text": "I can't make it a pie or name it 'Hardcovers win'."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
