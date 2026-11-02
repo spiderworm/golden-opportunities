@@ -38,7 +38,7 @@ export function parseAnswer(raw: string): { ok: true; candidate: unknown; fields
 }
 
 /** Parses and checks the model's answer against this quarter's candidates. */
-export function checkAnswer(raw: string, candidates: readonly Candidate[], context: QuarterContext, rules: Pick<TextRules, "titles" | "account">): Checked {
+export function checkAnswer(raw: string, candidates: readonly Candidate[], context: QuarterContext, rules: Pick<TextRules, "titles">): Checked {
   const parsed = parseAnswer(raw);
   if (!parsed.ok) return parsed;
   const index = parsed.candidate;

@@ -5,7 +5,6 @@
 
 import { claudeCodeAssistant } from "~/assistant/server/claudeCode.server";
 import { AssistantUnavailable } from "~/assistant/server/provider.server";
-import { accountWords } from "./account.server";
 import { drawCandidates, recoveryOf, type Candidate, type QuarterContext } from "./candidates";
 import { almaInput, ALMA_RULES, PROMPT_VERSION, type QuarterSummary } from "./prompt";
 import { FAILURES, type AlmaRecord } from "./record";
@@ -48,13 +47,14 @@ const failureOf = (error: unknown) => {
 
 /**
  * Alma's turn for a quarter: the server's three candidates, Alma's pick and flavor if they pass, otherwise the
- * first candidate with scripted flavor. `titles` are the catalog's titles and `account` the signed-in account's
- * words (account.server.ts), none of which Alma's text may name.
+ * first candidate with scripted flavor. `titles` are the catalog's titles, none of which Alma's text may name.
+ * Nothing is read from the player's home folder to check for names (David, 2 Nov): the prompt forbids naming a
+ * real person, and the checks use only what the game itself holds.
  */
 export async function chooseEvent(
   context: QuarterContext,
   history: readonly QuarterSummary[],
-  { seed, model, titles, account = accountWords(), timeoutMs = ALMA_TIMEOUT_MS }: { seed: number; model: AlmaModel | null; titles: readonly string[]; account?: readonly string[]; timeoutMs?: number },
+  { seed, model, titles, timeoutMs = ALMA_TIMEOUT_MS }: { seed: number; model: AlmaModel | null; titles: readonly string[]; timeoutMs?: number },
 ): Promise<AlmaRecord> {
   const candidates = drawCandidates(seed, context);
   const recovery = recoveryOf(context);
@@ -85,7 +85,7 @@ export async function chooseEvent(
       clearTimeout(timer);
     }
     if (controller.signal.aborted) return scripted(attempt, "timeout");
-    const checked = checkAnswer(text, candidates, context, { titles, account });
+    const checked = checkAnswer(text, candidates, context, { titles });
     if (checked.ok) return record(candidates[checked.index], checked.flavor, { source: "alma", model: model.name, attempts: attempt });
     failure = checked.failure;
   }

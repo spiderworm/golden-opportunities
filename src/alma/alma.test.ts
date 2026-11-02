@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AssistantUnavailable } from "~/assistant/server/provider.server";
 import { apart, candidateProblem, drawCandidates, type Candidate, type QuarterContext } from "./candidates";
@@ -13,11 +13,10 @@ import { checkAnswer, parseAnswer, wantsReason } from "./validate";
 
 const data = JSON.parse(readFileSync(new URL("../bookshop/data.json", import.meta.url), "utf8"));
 const TITLES: string[] = [...new Set<string>(data.books.map((b: { title: string }) => b.title))];
-const ACCOUNT = ["jordan", "avery"];
 
 const surge: Candidate = { type: "genre_surge", params: { genre: "Mystery", month: 2, percent: 20 }, stretch: { measure: "culture", percent: 15 } };
 const context: QuarterContext = { quarter: "2194-Q3", previous: [], strikes: 0 };
-const rules = (candidate = surge): TextRules => ({ candidate, quarter: "2194-Q3", titles: TITLES, account: ACCOUNT });
+const rules = (candidate = surge): TextRules => ({ candidate, quarter: "2194-Q3", titles: TITLES });
 const record = (over: Partial<AlmaRecord> = {}): AlmaRecord => ({
   quarter: "2194-Q3",
   source: "alma",
@@ -33,7 +32,7 @@ const record = (over: Partial<AlmaRecord> = {}): AlmaRecord => ({
   ...over,
 });
 const answer = (over: object = {}) => JSON.stringify({ candidate: 0, story: "A book club on the hydroponics deck has started on detective stories.", reason: "THE ARTS PANEL IS PREPARING ITS ANNUAL REVIEW.", bossLine: "THE COMMERCE OFFICE HAS NOTED IT.", ...over });
-const checks = { titles: TITLES, account: ACCOUNT };
+const checks = { titles: TITLES };
 
 describe("the event types", () => {
   it("name the data's own genres and formats", () => {
@@ -147,10 +146,12 @@ describe("the text checks", () => {
     expect(textProblem("bossLine", "SEE YOU IN JULY.", rules())).toBe("name");
   });
 
-  it("never let the account holder's name through (Probe's review)", () => {
-    expect(textProblem("story", "Jordan has opened a club on the deck.", rules())).toBe("account");
-    expect(textProblem("bossLine", "AVERY KNOWS.", rules())).toBe("account");
-    expect(textProblem("story", "The jordanian club meets on the deck.", rules())).toBeNull();
+  it("read nothing from the player's home folder: the prompt forbids real names (David, 2 Nov)", () => {
+    expect(ALMA_RULES).toMatch(/never a real person/);
+    for (const file of readdirSync(new URL(".", import.meta.url)).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))) {
+      const source = readFileSync(new URL(file, import.meta.url), "utf8");
+      expect(source, file).not.toMatch(/node:fs|node:os|homedir|\.claude\.json|CLAUDE_CONFIG_DIR/);
+    }
   });
 
   it("refuse addresses, emoji, control characters, the wrong voice, misplaced Zoolander and Alma, and overlong text", () => {
