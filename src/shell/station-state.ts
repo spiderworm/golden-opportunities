@@ -1,6 +1,7 @@
 import { alertsSeenOf, currentQuarter } from "~/game/progress";
 import type { QuarterId } from "~/game/quarters";
 import { getGameSession } from "~/game/session.server";
+import { dataVersion } from "~/query/data-version.server";
 import type { Grade, MeasureId } from "~/simulation/types";
 import { ALERT_COPY, Q2_ALERT_COPY } from "./alert-copy";
 import type { StationNotification } from "./NotificationsBell";
@@ -17,6 +18,11 @@ export interface StationState {
   standingOrder: { quarter: QuarterId | null; seen: boolean; submitted: boolean };
   /** Q1's overall result, for Q2's memo ("First-quarter overall score"); null until Q1 is played. */
   q1: { score: number; grade: Grade; binding: MeasureId[] } | null;
+  /**
+   * The version of what this save's queries can see: it changes on every plan commit, reset, new game and server
+   * restart, and nowhere else. Browser caches of query results key on it (src/query/data-version.server.ts).
+   */
+  dataVersion: string;
 }
 
 export function getStationState(request: Request): StationState {
@@ -35,5 +41,6 @@ export function getStationState(request: Request): StationState {
     alerts,
     standingOrder: { quarter, seen: quarter === null || seen.includes(quarter), submitted: quarter === null },
     q1: q1 ? { score: q1.score, grade: q1.grade, binding: [...q1.binding] } : null,
+    dataVersion: dataVersion(save),
   };
 }
