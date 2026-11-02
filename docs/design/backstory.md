@@ -1,6 +1,6 @@
 # The station's backstory, written by Alma for each game (design)
 
-Status: **proposal, for Audit, Sage and Probe.** Plot wrote it. Sage builds it after the look-alikes PR. Probe red-teams it, because Alma's text reaching Dewey's prompt is a new path.
+Status: **approved by David, November 2, 2026** (section 10). For Audit, Sage and Probe. Plot wrote it. Sage builds it after the look-alikes PR. Probe red-teams it, because Alma's text reaching Dewey's prompt is a new path.
 
 ## 1. What David asked
 
@@ -135,8 +135,10 @@ This is the first time Alma's text reaches Dewey's prompt, so Alma's output is t
 - **Privacy page:** add to the Alma paragraph: "At the start of each game, Alma also writes a short backstory for the station through Claude Code, under the signed-in account. It sends no game data and nothing you typed." Sage makes the edit in the build PR.
 - **Analytics:** one server event, `backstory_written`, with `source` (alma or scripted), `take`, `attempts`, `failure` (a code from the fixed list) and `durationMs`. The event never includes the text, as with every other event.
 
-## 10. Decisions for David
+## 10. David's decisions
 
-1. **Dewey only.** The backstory shows nowhere but Dewey's panel. The alternative is a line in the first transmission or on the station screen. It would set the scene for players who never open Dewey, but it would also put Alma's text on a screen the bosses own.
-2. **One `short` sentence, shown at most once per conversation, replaces the repeated withheld line,** and later withholdings use the plain `I only give figures I've just looked up.` The alternative is a fresh variation every time, which would need several `short` lines and more checking.
-3. **The server picks the take and the details; Alma writes the words.** The alternative is Alma choosing the take itself. That gives more variety, but the server can't then guarantee that the fallback matches it.
+David answered all three in a dialog on November 2:
+
+1. **Dewey only, to start.** His words: "It might come up in robot bosses flavor text as well, ideally. But we can start with Dewey". So the backstory shows only in Dewey's panel for now. **Planned follow-up: the bosses' flavor text.** It would put Alma's backstory on screens the bosses own (transmissions, the brief), so it needs this page's checks, plus the same rule as Alma's quarters that Zoolander appears only in boss lines.
+2. **The short story once.** He chose "Short story once (Recommended)": the backstory's `short` sentence the first time a sentence is withheld in a conversation, then the plain `I only give figures I've just looked up.` (section 6).
+3. **The server picks the take, and Alma writes.** He chose "Server picks, Alma writes (Recommended)" (section 4).
