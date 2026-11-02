@@ -127,6 +127,21 @@ export function startNewGame(request: Request): string {
     return failure(error);
   }
 }
+/**
+ * Reset, from Settings, at any point in the game: a new save from 1 January with a new seed, as Play again gives.
+ * Returns its Set-Cookie value; the old save expires unused. Records how far the old game had got.
+ */
+export function resetGame(request: Request): string {
+  try {
+    refuseUnlessLocalPost(request);
+    const reached = quarterOf(current(request))?.slice(5) ?? 'finished';
+    const cookie = saveCookie(startGame(), request);
+    event('game_reset', { quarter: reached });
+    return cookie;
+  } catch (error) {
+    return failure(error);
+  }
+}
 /** The opening transmission has been seen (opened or put off): the bell's alert is read, and the transmission doesn't return. Idempotent. */
 export function markAlertSeen(request: Request): void {
   try {

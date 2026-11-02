@@ -5,7 +5,7 @@ import { addPin, parsePins, parsePinSpec, pinKey, type Pin, type PinSpec } from 
 
 // TODO(game-state): pins belong in the player's save once Frank's game state
 // lands. Until then they're kept in this browser.
-const STORAGE_KEY = "orbital-books:pins:v1";
+export const STORAGE_KEY = "orbital-books:pins:v1";
 
 export interface Pins {
   pins: Pin[];
