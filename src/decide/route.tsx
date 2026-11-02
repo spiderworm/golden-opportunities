@@ -30,7 +30,7 @@ export function loader({ request }: Route.LoaderArgs) {
   // One plan per quarter: once the last one's in, the results are what's left to see.
   const quarter = currentQuarter(request);
   if (!quarter) throw redirect("/result");
-  if (quarter === "2194-Q1") return { quarter };
+  if (quarter === "2194-Q1") return { quarter: "2194-Q1" as const };
   // Q2's picker: every edition sold in 2193 (Sim's list, by title then format), with only what's printed on it.
   return { quarter, candidates: getQ2Candidates() };
 }
