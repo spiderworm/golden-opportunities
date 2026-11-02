@@ -7,7 +7,8 @@ import { ASSISTANT_NAME } from "../name.ts";
 import { chartTitle, lookupPin, type ChartSpec } from "../tools/definitions.ts";
 import { acquire, arrive, ndjson } from "./assistant.server.ts";
 import { markOffline, OFFLINE, type OfflineReason } from "./availability.server.ts";
-import { Refs, scrubDeep, sentenceGate } from "./figures.server.ts";
+import { Refs, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
+import type { BackstoryText } from "../../alma/backstory.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
 import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
 
@@ -167,7 +168,10 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
 /** Builds the provider for one answer; `pins` says whether it may have the pin tool. */
 export type ProviderFor = (options: { pins: boolean }) => AssistantProvider;
 
-export function ask(request: Request, providerFor: ProviderFor, track: ServerTrack, now: () => number = Date.now, deadlineMs?: number): Promise<Response> {
+/** The game's backstory for this request, checked (src/alma/backstory.ts), or null without a game. */
+export type BackstoryFor = (request: Request) => BackstoryText | null;
+
+export function ask(request: Request, providerFor: ProviderFor, track: ServerTrack, now: () => number = Date.now, deadlineMs?: number, backstoryFor: BackstoryFor = () => null): Promise<Response> {
   return (async () => {
     const refused = (e: unknown) => {
       if (!(e instanceof Refused)) throw e;
@@ -204,7 +208,12 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     const stats = { lookups: 0, failedLookups: 0, comparisons: 0, charts: 0, pins: 0, chars: 0, withheld: 0, figures: 0 };
     let outcome = "aborted";
     const nonce = randomBytes(6).toString("hex");
-    const prompt = buildPrompt(input.question, input.history, { pins: input.pins }, nonce);
+    const backstory = backstoryFor(request);
+    const prompt = buildPrompt(input.question, input.history, { pins: input.pins, ...(backstory ? { backstory } : {}) }, nonce);
+    // The withheld note (docs/design/backstory.md, section 6): the backstory's short sentence the first time in a
+    // conversation, then the plain line. The history is the browser's, so an edited one changes only which.
+    const noted = input.history.some((t) => t.role !== "player" && (t.text.includes(WITHHELD) || (backstory !== null && t.text.includes(backstory.short))));
+    const note = backstory && !noted ? backstory.short : WITHHELD;
     // The fence code is no secret worth keeping (it's new for every answer), but nothing has a reason to show
     // it (P4): it's cut from every string sent to the browser.
     const hide = <T,>(value: T) => scrubDeep(value, nonce);
@@ -213,8 +222,11 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     const refs = new Refs();
     // Each withheld sentence is kept on this machine only, held like the player's own text (never sent), so the
     // filter's catches can be read: advice it stopped, or a harmless word it shouldn't have (Probe's Q2 red-team).
-    const gate = sentenceGate(refs, hide, (sentence) =>
-      track("assistant_sentence_withheld", { text: sentence.slice(0, WITHHELD_KEPT), chars: sentence.length, kind: questionKind(input.question) }, { hold: "agent_text" }),
+    const gate = sentenceGate(
+      refs,
+      hide,
+      (sentence) => track("assistant_sentence_withheld", { text: sentence.slice(0, WITHHELD_KEPT), chars: sentence.length, kind: questionKind(input.question) }, { hold: "agent_text" }),
+      note,
     );
     let last = "";
     let afterTool = false;
@@ -268,7 +280,7 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
           const rest = gate.flush();
           if (rest) yield { type: "text", text: rest };
           outcome = signal.aborted ? "aborted" : "answered";
-          if (!signal.aborted) yield { type: "done" };
+          if (!signal.aborted) yield { type: "done", withheld: gate.withheld };
         } catch (e) {
           outcome = e instanceof AssistantUnavailable ? "unavailable" : "failed";
           // Remember it, so the panel says so before the next question (and the event says why).

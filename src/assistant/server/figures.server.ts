@@ -16,7 +16,8 @@
 import type { Measure } from "../../query/types.ts";
 import { FORMAT_WORDS } from "../../simulation/words.ts";
 
-export const WITHHELD = "I'd rather not give a number I didn't look up.";
+/** The note in place of withheld sentences, after the first in a conversation (which is the backstory's short). */
+export const WITHHELD = "I only give figures I've just looked up.";
 
 type Kind = "currency" | "count" | "plain" | "fraction";
 const KINDS: Record<Measure, Kind> = {
@@ -553,7 +554,7 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity, a
  * are resolved when each sentence completes, so a ref cited before its lookup came back is withheld too.
  * `onWithheld` gets each withheld sentence, cleaned, so the server can keep it on the device (Probe's Q2 red-team).
  */
-export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s, onWithheld?: (sentence: string) => void) {
+export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s, onWithheld?: (sentence: string) => void, note: string = WITHHELD) {
   let held = "";
   // Where each held chunk starts, and how many lookups had come back when it arrived.
   let stamps: { at: number; known: number }[] = [];
@@ -590,7 +591,7 @@ export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s
         if (gap) gap = trail;
         continue;
       }
-      out += gap + WITHHELD;
+      out += gap + note;
       gap = trail;
       noted = true;
     }

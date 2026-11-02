@@ -12,7 +12,7 @@ it("renders an empty panel on the server, without touching storage, and offers n
   });
   const Stub = createRoutesStub([{ path: "/", Component: () => <AssistantPanel storage={storage} track={() => {}} /> }]);
   const html = renderToString(<Stub initialEntries={["/"]} />);
-  expect(html).toMatch(/Ask about your sales/);
+  expect(html).toMatch(/Ask me about your sales/);
   expect(html).not.toMatch(/New conversation/);
 });
 
