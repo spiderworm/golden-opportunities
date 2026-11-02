@@ -95,13 +95,10 @@ function pickedCopies(r: Run, months: readonly string[]) {
   for (const order of r.orders) {
     // The sale's clones are the sale's doing, not the picks'.
     if (order.saleClone) continue;
-    if (order.kind === "pick-extra") {
-      extra += 1;
-      continue;
-    }
     const isbn = r.picks[months.indexOf(order.day.slice(5, 7))];
     for (const item of order.items)
-      if (item.isbn === isbn) {
+      if (item.extra) extra += 1;
+      else if (item.isbn === isbn) {
         baseCopies += 1;
         discountCost += PICK_DISCOUNT * item.listPrice;
       }

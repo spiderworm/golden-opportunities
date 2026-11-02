@@ -69,7 +69,7 @@ The brief allows "data of your own choosing", and David decided that generated d
 | File | Quarter | Plan | Lines |
 | --- | --- | --- | ---: |
 | `sales-2194-q1-hold-course.csv` | Q1 2194 | Holding course | 8,115 |
-| `sales-2194-q1-repick-and-author-nights.csv` | Q1 2194 | Re-pick the Books of the Month, plus author nights | 8,802 |
+| `sales-2194-q1-repick-and-author-nights.csv` | Q1 2194 | Re-pick the Books of the Month, plus author nights | 8,800 |
 | `sales-2194-q2-hold-course.csv` | Q2 2194 | Holding course: the empty calendar, no picks | 13,685 |
 | `sales-2194-q2-quiet-picks-and-author-nights.csv` | Q2 2194 | *Land Water Sky Space*, *Thatchwork Cottage* and *Kalakalal Avenue* (hardcovers), plus author nights | 14,482 |
 
