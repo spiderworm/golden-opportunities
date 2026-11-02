@@ -273,12 +273,12 @@ function SeriesMenu({ choice, volumes, onChange }: { choice: SeriesChoice; volum
         aria-controls={panelId}
         onClick={() => setOpen(!open)}
       >
-        <span className={styles.filterName}>Series</span>
+        <span className={styles.filterName}>Series volume</span>
         <span className={styles.filterSummary}>{summary}</span>
         <Icon name="chevronDown" size={16} />
       </button>
       <fieldset id={panelId} className={styles.filterPanel} hidden={!open}>
-        <legend className={styles.visuallyHidden}>Series</legend>
+        <legend className={styles.visuallyHidden}>Series volume</legend>
         {choices.map((c) => (
           <label key={key(c.value)} className={styles.filterOption}>
             <input
