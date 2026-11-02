@@ -2,7 +2,6 @@
 // on, Alma's event as conditions, goals anchored with no ratchet, the recovery goal, and the strikes.
 // Pure and deterministic: a turn depends only on its quarter, seed, plan and event, and the data, so a
 // save's quarters replay exactly. Q1 and Q2 2194 are played by their own engines, unchanged.
-import { FORMAT_WORDS, GENRE_WORDS } from "~/alma/sentences";
 import type { BookshopData, DeepReadonly } from "~/bookshop/types";
 import { applyConditions, changesOrders, conditionsOf, type Conditions, type TurnEvent } from "./conditions";
 import { MONTH_NAMES, type QuarterCopy } from "./copy";
@@ -13,6 +12,7 @@ import { picksLines, simulatePicks, simulateQ2, type PicksQuarter } from "./q2";
 import { isQuarterName, quarterAt, quarterIndex, quarterNumber, type QuarterId } from "./quarters";
 import { EFFECT_SEEDS, historyFor, holdLevers, prepare, simulateQuarter } from "./simulate";
 import type { MeasureId, Plan, Q2Plan, Q2SimulationResult, ReportCard, SimulatedLine, SimulationResult } from "./types";
+import { FORMAT_WORDS, GENRE_WORDS } from "./words";
 import { MEASURE_IDS } from "./types";
 
 export type { TurnEvent } from "./conditions";
