@@ -49,6 +49,8 @@ Alma chooses **one event per quarter** from a fixed list of types, and **one mea
 - **No piling on:** while the player is on a strike (section 7), Alma may choose only a genre surge, author fares or a quiet quarter. A removal should come from the player's plans, not from Alma's dice.
 - **Recovery goals:** if a measure fell by more than 10% against the same quarter a year earlier, the stretch must name it, and the reason is the drop: `HAPPINESS FELL 14%. RESTORE IT.` (`scoring.md`, "Recovery goals").
 
+**Bound:** an event's expected effect on holding course is at most 10% of any measure's anchor; the server rejects a record past that (section 8). The tier-1 limits stay inside it, with the largest swing at 9.8% (format costs, on profit).
+
 **How goals count an event (proposal).** As with the new volume (#107), each goal adds the event's expected effect on holding course. So an event changes what's best, not where 70 sits. The stretch is the exception: it raises one goal on purpose. **Alternative:** don't anchor events, so a bad event lowers everyone's grades, and meeting the goals anyway earns Weathered the Storm. That makes the dice decide strikes, which the removal rule can't tolerate.
 
 ## 3. The memo
@@ -166,7 +168,7 @@ Why this rule:
 - **B. Any F (under 60) removes at once.** One sale ends the game (Q1's sale scores 38 to 45). That's funny the first time and punishing after.
 - **C. Three strikes in any four quarters.** It's in between, but needs a counter the player has to track.
 
-Sim calibrates the strike rate (section 8): how often a reasonable plan collects a strike with events in play, and the chance that a good player is removed by bad luck. The target is near zero for plans like Q2's quiet picks plus author nights.
+**Calibrated (section 8):** with no ratchet, quiet picks plus author nights every quarter was removed in 1 of 20 games over five years. Holding course, the sale and the trap picks are removed at the end of Q2 2194, every time. The cost is in Q3 and Q4: a player making one sensible move each quarter is usually removed at Q4 2194. Under C, nobody making a sensible move is removed in the first year.
 
 **The removal screen.** It replaces the result screen's buttons once the panel has voted. The whole board speaks, in report-card order, and the facts are plain.
 
@@ -189,12 +191,103 @@ Sim calibrates the strike rate (section 8): how often a reasonable plan collects
 
 ## 8. Model (Sim)
 
-*Sim's early answers (November 2); the calibrated numbers and the full section follow.*
-- **The baseline past Q4 2194:** 2193's same quarter again, every year, with no trend. Each year draws from its own seeded streams, so the noise differs. A trend would compound away from the data, and a fair anchor cancels it anyway. The new volume keeps selling at its post-launch rate, about 4.5 copies a day.
-- **Events are plain conditions on the baseline.** The engine takes a per-quarter conditions object, applied before the levers, so holding course lives through it too: a genre factor by month, a weekday factor, the author-night fare, and cost of goods by format. Genre and weekday factors use the engine's existing drop-or-clone mechanism, the one its daily noise uses.
-- **Anchoring events like the new volume:** agreed. Sim measures each event's swing on holding course and states the bounds.
-- **Goals, still open between Plot and Sim.** If "last year" became the player's own 2194 (a full ratchet), a player who repeats last year's good plan lands near the anchor, about 70. Noise puts that under 70 about half the time, and the 5% stretch compounds every year, so even a strong player would be removed within a few years. That contradicts David's "until the player does such a bad job". **Current proposal: no ratchet.** Each goal stays the 2193 replay of that quarter, plus the events' expected effects, plus 5%, plus Alma's stretch. Alma's stretches and events keep the quarters varied, so difficulty doesn't need to compound. Sim is calibrating three anchor rules (no ratchet, full ratchet, half ratchet) against three removal rules (two in a row under 70, two in a row under 60, and a strike count). The numbers decide sections 2 and 7 before this goes to David.
-- **Still to come:** the bands for hold course, quiet picks, and quiet picks plus author nights, with events in play, over 20 seeds and 8 quarters; the strike rate; and the chance that a good player is removed by bad luck.
+*Written by Sim, November 2, 2026. The numbers come from a prototype of the engine below, run over seeds 1 to 20 and 20 quarters (Q1 2194 to Q4 2198), with section 2's tier-1 limits and choosing rules. Its anchors averaged 8 of the 20 `EFFECT_SEEDS`. The prototype isn't committed. The build PR turns it into code, with these bands as its tests.*
+
+### The baseline, every quarter
+
+- **Q1 and Q2 2194 don't change.** Their draws, fingerprints and calibration stay as built.
+- **From Q3 2194, each quarter replays 2193's same quarter,** with M1's rules: the 364-day replay, 2193's Books of the Month removed, and ±3% daily noise. There's no trend. A trend would compound away from the data, and the anchor below would cancel it anyway.
+- **Every year has its own draws.** A quarter's streams are named by year and quarter: `q3:noise` in 2194, as now, and `2195:q1:noise` from 2195. One seed per game still decides everything.
+- **The new volume** sells at its post-launch rate from 2195 on, 4.5 copies a day from January 1, with no launch weeks. That's the rate `new-volume`'s Q2 assumption already states.
+- **Holding course** is no picks and no other move, from Q2 2194 on. The old manager's schedule ran only in Q1 2194, so Q1 2195's holding course has an empty calendar.
+
+### Events are conditions on the baseline
+
+Each quarter's event record becomes one plain `conditions` object. The engine applies it to the baseline, after the new volume and before the levers, so holding course lives through it too.
+
+| Condition | Engine effect | Event types |
+| --- | --- | --- |
+| `genre: { genre, month, factor }` | Each order with a line in that genre, in that month, is dropped (factor below 1) or cloned (above 1) with probability \|factor − 1\|. This is the daily noise's drop-or-clone, on its own `alma` stream. | Genre surge, genre slump |
+| `weekday: { weekday, factor }` | The same, for every order on that weekday, all quarter | Quiet days |
+| `fare` | Each author night costs `fare` instead of $200 | Author fares |
+| `cogs: { format, rate }` | That format's copies cost `rate` × list instead of 60% | Format costs |
+
+A quiet quarter and the stretch have no conditions. The stretch changes only the goal: anchor + max(stretch × \|anchor\|, step), in place of 5%.
+
+### Goals: anchored, no ratchet (decision 7)
+
+Each measure's **anchor**, the result that scores 70, is:
+
+> 2193's same quarter as sold + the new volume's expected effect on holding course + the event's expected effect on holding course.
+
+"Expected effect" means the mean, over `EFFECT_SEEDS` (101 to 120, as in #142), of holding course with the condition minus without it. The goal is the anchor plus 5%, or plus Alma's stretch for the stretched measure. That's the recipe Q1 and Q2 already use, so their anchors don't change.
+
+**The three goal rules, measured** (median overall score over the 20 seeds, Q1 2195 to Q4 2195):
+
+| Anchor | Hold course | Picks only | Author nights only | Quiet picks + author nights |
+| --- | --- | --- | --- | --- |
+| **No ratchet** (proposal) | 68, 66, 64, 62 | 71, 71, 68, 66 | 76.5, 73, 69, 68 | 85, 78.5, 72, 72 |
+| **Full ratchet** (last year = the player's own quarter, events anchored) | 63, 70, 69, 70 | 70, 68, 69, 69 | 64, 69, 68.5, 69.5 | 70, 68, 68, 69 |
+| **Half ratchet** (half of last year's gain over the anchor, never less) | 66, 66, 64, 62 | 70, 70, 68, 66 | 69.5, 71, 68.5, 68 | 76.5, 72.5, 70, 71 |
+
+- **A full ratchet flattens the card.** From Q2 2195, every plan's median is 68 to 70, holding course and the sale included. Last year's result becomes this year's floor whatever the player did, so the card stops telling plans apart. Under two-in-a-row, the good plan is removed in 15 of 20 games by the end of 2195.
+- **A half ratchet** keeps the plans apart, but still removes 7 of 20 good players within five years under two-in-a-row (below).
+- **No ratchet** keeps every quarter's bands where Q1 and Q2 put them. Alma's stretches and events vary the quarters, so the difficulty doesn't need to compound.
+
+### Event bounds
+
+The swing of each type's expected effect on holding course, as a share of the quarter's anchor without the event (the measured range over 20 seeds, Q3 2194 to Q4 2198):
+
+| Type, at section 2's limits | Profit | Readers served | Happiness | Culture |
+| --- | --- | --- | --- | --- |
+| Genre surge, +10 to 30% | 0 to +5.3% | 0 to +4.6% | −0.2 to +0.5% | 0 |
+| Genre slump, −10 to −25% | −2.7 to 0% | −2.3 to 0% | −0.3 to +0.2% | −0.9 to −0.1% |
+| Quiet days, −10 to −25% | −5.4 to −1.1% | −5.4 to −1.1% | under 0.1% | −2.2 to −0.4% |
+| Format costs, 65 to 70% | −9.8 to −0.2% (largest for hardcovers, then mass market paperbacks) | 0 | 0 | 0 |
+| Author fares, $100 to $400 | 0 for holding course; the good plan's profit lift ranges from −0.6% to +10.4% | 0 | 0 | 0 |
+
+- **The bound:** the server rejects an event record whose expected effect on holding course is more than **10% of any measure's anchor**. It checks this when the record is chosen, with the same seeds as the anchor, and a rejected record falls back like any invalid one. Every tier-1 type fits by construction: the largest swing measured is 9.8%.
+- **Because the goals are anchored, an event can't cause a strike by itself.** Holding course scores the same with or without it, and so does a plan that ignores it, within noise. What an event changes is what's best. Author fares, for example, move the author-night plan's profit lift over holding course from 2.2% (median) to anywhere between −0.6% and +10.4%.
+- **Culture under a surge:** a genre surge adds orders but almost no Culture. The clones repeat titles already sold that day, and each title counts once a day.
+- **Tier 2's lot** isn't calibrated. Its bound, when it's built:
+  - its size is at most 1.5 times the edition's copies in the same quarter of 2193;
+  - and the lot's price is at most 4% of the quarter's profit anchor (*tune*), which caps the write-off. The server checks both, like the other bound.
+  - Holding course doesn't bid, so the lot adds nothing to the anchor.
+
+### Removal, calibrated (decision 6)
+
+The rules applied to the same runs, with no ratchet. Each cell is how many of the 20 seeds were removed by the end of 2194, 2195, 2196 and 2198, and the median quarter of removal. "Quiet picks + author nights" chooses, each month, the best-rated hardcover that sold 2 copies or fewer in that month of 2193, which is Q2's quiet-picks idea in any quarter.
+
+| Plan, every quarter | Two strikes in a row (proposal) | Three strikes in any four (C) |
+| --- | --- | --- |
+| Hold course | 20, 20, 20, 20 of 20; Q2 2194 | 20 of 20; Q3 2194 |
+| The sale | 20 of 20; Q2 2194 | 20 of 20; Q3 2194 |
+| Bestseller picks (Q2's trap) | 20 of 20; Q2 2194 | 20 of 20; Q3 2194 |
+| Author nights only | 17, 20, 20, 20; Q4 2194 | 2, 4, 9, 10; Q1 to Q2 2196 |
+| Picks only (quiet) | 16, 19, 20, 20; Q4 2194 | 0 of 20 |
+| Quiet picks + author nights | 0, 0, 1, 1 of 20; Q1 2196 | 0 of 20 |
+
+**How often a reasonable plan collects a strike,** from Q3 2194 on (the share of quarters under 70, and the score range):
+
+| Plan | Q1 | Q2 | Q3 | Q4 |
+| --- | --- | --- | --- | --- |
+| Quiet picks + author nights | 1% (69–89) | 3% (67–83) | 10% (66–77) | 23% (64–82) |
+| Picks only | 0% (70–75) | 0% (70–74) | 83% (67–72) | 99% (64–70) |
+| Author nights only | 8% (66–85) | 9% (63–79) | 79% (63–71) | 95% (60–73) |
+| Hold course | 100% (68–69) | 100% (64–67) | 100% (62–66) | 100% (60–63) |
+
+- **Two strikes in a row meets section 7's target.** The good plan was removed in 1 of 20 games over five years, by a Q4-then-Q1 pair. Holding course, the sale and the trap picks are removed at the end of Q2 2194, every time.
+- **The cost: Q3 and Q4 are the hard quarters.** 2193's Q3 and Q4 had busy Books of the Month (December's sold 173 extra copies), so their anchors sit well above an empty calendar, and Q2's two levers are weaker there. A player making one sensible move each quarter is usually removed at Q4 2194. The event discoveries (section 5) should help a player who uses them: the prototype's good plan ignores the event, so these bands are a floor.
+- **C (three in any four) is the forgiving alternative.** It removes coasting a quarter later and spares the one-move players, except author nights only, half of whom go within five years. If David wants "a bad job" to mean D's every quarter, not one move a quarter, C is the rule.
+- **"No piling on" can't change these numbers.** With anchored goals, events don't cause strikes, so the rule only keeps the story kind.
+- **Two in a row under 60** was also measured. It removes only the sale and half the trap-pick players, so coasting survives forever. It isn't a candidate.
+
+### What the engine exposes
+
+- One pure call per quarter: `simulateTurn({ year, quarter, seed, plan, conditions, stretch })`, returning Q2's result shape (lines, the holding-course lines, the outcome and the report card). There's no I/O, as now. Frank's save supplies the year, quarter, seed, plan and the event record. Replaying the saved plans and records reproduces every score.
+- The quarter's anchor is computed and cached per (quarter, conditions). That takes 40 holding-course runs. The prototype ran about 20 a quarter in 0.15 s, so this should take well under a second, but the server should still compute it when Alma's record is saved, behind the result screen.
+- `conditionsOf(event)` maps an event record's type and params to `conditions`. It's the only place the engine reads Alma's record, so Sage's validator and the engine agree on one schema.
+- **Assumptions panel:** each condition adds one *assumed* rule in the quarter's assumptions. For example: "Mystery orders in August were 20% higher than the replay: Alma's event, counted in the goals."
 
 ## 9. Alma's engine (Sage)
 
@@ -255,6 +348,6 @@ Nothing the player typed ever reaches Alma: no Dewey conversation, no investigat
 3. **Goals count each event's expected effect, except the stretch** (section 2). The alternative: unanchored events, with Weathered the Storm for beating them.
 4. **No piling on:** on a strike, Alma may choose only a mild event (section 2).
 5. **Each quarter's discoveries come from its event,** plus "your last quarter on the record" and "your weakest measure" (section 5).
-6. **Removal is two strikes in a row,** a strike being an overall score under 70 (section 7). The alternatives are A (four-quarter average), B (any F) and C (three in four).
-7. **Goals don't ratchet:** every year's goals start from 2193's replay of that quarter, plus events and stretch, so a strong year doesn't raise the bar for the next (section 8). The alternatives are a full or a half ratchet. Sim's calibration of goals against removal settles 6 and 7 together.
+6. **Removal is two strikes in a row,** a strike being an overall score under 70 (section 7). Calibrated: the good plan survives 19 of 20 five-year games, and holding course is removed at the end of Q2 2194; one move a quarter is usually removed at Q4 2194 (section 8). The alternatives are A (four-quarter average), B (any F) and C (three in four), which spares one-move players.
+7. **Goals don't ratchet:** every year's goals start from 2193's replay of that quarter, plus events and stretch, so a strong year doesn't raise the bar for the next (section 8). The alternatives are a full ratchet, which flattens every plan to 68 to 70 from 2195, and a half ratchet, which removes 7 of 20 good players within five years (section 8).
 8. **The service record replaces the half-year review,** with an annual review after each Q4 (section 6).
