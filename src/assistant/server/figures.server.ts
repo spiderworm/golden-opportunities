@@ -76,6 +76,8 @@ interface RefInfo {
   /** A format label, as running text says it ("trade paperback"). */
   format?: string;
 }
+/** The title in an edition label, "Post Alley (Hardcover)" → "Post Alley". */
+const editionTitle = (edition: string) => /^(.*?)\s*\([^()]*\)\s*$/.exec(edition)?.[1]?.trim() || null;
 /** The format in an edition label, "Post Alley (Trade paperback)" or "Heliotrope Pajamas (Paperback, 2181)", as running text says it. */
 const editionFormat = (edition: string) => {
   const m = /\(([^,()]+)(?:,[^()]*)?\)\s*$/.exec(edition);
@@ -156,7 +158,7 @@ export class Refs {
     if (field === "list_price") {
       // The row's most specific subject: its edition if the lookup grouped by edition, else its title.
       const edition = at("edition");
-      const own = [edition, at("title")].filter((s): s is string => s !== undefined);
+      const own = [edition, edition && editionTitle(edition), at("title")].filter((s): s is string => !!s);
       const format = edition ? editionFormat(edition) : at("format") ? (FORMAT_WORDS[at("format")!] ?? null) : null;
       info.price = { own, subject: own[0] ?? null, format };
     }
@@ -171,9 +173,13 @@ export class Refs {
     for (const lookup of this.lookups.values()) {
       if (lookup.seq >= known) continue;
       for (const dim of ["edition", "title"]) {
-        if (lookup.dims.includes(dim)) for (const row of lookup.ordered) if (typeof row[dim] === "string") all.add(row[dim] as string);
-        const f = lookup.filtered.get(dim);
-        if (f) all.add(f);
+        const values = [...(lookup.dims.includes(dim) ? lookup.ordered.map((row) => row[dim]) : []), lookup.filtered.get(dim)];
+        for (const v of values) {
+          if (typeof v !== "string") continue;
+          all.add(v);
+          // The title inside an edition label is a book named too ("Heliotrope Pajamas", Probe's review of #228).
+          if (dim === "edition" && editionTitle(v)) all.add(editionTitle(v)!);
+        }
       }
     }
     return [...all].sort((a, b) => b.length - a.length);
@@ -368,7 +374,24 @@ const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&
 const PRICE_WORDS = /\b(?:price[sd]?|pricing|costs?|costing|list(?:s|ed)? at|sells? for|sold for|retail(?:s|ed)?|pay(?:s|ing)?|paid|spend(?:s|ing)?|spent|charge[sd]?|charging|worth)\b/iu;
 // A bound put on a figure: "costs under {{a2.list_price}}" claims a comparison the data didn't make.
 const BOUND = /\b(?:under|over|at least|at most|up to)\s*$/iu;
-const FORMATS = Object.values(FORMAT_WORDS).flatMap((f) => [f, `${f}s`]).sort((a, b) => b.length - a.length);
+// Format words as running text says them, with their plurals and synonyms, longest first, each with the format it
+// names. A synonym that fits more than one format ("softcover": trade, mass market or plain paperback) names
+// none, so it never matches a price's own format (Probe's review of #228).
+const FORMAT_NAMES: Record<string, string> = {
+  ...Object.fromEntries(Object.values(FORMAT_WORDS).map((f) => [f, f])),
+  hardback: "hardcover",
+  "hard cover": "hardcover",
+  "hard-cover": "hardcover",
+  "mass-market paperback": "mass market paperback",
+  softcover: "soft cover",
+  "soft cover": "soft cover",
+  "soft-cover": "soft cover",
+  softback: "soft cover",
+  "soft-back": "soft cover",
+};
+const FORMATS = Object.entries(FORMAT_NAMES).flatMap(([word, format]) => [[word, format], [`${word}s`, format]] as const).sort((a, b) => b[0].length - a[0].length);
+// In a sentence citing a list price, words that carry it over to another book (Probe's review of #228).
+const CARRY_OVER = /\b(?:same|too|also|likewise|as well|(?:as|so) (?:does|do|did|is|are)|like|alike|other|others|another|every|all|each|both|either)\b/iu;
 const wholeLabel = (text: string, flags: string) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(text)}(?![\\p{L}\\p{N}])`, flags);
 
 /**
@@ -378,8 +401,10 @@ const wholeLabel = (text: string, flags: string) => new RegExp(`(?<![\\p{L}\\p{N
  * - a list price isn't paired with its own book: an edition row's price needs its edition named (by ref, or its
  *   exact label), a title row's its title; no other edition or title from this answer may be named; and any
  *   format word, by ref or in prose, must be the price row's own format, matched whole ("paperback" isn't a trade
- *   paperback), for a book's price or a group's (a breakdown by format). A price with no book (a breakdown by
- *   price or format, or a confirmed filter) may sit only with no book named.
+ *   paperback; a synonym that fits several formats, "softcover", fits none), for a book's price or a group's (a
+ *   breakdown by format). The title inside an edition label counts as a book named. A book's price can't be
+ *   carried over to another ("too", "the same as", "like", "the other editions"). A price with no book (a
+ *   breakdown by price or format, or a confirmed filter) may sit only with no book named.
  */
 function priceProblem(folded: string, refs: Refs, known: number): boolean {
   const cited = [...folded.matchAll(REF)].map((m) => ({ at: m.index!, info: refs.describe(m[1]!.trim(), known) }));
@@ -388,6 +413,9 @@ function priceProblem(folded: string, refs: Refs, known: number): boolean {
   if (PRICE_WORDS.test(prose) && cited.some(({ info }) => info?.currency)) return true;
   const prices = cited.flatMap(({ info }) => (info?.price ? [info.price] : []));
   if (!prices.length) return false;
+  // A book's price can't be carried over to another ("…, and Heliotrope Pajamas does too"); a price group's
+  // words are about the group ("every title in $27.99"), so they stay.
+  if (prices.some((p) => p.subject) && CARRY_OVER.test(prose)) return true;
   // The books the sentence names: by ref, and by exact label in its prose (longest first, each once).
   const named = cited.flatMap(({ info }) => (info?.subject ? [info.subject] : []));
   let rest = prose;
@@ -400,10 +428,10 @@ function priceProblem(folded: string, refs: Refs, known: number): boolean {
   }
   // Format words: cited by ref ({{f1.format}}) or in the prose, whole phrases, longest first.
   const formats = cited.flatMap(({ info }) => (info?.format ? [info.format] : []));
-  for (const f of FORMATS) {
+  for (const [f, format] of FORMATS) {
     const pattern = wholeLabel(f, "giu");
     if (pattern.test(rest)) {
-      formats.push(f.replace(/s$/, ""));
+      formats.push(format);
       rest = rest.replace(pattern, " ");
     }
   }
