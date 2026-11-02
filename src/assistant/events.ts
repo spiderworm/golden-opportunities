@@ -9,6 +9,8 @@ export type WireEvent =
   | ({ type: "data"; pin?: LookupPin } & QueryResult)
   | ({ type: "comparison"; pin?: LookupPin } & ComparisonResult)
   | { type: "pin"; chart: ChartSpec; source: string }
+  // A chart Dewey drew in the chat (show_chart): its spec, titled from its query, and the result it ran.
+  | ({ type: "chart"; chart: ChartSpec; pin?: LookupPin } & QueryResult)
   | { type: "lookup_failed"; message: string }
   | { type: "error"; message: string }
   | { type: "done" };

@@ -16,6 +16,21 @@ it("renders an empty panel on the server, without touching storage, and offers n
   expect(html).not.toMatch(/New conversation/);
 });
 
+it("draws a chart Dewey showed with the page's chart, titled, sourced and pinnable; as its table without one", () => {
+  type Lookup = Parameters<typeof LookupView>[0]["lookup"];
+  const chart = { title: "Revenue by quarter", kind: "line" as const, query: { measure: "revenue" as const, by: ["quarter" as const] } };
+  const drawn: Lookup = { type: "chart", chart, pin: chart, columns: [{ key: "quarter", label: "Quarter", type: "string", nullable: false }, { key: "revenue", label: "Revenue", type: "number", nullable: false }], rows: [{ quarter: "2193-Q4", revenue: 5 }], total: 5, source: "S" };
+  const ChartView = ({ result }: { result: { rows: unknown[] } }) => <div data-chart={result.rows.length} />;
+  const html = renderToString(<LookupView lookup={drawn} ChartView={ChartView} pinning={{ onPin: () => true }} />);
+  expect(html).toMatch(/<figcaption[^>]*>Revenue by quarter<\/figcaption><div data-chart="1">/);
+  expect(html).toMatch(/Source: S/);
+  expect(html).toMatch(/aria-label="Pin Revenue by quarter"/);
+  expect(html).not.toMatch(/<table/);
+  const table = renderToString(<LookupView lookup={drawn} />);
+  expect(table).toMatch(/<table/);
+  expect(table).toMatch(/2193-Q4/);
+});
+
 it("offers Pin on every lookup it can pin, only where the page takes pins, and says when it's already pinned", () => {
   type Lookup = Parameters<typeof LookupView>[0]["lookup"];
   const table: LookupPin = { title: "Revenue by quarter", kind: "table", query: { measure: "revenue", by: ["quarter"] } };
