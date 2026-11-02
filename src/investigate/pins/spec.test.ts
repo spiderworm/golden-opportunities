@@ -6,6 +6,16 @@ const spec = { title: "Revenue by quarter", kind: "bar", query: { measure: "reve
 const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
 describe("pin specs", () => {
+  it("keeps a chart's other measures only while they fit one chart, and tells such pins apart", () => {
+    const two = { ...copy(spec), also: ["units"] };
+    expect(parsePinSpec(two)).toEqual(two);
+    expect(parsePinSpec({ ...copy(spec), also: ["units", "avg_discount"] })).toBeNull();
+    expect(parsePinSpec({ ...copy(spec), also: ["revenue"] })).toBeNull();
+    expect(parsePinSpec({ ...copy(spec), also: [] })).toBeNull();
+    expect(parsePinSpec({ ...copy(spec), query: { measure: "avg_rating", by: ["quarter"] }, also: ["units"] })).toBeNull();
+    expect(pinKey(two as PinSpec)).not.toBe(pinKey(spec));
+  });
+
   it("accepts Dewey's chart shape", () => {
     expect(parsePinSpec(copy(spec))).toEqual(spec);
     expect(parsePinSpec({ ...copy(spec), query: { measure: "units", by: [], filter: { discount_rate: ["15%"] }, limit: 20 } })).not.toBeNull();

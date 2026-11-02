@@ -7,7 +7,7 @@ import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { Route } from "./+types/route";
 import { FilterBar } from "./FilterBar";
-import { DIMENSION_LABELS, ledgersTitle, MEASURE_LABELS } from "./format";
+import { DIMENSION_LABELS, ledgersTitle, MEASURE_LABELS, measuresLabel } from "./format";
 import { Heatmap } from "./Heatmap";
 import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
@@ -35,6 +35,7 @@ import {
   toggleFilterValue,
   toSearchParams,
   type InvestigateState,
+  measuresOf,
 } from "./state";
 import { PinnedCharts } from "./pins/PinnedCharts";
 import type { PinSpec } from "./pins/spec";
@@ -233,10 +234,12 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
 /** The main chart as a pin: the same query it runs, so the pin shows what the player saw. */
 function pinSpecFor(state: InvestigateState): PinSpec {
   const filter = filtersExcept(state.filters, [state.by]);
-  const title = `${MEASURE_LABELS[state.measure]} by ${DIMENSION_LABELS[state.by].toLowerCase()}${state.compare ? " and quarter" : ""}`;
+  const title = `${measuresLabel(measuresOf(state))} by ${DIMENSION_LABELS[state.by].toLowerCase()}${state.compare ? " and quarter" : ""}`;
   return {
     title,
-    kind: "bar",
+    // Over time, several measures are lines, as on the main chart.
+    kind: state.also.length && (state.by === "month" || state.by === "quarter") ? "line" : "bar",
+    ...(state.also.length ? { also: [...state.also] } : {}),
     query: {
       measure: state.measure,
       by: state.compare ? [state.by, "quarter"] : [state.by],
