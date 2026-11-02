@@ -148,13 +148,13 @@ Discoveries A to F stay with Q1 and Q2. From Q3 on, each quarter offers **up to 
 | --- | --- | --- |
 | Genre surge or slump | Units by title within that genre, for the same quarter a year earlier, with at least 10 titles | `You looked inside {genre}, title by title.` |
 | Quiet days | Orders by weekday, for at least one past quarter | `You found the {weekday} pattern in last year's orders.` |
-| Author fares | Your author nights' extra orders by quarter, or by night, for any quarter you ran them. If you never have, there's no discovery | `You checked what an author night brings in.` |
+| Author fares | None for now (Frank, building it): the ledger can't tell author-night orders from others, and their figures live on each result's report. A later version could count opening a past result's author-night facts | (`You checked what an author night brings in.`, unused for now) |
 | Format costs | Units or revenue by format, for the same quarter a year earlier | `You checked how much of the shop is {format}.` |
 | Orbitplace lot | Units by month for the lot's edition, over at least the last four quarters | `You checked the lot's title before bidding.` |
 | A quiet quarter | Nothing: there's no event discovery | |
 
 2. **Your last quarter, on the record:** one measure with the last quarter and the same quarter a year earlier both visible. This is F, generalized. (*Found text:* `You compared {last quarter} with {the quarter a year before}.`)
-3. **Your weakest measure:** a view of the measure that bound last quarter, by month or by title, for the last quarter. (*Found text:* `You looked into {measure}, last quarter's lowest.`)
+3. **Your weakest measure:** a view of the measure that bound last quarter, for the last quarter (filtered to it, or grouped by quarter or month with it shown). The report card's measures aren't ledger measures, so each maps to one (Frank): Profit to revenue, Readers served to orders, and Happiness to average rating, each by month or by title; Culture to units by title, since each title counts once a day. (*Found text:* `You looked into {measure}, last quarter's lowest.`)
 
 `{found} of {total} found.` Not-found texts follow the same pattern as M1's: one plain sentence saying where to look, never the answer.
 
