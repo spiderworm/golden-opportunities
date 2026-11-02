@@ -13,7 +13,7 @@ The first pass found two blocking findings. Frank fixed both in #157, and the se
 | `npm ci`, `npm run typecheck`, `npm run build` | Pass. |
 | `npm test` | Passes, 758 of 758 tests in 84 files, in 25 s with `--maxWorkers=4`. |
 | A reviewer's first steps, under `npm start` (Chromium, muted) | Pass, 2 of 2: the test-mode Dewey's lookups, and a full Q1 plan through to `Continue to Q2`. |
-| The real Dewey under `npm start` | **Fixed** (finding 1). It answered "What was revenue by quarter?" with a lookup and its table, 2193-Q1 to Q4. The build no longer references `server.ts`. |
+| The real Dewey under `npm start` | **Fixed** (finding 1). It answered "What was revenue by quarter?" with a lookup and its table, 2193-Q1 to Q4. The built server still starts Dewey's tool server from source, but `toolServerPath` now finds it in the repo (`./server.ts`, then `../../src/assistant/tools/server.ts`), which is why `npm start` works from the clone. |
 | No Claude Code on the PATH | Dewey's panel says it's offline and points to `docs/dewey-setup.md`, as designed. |
 | `npm run dev` on 5174 (5173 was taken), `PORT` unset | **Fixed** (finding 2): Dewey's lookups reach the server the page came from. Pass, 2 of 2. |
 | `m1-loop.spec.ts`, `q2-decide.spec.ts` and `q2-loop.spec.ts` | Pass, 6 of 6, Chromium and WebKit, muted by `e2e/fixtures.ts`. |
