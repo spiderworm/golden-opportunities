@@ -1,6 +1,6 @@
 # Endless quarters, Alma and removal (design)
 
-Status: **proposal, for David to approve in one pass.** Plot leads; Sim writes the model (section 8) and Sage the Alma engine (section 9). Numbers marked *tune* are starting values for Sim to calibrate.
+Status: **proposal, for David to approve in one pass.** Plot leads and wrote sections 1 to 7; Sim writes the model (section 8), and Sage wrote the Alma engine (section 9). Numbers marked *tune* are starting values for Sim to calibrate.
 
 David, November 2, 2026, overruling Goldy's recommendations on `q2.md`'s two open questions:
 - "Alma: Oh just do it. We've got time."
@@ -15,7 +15,7 @@ The decisions are listed at the end, each with its alternative.
 Q1 and Q2 stay exactly as built: their memos, discoveries A to F, and calibration. From Q3 2194 on, every quarter runs the same loop:
 
 1. **Results of the last quarter,** with the running record (section 6) and `Continue to Q{n}`.
-2. **Alma sets up the quarter** (section 9). This happens once, when the player continues, and is saved before anything shows.
+2. **Alma sets up the quarter** (section 9). It runs once, when the previous quarter's plan is submitted, while the player reads the result, and its record is saved before the memo shows.
 3. **Discover.** The Commerce Office's memo carries the score, any strike, Alma's event and the extra stretch (section 3).
 4. **Investigate.** The ledgers now hold every quarter played so far. The quarter's discoveries come from its event (section 5).
 5. **Decide.** Up to three picks plus one more move, as in Q2, plus the event's response, if it has one (section 4).
@@ -65,7 +65,7 @@ Quarterly review: Orbital Books, Ring C, Berth 14
 
 {Alma's story: one or two sentences, with the server's figures}
 
-The {boss} has stretched its goal for {measure}: {stretch reason}.
+The {boss} has stretched its goal for {measure} to {stretch}% above last year. Its reason: "{STRETCH REASON}"
 
 The Book of the Month calendar for {months} is empty. Submit your picks and a plan when you are ready.
 ```
@@ -198,16 +198,55 @@ Sim calibrates the strike rate (section 8): how often a reasonable plan collects
 
 ## 9. Alma's engine (Sage)
 
-*Sage's section, to come. The contract this design relies on:*
-- **When:** once per quarter, as the player continues to it, before the memo shows.
-- **What Alma sees:** past quarters' plans, scores, strikes and events. Never what the player looked at, the discoveries, or Dewey's conversation ("Alma watches decisions, results and pacing", `scoring.md`).
-- **What it returns:** `{ type, params, stretch: { measure, reason }, story, bossLine }`.
-  - `type` comes from section 2's list, and the server checks `params` against its limits and the choosing rules. Anything outside them is rejected, not clamped.
-  - `story`, `reason` and `bossLine` contain **no digits.** The server inserts every figure from `params`, the same way Dewey's figures gate works.
-  - Text is capped in length, US English, with no emoji. Zoolander appears in boss lines only, never in the story or a fact.
-- **Logged for exact replay:** the record is saved before the memo shows, with `source: "alma"` or `"scripted"`, the model, and the time. A reload never re-rolls it. Replays and the held-course line read the record and never call the model. The simulation is a function of the seed, the plans and the records.
-- **The scripted fallback:** if no model is available, the call times out, or the output is invalid after one retry, the quarter takes a scripted event. It's chosen from the seed, follows the same choosing rules, and has hand-written text from Plot: one story and one boss line per tier-1 type and genre or weekday. It's logged as `source: "scripted"`. The player sees no difference.
-- **Analytics:** `alma_event_chosen` records the type, source and quarter, never the text.
+*Written by Sage, November 2, 2026; Plot's answers to Sage's questions are folded in.*
+
+**Runtime.** Alma runs as headless Claude Code, on the server only, from the same spawn code as Dewey (`src/assistant/server/claudeCode.server.ts`), moved into a shared helper. It's locked down like Dewey, minus the tools:
+- `--tools ""`, and an empty `--strict-mcp-config` (no MCP server at all), with no `--allowedTools`;
+- `--permission-mode dontAsk`, `--setting-sources ""`, `--disable-slash-commands`, `--no-session-persistence`;
+- a temporary empty working directory and a minimal environment, with no query token, because Alma has nothing to look up.
+
+Like Dewey, it fails closed on the init line: the run is killed unless the tools list is empty, no MCP server is listed, and skills and slash commands are empty. The model comes from `ORBITAL_ALMA_MODEL` (default `sonnet`, as Dewey's). `ORBITAL_ALMA_PROVIDER=scripted` forces the fallback. Vitest and e2e always use it, so automated runs never call the model.
+
+**When it runs.** Alma runs when the previous quarter is committed, at the plan submit that produces the result. It works in the background while the player reads the result screen. Arriving in the new quarter only reads the record. If the record isn't ready by then, the loader waits out the rest of the budget, then falls back. The record is saved before the memo shows, and a reload never re-rolls it. **Alma starts at Q3 2194:** Q1 and Q2 stay fixed, so it first runs when the Q2 plan is submitted.
+
+**Timeout.** Dewey's replies with tools took 2 to 14 s in Probe's runs, under a 120 s cap. Alma makes one call with no tools and a short output, so each attempt gets 30 s, with one retry, and only on invalid output, not after a timeout. The worst case is 60 s, mostly hidden behind the result screen.
+
+**What Alma sees.** An input builder, a pure function over the save, with a test that pins its keys:
+- each past quarter's plan, as structured choices (lever ids, and picked titles from the catalog);
+- each quarter's scores, grades and strikes;
+- the past event records (type, params, stretch and source, but not the text).
+
+Nothing the player typed ever reaches Alma: no Dewey conversation, no investigations, no discoveries. Plans are fixed choices, so there's no prompt-injection path from the player. The rules and the type list sit in `--system-prompt`, and the state goes in on stdin.
+
+**What Dewey sees.** Dewey's prompt and tool server never read the event log. If an event changes the simulated sales, Dewey sees those sales through the query layer, as data, like any other sales. It never sees an event's type, params or text. A test pins that Dewey's prompt builder takes no save fields.
+
+**Output and validation.** The result must parse as exactly one JSON object, with no extra keys:
+
+`{ type, params, stretch: { measure, reason }, story, bossLine }`
+
+- `type` must be in section 2's list, and the choosing rules must hold (no repeat type, no event against the stretched measure, no piling on during a strike, the recovery rule).
+- Each param must fit its type's schema: an enum from a fixed list (a genre, a weekday, a format, an edition), or an integer within the type's limits. There are no free numbers and no clamping: out of range means invalid.
+- `stretch.measure` must be a report-card measure.
+- **The text has three fields, each with its own voice:**
+  - `story`: plain prose for the memo, one or two sentences;
+  - `stretch.reason`: the boss's reason, in capitals ("THE COUNCIL HAS READ A STUDY ABOUT FOOT TRAFFIC.");
+  - `bossLine`: the transmission's line, in capitals.
+- **Checks on every text field:** numbers appear only as slots (`{{param}}`), which the server renders from params, formatted for each type, like Dewey's refs. Outside slots, Dewey's lexical ban applies (`figures.server.ts`): no digits, number words, `$` or `%`. There's also a character cap per field, no emoji, email redaction and no `@` at all (Claude Code puts the account's email into the model's context, the same risk as Dewey's).
+- **Zoolander only in `bossLine`.** Because the fields are separate, this can be checked: `story` and `stretch.reason` are rejected if they name him.
+- Any failure invalidates the whole record. Sentences aren't dropped, since a story with a hole makes no sense. Then one retry, then the scripted fallback.
+
+**The log and replay.** The save gets `events[]`, one record per quarter: `{ quarter, source: "alma" | "scripted", type, params, stretch, story, bossLine, model, promptVersion, attempts, failure? }`. The simulation reads only the type, the params and the stretch, plus the save's seed. So replaying the plans and the log reproduces every score without calling the model. Frank owns the save and the simulation's hooks, so Sage agrees the record's shape and where the effect applies with him and Sim.
+
+**The scripted fallback.** A list in the same schema, picked by the save's seed and the quarter, that follows the same choosing rules. Plot writes its text: one entry per tier-1 type and value (each genre, weekday and format). A test checks that every entry passes the validator, so the fallback can never be invalid. The player can't tell a scripted quarter from Alma's.
+
+**Sellers and rival buyers.** `scoring.md` has Alma play every seller and rival buyer. For the take-home that's only tier 2's Orbitplace lot, and it needs no extra call. The lot's edition, size and asking price are params of the quarter's event, and the rival's bid is drawn from the seed within the type's limits. Playing negotiations turn by turn waits for the full market.
+
+**Analytics and privacy.**
+- Alma's input holds no player text, and its output is game content kept in the save, not analytics. So no `agent_text` hold is needed.
+- The event is `alma_event_chosen`: `{ quarter, source, type, ms, attempts, failure code }`, with no text, sent like any other event.
+- The privacy page needs a line: like Dewey, Alma sends game state (plans and scores, nothing typed) to Claude through Claude Code, under the signed-in account. Sage makes that edit in the build PR.
+
+**Build order (Sage).** The first PR is the runtime, the validator, the scripted fallback and the log, with a stand-in type list until this design is approved.
 
 ## Decisions for David
 
