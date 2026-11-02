@@ -74,9 +74,25 @@ describe('Q2 discoveries', () => {
     see(id, { ...pickMonths('Ballinby Boys'), filter: { ...pickMonths('Ballinby Boys').filter, month: ['2193-06', '2193-07', '2193-08'] } });
     see(id, { ...pickMonths('Ballinby Boys'), filter: { ...pickMonths('Ballinby Boys').filter, weekday: ['Monday'] } });
     see(id, { measure: 'revenue', by: ['month'], filter: pickMonths('Ballinby Boys').filter });
+    // Full price only leaves out the pick month's discounted copies.
+    see(id, { ...pickMonths('Ballinby Boys'), filter: { ...pickMonths('Ballinby Boys').filter, discounted: ['no'] } });
+    // A title without its format mixes its editions.
+    see(id, { measure: 'units', by: ['month'], filter: { title: ['Ballinby Boys'] } });
     expect(saves.read(id).discoveries).toEqual([]);
     expect(see(id, pickMonths('The Seawitch Sings'))).toEqual([]);
     expect(see(id, pickMonths('Nothing But Capers'))).toEqual(['D']);
+  });
+
+  it('finds D from a breakdown by edition, or a view filtered to one, since the rows identify the edition (#179)', () => {
+    const id = inQ2();
+    // Each pick's edition label is its title and format: none has a second edition in its format.
+    for (const p of D_PICKS) {
+      const rows = runQuery({ measure: 'units', by: ['edition'], filter: { title: [p.title] } }, BASELINE_VIEW).rows.map(r => r.edition);
+      expect(rows).toContain(`${p.title} (${p.format})`);
+    }
+    expect(see(id, { measure: 'units', by: ['month', 'edition'], filter: { title: ['Ballinby Boys'] } })).toEqual([]);
+    expect(parts()).toEqual(['D_partial']);
+    expect(see(id, { measure: 'units', by: ['month'], filter: { edition: ['Nothing But Capers (Hardcover)'] } })).toEqual(['D']);
   });
 
   it('finds E from average rating for 20 titles in one view; fewer is only a part', () => {

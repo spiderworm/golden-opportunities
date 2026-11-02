@@ -67,15 +67,18 @@ export function q2EvidenceFromQuery(query: Query, view: QueryView, result: Query
     return [...evidence];
   }
   if (!periods.length) return [];
-  // Filters that take a subset of an edition's own sales would make its months unreadable.
-  const whole = !query.filter?.weekday && !query.filter?.discount_rate;
+  // Filters that take a subset of an edition's own sales would make its months unreadable: a pick month's
+  // copies are the discounted ones, so a discounted filter hides either the pick or every other month.
+  const whole = !query.filter?.weekday && !query.filter?.discount_rate && !query.filter?.discounted;
   for (const row of result.rows) {
     if (typeof row[query.measure] !== 'number' || !Number.isFinite(row[query.measure])) continue;
     const month = monthOf2193(row.month ?? single(query.filter?.month));
     const quarter = row.quarter ?? single(query.filter?.quarter) ?? (periods.length === 1 ? periods[0] : undefined);
     if (query.measure === 'units' && whole && month) {
+      // The rows must identify the edition: by title and format, or by edition itself (Plot, #179).
       const title = row.title ?? single(query.filter?.title); const format = row.format ?? single(query.filter?.format);
-      const pick = D_PICKS.find(p => p.title === title && p.format === format);
+      const edition = row.edition ?? single(query.filter?.edition);
+      const pick = D_PICKS.find(p => (p.title === title && p.format === format) || `${p.title} (${p.format})` === edition);
       if (pick) evidence.add(`d:${pick.month}:${month}`);
     }
     if ((EVIDENCE_MEASURES as readonly string[]).includes(query.measure) && (quarter === '2193-Q1' || quarter === '2194-Q1')) evidence.add(`f:${quarter.slice(0, 4)}`);
