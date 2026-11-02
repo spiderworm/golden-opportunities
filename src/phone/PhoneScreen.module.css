@@ -24,6 +24,11 @@
     color: var(--color-text);
   }
 
+  /* The 3D scene has its own room (room.ts). */
+  .phone[data-room] {
+    background: var(--color-space);
+  }
+
   :global(body) > :not(.phone) {
     display: none !important;
   }

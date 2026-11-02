@@ -85,7 +85,8 @@ export function PhoneScreen({
 
   const still = <Still onShown={speak} />;
   return (
-    <main className={styles.phone}>
+    // Once the 3D scene has drawn, its own room is behind the robot: the screen's picture of it goes.
+    <main className={styles.phone} data-room={(scene === "3d" && drawn) || undefined}>
       <div
         ref={sceneBox}
         className={styles.scene}
