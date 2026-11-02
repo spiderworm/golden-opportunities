@@ -25,13 +25,14 @@ export const MAX_VIEW_PERIODS = 404;
 export const MAX_SIMULATED_LINES = 600_000;
 
 export function validateView(view: QueryView): void {
-  if (!isRecord(view) || Object.keys(view).some(key => !['periods', 'includeUndated', 'simulatedSales', 'simulatedCells'].includes(key))
+  if (!isRecord(view) || Object.keys(view).some(key => !['periods', 'includeUndated', 'simulatedSales', 'simulatedCells', 'version'].includes(key))
     || !Array.isArray(view.periods) || view.periods.length > MAX_VIEW_PERIODS
     || !view.periods.every(period => typeof period === 'string' && /^[1-9]\d{3}-Q[1-4]$/.test(period))
     || new Set(view.periods).size !== view.periods.length || typeof view.includeUndated !== 'boolean'
     || (view.simulatedSales !== undefined && (!Array.isArray(view.simulatedSales) || view.simulatedSales.length > MAX_SIMULATED_LINES))
     || (view.simulatedCells !== undefined && (view.simulatedSales !== undefined || !isRecord(view.simulatedCells) || !Array.isArray(view.simulatedCells.cells)
-      || !Array.isArray(view.simulatedCells.spanning) || view.simulatedCells.lines > MAX_SIMULATED_LINES))) {
+      || !Array.isArray(view.simulatedCells.spanning) || view.simulatedCells.lines > MAX_SIMULATED_LINES))
+    || (view.version !== undefined && (typeof view.version !== 'string' || !/^[0-9a-f]{16}$/.test(view.version)))) {
     throw new QueryError('INVALID_VIEW', 'The server view must declare unique allowed periods and undated access within supported bounds.');
   }
 }
