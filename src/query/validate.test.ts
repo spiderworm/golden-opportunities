@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateQuery } from './validate';
-import { DIMENSIONS, MEASURES, QUERY_LIMITS } from './types';
+import { DIMENSIONS, MEASURE_DIMENSIONS, MEASURES, QUERY_LIMITS } from './types';
 
 describe('fixed query grammar', () => {
   it('accepts each measure and exact filter/sort shape without mutating input', () => {
@@ -8,7 +8,13 @@ describe('fixed query grammar', () => {
     const input = { measure: 'revenue', by: ['quarter'], filter: { genre: ['Mystery', 'Mystery'] }, sort: { column: 'revenue', direction: 'desc' }, limit: 2 };
     expect(validateQuery(input)).toMatchObject({ filter: { genre: ['Mystery'] } });
     expect(input.filter.genre).toHaveLength(2);
-    for (const dimension of DIMENSIONS) expect(validateQuery({ measure: 'revenue', by: [dimension] }).by).toEqual([dimension]);
+    for (const dimension of DIMENSIONS) {
+      const measure = MEASURES.find(m => MEASURE_DIMENSIONS[m].includes(dimension))!;
+      expect(validateQuery({ measure, by: [dimension] }).by).toEqual([dimension]);
+    }
+    // Stars belong to the ratings count only: not sales, and not the average rating.
+    expect(() => validateQuery({ measure: 'revenue', by: ['stars'] })).toThrow(/does not support stars/);
+    expect(() => validateQuery({ measure: 'avg_rating', by: ['stars'] })).toThrow(/does not support stars/);
   });
   it.each([
     null, [], 'SELECT * FROM sales', {}, { measure: 'sql', by: [] }, { measure: 'revenue' },

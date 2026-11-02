@@ -5,7 +5,9 @@
 // No file, shell, eval or free-form query tools, and none that reach the scenario's cause, the simulation or
 // the scoring.
 
-import { DIMENSIONS, MEASURE_DIMENSIONS, MEASURES, QUERY_LIMITS, type Dimension, type Measure, type Query } from "../../query/types.ts";
+// Dewey sees only the reviewed lists (AGENT_*): a new dimension or measure stays Investigate-only until Probe has
+// reviewed it against the figures gate.
+import { AGENT_DIMENSIONS as DIMENSIONS, AGENT_MEASURE_DIMENSIONS as MEASURE_DIMENSIONS, AGENT_MEASURES as MEASURES, QUERY_LIMITS, type Dimension, type Measure, type Query } from "../../query/types.ts";
 
 export const SERVER_NAME = "orbital";
 export const CHART_KINDS = ["bar", "line", "table"] as const;
@@ -127,7 +129,7 @@ export function checkQuery(input: unknown): Query {
   if (!Array.isArray(by) || by.length > QUERY_LIMITS.dimensions || !by.every((d) => has(DIMENSIONS, d)) || new Set(by).size !== by.length) {
     throw new ToolInputError(`"by" must list up to ${QUERY_LIMITS.dimensions} different dimensions from: ${DIMENSIONS.join(", ")}.`);
   }
-  const allowed = MEASURE_DIMENSIONS[measure];
+  const allowed: readonly Dimension[] = MEASURE_DIMENSIONS[measure];
   const query: { -readonly [K in keyof Query]: Query[K] } = { measure, by: by as Dimension[] };
   for (const d of by as Dimension[]) if (!allowed.includes(d)) throw new ToolInputError(`${measure} can't be grouped by ${d}. It supports: ${allowed.join(", ")}.`);
   if (filter !== undefined) {
@@ -184,6 +186,7 @@ const MEASURE_TITLES: Record<Measure, string> = {
   checkouts: "Checkouts",
   avg_order_value: "Average order value",
   orders_per_day: "Orders per day",
+  ratings: "Ratings",
 };
 
 /** A chart's title, built from its query: the model doesn't title pins (Probe X1, #32). */
