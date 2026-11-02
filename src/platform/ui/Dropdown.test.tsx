@@ -26,13 +26,13 @@ describe("the shared dropdown", () => {
         options={[
           { value: "revenue", label: "Revenue" },
           { value: "units", label: "Units sold" },
-          { value: "avg_discount", label: "Average discount", disabledReason: "Two units at most" },
+          { value: "avg_discount", label: "Average discount", disabledReason: "Two axes at most" },
         ]}
       />,
     );
     expect(text(html)).toContain("Show Revenue, Units sold");
     expect(html.match(/type="checkbox"/g)).toHaveLength(3);
-    expect(text(html)).toContain("Average discount Two units at most");
+    expect(text(html)).toContain("Average discount Two axes at most");
     expect(html).toMatch(/disabled="" aria-describedby="[^"]+-why-2"/);
   });
 });
