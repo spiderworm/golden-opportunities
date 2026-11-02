@@ -4,6 +4,7 @@
 // size, so it can't aim the quarter at a player.
 
 import { EVENT_TYPES, MEASURE_IDS, STRETCH_PERCENT, type EventType, type MeasureId } from "./events";
+import type { QuarterId } from "~/simulation/quarters";
 import type { AlmaRecord } from "./record";
 
 /**
@@ -20,7 +21,7 @@ export interface Candidate {
 
 export interface QuarterContext {
   /** The quarter being prepared, "2194-Q3". */
-  quarter: string;
+  quarter: QuarterId;
   /** The records of earlier quarters, oldest first. */
   previous: readonly AlmaRecord[];
   /** How many strikes count against the player now (section 7). */

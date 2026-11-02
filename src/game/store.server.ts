@@ -4,10 +4,9 @@ import path from 'node:path';
 import { withSaveLock, SaveLockBusy } from './lock.server.ts';
 import { isQuarterOutcome } from './outcome.ts';
 import type { GameSave } from './types';
-import { QUARTERS, isQuarterId, quarterMonths, quarterNumber, type QuarterId } from './quarters.ts';
+import { QUARTERS, isQuarterId, nextQuarter, quarterMonths, quarterNumber, type QuarterId } from './quarters.ts';
 import { alertsSeenOf, currentQuarter } from './progress.ts';
 import { isAlmaLog } from '../alma/record.ts';
-import { quarterAfter } from '../alma/quarters.ts';
 import { EVIDENCE_KEYS, MAX_EVIDENCE_SCOPES, discoveriesFromBuckets, q2DiscoveriesFromBuckets, witnessScopes } from './discovery-evidence.ts';
 
 const ID = /^[A-Za-z0-9_-]{43}$/;
@@ -49,7 +48,7 @@ function validate(save: GameSave, id: string): void {
     || !save.discoveries.every(d => ['A', 'B', 'C', 'D', 'E', 'F'].includes(d))
     || !Array.isArray(save.played) || save.played.length > QUARTERS.length
     // Alma's records reach no further than the next unplayed quarter, so none before a quarter is played.
-    || (save.alma !== undefined && (!save.played.length || !isAlmaLog(save.alma, quarterAfter(save.played.at(-1)!.period))))) throw new SaveError('INVALID_SAVE');
+    || (save.alma !== undefined && (!save.played.length || !isAlmaLog(save.alma, nextQuarter(save.played.at(-1)!.period))))) throw new SaveError('INVALID_SAVE');
   // Sale ids are unique across quarters, not just within one.
   const ids = new Set<string>();
   for (const [index, quarter] of save.played.entries()) {

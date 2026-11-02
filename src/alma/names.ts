@@ -3,6 +3,7 @@
 // catalog title. The server's fact sentence names the real ones, so a wrong genre or day in the flavor would
 // contradict it.
 
+import type { QuarterId } from "~/simulation/quarters";
 import type { Candidate } from "./candidates";
 
 /** Each value's forms a sentence might use: the list's own spelling, lower case, plurals and section 3's words. */
@@ -33,7 +34,7 @@ const WORD_MONTHS = new Set(["May", "March"]);
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** The month names of a quarter's three months, "2194-Q3" → July, August, September. */
-export const quarterMonths = (quarter: string) => MONTHS.slice((Number(quarter.slice(-1)) - 1) * 3, Number(quarter.slice(-1)) * 3);
+export const quarterMonths = (quarter: QuarterId) => MONTHS.slice((Number(quarter.slice(-1)) - 1) * 3, Number(quarter.slice(-1)) * 3);
 
 /** Every form, with the value it names: "genre:Mystery", "month:July". */
 function forms(capitals: boolean): Map<string, string> {
@@ -51,7 +52,7 @@ function forms(capitals: boolean): Map<string, string> {
  * that contains the candidate's own ("science fiction" around "fiction", "trade paperback" around "paperback")
  * is read as itself (Probe's review of #178). `titles` are the catalog's titles.
  */
-export function nameProblem(text: string, candidate: Candidate, quarter: string, titles: readonly string[], capitals: boolean): string | null {
+export function nameProblem(text: string, candidate: Candidate, quarter: QuarterId, titles: readonly string[], capitals: boolean): string | null {
   const month = typeof candidate.params.month === "number" ? quarterMonths(quarter)[candidate.params.month - 1] : undefined;
   const own = new Set([`genre:${candidate.params.genre}`, `format:${candidate.params.format}`, `weekday:${candidate.params.weekday}`, `month:${month}`]);
   const owner = forms(capitals);

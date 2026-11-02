@@ -17,11 +17,11 @@ import type { DeepReadonly, BookshopData } from "~/bookshop/types";
 import { eventProblem, recoveryFor, strikes, STRIKE_BELOW } from "~/simulation/turn";
 import type { MeasureId } from "./events";
 import type { QuarterSummary } from "./prompt";
-import { quarterAfter } from "./quarters";
-import { quarterIndex, type AlmaRecord } from "./record";
+import type { AlmaRecord } from "./record";
+import { nextQuarter, quarterIndex, type QuarterId } from "~/simulation/quarters";
 
 /** Alma's first quarter: Q1 and Q2 2194 stay as built (section 9). */
-export const FIRST_ALMA_QUARTER = "2194-Q3";
+export const FIRST_ALMA_QUARTER: QuarterId = "2194-Q3";
 
 /** What the hook needs, injectable so tests never reach the real model or the real saves. */
 export interface AlmaDeps {
@@ -32,7 +32,7 @@ export interface AlmaDeps {
   titles: readonly string[];
   track: (name: string, props: Record<string, string | number | boolean>) => void;
   /** Whether the game can play a quarter yet: Alma prepares only those, so no model call is spent on Q3 before it exists. */
-  playable: (quarter: string) => boolean;
+  playable: (quarter: QuarterId) => boolean;
 }
 
 const defaultDeps = (): AlmaDeps => ({
@@ -79,7 +79,7 @@ export function contextFor(save: GameSave, data: DeepReadonly<BookshopData>): Qu
   if (!last) return null;
   const counting = strikes(save.played.map((q) => q.outcome.reportCard.plan.overall.score), "next");
   const recovery = recoveryFor(save.played.map((q) => ({ quarter: q.period, card: q.outcome.reportCard.plan })), data);
-  return { quarter: quarterAfter(last.period), previous: save.alma ?? [], strikes: counting, ...(recovery ? { recovery } : {}) };
+  return { quarter: nextQuarter(last.period), previous: save.alma ?? [], strikes: counting, ...(recovery ? { recovery } : {}) };
 }
 
 /** The engine's 10% bound on an event's expected effect: a candidate it would refuse is never drawn (Sim). */
@@ -104,7 +104,7 @@ function write(saveId: string, record: AlmaRecord, deps: AlmaDeps): Written {
     const existing = save.alma?.find((r) => r.quarter === record.quarter);
     if (existing) return { record: existing, kept: false };
     const last = lastPlayed(save);
-    if (!last || quarterAfter(last) !== record.quarter) {
+    if (!last || nextQuarter(last) !== record.quarter) {
       deps.track("alma_event_dropped", { quarter: record.quarter, reason: "quarter_moved" });
       return null;
     }
@@ -122,7 +122,7 @@ function write(saveId: string, record: AlmaRecord, deps: AlmaDeps): Written {
 }
 
 const pending = new Map<string, Promise<AlmaRecord | null>>();
-const key = (saveId: string, quarter: string) => `${saveId}:${quarter}`;
+const key = (saveId: string, quarter: QuarterId) => `${saveId}:${quarter}`;
 
 function record(saveId: string, context: QuarterContext, history: QuarterSummary[], seed: number, deps: AlmaDeps, model: AlmaModel | null): Promise<AlmaRecord | null> {
   const started = performance.now();
@@ -149,9 +149,9 @@ function record(saveId: string, context: QuarterContext, history: QuarterSummary
  * Called once from commit() after a quarter's transaction succeeds. It starts Alma's turn for the next quarter
  * and returns at once: it never waits, and never throws into the submit.
  */
-export function onQuarterCommitted({ saveId, quarter, seed }: { saveId: string; quarter: string; seed: number }, deps: AlmaDeps = defaultDeps()): void {
+export function onQuarterCommitted({ saveId, quarter, seed }: { saveId: string; quarter: QuarterId; seed: number }, deps: AlmaDeps = defaultDeps()): void {
   try {
-    const next = quarterAfter(quarter);
+    const next = nextQuarter(quarter);
     if (quarterIndex(next) < quarterIndex(FIRST_ALMA_QUARTER) || !deps.playable(next)) return;
     const save = deps.saves.read(saveId);
     const context = contextFor(save, deps.data);
@@ -164,7 +164,7 @@ export function onQuarterCommitted({ saveId, quarter, seed }: { saveId: string; 
       .finally(() => pending.delete(key(saveId, next)));
     pending.set(key(saveId, next), turn);
   } catch {
-    deps.track("alma_failed", { quarter: quarterAfter(quarter) });
+    deps.track("alma_failed", { quarter: nextQuarter(quarter) });
   }
 }
 
@@ -192,4 +192,4 @@ export async function almaRecordFor(saveId: string, budgetMs: number, deps: Alma
 /** For tests: forget pending turns. */
 export const forgetPending = () => pending.clear();
 /** For tests: the pending turn for a save's quarter. */
-export const pendingTurn = (saveId: string, quarter: string) => pending.get(key(saveId, quarter));
+export const pendingTurn = (saveId: string, quarter: QuarterId) => pending.get(key(saveId, quarter));

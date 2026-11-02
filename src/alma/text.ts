@@ -5,6 +5,7 @@
 
 import { hasBannedWord } from "~/assistant/server/figures.server";
 import { REDACTED, redactEmails } from "~/assistant/server/redact.server";
+import type { QuarterId } from "~/simulation/quarters";
 import type { Candidate } from "./candidates";
 import { TEXT_LIMITS, TEXT_PROBLEMS, type TextField, type TextProblem } from "./limits";
 import { nameProblem } from "./names";
@@ -13,7 +14,7 @@ export { TEXT_LIMITS, TEXT_PROBLEMS, type TextField, type TextProblem };
 
 export interface TextRules {
   candidate: Candidate;
-  quarter: string;
+  quarter: QuarterId;
   /** The catalog's titles: none may be named. */
   titles: readonly string[];
   /** Last quarter's boss line named Zoolander, so this one may not: odd, not constant, is the joke (Plot). */

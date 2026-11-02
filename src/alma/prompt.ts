@@ -4,6 +4,7 @@
 // picks the fields one by one, and a test pins them.
 
 import type { Candidate, QuarterContext } from "./candidates";
+import type { QuarterId } from "~/simulation/quarters";
 import type { MeasureId } from "./events";
 import { namesZoolander } from "./text";
 import { quarterMonths } from "./names";
@@ -16,7 +17,7 @@ export const PROMPT_VERSION = 2;
 
 /** One past quarter, as Alma may see it. */
 export interface QuarterSummary {
-  quarter: string;
+  quarter: QuarterId;
   /** The plan as the ids of its fixed choices (levers, picked titles' ids). */
   plan: string[];
   scores: Record<MeasureId, number>;
