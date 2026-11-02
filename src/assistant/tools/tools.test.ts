@@ -15,8 +15,8 @@ import { Refs, sentenceGate } from "../server/figures.server.ts";
 import type { ProviderEvent } from "../server/provider.server.ts";
 
 describe("the tool list", () => {
-  it("is exactly: describe, query, compare, pin; every input schema is closed", () => {
-    expect(TOOLS.map((t) => t.name)).toEqual(["describe_data", "query_data", "compare_data", "pin_chart"]);
+  it("is exactly: describe, query, compare, show a chart, pin; every input schema is closed", () => {
+    expect(TOOLS.map((t) => t.name)).toEqual(["describe_data", "query_data", "compare_data", "show_chart", "pin_chart"]);
     for (const t of TOOLS) expect(t.inputSchema.additionalProperties, t.name).toBe(false);
   });
 
@@ -265,7 +265,7 @@ describe("calling tools against the app", () => {
   it("leaves out pin_chart for pages with nowhere to pin", async () => {
     const noPins = { ...env, ORBITAL_PINS: "0" };
     const list = (await handle({ jsonrpc: "2.0", id: 1, method: "tools/list" }, noPins)) as { result: { tools: { name: string }[] } };
-    expect(list.result.tools.map((t) => t.name)).toEqual(["describe_data", "query_data", "compare_data"]);
+    expect(list.result.tools.map((t) => t.name)).toEqual(["describe_data", "query_data", "compare_data", "show_chart"]);
     expect((await callTool("pin_chart", { title: "R", kind: "bar", query: { measure: "revenue", by: [] } }, noPins)).isError).toBe(true);
     expect(orbitalToolServer("t", { pins: false }).env?.ORBITAL_PINS).toBe("0");
   });
@@ -286,7 +286,7 @@ describe("calling tools against the app", () => {
     };
     try {
       expect((await ask({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18" } })).result.serverInfo.name).toBe("orbital");
-      expect((await ask({ jsonrpc: "2.0", id: 2, method: "tools/list" })).result.tools).toHaveLength(4);
+      expect((await ask({ jsonrpc: "2.0", id: 2, method: "tools/list" })).result.tools).toHaveLength(5);
       const call = await ask({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "query_data", arguments: { measure: "revenue", by: ["quarter"] } } });
       expect(JSON.parse(call.result.content[0].text).source).toBe("Sales, 2193-Q1 to Q4");
       expect((await ask({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "x", arguments: {} }, junk: "x".repeat(70_000) })).error.message).toBe("Request too large");

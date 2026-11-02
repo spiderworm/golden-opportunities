@@ -59,7 +59,7 @@ const isChart = (c: unknown) => isObj(c) && only(c, ["title", "kind", "query"]) 
 function isLookup(l: unknown): boolean {
   if (!isObj(l)) return false;
   if (l.type === "data") return only(l, ["type", "columns", "rows", "total", "source", "query", "pin"]) && (l.query === undefined || isObj(l.query)) && isPin(l.pin) && isTable(l) && (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)));
-  if (l.type === "chart") return only(l, ["type", "chart", "columns", "rows", "total", "source", "pin"]) && isChart(l.chart) && (l.chart.kind === "bar" || l.chart.kind === "line") && isPin(l.pin) && isTable(l) && (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)));
+  if (l.type === "chart") return only(l, ["type", "chart", "columns", "rows", "total", "source", "pin"]) && isChart(l.chart) && ["bar", "line"].includes((l.chart as Obj).kind as string) && isPin(l.pin) && isTable(l) && (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)));
   if (l.type === "comparison") return only(l, ["type", "columns", "rows", "total", "labels", "source", "pin"]) && isPin(l.pin) && isTable(l) && isFigures(l.total);
   if (l.type === "lookup_failed") return only(l, ["type", "message"]) && isStr(l.message, 300);
   if (l.type === "pin") return only(l, ["type", "chart", "source", "placed"]) && isChart(l.chart) && isStr(l.source, 5_000) && typeof l.placed === "boolean";
