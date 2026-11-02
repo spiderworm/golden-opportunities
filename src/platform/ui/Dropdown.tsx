@@ -39,7 +39,11 @@ export function Dropdown<T extends string>(props: DropdownProps<T>) {
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const panelId = useId();
-  const chosen = props.mode === "single" ? [props.value] : props.values;
+  // A choice shows at once, though its caller may only take it when a navigation lands: until the props change.
+  const given = props.mode === "single" ? [props.value] : props.values;
+  const [pending, setPending] = useState<readonly T[] | null>(null);
+  useEffect(() => setPending(null), [given.join("\u0000")]);
+  const chosen = pending ?? given;
 
   useEffect(() => {
     if (!open) return;
@@ -96,11 +100,14 @@ export function Dropdown<T extends string>(props: DropdownProps<T>) {
                 aria-describedby={reason ? whyId : undefined}
                 onChange={() => {
                   if (props.mode === "single") {
+                    setPending([option.value]);
                     props.onChange(option.value);
                     setOpen(false);
                     button.current?.focus();
                   } else {
-                    props.onChange(on ? props.values.filter((v) => v !== option.value) : [...props.values, option.value]);
+                    const next = on ? chosen.filter((v) => v !== option.value) : [...chosen, option.value];
+                    setPending(next);
+                    props.onChange(next);
                   }
                 }}
               />
