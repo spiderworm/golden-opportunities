@@ -13,6 +13,34 @@ export const CHART_MEASURES = [
 ] as const satisfies readonly Measure[];
 export type ChartMeasure = (typeof CHART_MEASURES)[number];
 
+/**
+ * What each measure is counted in. A chart shows at most two units, one per axis (David, 2 Nov 2026: "multiple
+ * labels on the y-axis, color-coded"; three measures on two axes).
+ */
+export const MEASURE_UNITS: Record<ChartMeasure, "dollars" | "count" | "rate" | "percent"> = {
+  revenue: "dollars",
+  avg_order_value: "dollars",
+  units: "count",
+  orders: "count",
+  orders_per_day: "rate",
+  avg_discount: "percent",
+};
+/** Most measures one chart shows. */
+export const MAX_MEASURES = 3;
+/** Most units, and so axes, one chart shows. */
+export const MAX_UNITS = 2;
+
+/** Whether a measure can join the chart's: not already in it, at most three, and at most two units between them. */
+export function canAddMeasure(measures: readonly ChartMeasure[], measure: ChartMeasure): "ok" | "full" | "third unit" {
+  if (measures.includes(measure)) return "ok";
+  if (measures.length >= MAX_MEASURES) return "full";
+  const units = new Set([...measures, measure].map((m) => MEASURE_UNITS[m]));
+  return units.size > MAX_UNITS ? "third unit" : "ok";
+}
+
+/** The chart's measures, the first one first: it's the one the tiles, the heatmap and a title's view show. */
+export const measuresOf = (state: Pick<InvestigateState, "measure" | "also">): ChartMeasure[] => [state.measure, ...state.also];
+
 /** The headline figures, each against the quarter before. */
 export const TILE_MEASURES = ["revenue", "units", "orders", "avg_discount"] as const satisfies readonly ChartMeasure[];
 export type TileMeasure = (typeof TILE_MEASURES)[number];
@@ -52,14 +80,17 @@ export type FilterDimension = (typeof FILTER_DIMENSIONS)[number];
 export type Filters = Partial<Record<FilterDimension, string[]>>;
 
 export interface InvestigateState {
+  /** The chart's first measure, and the only one the tiles, the heatmap and a title's view show. */
   measure: ChartMeasure;
+  /** The chart's other measures, up to two more, on at most two units between all three (canAddMeasure). */
+  also: ChartMeasure[];
   by: Grouping;
   /** Split each bar by quarter. Only meaningful for groupings that aren't time. */
   compare: boolean;
   filters: Filters;
 }
 
-export const DEFAULT_STATE: InvestigateState = { measure: "revenue", by: "month", compare: false, filters: {} };
+export const DEFAULT_STATE: InvestigateState = { measure: "revenue", also: [], by: "month", compare: false, filters: {} };
 
 const MAX_VALUES = 50;
 const MAX_VALUE_LENGTH = 200;
@@ -68,9 +99,18 @@ function oneOf<T extends string>(allowed: readonly T[], value: string | null, fa
   return allowed.includes(value as T) ? (value as T) : fallback;
 }
 
-export function canCompare(by: Grouping): boolean {
-  // Time groupings already are quarters or sit inside one; titles are too many to split.
-  return by !== "month" && by !== "quarter" && by !== "title";
+export function canCompare(by: Grouping, also: readonly ChartMeasure[] = []): boolean {
+  // Time groupings already are quarters or sit inside one; titles are too many to split. With several measures,
+  // measures times quarters is too many series to read (David's choice, 2 Nov 2026).
+  return by !== "month" && by !== "quarter" && by !== "title" && also.length === 0;
+}
+
+/** The measures a link asks for: `measures=a,b,c`, kept only while they fit one chart; else `measure=a`, as links always did. */
+function readMeasures(params: URLSearchParams): Pick<InvestigateState, "measure" | "also"> {
+  const listed = (params.get("measures") ?? "").split(",").filter((m): m is ChartMeasure => CHART_MEASURES.includes(m as ChartMeasure));
+  const fitting = listed.reduce<ChartMeasure[]>((kept, m) => (canAddMeasure(kept, m) === "ok" && !kept.includes(m) ? [...kept, m] : kept), []);
+  if (fitting.length > 0) return { measure: fitting[0]!, also: fitting.slice(1) };
+  return { measure: oneOf(CHART_MEASURES, params.get("measure"), DEFAULT_STATE.measure), also: [] };
 }
 
 export function parseState(params: URLSearchParams): InvestigateState {
@@ -82,19 +122,22 @@ export function parseState(params: URLSearchParams): InvestigateState {
     if (values.length) filters[dimension] = values.slice(0, MAX_VALUES);
   }
   const by = oneOf(GROUPINGS, params.get("by"), DEFAULT_STATE.by);
+  const measures = readMeasures(params);
   return {
-    measure: oneOf(CHART_MEASURES, params.get("measure"), DEFAULT_STATE.measure),
+    ...measures,
     by,
-    compare: params.get("compare") === "quarter" && canCompare(by),
+    compare: params.get("compare") === "quarter" && canCompare(by, measures.also),
     filters,
   };
 }
 
 export function toSearchParams(state: InvestigateState): URLSearchParams {
   const params = new URLSearchParams();
-  if (state.measure !== DEFAULT_STATE.measure) params.set("measure", state.measure);
+  // One measure keeps the old `measure=` (so links and cached views are unchanged); several are `measures=a,b`.
+  if (state.also.length) params.set("measures", measuresOf(state).join(","));
+  else if (state.measure !== DEFAULT_STATE.measure) params.set("measure", state.measure);
   if (state.by !== DEFAULT_STATE.by) params.set("by", state.by);
-  if (state.compare && canCompare(state.by)) params.set("compare", "quarter");
+  if (state.compare && canCompare(state.by, state.also)) params.set("compare", "quarter");
   for (const dimension of FILTER_DIMENSIONS) {
     for (const value of state.filters[dimension] ?? []) params.append(dimension, value);
   }

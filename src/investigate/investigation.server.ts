@@ -1,7 +1,7 @@
 // Turns the player's question (InvestigateState) into the queries the screen
 // draws, and returns only those results to the browser.
 import { loadBookshop } from "~/bookshop/loader.server";
-import type { Query, QueryResult, QueryView } from "~/query/types";
+import type { Measure, Query, QueryResult, QueryView } from "~/query/types";
 import { DEFAULT_STATE, filtersExcept, TILE_MEASURES, type Filters, type InvestigateState, type TileMeasure } from "./state";
 
 export type RunQuery = (query: Query, view: QueryView) => QueryResult;
@@ -29,7 +29,10 @@ export interface FilterOptions {
 
 export interface Investigation {
   tiles: Tile[];
+  /** The chart's first measure. */
   chart: QueryResult;
+  /** The chart's other measures, in the order chosen: one query each, as the first. */
+  also: QueryResult[];
   heatmap: QueryResult;
   /** One title's sales by month, when the player has drilled into a single title. */
   /** One title: its sales by month, and its ratings by stars (undated, so no other filter applies to them). */
@@ -81,9 +84,9 @@ function withFilter(filters: Filters): Pick<Query, "filter"> {
   return Object.keys(filters).length ? { filter: filters } : {};
 }
 
-function chartQuery(state: InvestigateState): Query {
+function chartQuery(state: InvestigateState, measure: Measure = state.measure): Query {
   const by = state.compare ? ([state.by, 'quarter'] as const) : ([state.by] as const);
-  return { measure: state.measure, by, ...withFilter(filtersExcept(state.filters, [state.by])) };
+  return { measure, by, ...withFilter(filtersExcept(state.filters, [state.by])) };
 }
 function heatmapQuery(state: InvestigateState): Query {
   return { measure: state.measure, by: ['weekday', 'month'], ...withFilter(filtersExcept(state.filters, ['weekday', 'month'])) };
@@ -117,6 +120,8 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
   );
 
   const chart = rendered(chartQuery(state), chartQuery(DEFAULT_STATE));
+  // The other measures are views the player chose, so they count as shown, like any other chart.
+  const also = state.also.map((measure) => rendered(chartQuery(state, measure)));
   // Always-visible context, never discovery evidence (m1-slice section 5).
   const heatmap = run(heatmapQuery(state));
 
@@ -132,5 +137,5 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
     : null;
 
   for (const { query, result } of displayed) observe?.(query, result);
-  return { tiles, chart, heatmap, titleView, options };
+  return { tiles, chart, also, heatmap, titleView, options };
 }

@@ -83,14 +83,15 @@ test('M1: discover, choose two moves, play; a separate save holds course with hi
   await expect(page.getByRole('link', { name: 'Write the plan' })).toBeVisible();
 
   // A1: broad Q3/Q4 shape, A2: order size across both quarters.
-  await page.getByRole('combobox', { name: /^Break down by/ }).selectOption('genre');
+  await page.getByRole('button', { name: /^Break down by/ }).click();
+  await page.getByRole('radio', { name: 'Genre', exact: true }).click();
   await expect(page).toHaveURL(/by=genre/);
   await page.getByRole('button', { name: 'Compare quarters' }).click();
   await expect(page.getByRole('button', { name: 'Compare quarters' })).toHaveAttribute('aria-pressed', 'true');
   await ledgers(page, 'measure=avg_order_value&by=quarter');
   // B is deliberately selected; the default heatmap must never be relied upon.
   await ledgers(page, 'by=weekday&compare=quarter');
-  await expect(page.getByRole('combobox', { name: /^Break down by/ })).toHaveValue('weekday');
+  await expect(page.getByRole('button', { name: /^Break down by/ })).toContainText('Weekday');
   await promotionMonths(page, 3);
   await commitPlan(page, true);
   const firstReport = await checkReport(page, false);

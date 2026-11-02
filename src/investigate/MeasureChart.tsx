@@ -1,20 +1,27 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
 import { categoryHeight, categoryModel, categoryOption, legendItems, TOP_RANKED, type CategoryModel } from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
+import { Dropdown } from "~/platform/ui/Dropdown";
 import { Legend } from "./charts/Legend";
 import { ResultTable } from "./charts/ResultTable";
-import { ADDITIVE, DIMENSION_LABELS, formatDimensionValue, MEASURE_LABELS, periodLabel } from "./format";
-import { canCompare, CHART_MEASURES, GROUPINGS, monthsInScope, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
+import { measureColor, measuresModel, measuresOption, measuresTable } from "./charts/measures-chart";
+import { ADDITIVE, DIMENSION_LABELS, formatDimensionValue, MEASURE_LABELS, measuresLabel, periodLabel } from "./format";
+import { canAddMeasure, canCompare, CHART_MEASURES, GROUPINGS, measuresOf, monthsInScope, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
 import styles from "./Investigate.module.css";
 
 export interface MeasureChartProps {
   state: InvestigateState;
   result: QueryResult;
+  /** The other measures' results, in the order chosen (state.also). */
+  also?: readonly QueryResult[];
   quarters: readonly string[];
-  onMeasure: (measure: ChartMeasure) => void;
+  /** The chart's measures, the first one first: one to three, on at most two units. */
+  onMeasures: (measures: ChartMeasure[]) => void;
+  /** A measure's series turned off or on in the legend. */
+  onSeries?: (measure: ChartMeasure, shown: boolean) => void;
   onGroup: (by: Grouping) => void;
   onCompare: (compare: boolean) => void;
   onDrill: (value: string) => void;
@@ -48,11 +55,21 @@ export function chartShare(state: InvestigateState, model: CategoryModel, total:
   return { total: () => total, period: () => periodLabel(scope) };
 }
 
-export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCompare, onDrill, onTable, onPin, pinned }: MeasureChartProps) {
+export function MeasureChart({ state, result, also = [], quarters, onMeasures, onSeries, onGroup, onCompare, onDrill, onTable, onPin, pinned }: MeasureChartProps) {
   const [table, setTable] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [hidden, setHidden] = useState<ChartMeasure[]>([]);
+  const measures = measuresOf(state);
+  const several = state.also.length > 0 && also.length === state.also.length;
   const selected = state.filters[state.by] ?? [];
   const months = state.by === "month" ? monthsInScope(quarters, state.filters.quarter) : [];
+  const many = useMemo(
+    () => (several ? measuresModel([result, ...also], measures, state.by, months, { top: showAll ? undefined : TOP_RANKED, keep: selected }) : null),
+    [several, result, also, measures.join(), state.by, months.join(), showAll, selected.join("\u0000")],
+  );
+  const manyOption = useMemo(() => (many ? measuresOption(many, { selected, hidden }) : null), [many, selected.join("\u0000"), hidden.join()]);
+  // A measure taken off the chart can't stay hidden.
+  useEffect(() => setHidden((h) => h.filter((m) => measures.includes(m))), [measures.join()]);
   const model = useMemo(
     () =>
       categoryModel(result, state.by, state.compare ? "quarter" : null, months, { top: showAll ? undefined : TOP_RANKED, keep: selected }),
@@ -68,7 +85,7 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
     // selected is derived from state.filters, which changes identity with each navigation.
     [model, selected.join("\u0000"), quarters, state, result.total],
   );
-  const title = `${MEASURE_LABELS[state.measure]} by ${DIMENSION_LABELS[state.by].toLowerCase()}`;
+  const title = `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}`;
 
   function drillAt(index: number) {
     const value = model.categories[index];
@@ -83,32 +100,50 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
           {title}
         </h2>
         <div className={styles.cardControls}>
-          <label className={styles.select}>
-            <span className={styles.selectLabel}>Show</span>
-            <select value={state.measure} onChange={(e) => onMeasure(e.target.value as ChartMeasure)}>
-              {CHART_MEASURES.map((m) => (
-                <option key={m} value={m}>
-                  {MEASURE_LABELS[m]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={styles.select}>
-            <span className={styles.selectLabel}>Break down by</span>
-            <select value={state.by} onChange={(e) => onGroup(e.target.value as Grouping)}>
-              {GROUPINGS.map((g) => (
-                <option key={g} value={g}>
-                  {DIMENSION_LABELS[g]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Dropdown
+            mode="multi"
+            name="Show"
+            values={measures}
+            onChange={(next) => next.length > 0 && onMeasures(next)}
+            options={CHART_MEASURES.map((m) => {
+              const on = measures.includes(m);
+              const fit = canAddMeasure(measures, m);
+              return {
+                value: m,
+                label: MEASURE_LABELS[m],
+                color: on && measures.length > 1 ? measureColor(measures.indexOf(m)) : undefined,
+                // Three measures on two units at most (David, 2 Nov 2026); and the chart needs one.
+                disabledReason: on
+                  ? measures.length === 1
+                    ? "The chart needs one"
+                    : null
+                  : fit === "full"
+                    ? "Three at most"
+                    : fit === "third unit"
+                      ? "Two units at most"
+                      : null,
+              };
+            })}
+          />
+          <Dropdown
+            mode="single"
+            name="Break down by"
+            value={state.by}
+            onChange={onGroup}
+            options={GROUPINGS.map((g) => ({ value: g, label: DIMENSION_LABELS[g] }))}
+          />
           <button
             type="button"
             className={styles.toggle}
             aria-pressed={state.compare}
-            disabled={!canCompare(state.by)}
-            title={canCompare(state.by) ? undefined : "Group by genre, format or publisher to compare quarters"}
+            disabled={!canCompare(state.by, state.also)}
+            title={
+              state.also.length
+                ? "Show one measure to compare quarters"
+                : canCompare(state.by)
+                  ? undefined
+                  : "Group by genre, format or publisher to compare quarters"
+            }
             onClick={() => onCompare(!state.compare)}
           >
             Compare quarters
@@ -132,6 +167,41 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
 
       {result.rows.length === 0 ? (
         <p className={styles.empty}>No sales match these filters.</p>
+      ) : many && manyOption ? (
+        table ? (
+          <ResultTable result={measuresTable(many, [result, ...also])} />
+        ) : (
+          <>
+            <ul className={styles.legend} aria-label="Measures">
+              {many.measures.map((m) => {
+                const off = hidden.includes(m.measure);
+                return (
+                  <li key={m.measure}>
+                    <button
+                      type="button"
+                      className={styles.legendToggle}
+                      aria-pressed={!off}
+                      onClick={() => {
+                        setHidden(off ? hidden.filter((h) => h !== m.measure) : [...hidden, m.measure]);
+                        onSeries?.(m.measure, off);
+                      }}
+                    >
+                      <span className={styles.legendSwatch} style={{ background: off ? "transparent" : m.color, borderColor: m.color }} />
+                      {MEASURE_LABELS[m.measure]}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <EChart
+              option={manyOption}
+              height={categoryHeight({ ...model, categories: many.categories, horizontal: many.horizontal })}
+              label={`${title}. Click to look closer.`}
+              onCategoryClick={drillAt}
+              categoryAxis={many.horizontal ? "y" : "x"}
+            />
+          </>
+        )
       ) : table ? (
         <ResultTable result={result} />
       ) : (
@@ -161,3 +231,4 @@ export function MeasureChart({ state, result, quarters, onMeasure, onGroup, onCo
     </section>
   );
 }
+

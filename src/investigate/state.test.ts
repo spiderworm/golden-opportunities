@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { awardChoice, DEFAULT_STATE, onlyShownChanged, removeFilter, shownFilters, withShown, discountChoice, filtersExcept, monthsInScope, parseState, setAward, setDiscount, setSeries, seriesChoice, toggleCell, toggleFilterValue, toSearchParams } from "./state";
+import { awardChoice, canAddMeasure, canCompare, measuresOf, DEFAULT_STATE, onlyShownChanged, removeFilter, shownFilters, withShown, discountChoice, filtersExcept, monthsInScope, parseState, setAward, setDiscount, setSeries, seriesChoice, toggleCell, toggleFilterValue, toSearchParams } from "./state";
 
 describe("investigate state", () => {
   it("round-trips through the URL", () => {
-    const state = { measure: "units", by: "genre", compare: true, filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] } } as const;
-    const params = toSearchParams({ ...state, filters: { genre: [...state.filters.genre], quarter: [...state.filters.quarter] } });
+    const state = { measure: "units", also: [], by: "genre", compare: true, filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] } } as const;
+    const params = toSearchParams({ ...state, also: [], filters: { genre: [...state.filters.genre], quarter: [...state.filters.quarter] } });
     expect(params.toString()).toBe("measure=units&by=genre&compare=quarter&quarter=2193-Q4&genre=Fiction&genre=Memoir");
     expect(parseState(params)).toEqual(state);
   });
@@ -115,6 +115,31 @@ describe("investigate state", () => {
     expect(onlyShownChanged(at("?by=genre&show=genre"), at("?by=genre"))).toBe(true);
     expect(onlyShownChanged(at("?by=genre&show=genre"), at("?by=genre&show=genre&genre=Fiction"))).toBe(false);
     expect(onlyShownChanged(at("?by=genre"), at("?by=genre"))).toBe(false);
+  });
+
+  it("keeps several measures in the URL, up to three on two units, and old single-measure links as they were", () => {
+    const two = parseState(new URLSearchParams("measures=revenue,units&by=genre&compare=quarter"));
+    expect(measuresOf(two)).toEqual(["revenue", "units"]);
+    // Several measures can't also compare quarters.
+    expect(two.compare).toBe(false);
+    expect(toSearchParams(two).toString()).toBe("measures=revenue%2Cunits&by=genre");
+    // A third unit, a fourth measure, a repeat or an unknown one is dropped, keeping what fits.
+    expect(measuresOf(parseState(new URLSearchParams("measures=revenue,units,avg_discount")))).toEqual(["revenue", "units"]);
+    expect(measuresOf(parseState(new URLSearchParams("measures=revenue,units,orders,avg_order_value")))).toEqual(["revenue", "units", "orders"]);
+    expect(measuresOf(parseState(new URLSearchParams("measures=units,units,bogus")))).toEqual(["units"]);
+    // One measure is written as it always was, and old links still open.
+    expect(toSearchParams({ ...DEFAULT_STATE, measure: "units" }).toString()).toBe("measure=units");
+    expect(measuresOf(parseState(new URLSearchParams("measure=orders")))).toEqual(["orders"]);
+    expect(measuresOf(parseState(new URLSearchParams("measures=")))).toEqual(["revenue"]);
+  });
+
+  it("says why a measure can't join: three at most, two units at most", () => {
+    expect(canAddMeasure(["revenue"], "units")).toBe("ok");
+    expect(canAddMeasure(["revenue", "units"], "avg_order_value")).toBe("ok");
+    expect(canAddMeasure(["revenue", "units"], "avg_discount")).toBe("third unit");
+    expect(canAddMeasure(["revenue", "units", "orders"], "avg_order_value")).toBe("full");
+    expect(canCompare("genre", ["units"])).toBe(false);
+    expect(canCompare("genre", [])).toBe(true);
   });
 
   it("lists the months in the quarters in scope", () => {
