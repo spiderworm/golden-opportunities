@@ -61,6 +61,23 @@ const MEASURE_NAMES: Record<string, string> = { profit: "Profit", readers: "Read
 const genre = (p: LaterOffer["params"]) => GENRE_WORDS[p.genre ?? ""] ?? p.genre ?? "";
 const format = (p: LaterOffer["params"]) => FORMAT_WORDS[p.format ?? ""] ?? p.format ?? "";
 
+/**
+ * Where to look for last quarter's weakest measure: the ledger view that shows it (#220), one per measure.
+ * Happiness is average rating, which isn't dated, so it's never "by month".
+ */
+function weakestHint(measure: string, last: string): string {
+  switch (measure) {
+    case "profit":
+      return `Look at revenue for ${quarterName(last)}, by month or by title.`;
+    case "readers":
+      return `Look at orders for ${quarterName(last)}, by month or by title.`;
+    case "happiness":
+      return "Look at average rating, title by title.";
+    default:
+      return `Look at units by title for ${quarterName(last)}.`;
+  }
+}
+
 /** Each offer's found and not-found text (endless.md section 5; endless-copy.md section 4). */
 function laterTexts(offer: LaterOffer): { found: string; notFound: string } {
   const p = offer.params;
@@ -68,10 +85,7 @@ function laterTexts(offer: LaterOffer): { found: string; notFound: string } {
     case "record":
       return { found: `You compared ${quarterName(p.last!)} with ${quarterName(p.yearBefore!)}.`, notFound: `Compare a measure for ${quarterName(p.last!)} with ${quarterName(p.yearBefore!)}.` };
     case "weakest":
-      return {
-        found: `You looked into ${MEASURE_NAMES[p.measure!] ?? p.measure}, last quarter's lowest.`,
-        notFound: `Look into ${MEASURE_NAMES[p.measure!] ?? p.measure} for ${quarterName(p.last!)}, by month or by title.`,
-      };
+      return { found: `You looked into ${MEASURE_NAMES[p.measure!] ?? p.measure}, last quarter's lowest.`, notFound: weakestHint(p.measure!, p.last!) };
     case "event":
       switch (p.type) {
         case "genre_surge":
@@ -80,7 +94,8 @@ function laterTexts(offer: LaterOffer): { found: string; notFound: string } {
         case "quiet_days":
           return { found: `You found the ${p.weekday} pattern in last year's orders.`, notFound: "Break a past quarter's orders down by weekday." };
         case "format_costs":
-          return { found: `You checked how much of the shop is ${format(p)}.`, notFound: `Break ${quarterName(p.yearBefore!)} down by format.` };
+          // Plot's wording (#223), which reads for every format.
+          return { found: `You checked how many of the shop's sales are ${format(p)} copies.`, notFound: `Break ${quarterName(p.yearBefore!)} down by format.` };
         default:
           return { found: "You found the quarter's event in the ledgers.", notFound: "Look for the quarter's event in the ledgers." };
       }

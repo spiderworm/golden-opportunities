@@ -32,7 +32,7 @@ describe("a later quarter's discoveries (endless.md section 5; endless-copy.md s
     expect(laterDiscoveries(["record"], offers)).toEqual([
       { id: "event", found: false, text: "Break science fiction and fantasy down by title for Q4 2193." },
       { id: "record", found: true, text: "You compared Q4 2194 with Q4 2193." },
-      { id: "weakest", found: false, text: "Look into Readers served for Q4 2194, by month or by title." },
+      { id: "weakest", found: false, text: "Look at orders for Q4 2194, by month or by title." },
     ]);
     expect(laterDiscoveries(["event", "weakest"], offers).filter((d) => d.found).map((d) => d.text)).toEqual([
       "You looked inside science fiction and fantasy, title by title.",
@@ -46,8 +46,16 @@ describe("a later quarter's discoveries (endless.md section 5; endless-copy.md s
     );
     expect(laterDiscoveries([], [{ id: "event", params: { type: "format_costs", yearBefore: "2193-Q3", format: "Graphic" } }])[0]!.text).toBe("Break Q3 2193 down by format.");
     expect(laterDiscoveries(["event"], [{ id: "event", params: { type: "format_costs", yearBefore: "2193-Q3", format: "Graphic" } }])[0]!.text).toBe(
-      "You checked how much of the shop is graphic novel.",
+      "You checked how many of the shop's sales are graphic novel copies.",
     );
     expect(laterDiscoveries([], [])).toEqual([]);
+  });
+
+  it("point to the weakest measure's own ledger view (#220): Happiness's rating isn't dated, so never by month", () => {
+    const hint = (measure: string) => laterDiscoveries([], [{ id: "weakest", params: { measure, last: "2194-Q3" } }])[0]!.text;
+    expect(hint("profit")).toBe("Look at revenue for Q3 2194, by month or by title.");
+    expect(hint("readers")).toBe("Look at orders for Q3 2194, by month or by title.");
+    expect(hint("happiness")).toBe("Look at average rating, title by title.");
+    expect(hint("culture")).toBe("Look at units by title for Q3 2194.");
   });
 });
