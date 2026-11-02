@@ -307,6 +307,22 @@ describe("prices (Probe's #225)", () => {
     expect(say("Hardcovers in {{b.list_price}} sold {{b.total}} units.", r)).toBe(WITHHELD);
   });
 
+  it("never carry a book's price over to another (Probe's review of #228)", () => {
+    for (const tail of [", and Heliotrope Pajamas does too.", ", as does The Lantern Hours.", ", as do the other editions.", ", the same as Heliotrope Pajamas.", ", like every hardcover.", ", and so is the paperback."]) {
+      expect(say(`{{a1.edition}} costs {{a1.list_price}}${tail}`, r), tail).toBe(WITHHELD);
+    }
+    // The title inside an edition label is a book named: its own is fine, another's isn't.
+    expect(say("Post Alley's {{a1.edition}} lists at {{a1.list_price}}.", r)).toBe("Post Alley's Post Alley (Hardcover) lists at $27.99.");
+    expect(say("{{a1.edition}} lists at {{a1.list_price}}, unlike Heliotrope Pajamas.", r)).toBe(WITHHELD);
+  });
+
+  it("read format synonyms: hardback is a hardcover; softcover fits no one format (Probe's review of #228)", () => {
+    expect(say("{{a1.edition}}, the hardback, costs {{a1.list_price}}.", r)).toBe("Post Alley (Hardcover), the hardback, costs $27.99.");
+    expect(say("{{a1.edition}}, the softcover, costs {{a1.list_price}}.", r)).toBe(WITHHELD);
+    expect(say("{{a2.edition}}, the softcover, costs {{a2.list_price}}.", r)).toBe(WITHHELD);
+    expect(say("{{a2.edition}}, the hard cover, costs {{a2.list_price}}.", r)).toBe(WITHHELD);
+  });
+
   it("keep a price group apart from any book", () => {
     expect(say("Every title in {{b.list_price}} sold {{b.total}} units.", r)).toBe("Every title in $27.99 sold 51 units.");
     expect(say("{{a2.edition}} is among the books in {{b.list_price}}.", r)).toBe(WITHHELD);
