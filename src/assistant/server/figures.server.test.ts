@@ -19,6 +19,12 @@ describe("refs render the data's own figures, units and directions", () => {
     expect(say("{{a.max}}. {{a.min}}.")).toBe("2193-Q3 had the highest revenue, $274,036.16. 2193-Q1 had the lowest revenue, $95,245.81.");
   });
 
+  it("a row's figure by its own measure's column, as {{a4}} is (Probe's #252 red-team); never another measure's", () => {
+    expect(say("Revenue in {{a4.quarter}} was {{a4.revenue}}.")).toBe("Revenue in 2193-Q4 was $161,524.69.");
+    expect(say("It was {{a4.revenue|round:10000}}.")).toBe("It was about $160,000.");
+    expect(say("Units in {{a4.quarter}} were {{a4.units}}.")).toBe(WITHHELD);
+  });
+
   it("changes and percents carry the data's direction", () => {
     expect(say("Revenue {{b.change}} from 2193-Q2 to 2193-Q4, {{b.percent}}.")).toBe("Revenue fell by $2,912.25 from 2193-Q2 to 2193-Q4, a fall of 1.8%.");
     expect(say("For Nonfiction, orders {{c1.change}}, {{c1.percent}}.")).toBe("For Nonfiction, orders rose by 61, a rise of 21.9%.");
