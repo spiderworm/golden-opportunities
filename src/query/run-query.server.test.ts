@@ -136,7 +136,7 @@ describe('server-owned visibility and cache isolation', () => {
     const volumes = run({ measure: 'units', by: ['volume'] });
     expect(volumes.rows.map(row => row.volume)).toEqual(['1', '2', '3', '4', '5', '6', '7', null]);
     expect(volumes.rows.at(-1)!.units).toBe(56350 - inSeries);
-    expect(volumes.columns[0]).toEqual({ key: 'volume', label: 'Volume', type: 'string', nullable: true });
+    expect(volumes.columns[0]).toEqual({ key: 'volume', label: 'Series volume', type: 'string', nullable: true });
     // Book grain: the unknown book (CH392) is neither in a series nor out of one.
     expect(run({ measure: 'avg_rating', by: ['in_series'] }).rows.map(row => row.in_series)).toEqual(['no', 'yes', null]);
     expect(run({ measure: 'checkouts', by: ['volume'], filter: { series: ['Inspector Ryeslton'] } }).rows.map(row => row.volume)).toEqual(['1', '2']);
