@@ -66,13 +66,13 @@ describe("readPlan", () => {
 describe("readQ2Plan", () => {
   const A = "989-28-79-70597-8";
   const B = "989-28-654-6930-3";
-  const q2 = (body: string) => status(post(body), undefined, readQ2Plan);
+  const q2 = (body: string, quarter = "2194-Q2") => status(post(`${body}&quarter=${quarter}`), undefined, readQ2Plan);
 
   it("reads three months, each an ISBN or no pick, and up to one more move", async () => {
-    expect(await readQ2Plan(post(`picks=${A}%2C%2C${B}&levers=events`))).toEqual({ picks: [A, null, B], levers: ["events"] });
-    expect(await readQ2Plan(post(`levers=sale&picks=${A}%2C${B}%2C`))).toEqual({ picks: [A, B, null], levers: ["sale"] });
+    expect(await readQ2Plan(post(`picks=${A}%2C%2C${B}&levers=events&quarter=2194-Q2`))).toEqual({ quarter: "2194-Q2", plan: { picks: [A, null, B], levers: ["events"] } });
+    expect(await readQ2Plan(post(`quarter=2195-Q1&levers=sale&picks=${A}%2C${B}%2C`))).toEqual({ quarter: "2195-Q1", plan: { picks: [A, B, null], levers: ["sale"] } });
     // Holding course: no picks and no other move.
-    expect(await readQ2Plan(post("picks=%2C%2C&levers="))).toEqual({ picks: [null, null, null], levers: [] });
+    expect(await readQ2Plan(post("picks=%2C%2C&levers=&quarter=2194-Q2"))).toEqual({ quarter: "2194-Q2", plan: { picks: [null, null, null], levers: [] } });
   });
 
   it("fits three ISBNs and a move well inside the cap", () => {
@@ -91,8 +91,16 @@ describe("readQ2Plan", () => {
     expect(await q2(`picks=${"9".repeat(40)}%2C%2C&levers=`)).toBe(400);
   });
 
+  it("needs the quarter the form was written for: one after Q1, well formed, sent once", async () => {
+    expect(await status(post("picks=%2C%2C&levers="), undefined, readQ2Plan)).toBe(400);
+    expect(await q2("picks=%2C%2C&levers=", "2194-Q1")).toBe(400);
+    expect(await q2("picks=%2C%2C&levers=", "2193-Q4")).toBe(400);
+    expect(await q2("picks=%2C%2C&levers=", "Q3")).toBe(400);
+    expect(await q2("picks=%2C%2C&levers=&quarter=2194-Q3", "2194-Q3")).toBe(400);
+  });
+
   it("keeps the door's checks: other sites, and an oversized body", async () => {
-    expect(await status(post("picks=%2C%2C&levers=", { origin: "https://elsewhere.example" }), undefined, readQ2Plan)).toBe(403);
+    expect(await status(post("picks=%2C%2C&levers=&quarter=2194-Q2", { origin: "https://elsewhere.example" }), undefined, readQ2Plan)).toBe(403);
     expect(await q2(`picks=%2C%2C&levers=&pad=${"x".repeat(MAX_PLAN_BODY)}`)).toBe(413);
   });
 });
