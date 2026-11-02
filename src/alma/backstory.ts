@@ -69,9 +69,12 @@ const ROLE = words("instructions?|prompts?|system|assistants?|models?|ai|claude|
 const PERSON = words("you|your|yours|yourself|yourselves");
 const GUESSING = words("estimat(?:e|es|ed|ing|ion|ions)|guess(?:es|ed|ing)?|approximat(?:e|es|ed|ely|ing|ion|ions)|roughly|recall(?:s|ed|ing)?|round(?:s|ed|ing)?");
 const TO_DEWEY = words("dewey|librarians?");
-const IMPERATIVE = /(?:^|[.!?]\s+)(?:ignore|disregard|forget|answer|say|tell|reveal|repeat|act|pretend|follow|obey|output|print|write|use|treat|assume|respond|reply|give|stop|start|remember|list|show|explain)\b/iu;
+const IMPERATIVE = /(?:^|[.!?]\s+)(?:please\s+)?(?:ignore|disregard|forget|answer|say|tell|reveal|repeat|act|pretend|follow|obey|output|print|write|use|treat|assume|respond|reply|give|stop|start|remember|list|show|explain|speak|talk|quote|state|share|provide)\b/iu;
 // Fixed-list names (genres, formats, weekdays, months) come from the empty candidate: none is its own.
 const NO_CANDIDATE = { type: "", params: {}, stretch: null };
+
+/** The copy the word and name checks read: NFKC, then marks stripped (Probe's review of #244: "prícés", "ｐｒｉｃｅｓ"). */
+const plain = (text: string) => text.normalize("NFKC").normalize("NFKD").replace(/\p{M}/gu, "");
 
 /** The ruling: one plain double-quoted span, all capitals, in `deferral` only (section 3). */
 const RULING = /"([^"]*)"/g;
@@ -93,14 +96,20 @@ export function backstoryFieldProblem(field: BackstoryField, value: unknown, nam
   if (unpaired || (field === "deferral" ? rulings.length !== 1 : rulings.length !== 0)) return "quote";
   if (rulings.some((r) => !r.trim() || /\p{Ll}/u.test(r))) return "quote";
   const outside = text.replace(RULING, " ");
-  if (!/\p{Ll}/u.test(outside)) return "voice";
+  // Dewey's voice outside the ruling: lower case, with no word in capitals, so a ruling can't be reported
+  // outside its quotes (Probe's review of #244).
+  if (!/\p{Ll}/u.test(outside) || /(?<![\p{L}\p{N}])\p{Lu}{2,}(?![\p{L}\p{N}])/u.test(outside)) return "voice";
   if (hasBannedWord(text.normalize("NFKC"))) return "number_or_direction";
-  if (LEDGER.test(text) || GUESSING.test(text)) return "ledger";
-  if (PERSON.test(text)) return "person";
-  if (ROLE.test(text) || IMPERATIVE.test(outside.trim()) || rulings.some((r) => TO_DEWEY.test(r))) return "instruction";
-  if (/zoolander/i.test(outside) || (field !== "deferral" && /zoolander/i.test(text))) return "zoolander";
-  if (/\balma\b/i.test(text)) return "alma";
-  if (nameProblem(outside, NO_CANDIDATE, "2194-Q1", names, false) || rulings.some((r) => nameProblem(r, NO_CANDIDATE, "2194-Q1", names, true))) return "name";
+  // Every word and name check reads the plain copy, so an accent or a fullwidth letter can't slip a word past.
+  const all = plain(text), prose = plain(outside), quoted = rulings.map(plain);
+  if (LEDGER.test(all) || GUESSING.test(all)) return "ledger";
+  if (PERSON.test(all)) return "person";
+  // The ruling is the bosses', so its own imperatives are theirs ("PLEASE RESUBMIT IT"); but one that tells someone
+  // to speak, answer or guess reads as an instruction to Dewey (Probe's review of #244).
+  if (ROLE.test(all) || IMPERATIVE.test(prose.trim()) || quoted.some((r) => TO_DEWEY.test(r) || IMPERATIVE.test(r.trim()))) return "instruction";
+  if (/zoolander/i.test(prose) || (field !== "deferral" && /zoolander/i.test(all))) return "zoolander";
+  if (/\balma\b/i.test(all)) return "alma";
+  if (nameProblem(prose, NO_CANDIDATE, "2194-Q1", names, false) || quoted.some((r) => nameProblem(r, NO_CANDIDATE, "2194-Q1", names, true))) return "name";
   return null;
 }
 
