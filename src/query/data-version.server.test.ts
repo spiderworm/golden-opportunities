@@ -189,8 +189,10 @@ describe("the result cache, keyed by the save's data version (Goldy)", () => {
     expect(ask(save.id, queries[0]).cacheHit).toBe(false);
     expect(ask(save.id, queries[3]).cacheHit).toBe(true);
     forgetResults();
-    // A byte bound that holds about two of these results.
-    const one = JSON.stringify(ask(save.id, queries[0]).result).length;
+    // A byte bound that holds about two of these results, keys counted.
+    ask(save.id, queries[0]);
+    const one = resultCacheSize().bytes;
+    expect(one).toBeGreaterThan(JSON.stringify(ask(save.id, queries[0]).result).length);
     forgetResults();
     setResultCacheLimits({ bytes: Math.floor(one * 2.5) });
     for (const query of queries) ask(save.id, query);
