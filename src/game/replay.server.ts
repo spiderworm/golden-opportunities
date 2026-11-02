@@ -12,6 +12,12 @@ import { SaveError } from './store.server';
 import { linesOfTurn, type TurnEvent } from '../simulation/turn';
 import type { PlayedQuarter } from './types';
 
+/** A replay that doesn't match: the engine changed since `quarter`, the first quarter that no longer replays. */
+export class ReplayMismatch extends SaveError {
+  readonly quarter: PlayedQuarter['period'];
+  constructor(quarter: PlayedQuarter['period']) { super('REPLAY_MISMATCH'); this.quarter = quarter; }
+}
+
 /** The columns a save keeps of a simulated line: the source sales' shape. */
 export const visible = (lines: readonly SimulatedLine[]): Sale[] => lines.map(({ id, sourceSheet, sourceRow, date, quarter, isbn, discount, itemId, orderId }) =>
   ({ id, sourceSheet, sourceRow, date, quarter, isbn, discount, itemId, orderId }));
@@ -76,7 +82,7 @@ export function quarterLines(saveId: string, seed: number, quarter: PlayedQuarte
   const cached = cache.get(saveId)?.quarters.get(key);
   if (cached) { entry(saveId); return cached; }
   const lines = replayLines(quarter, seed, data(), event);
-  if (lines.length !== quarter.lines.count || linesHash(lines) !== quarter.lines.hash) throw new SaveError('REPLAY_MISMATCH');
+  if (lines.length !== quarter.lines.count || linesHash(lines) !== quarter.lines.hash) throw new ReplayMismatch(quarter.period);
   remember(saveId, key, lines);
   return lines;
 }

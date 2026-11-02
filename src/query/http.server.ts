@@ -12,7 +12,7 @@ import type { QueryErrorCode, QueryErrorResponse, QueryTrack, QueryView } from '
 const headers = { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin', Vary: 'Origin, Authorization' };
 const status: Record<QueryErrorCode, number> = {
   INVALID_QUERY: 400, INCOMPATIBLE_DIMENSION: 400, UNAVAILABLE_FACTS: 403, INVALID_VIEW: 500,
-  UNAUTHORIZED: 401, SESSION_ENDED: 401, METHOD_NOT_ALLOWED: 405, UNSUPPORTED_MEDIA_TYPE: 415, PAYLOAD_TOO_LARGE: 413, RATE_LIMITED: 429, INTERNAL_ERROR: 500, RESULT_TOO_LARGE: 422,
+  UNAUTHORIZED: 401, SESSION_ENDED: 401, METHOD_NOT_ALLOWED: 405, UNSUPPORTED_MEDIA_TYPE: 415, PAYLOAD_TOO_LARGE: 413, RATE_LIMITED: 429, INTERNAL_ERROR: 500, RESULT_TOO_LARGE: 422, SAVE_NOT_REPLAYABLE: 409,
 };
 
 async function readJson(request: Request): Promise<unknown> {

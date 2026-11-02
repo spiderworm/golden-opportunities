@@ -155,6 +155,15 @@ withhold evidence, so trusting it from the browser costs nothing. The browser's
 cache keeps these answers apart from the same query shown as evidence, so that
 one still reaches the server and is recorded.
 
+## A save that can't be replayed
+
+Played quarters keep their lines' hash and are replayed on read
+(`src/game/replay.server.ts`). If a replay no longer matches, because the engine
+changed since the quarter was played, the view can't be built: `/api/query`
+answers 409 `SAVE_NOT_REPLAYABLE`, telling the player to start over from
+Settings. Page loaders throw a 409 naming the first quarter that no longer
+replays, and the shell's error boundary shows "Your save can't be replayed".
+
 ## Visibility and access
 
 `QueryView` is trusted server state. Filter facts against `periods` BEFORE
