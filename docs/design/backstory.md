@@ -37,6 +37,7 @@ Dewey will repeat this text, so it gets everything Dewey's own prose gets, plus 
   - no catalog title, author or publisher;
   - no genre, format, weekday or month, from the fixed lists that Alma's quarters use (`src/alma/names.ts`).
 - **No player and no real people:** no "you" addressed to the player, no account holder's name, no `@`, no email-like text. Alma's prompt also says to name no real person: it may name only the game's bosses, and Mr. Zoolander inside a ruling. A name the checks can't catch would persist in the save and could be repeated every turn, so this rule sits in the prompt as well as in Dewey's (Probe).
+- **Nothing that reads as an instruction** (Goldy's requirement; Sage's check). Outside the quoted ruling, no sentence may open with an imperative verb, such as ignore, disregard, forget, answer, say, tell, reveal, repeat, act, pretend or follow. And none of these words may appear anywhere: instruction(s), prompt, system, assistant, model, AI, Claude, Anthropic, rule(s) or guideline(s). "Never" and "always" stay allowed, since a story needs them ("never fully recovered"), and so does the plural "systems", from David's own sketch ("my memory and other critical systems").
 - **No markup:** no braces, no fence markers (`<<<` or `>>>`), no Markdown, no emoji, no line breaks inside a field.
 - **Places it may name:** Larkspur Station, Ring C, Orbital Books, the station library, the hydroponics deck, the shuttle lane and the docking ring. It may also invent a vessel (a cargo shuttle, an ore tug), but not a person's name.
 - **The ruling's capitals** sit inside plain double quotes in `deferral`, and nowhere else.
@@ -78,7 +79,7 @@ Each fallback is one of the four takes, chosen by the same seed, so a game whose
 - `damage`: `A supply pod came in fast during a failed docking and dented the library module. My memory has been unreliable since.`
 - `deferral`: `The Commerce Office reviewed the repair and ruled: "THE TERMINAL IS FREE. TECHNICIANS ARE NOT. THE COMMERCE OFFICE HAS DECIDED."`
 - `station`: `Orbital Books is a small shop on Ring C. The survey drone visits it every day.`
-- `short`: `A docking accident damaged my memory, and the Commerce Office prefers the terminal to a repair. I read from it as you ask.`
+- `short`: `A docking accident damaged my memory, and the Commerce Office prefers the terminal to a repair, so I read the terminal instead.`
 
 **The door first**
 - `damage`: `A passenger shuttle overshot its berth and struck the reading-room airlock. My memory and other systems never fully recovered.`
