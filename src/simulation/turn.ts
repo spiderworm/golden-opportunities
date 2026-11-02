@@ -18,8 +18,9 @@ import { MEASURE_IDS } from "./types";
 export type { TurnEvent } from "./conditions";
 
 /**
- * Bumped whenever any quarter's output for a fixed input changes, so a save's replay that no longer
- * matches its stored hash can say the engine changed. The fingerprint tests pin it beside their hashes.
+ * Bumped whenever any quarter's lines for a fixed input change, so a save's replay that no longer matches
+ * its stored hash can say the engine changed. A save keeps its outcomes, so a change only to their text
+ * (an assumption's wording) needs no bump. The fingerprint tests pin it beside their hashes.
  */
 export const ENGINE_VERSION = 1;
 
