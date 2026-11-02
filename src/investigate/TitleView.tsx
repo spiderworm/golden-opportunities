@@ -6,19 +6,22 @@ import { categoryModel, categoryOption } from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
 import { formatDimensionValue, MEASURE_LABELS } from "./format";
 import { monthsInScope, type InvestigateState } from "./state";
+import { RatingsHistogram } from "./RatingsHistogram";
 import styles from "./Investigate.module.css";
 
 export interface TitleViewProps {
   state: InvestigateState;
   title: string;
   result: QueryResult;
+  /** Its ratings by stars. */
+  ratings: QueryResult;
   quarters: readonly string[];
   onMonth: (month: string) => void;
   onClose: () => void;
 }
 
-/** One title's sales by month: where a drill into a title lands. */
-export function TitleView({ state, title, result, quarters, onMonth, onClose }: TitleViewProps) {
+/** One title's sales by month, beside its ratings: where a drill into a title lands. */
+export function TitleView({ state, title, result, ratings, quarters, onMonth, onClose }: TitleViewProps) {
   const selected = state.filters.month ?? [];
   const months = monthsInScope(quarters, state.filters.quarter);
   const model = useMemo(() => categoryModel(result, "month", null, months), [result, months.join()]);
@@ -41,20 +44,25 @@ export function TitleView({ state, title, result, quarters, onMonth, onClose }: 
           <Icon name="close" size={14} /> Close title
         </button>
       </header>
-      <EChart
-        option={option}
-        height={260}
-        label={`${heading} for ${title}. Click a month to filter the screen to it.`}
-        onCategoryClick={(index) => {
-          const month = model.categories[index];
-          if (month) onMonth(month);
-        }}
-      />
-      <p className={styles.source}>
-        {heading}
-        {selected.length > 0 ? `, filtered to ${selected.map((m) => formatDimensionValue("month", m)).join(", ")}` : ""}. Other
-        filters still apply. Source: {result.source}
-      </p>
+      <div className={styles.titleBody}>
+        <div>
+          <EChart
+            option={option}
+            height={260}
+            label={`${heading} for ${title}. Click a month to filter the screen to it.`}
+            onCategoryClick={(index) => {
+              const month = model.categories[index];
+              if (month) onMonth(month);
+            }}
+          />
+          <p className={styles.source}>
+            {heading}
+            {selected.length > 0 ? `, filtered to ${selected.map((m) => formatDimensionValue("month", m)).join(", ")}` : ""}. Other
+            filters still apply. Source: {result.source}
+          </p>
+        </div>
+        <RatingsHistogram title={title} result={ratings} />
+      </div>
     </section>
   );
 }

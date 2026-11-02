@@ -137,6 +137,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             state={state}
             title={titleView.title}
             result={titleView.result}
+            ratings={titleView.ratings}
             quarters={options.quarter}
             onMonth={(month) => {
               const next = toggleFilterValue(state, "month", month);

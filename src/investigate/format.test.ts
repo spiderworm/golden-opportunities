@@ -14,6 +14,11 @@ describe("Plot's Investigate words (m1-copy section 2)", () => {
     expect(formatDimensionValue("title", null)).toBe("Unknown title");
     expect(formatDimensionValue("genre", null)).toBe("Unknown");
   });
+
+  it("counts stars as a reader would: one star, five stars", () => {
+    expect(formatDimensionValue("stars", "1")).toBe("1 star");
+    expect(formatDimensionValue("stars", "5")).toBe("5 stars");
+  });
 });
 
 describe("the ledgers' title", () => {
