@@ -35,7 +35,15 @@ test('the question box wraps and grows to show everything typed, and Enter asks'
   const longest = await size();
   expect(longest.scroll).toBeLessThanOrEqual(longest.height);
   await question.scrollIntoViewIfNeeded();
-  await expect(dewey.getByText('Ask about your sales')).toBeInViewport();
+  // The greeting (worded differently once Sage's #244 is in): the conversation's top, still in view.
+  await expect(dewey.getByText(/about your sales/i)).toBeInViewport();
+
+  // Narrowed after typing, it wraps onto more lines, and grows to show them still (Sage, #239); widened, it shrinks.
+  const wide = page.viewportSize()!;
+  await page.setViewportSize({ width: 420, height: wide.height });
+  await expect.poll(async () => { const now = await size(); return now.scroll <= now.height && now.height > longest.height; }).toBe(true);
+  await page.setViewportSize(wide);
+  await expect.poll(async () => (await size()).height).toBe(longest.height);
 
   // Enter asks: the question goes up into the conversation, and the box is one line again.
   await question.fill('What was revenue by quarter?');
