@@ -125,9 +125,10 @@ export const SERVICE_RECORD = {
   heading: "Service record",
   columns: { quarter: "Quarter", profit: "Profit", readers: "Readers served", happiness: "Happiness", culture: "Culture", overall: "Overall", event: "Event" },
   strike: ", strike",
+  // Scores and grades read as everywhere else on the screen: scoreText's "74 (C\u2212)" (Plot, on #215).
   tenure: (quarters: number, mean: number, grade: Grade) =>
-    `Manager since January 1, 2194: ${quarters} ${quarters === 1 ? "quarter" : "quarters"}. Average overall score: ${mean} (${grade}).`,
-  best: (quarter: QuarterId, score: number, grade: Grade) => `Best quarter: ${quarterName(quarter)}, ${score} (${grade}).`,
+    `Manager since January 1, 2194: ${quarters} ${quarters === 1 ? "quarter" : "quarters"}. Average overall score: ${scoreText(mean, grade)}.`,
+  best: (quarter: QuarterId, score: number, grade: Grade) => `Best quarter: ${quarterName(quarter)}, ${scoreText(score, grade)}.`,
 } as const;
 
 /** After Q1, while Q2 is still to play (q2.md section 7): the primary button, to the station on April 1. */
