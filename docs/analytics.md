@@ -21,16 +21,16 @@ The goal: "Analytics are complete, with an instance ID; agent text is held on th
 - **Checking them:** I read each event's props for content against the page, and read the code paths for held events, sharing and automation.
 - **Tests:** `src/platform/analytics` and `src/assistant/ui` pass 27 of 27, and the analytics package's own tests (`node --test`, client and environment) pass 19 of 19.
 
-## The events (87)
+## The events (90)
 
 | Area | Events |
 | --- | --- |
 | Kit and lifecycle | `instance`, `device`, `app_shown`, `app_hidden`, `sharing_set`, `lazy_import_failed`, `server_started`, `phone_blocked`, `bookshop_loaded` |
-| Station and shell | `station_viewed`, `station_failed`, `station_frame_sample`, `camera_moved`, `boss_scene_failed`, `bubble_focused`, `menu_toggled`, `nav_selected`, `notifications_opened`, `notification_selected`, `alert_shown`, `alert_dismissed`, `alert_strip_clicked`, `settings_opened` |
+| Station and shell | `station_viewed`, `station_failed`, `station_frame_sample`, `camera_moved`, `boss_scene_failed`, `bubble_focused`, `menu_toggled`, `nav_selected`, `notifications_opened`, `notification_selected`, `alert_shown`, `alert_dismissed`, `alert_strip_clicked`, `settings_opened`, `settings_reset_asked`, `settings_reset_cancelled` |
 | Investigate | `investigate_loaded`, `investigate_measure_changed`, `investigate_regrouped`, `investigate_compare_toggled`, `investigate_filter_changed`, `investigate_filters_cleared`, `investigate_discount_filtered`, `investigate_drilldown`, `investigate_title_closed`, `investigate_table_toggled`, `investigate_plan_link`, `investigate_pin_added`, `investigate_pin_removed`, `investigate_pin_rejected`, `investigate_pin_failed` |
 | Queries (server) | `query_completed`, `query_failed`, `query_request_completed`, `query_request_failed` |
 | Dewey | `agent_asked` (**held**), `assistant_sentence_withheld` (**held**), `assistant_question_sent`, `assistant_reply_shown`, `assistant_answered`, `assistant_refused`, `assistant_limited`, `assistant_unavailable`, `assistant_offline_shown`, `assistant_pin_placed`, `assistant_lookup_pinned`, `assistant_conversation_restored`, `assistant_conversation_cleared` |
-| Game state (server) | `game_save_created`, `game_quarter_committed`, `game_quarter_failed` (both with `quarter`: Q1 or Q2), `game_query_session_started`, `game_query_session_revoked`, `discovery_found` (A to F), `discovery_part_found`, `discovery_record_deferred` |
+| Game state (server) | `game_save_created`, `game_quarter_committed`, `game_quarter_failed` (both with `quarter`: Q1 or Q2), `game_query_session_started`, `game_query_session_revoked`, `discovery_found` (A to F), `discovery_part_found`, `discovery_record_deferred`, `game_reset` (with `quarter`: Q1, Q2, finished or unknown, how far the old game had got) |
 | Decide and results | `plan_move_toggled`, `plan_move_refused`, `plan_confirm_opened`, `plan_keep_investigating`, `plan_submitted`, `result_viewed`, `result_assumptions_opened`, `result_bosses_opened`, `result_continued` (Continue to Q2), `result_play_again` |
 | Music | `music_player_opened`, `music_paused`, `music_resumed`, `music_shuffle_set`, `music_volume_set`, `music_other_tab`, `music_manifest_skipped`, `song_started`, `song_ended`, `song_restarted`, `song_moved`, `song_hearted`, `song_unhearted`, `song_included`, `song_excluded` |
 

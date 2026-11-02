@@ -86,8 +86,28 @@ describe('server-owned visibility and cache isolation', () => {
     expect(run({ measure: 'avg_order_value', by: [] }, empty).total).toBeNull();
     expect(run({ measure: 'orders_per_day', by: [] }, empty).total).toBeNull();
   });
+  it('counts ratings at their own grain, with one title\'s stars as a histogram (#169)', () => {
+    const all = run({ measure: 'ratings', by: ['stars'] });
+    expect(all.rows).toEqual([{ stars: '1', ratings: 672 }, { stars: '2', ratings: 2068 }, { stars: '3', ratings: 8984 }, { stars: '4', ratings: 17498 }, { stars: '5', ratings: 21108 }]);
+    expect(all.total).toBe(50330);
+    expect(all.columns).toEqual([{ key: 'stars', label: 'Stars', type: 'string', nullable: false }, { key: 'ratings', label: 'Ratings', type: 'number', nullable: false }]);
+    expect(all.source).toContain('Ratings from 50,330 visible matching ratings: count of individual ratings, joined directly to books');
+    // Book grain, never through editions: the counts by title add up to every rating, CH392's unknown book included.
+    const byTitle = run({ measure: 'ratings', by: ['title'] });
+    expect(byTitle.rows.reduce((sum, row) => sum + row.ratings!, 0)).toBe(50330);
+    expect(byTitle.rows.find(row => row.title === null)?.ratings).toBe(548);
+    expect(byTitle.rows.find(row => row.title === 'Land Water Sky Space')?.ratings).toBe(95);
+    // A title with no ratings has no row (no synthesized zeros), and its histogram is empty.
+    expect(byTitle.rows.some(row => row.title === 'Cimornul')).toBe(false);
+    expect(run({ measure: 'ratings', by: ['stars'], filter: { title: ['Cimornul'] } }).rows).toEqual([]);
+    // One title's histogram reconciles with its average rating.
+    const histogram = run({ measure: 'ratings', by: ['stars'], filter: { title: ['Land Water Sky Space'] } });
+    const mean = histogram.rows.reduce((sum, row) => sum + Number(row.stars) * row.ratings!, 0) / histogram.total!;
+    expect(mean).toBeCloseTo(run({ measure: 'avg_rating', by: [], filter: { title: ['Land Water Sky Space'] } }).total!, 10);
+    expect(() => run({ measure: 'ratings', by: ['format'] })).toThrow(expect.objectContaining({ code: 'INCOMPATIBLE_DIMENSION' }));
+  });
   it('requires a separate explicit undated grant, regardless of prior cache entries', () => {
-    for (const measure of ['avg_rating', 'checkouts'] as const) {
+    for (const measure of ['avg_rating', 'ratings', 'checkouts'] as const) {
       run({ measure, by: [] });
       expect(() => run({ measure, by: [] }, q1)).toThrow(expect.objectContaining({ code: 'UNAVAILABLE_FACTS' }));
       expect(run({ measure, by: [] }, { ...empty, includeUndated: true }).total).not.toBeNull();

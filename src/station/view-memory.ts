@@ -5,7 +5,7 @@ import type { StationViewpoint } from "./scene/StationScene";
 // Storage is passed as a getter: in some privacy modes and embeds, merely
 // reading `localStorage` throws, and that has to fall back too.
 
-const KEY = "orbital-books.station.view";
+export const KEY = "orbital-books.station.view";
 export const FIRST_VIEW: StationViewpoint = "inside";
 
 /** The view to open on. Anything unreadable (no storage, a stale value) counts as a first visit. */

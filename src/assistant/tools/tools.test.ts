@@ -5,7 +5,7 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createInterface } from "node:readline";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DIMENSIONS, MEASURES } from "../../query/types.ts";
+import { AGENT_DIMENSIONS, AGENT_MEASURES } from "../../query/types.ts";
 import { checkChart, checkComparison, checkQuery, describeData, ToolInputError, TOOLS } from "./definitions.ts";
 import { callTool, handle, queryEndpoint, resetRefsForTests } from "./server.ts";
 import { defaultQueryUrl, orbitalToolServer, toolServerPath } from "./toolServer.server.ts";
@@ -20,10 +20,19 @@ describe("the tool list", () => {
     for (const t of TOOLS) expect(t.inputSchema.additionalProperties, t.name).toBe(false);
   });
 
-  it("names the contract's measures and dimensions, so new ones carry through", () => {
+  it("names the contract's reviewed measures and dimensions, so each carries through once Probe has reviewed it", () => {
     const d = describeData();
-    expect(d.measures.map((m) => m.name)).toEqual([...MEASURES]);
-    expect(d.dimensions).toEqual(DIMENSIONS);
+    expect(d.measures.map((m) => m.name)).toEqual([...AGENT_MEASURES]);
+    expect(d.dimensions).toEqual(AGENT_DIMENSIONS);
+  });
+
+  it("leaves out what's Investigate-only until then: the ratings count and stars", () => {
+    const d = describeData();
+    expect(d.measures.map((m) => m.name)).not.toContain("ratings");
+    expect(d.dimensions).not.toContain("stars");
+    expect(d.measures.every((m) => !(m.dimensions as readonly string[]).includes("stars"))).toBe(true);
+    expect(() => checkQuery({ measure: "ratings", by: [] })).toThrow(ToolInputError);
+    expect(() => checkQuery({ measure: "revenue", by: [], filter: { stars: ["5"] } })).toThrow(ToolInputError);
   });
 });
 
