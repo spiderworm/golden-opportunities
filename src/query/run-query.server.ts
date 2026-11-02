@@ -6,11 +6,11 @@ import { validateView } from './view.server';
 import { emit, trackQuery } from './telemetry.server';
 import { eligibleDays, groupDays, CALENDAR_DIMENSIONS, WEEKDAYS } from './calendar';
 import { checkLabel, serializeResult } from './result';
-import { QUERY_LIMITS } from './types';
+import { PRICE_BANDS, QUERY_LIMITS } from './types';
 import type { Dimension, Measure, Query, QueryResult, QueryRow, QueryTrack, QueryView } from './types';
 
 const labels: Record<Dimension | Measure, string> = {
-  quarter: 'Quarter', month: 'Month', weekday: 'Weekday', genre: 'Genre', format: 'Format', publisher: 'Publisher', series: 'Series', title: 'Title', author: 'Author', discounted: 'Discounted', discount_rate: 'Discount rate', stars: 'Stars', awarded: 'Award winner', award: 'Award', volume: 'Volume', in_series: 'In a series',
+  quarter: 'Quarter', month: 'Month', weekday: 'Weekday', genre: 'Genre', format: 'Format', publisher: 'Publisher', series: 'Series', title: 'Title', author: 'Author', discounted: 'Discounted', discount_rate: 'Discount rate', stars: 'Stars', awarded: 'Award winner', award: 'Award', volume: 'Volume', in_series: 'In a series', edition: 'Edition', list_price: 'List price', price_band: 'Price band',
   revenue: 'Revenue', units: 'Units', orders: 'Orders', avg_discount: 'Average discount', avg_rating: 'Average rating', checkouts: 'Checkouts', avg_order_value: 'Average order value', orders_per_day: 'Orders per day', ratings: 'Ratings',
 };
 const weekdayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -24,6 +24,23 @@ function bookDimensions(book: DeepReadonly<JoinedBook> | null): Dimensions {
     author: book ? `${book.author.firstName} ${book.author.lastName}` : null, awarded: book ? (book.awards.length ? 'yes' : 'no') : null,
     volume: book?.series && book.info?.volume != null ? String(book.info.volume) : null, in_series: book ? (book.series ? 'yes' : 'no') : null };
 }
+/**
+ * An edition as the player reads it: its title and format, so a title's hardcover and paperback are separate rows.
+ * Heliotrope Pajamas has two paperbacks (2181 and 2186), so where a book has two editions in one format, the
+ * label adds the publication year.
+ */
+const editionLabels = new Map<string, string>();
+function editionOf(sale: DeepReadonly<SaleLine>): string {
+  let label = editionLabels.get(sale.isbn);
+  if (label === undefined) {
+    const edition = sale.book.editions.find(e => e.isbn === sale.isbn);
+    const twin = sale.book.editions.some(e => e.isbn !== sale.isbn && e.format === sale.format);
+    label = `${sale.title} (${sale.format}${twin && edition ? `, ${edition.publicationDate.slice(0, 4)}` : ''})`;
+    editionLabels.set(sale.isbn, label);
+  }
+  return label;
+}
+const priceBand = (price: number) => PRICE_BANDS[price < 10 ? 0 : price < 20 ? 1 : price < 30 ? 2 : 3];
 /** A book's award names, for the filter-only award dimension: a fact matches if any of them is in the filter. */
 const awardsOf = (book: DeepReadonly<JoinedBook> | null): readonly string[] => book?.awards.map(award => award.name) ?? [];
 function saleFact(sale: DeepReadonly<SaleLine>, measure: Measure, periods: Set<string>, simulated: boolean): Fact | null {
@@ -35,7 +52,8 @@ function saleFact(sale: DeepReadonly<SaleLine>, measure: Measure, periods: Set<s
   if (!periods.has(quarter)) return null;
   if (!Number.isFinite(sale.listPrice) || !Number.isFinite(sale.discount) || sale.listPrice < 0 || sale.discount < 0 || sale.discount > 1) throw new QueryError('INVALID_VIEW', 'A visible sale has an invalid price or discount.');
   return { dimensions: { ...bookDimensions(sale.book), quarter, month: sale.date.slice(0, 7), weekday: WEEKDAYS[date.getUTCDay()],
-    format: sale.format, publisher: sale.publisher.name, discounted: sale.discount > 0 ? 'yes' : 'no', discount_rate: `${Number((sale.discount * 100).toFixed(8))}%` },
+    format: sale.format, edition: editionOf(sale), list_price: `$${sale.listPrice.toFixed(2)}`, price_band: priceBand(sale.listPrice),
+    publisher: sale.publisher.name, discounted: sale.discount > 0 ? 'yes' : 'no', discount_rate: `${Number((sale.discount * 100).toFixed(8))}%` },
     value: (measure === 'revenue' || measure === 'avg_order_value') ? sale.listPrice * (1 - sale.discount) : measure === 'avg_discount' ? sale.discount : 1,
     orderId: sale.orderId, simulated, awards: awardsOf(sale.book) };
 }
@@ -74,6 +92,9 @@ function compare(a: string | number | null | undefined, b: string | number | nul
   if (b == null) return -1;
   const sign = direction === 'desc' ? -1 : 1;
   if (column === 'weekday') return sign * (weekdayOrder.indexOf(String(a)) - weekdayOrder.indexOf(String(b)));
+  // Prices sort as amounts ("$8.99" before "$12.50"), and bands in their own order.
+  if (column === 'list_price') return sign * (Number(String(a).slice(1)) - Number(String(b).slice(1)));
+  if (column === 'price_band') return sign * ((PRICE_BANDS as readonly string[]).indexOf(String(a)) - (PRICE_BANDS as readonly string[]).indexOf(String(b)));
   return sign * (a < b ? -1 : a > b ? 1 : 0);
 }
 function execute(query: Query, view: QueryView): QueryResult {

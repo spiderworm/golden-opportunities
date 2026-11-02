@@ -141,6 +141,33 @@ describe('server-owned visibility and cache isolation', () => {
     expect(run({ measure: 'avg_rating', by: ['in_series'] }).rows.map(row => row.in_series)).toEqual(['no', 'yes', null]);
     expect(run({ measure: 'checkouts', by: ['volume'], filter: { series: ['Inspector Ryeslton'] } }).rows.map(row => row.volume)).toEqual(['1', '2']);
   });
+  it('splits sales by edition and list price, at the sale line\'s own edition (#169)', () => {
+    const data = loadBookshop();
+    // A title's editions are separate rows: Post Alley sold 51 hardcovers at $27.99 and 307 trade paperbacks.
+    const post = run({ measure: 'units', by: ['edition', 'list_price'], filter: { title: ['Post Alley'] } });
+    expect(post.rows).toEqual([{ edition: 'Post Alley (Hardcover)', list_price: '$27.99', units: 51 }, { edition: 'Post Alley (Trade paperback)', list_price: '$12.50', units: 307 }]);
+    // Every edition with sales is one row, and Heliotrope Pajamas' two paperbacks are told apart by year.
+    const editions = run({ measure: 'units', by: ['edition'] });
+    expect(editions.rows).toHaveLength(new Set(data.saleLines.map(line => line.isbn)).size);
+    expect(editions.rows.filter(row => row.edition!.startsWith('Heliotrope Pajamas (Paperback')).map(row => [row.edition, row.units]))
+      .toEqual([['Heliotrope Pajamas (Paperback, 2181)', 211], ['Heliotrope Pajamas (Paperback, 2186)', 374]]);
+    // Prices sort as amounts, not as text, and bands in their own order.
+    const prices = run({ measure: 'units', by: ['list_price'] }).rows.map(row => row.list_price);
+    expect(prices[0]).toBe('$5.99');
+    expect(prices.at(-1)).toBe('$48.00');
+    expect(prices).toHaveLength(25);
+    expect(run({ measure: 'units', by: ['list_price'], sort: { column: 'list_price', direction: 'desc' }, limit: 1 }).rows[0].list_price).toBe('$48.00');
+    const bands = run({ measure: 'units', by: ['price_band'] });
+    expect(bands.rows).toEqual([{ price_band: 'under $10', units: 34404 }, { price_band: '$10 to $19.99', units: 10040 }, { price_band: '$20 to $29.99', units: 11541 }, { price_band: '$30 and up', units: 365 }]);
+    expect(run({ measure: 'revenue', by: [], filter: { list_price: ['$27.99'] } }).total).toBeCloseTo(data.saleLines.filter(l => l.listPrice === 27.99).reduce((s, l) => s + l.revenue, 0), 6);
+    // Book-grain measures don't take them: a book's ratings would multiply across its editions.
+    for (const dimension of ['edition', 'list_price', 'price_band'] as const) {
+      expect(() => run({ measure: 'avg_rating', by: [dimension] })).toThrow(expect.objectContaining({ code: 'INCOMPATIBLE_DIMENSION' }));
+    }
+    // A simulated line takes its own edition's price, as the save holds it.
+    const view: QueryView = { periods: ['2194-Q1'], includeUndated: false, simulatedSales: [sale({ listPrice: 20, discount: 0.15 })] };
+    expect(run({ measure: 'units', by: ['list_price', 'price_band'] }, view).rows).toEqual([{ list_price: '$20.00', price_band: '$20 to $29.99', units: 1 }]);
+  });
   it('requires a separate explicit undated grant, regardless of prior cache entries', () => {
     for (const measure of ['avg_rating', 'ratings', 'checkouts'] as const) {
       run({ measure, by: [] });
