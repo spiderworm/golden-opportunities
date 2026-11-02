@@ -192,7 +192,7 @@ The rotating lines name no event, no direction and no figure that changes with t
 | Your last quarter, on the record | `Compare a measure for {last quarter} with {the quarter a year before}.` |
 | Your weakest measure: Profit | `Look at revenue for {last quarter}, by month or by title.` |
 | Your weakest measure: Readers served | `Look at orders for {last quarter}, by month or by title.` |
-| Your weakest measure: Happiness | `Look at average rating for {last quarter}, by month or by title.` |
+| Your weakest measure: Happiness | `Look at average rating, title by title.` |
 | Your weakest measure: Culture | `Look at units by title for {last quarter}.` |
 
 ## 5. Who builds what

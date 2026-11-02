@@ -154,7 +154,7 @@ Discoveries A to F stay with Q1 and Q2. From Q3 on, each quarter offers **up to 
 | A quiet quarter | Nothing: there's no event discovery | |
 
 2. **Your last quarter, on the record:** one measure with the last quarter and the same quarter a year earlier both visible. This is F, generalized. (*Found text:* `You compared {last quarter} with {the quarter a year before}.`)
-3. **Your weakest measure:** a view of the measure that bound last quarter, for the last quarter (filtered to it, or grouped by quarter or month with it shown). The report card's measures aren't ledger measures, so each maps to one (Frank): Profit to revenue, Readers served to orders, and Happiness to average rating, each by month or by title; Culture to units by title, since each title counts once a day. (*Found text:* `You looked into {measure}, last quarter's lowest.`)
+3. **Your weakest measure:** a view of the measure that bound last quarter, for the last quarter (filtered to it, or grouped by quarter or month with it shown). The report card's measures aren't ledger measures, so each maps to one (Frank): Profit to revenue and Readers served to orders, each by month or by title; Culture to units by title, since each title counts once a day. Happiness maps to average rating by title, with no quarter: the ledger's ratings are undated, so it's the one weakest-measure view that isn't tied to last quarter (Frank and Audit, #220). (*Found text:* `You looked into {measure}, last quarter's lowest.`)
 
 `{found} of {total} found.` Not-found texts follow the same pattern as M1's: one plain sentence saying where to look, never the answer.
 
