@@ -13,10 +13,11 @@ test('measures are added from Show, a third unit is refused with its reason, and
   await expect(page).toHaveURL(/measures=revenue%2Cunits/);
   await expect(page.getByRole('heading', { name: 'Revenue and units sold by month' })).toBeVisible();
 
-  // Dollars and counts are on the chart: a percent would be a third unit.
+  // Dollars and counts are on the chart: a percent, or an average in dollars, would need a third axis.
   const discount = list.getByRole('checkbox', { name: /^Average discount/ });
   await expect(discount).toBeDisabled();
-  await expect(list).toContainText('Two units at most');
+  await expect(list).toContainText('Two axes at most');
+  await expect(list.getByRole('checkbox', { name: /^Average order value/ })).toBeDisabled();
   await list.getByRole('checkbox', { name: 'Orders', exact: true }).check();
   await expect(page).toHaveURL(/measures=revenue%2Cunits%2Corders/);
   await expect(list.getByRole('checkbox', { name: /^Average order value/ })).toBeDisabled();
