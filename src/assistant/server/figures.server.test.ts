@@ -323,6 +323,19 @@ describe("prices (Probe's #225)", () => {
     expect(say("{{a2.edition}}, the hard cover, costs {{a2.list_price}}.", r)).toBe(WITHHELD);
   });
 
+  it("stop a book's price carrying into the next sentence (Probe's review of #228)", () => {
+    const gate = () => sentenceGate(r);
+    let g = gate();
+    expect(g.push("{{a1.edition}} lists at {{a1.list_price}}. The Lantern Hours does too. ") + g.flush()).toBe(`Post Alley (Hardcover) lists at $27.99. ${WITHHELD} `);
+    g = gate();
+    expect(g.push("{{a1.edition}} lists at {{a1.list_price}}. {{a3.edition}} sold well. ") + g.flush()).toBe(`Post Alley (Hardcover) lists at $27.99. ${WITHHELD} `);
+    // Its own book, or a sentence with its own price, carries on; and only the next sentence is held to it.
+    g = gate();
+    expect(g.push("{{a1.edition}} lists at {{a1.list_price}}. {{a1.edition}} sold well. {{a2.edition}} lists at {{a2.list_price}}. ") + g.flush()).toBe("Post Alley (Hardcover) lists at $27.99. Post Alley (Hardcover) sold well. Post Alley (Trade paperback) lists at $17.99. ");
+    g = gate();
+    expect(g.push("{{a1.edition}} lists at {{a1.list_price}}. The table is under this message. It also has the paperback. ") + g.flush()).toBe("Post Alley (Hardcover) lists at $27.99. The table is under this message. It also has the paperback. ");
+  });
+
   it("keep a price group apart from any book", () => {
     expect(say("Every title in {{b.list_price}} sold {{b.total}} units.", r)).toBe("Every title in $27.99 sold 51 units.");
     expect(say("{{a2.edition}} is among the books in {{b.list_price}}.", r)).toBe(WITHHELD);

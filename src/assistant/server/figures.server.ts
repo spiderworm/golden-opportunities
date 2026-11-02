@@ -457,11 +457,34 @@ function priceProblem(folded: string, refs: Refs, known: number): boolean {
   return false;
 }
 
+/** The own subjects of the book prices a sentence cites (empty if none). */
+function bookPrices(folded: string, refs: Refs, known: number): string[] {
+  return [...folded.matchAll(REF)].flatMap((m) => {
+    const price = refs.describe(m[1]!.trim(), known)?.price;
+    return price?.subject ? price.own : [];
+  });
+}
+
+/**
+ * After a sentence that showed a book's price, the next can't carry it over (Probe's review of #228): with no
+ * price of its own, it's withheld if it has a carry-over word ("The Lantern Hours does too.") or names another
+ * book from this answer. `after` is the previous sentence's book (its own subjects).
+ */
+function carriesOver(folded: string, refs: Refs, known: number, after: readonly string[]): boolean {
+  if (!after.length || [...folded.matchAll(REF)].some((m) => refs.describe(m[1]!.trim(), known)?.price)) return false;
+  const prose = folded.replace(REF, " ");
+  if (CARRY_OVER.test(prose)) return true;
+  const cited = [...folded.matchAll(REF)].flatMap((m) => refs.describe(m[1]!.trim(), known)?.subject ?? []);
+  const named = [...cited, ...refs.subjects(known).filter((s) => wholeLabel(s, "u").test(prose))];
+  return named.some((n) => !after.includes(n));
+}
+
 /**
  * Renders a sentence's refs and checks its own prose; null if it must be withheld. `known` is how many lookups
- * had come back when the sentence's text arrived (the earliest stamp among its chunks).
+ * had come back when the sentence's text arrived (the earliest stamp among its chunks). `after` is the book
+ * whose price the previous sentence showed, if it did; the result's `price` is this sentence's, for the next.
  */
-export function renderSentence(sentence: string, refs: Refs, known = Infinity): { text: string; refs: number } | null {
+export function renderSentence(sentence: string, refs: Refs, known = Infinity, after: readonly string[] = []): { text: string; refs: number; price: string[] } | null {
   let count = 0;
   let bad = false;
   const folded = fold(sentence);
@@ -472,7 +495,7 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity): 
     return text ?? "";
   });
   if (bad) return null;
-  if (priceProblem(folded, refs, known)) return null;
+  if (priceProblem(folded, refs, known) || carriesOver(folded, refs, known, after)) return null;
   // Titles the data returned, exactly and whole, are the data's words, not the model's: cleared before the ban.
   let prose = folded.replace(REF, " ");
   for (const title of refs.knownTitles(known)) prose = prose.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(title)}(?![\\p{L}\\p{N}])`, "gu"), " ");
@@ -485,7 +508,7 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity): 
   // "Yes" or "No" is itself a claim: allowed only to open a sentence that is otherwise refs ("No, {{b.to_vs_from}}.").
   const answer = /^\s*(?:yes|no)\b/i.exec(prose);
   if (answer && (count === 0 || /\p{L}/u.test(prose.slice(answer[0].length)))) return null;
-  return { text: rendered, refs: count };
+  return { text: rendered, refs: count, price: bookPrices(folded, refs, known) };
 }
 
 /**
@@ -502,6 +525,8 @@ export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s
   let noted = false;
   let withheld = 0;
   let rendered = 0;
+  // The book whose price the last sentence showed, so the next can't carry it over.
+  let after: string[] = [];
   const knownAt = (start: number, end: number) => Math.min(...stamps.filter((s, i) => s.at < end && (stamps[i + 1]?.at ?? Infinity) > start).map((s) => s.known));
   const check = (text: string) => {
     let out = "";
@@ -511,8 +536,10 @@ export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s
     for (const sentence of text.match(/[^]*?(?:[.!?]+(?:\s+|$)|\n+|$)/g) ?? []) {
       if (!sentence) continue;
       // A sentence may cite only lookups that had come back before its earliest chunk arrived.
-      const result = renderSentence(sentence, refs, knownAt(at, at + sentence.length));
+      const result = renderSentence(sentence, refs, knownAt(at, at + sentence.length), after);
       at += sentence.length;
+      // Only the next sentence is held to the price: one after that names its own subject or none.
+      after = result?.price ?? [];
       if (result) {
         out += gap + result.text;
         rendered += result.refs;
