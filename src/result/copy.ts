@@ -3,7 +3,7 @@
 // The discoveries' own text is server-only: see discoveries.server.ts.
 // {braces} are filled by the functions below.
 import { eventTitle } from "~/game/event-title";
-import { quarterNumber, type QuarterId } from "~/simulation/quarters";
+import { nextQuarter, quarterNumber, type QuarterId } from "~/simulation/quarters";
 import type { Assumption, Certificate, Grade, MeasureId, MeasureScore, ReportCard } from "~/simulation/types";
 
 export const RESULT_COPY = {
@@ -112,6 +112,37 @@ export const continueTo = (next: QuarterId) => (next === "2194-Q2" ? CONTINUE_TO
 
 /** An event's short title (endless-copy.md section 1): the game's one definition, shared with the memo and the bell. */
 export { eventTitle };
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** The station's date once a quarter is played: the first day of the next one, "October 1, 2194". */
+export function dayAfter(quarter: QuarterId): string {
+  const next = nextQuarter(quarter);
+  return `${MONTH_NAMES[(quarterNumber(next) - 1) * 3]} 1, ${next.slice(0, 4)}`;
+}
+
+/** The removal screen (endless.md section 7), which replaces the result's buttons once the panel has voted. */
+export const REMOVAL_COPY = {
+  heading: "The panel has voted",
+  /** The whole board speaks, in Plot's order. */
+  lines: [
+    { boss: "overall", line: "THE PANEL HAS CONVENED. THE VOTE WAS UNANIMOUS. IT IS ALWAYS UNANIMOUS. WE CHECKED." },
+    { boss: "profit", line: "THREE QUARTERS BELOW STANDARD. THE LEDGER HAS NOTED IT. THE LEDGER NOTES EVERYTHING. IT IS NOT A GOOD LOOK." },
+    { boss: "readers", line: "YOUR KEYS HAVE BEEN COLLECTED. YOU DID NOT HAVE KEYS. WE COLLECTED THEM ANYWAY." },
+    { boss: "happiness", line: "THE DRONE WILL MISS YOU. THE DRONE HAS NO FEELINGS. THE DRONE WILL MISS YOU ANYWAY." },
+    { boss: "culture", line: "MR. ZOOLANDER WAS ALSO ASKED TO LEAVE ONCE. HE CAME BACK WITH A LOOK. WE DO NOT EXPECT THIS OF YOU." },
+  ] satisfies { boss: MeasureId | "overall"; line: string }[],
+  /** "You were removed after three quarters with an overall score under 70 in four: …" */
+  facts: (strikes: readonly { quarter: QuarterId; score: number }[], quarters: number, last: QuarterId) => {
+    const named = strikes.map((s) => `${quarterName(s.quarter)} (${s.score})`);
+    const list = named.length < 2 ? (named[0] ?? "") : `${named.slice(0, -1).join(", ")} and ${named.at(-1)}`;
+    return `You were removed after three quarters with an overall score under 70 in four: ${list}. You ran Orbital Books for ${quarters} quarters, from Q1 2194 to ${quarterName(last)}.`;
+  },
+  /** The service record's final row. */
+  finalRow: (quarter: QuarterId) => `Removed by the panel, ${dayAfter(quarter)}.`,
+  playAgain: "Play again",
+  backToLedgers: "Back to the ledgers",
+} as const;
 
 /** The service record (endless.md section 6), which follows every result from Q2 on once the half-year review goes. */
 export const SERVICE_RECORD = {

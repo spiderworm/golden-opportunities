@@ -19,6 +19,7 @@ import {
   quarterCopy,
   quarterName,
   SERVICE_RECORD,
+  REMOVAL_COPY,
   bossLine,
   certificateText,
   foundFooter,
@@ -61,7 +62,7 @@ export function loader({ request }: Route.LoaderArgs): ResultData {
 }
 
 export default function Result({ loaderData }: Route.ComponentProps) {
-  const { quarter, outcome, sameQuarterLastYear, previousQuarter, reference, referenceLabel, discoveries, next, canPlayAgain, halfYear, record, goalStretch, season2193 } = loaderData;
+  const { quarter, outcome, sameQuarterLastYear, previousQuarter, reference, referenceLabel, discoveries, next, canPlayAgain, halfYear, record, goalStretch, season2193, removed } = loaderData;
   const q = quarterCopy(quarter, referenceLabel, goalStretch);
   // The half-year review closes the game under Q2's result while the game ends there (Q1's screen, opened later,
   // gains nothing: q2.md, #139). Once the endless game goes on past Q2, the service record takes its place.
@@ -155,8 +156,8 @@ export default function Result({ loaderData }: Route.ComponentProps) {
           <button type="button" className={styles.button} onClick={openAssumptions} aria-expanded={assumptionsOpen} aria-controls="assumptions">
             {COPY.seeAssumptions}
           </button>
-          {/* Under Q2's half-year review, the way back to the ledgers is in the review. */}
-          {!review && (
+          {/* Under Q2's half-year review, and once the panel has voted, the way back to the ledgers is below. */}
+          {!review && !removed && (
             <Link to="/investigate" className={styles.button}>
               {COPY.backToLedgers}
             </Link>
@@ -194,7 +195,11 @@ export default function Result({ loaderData }: Route.ComponentProps) {
 
       {/* The review closes the game under Q2's result only: Q1's screen, opened later, gains nothing (q2.md, #139). */}
       {review && <HalfYearReview review={review} canPlayAgain={canPlayAgain} />}
-      {!review && quarter !== "2194-Q1" && <ServiceRecord record={record} />}
+      {removed ? (
+        <Removal removed={removed} record={record} canPlayAgain={canPlayAgain} />
+      ) : (
+        !review && quarter !== "2194-Q1" && <ServiceRecord record={record} />
+      )}
     </div>
   );
 }
@@ -204,7 +209,7 @@ export default function Result({ loaderData }: Route.ComponentProps) {
  * The service record (endless.md section 6): every quarter played, newest first, with its measures, its overall
  * (a strike marked), and its event; then the tenure and the best quarter.
  */
-function ServiceRecord({ record }: { record: ResultData["record"] }) {
+function ServiceRecord({ record, removedAt }: { record: ResultData["record"]; removedAt?: QuarterId }) {
   const c = COPY.reportCard;
   const rows = [...record].reverse();
   const mean = roundHalfUp(record.reduce((sum, row) => sum + row.overall.score, 0) / Math.max(1, record.length));
@@ -241,6 +246,13 @@ function ServiceRecord({ record }: { record: ResultData["record"] }) {
               </tr>
             ))}
           </tbody>
+          {removedAt && (
+            <tfoot>
+              <tr>
+                <td colSpan={MEASURE_ORDER.length + 3}>{REMOVAL_COPY.finalRow(removedAt)}</td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
       {record.length > 0 && (
@@ -249,6 +261,43 @@ function ServiceRecord({ record }: { record: ResultData["record"] }) {
           <p className={styles.happened}>{SERVICE_RECORD.best(best.quarter, best.overall.score, best.overall.grade)}</p>
         </>
       )}
+    </section>
+  );
+}
+
+/**
+ * Once the panel has voted (endless.md section 7): the whole board speaks, the facts are plain, and the service
+ * record ends with the removal. Play again starts a new game; the ledgers stay open to look at.
+ */
+function Removal({ removed, record, canPlayAgain }: { removed: NonNullable<ResultData["removed"]>; record: ResultData["record"]; canPlayAgain: boolean }) {
+  const c = COPY.reportCard;
+  return (
+    <section className={styles.card} aria-labelledby="removal-heading">
+      <h3 id="removal-heading" className={styles.cardTitle}>
+        {REMOVAL_COPY.heading}
+      </h3>
+      {REMOVAL_COPY.lines.map(({ boss, line }) => (
+        <figure key={boss} className={styles.lowest}>
+          <blockquote className={styles.lowestLines}>
+            <p>{line}</p>
+          </blockquote>
+          <figcaption className={styles.boss}>{c.bosses[boss]}</figcaption>
+        </figure>
+      ))}
+      <p className={styles.happened}>{REMOVAL_COPY.facts(removed.strikes, record.length, removed.at)}</p>
+      <ServiceRecord record={record} removedAt={removed.at} />
+      <div className={styles.actions}>
+        {canPlayAgain && (
+          <Form method="post" action="/game/new" onSubmit={() => track("result_play_again", { removed: removed.at })}>
+            <button type="submit" className={`${styles.button} ${styles.primary}`}>
+              {REMOVAL_COPY.playAgain}
+            </button>
+          </Form>
+        )}
+        <Link to="/investigate" className={styles.button}>
+          {REMOVAL_COPY.backToLedgers}
+        </Link>
+      </div>
     </section>
   );
 }

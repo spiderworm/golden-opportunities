@@ -270,6 +270,31 @@ describe("a later quarter's result screen (endless-copy.md section 4)", () => {
     expect(going).not.toContain("Play again");
   });
 
+  it("once the panel has voted, shows the whole board, the plain facts, the record's last row, and Play again", () => {
+    const outcome = { ...simulateQ2(QUIET, 3, data).outcome, discoveries: [] };
+    const page = text(
+      show({
+        quarter: "2194-Q4", outcome, sameQuarterLastYear: 161524.7, previousQuarter: 150_000, reference: [],
+        discoveries: earnedDiscoveries([], "2194-Q4"), next: null, canPlayAgain: true, halfYear: null,
+        lastYearLabel: "Q4 2193", referenceLabel: "Q3 2194",
+        record: [row("2194-Q1", 66, "D"), row("2194-Q2", 74, "C"), row("2194-Q3", 62, "D-"), row("2194-Q4", 64, "D")],
+        removed: { at: "2194-Q4", strikes: [{ quarter: "2194-Q1", score: 66 }, { quarter: "2194-Q3", score: 62 }, { quarter: "2194-Q4", score: 64 }] },
+        goalStretch: null, laterDiscoveries: [], discoveryOffers: [], season2193: { quarter: 161524.7, before: 274036.2, beforeLabel: "Q3 2193" },
+      }),
+    );
+    expect(page).toContain("The panel has voted");
+    expect(page).toContain("THE PANEL HAS CONVENED. THE VOTE WAS UNANIMOUS.");
+    expect(page).toContain("THE DRONE WILL MISS YOU.");
+    expect(page).toContain(
+      "You were removed after three quarters with an overall score under 70 in four: Q1 2194 (66), Q3 2194 (62) and Q4 2194 (64). You ran Orbital Books for 4 quarters, from Q1 2194 to Q4 2194.",
+    );
+    expect(page).toContain("Removed by the panel, January 1, 2195.");
+    expect(page).toContain("Play again");
+    expect(page).not.toContain("Continue to");
+    // The ledgers link is under the removal, once: not also in What happened.
+    expect(page.match(/Back to the ledgers/g)).toHaveLength(1);
+  });
+
   it("doesn't offer to continue from a quarter that isn't the last one played", () => {
     expect(renderQ3("2195-Q1")).not.toContain("Continue to");
   });
