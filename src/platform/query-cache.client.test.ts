@@ -173,5 +173,7 @@ describe("the page's cache summary", () => {
     expect(track).toHaveBeenCalledOnce();
     expect(track).toHaveBeenCalledWith("query_cache_summary", { page: "investigate", hits: 1, misses: 1, shared: 0, bytesServed: 7, evictions: 0, entries: 1 });
     expect(pageOf("/")).toBe("station");
+    expect(pageOf("/result")).toBe("result");
+    expect(pageOf("/reports/a-players-title")).toBe("other");
   });
 });
