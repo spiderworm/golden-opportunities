@@ -96,10 +96,17 @@ export function categoryModel(
 }
 
 /**
- * Whether a model has nothing to draw: every value zero or missing. Its axis would be one ECharts makes up (0 to
- * 1, which a whole-dollar label reads as "$0, $0, $1, $1, $1"), so it's shown as the chart's empty state instead.
+ * Whether a chart has no sales to draw, so it shows its empty state ("No sales match") rather than an axis
+ * ECharts makes up (0 to 1, which whole dollars read as "$0, $0, $1, $1, $1"). Each series is judged by its own
+ * measure: a total of zero is no sales, but an average of zero is a figure (0% discount on full-price sales), so
+ * it's drawn (Audit, #254). `measures` is each series' measure, or one for all of them.
  */
-export const nothingToDraw = (model: { series: { values: (number | null)[] }[] }) => model.series.every((s) => s.values.every((v) => !v));
+export function nothingToDraw(series: readonly { values: readonly (number | null)[] }[], measures: readonly Measure[]): boolean {
+  return series.every((s, i) => {
+    const total = isTotal(measures[i] ?? measures[0]!);
+    return s.values.every((v) => v === null || (total && v === 0));
+  });
+}
 
 export function categoryHeight(model: CategoryModel, height = 320): number {
   return model.horizontal ? Math.max(height, model.categories.length * HORIZONTAL_ROW + 40) : height;

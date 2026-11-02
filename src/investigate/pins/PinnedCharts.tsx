@@ -145,7 +145,7 @@ function PinBody({ pin, result, also, quarters }: { pin: ChartPinSpec; result: Q
   );
 
   let body;
-  if (x && pin.kind !== "table" && (result.rows.length === 0 || nothingToDraw(many ? { series: many.measures } : (model ?? { series: [] })))) {
+  if (x && pin.kind !== "table" && (result.rows.length === 0 || (many ? nothingToDraw(many.measures, many.measures.map((m) => m.measure)) : nothingToDraw(model?.series ?? [], [pin.query.measure])))) {
     body = (
       <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
         No sales match this chart.

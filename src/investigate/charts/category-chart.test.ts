@@ -6,7 +6,7 @@ import { categoryModel, categoryOption, nothingToDraw } from "./category-chart";
 
 const QUARTERS = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
 
-function result(rows: QueryResult["rows"], by: ("month" | "genre" | "quarter" | "list_price" | "price_band" | "edition")[], measure: "units" | "avg_order_value" = "units"): QueryResult {
+function result(rows: QueryResult["rows"], by: ("month" | "genre" | "quarter" | "list_price" | "price_band" | "edition")[], measure: "units" | "avg_order_value" | "avg_discount" = "units"): QueryResult {
   return {
     columns: [...by.map((key) => ({ key, label: key, type: "string" as const, nullable: true })), { key: measure, label: measure, type: "number" as const, nullable: false }],
     rows,
@@ -86,7 +86,7 @@ describe("the bar tooltip", () => {
 
 describe("the value axis", () => {
   // The axis as ECharts draws it, from the server-side SVG renderer.
-  const labels = async (measure: "units" | "avg_order_value", values: number[]) => {
+  const labels = async (measure: "units" | "avg_order_value" | "avg_discount", values: number[]) => {
     const { init } = await import("~/platform/charts/echarts-setup");
     const chart = init(null as never, null, { renderer: "svg", ssr: true, width: 600, height: 300 });
     chart.setOption(categoryOption(categoryModel(result(values.map((v, i) => ({ month: `2193-0${i + 1}`, [measure]: v })), ["month"], measure), "month"), { quarters: QUARTERS }) as never);
@@ -100,9 +100,19 @@ describe("the value axis", () => {
     expect(await labels("units", [0, 1, 0])).toEqual(["0", "1"]);
   });
 
-  it("calls a chart of zeros nothing to draw, so it shows its empty state, not a made-up axis", () => {
-    expect(nothingToDraw(categoryModel(result([{ month: "2193-01", units: 0 }, { month: "2193-02", units: 0 }], ["month"]), "month"))).toBe(true);
-    expect(nothingToDraw(categoryModel(result([{ month: "2193-01", units: 0 }, { month: "2193-02", units: 1 }], ["month"]), "month"))).toBe(false);
-    expect(nothingToDraw(categoryModel(result([{ month: "2193-01", avg_order_value: null }], ["month"], "avg_order_value"), "month"))).toBe(true);
+  it("shows totals of zero as no sales, but draws an average of zero, which is a figure (Audit, #254)", async () => {
+    const model = (measure: "units" | "avg_discount", values: (number | null)[]) =>
+      categoryModel(result(values.map((v, i) => ({ month: `2193-0${i + 1}`, [measure]: v })), ["month"], measure), "month");
+    expect(nothingToDraw(model("units", [0, 0]).series, ["units"])).toBe(true);
+    expect(nothingToDraw(model("units", [0, 1]).series, ["units"])).toBe(false);
+    // 0% everywhere: Q1 with nothing discounted, or a discounted:no filter.
+    expect(nothingToDraw(model("avg_discount", [0, 0]).series, ["avg_discount"])).toBe(false);
+    expect(nothingToDraw(model("avg_discount", [null, null]).series, ["avg_discount"])).toBe(true);
+    // Beside a total, an average of zero still draws.
+    expect(nothingToDraw([{ values: [0, 0] }, { values: [0, 0] }], ["units", "avg_discount"])).toBe(false);
+    expect(nothingToDraw([{ values: [0, 0] }, { values: [null, null] }], ["units", "avg_discount"])).toBe(true);
+    // Drawn, its axis reads as percents from zero.
+    expect((await labels("avg_discount", [0, 0, 0]))[0]).toBe("0.0%");
   });
+
 });

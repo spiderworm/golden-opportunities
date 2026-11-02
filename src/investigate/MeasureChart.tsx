@@ -166,7 +166,7 @@ export function MeasureChart({ state, result, also = [], quarters, onMeasures, o
         </div>
       </header>
 
-      {result.rows.length === 0 || (!table && nothingToDraw(many ? { series: many.measures } : model)) ? (
+      {result.rows.length === 0 || (!table && (many ? nothingToDraw(many.measures, many.measures.map((m) => m.measure)) : nothingToDraw(model.series, [model.measure]))) ? (
         <p className={styles.empty}>No sales match these filters.</p>
       ) : many && manyOption ? (
         table ? (
