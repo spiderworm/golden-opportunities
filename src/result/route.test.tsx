@@ -232,7 +232,7 @@ describe("a later quarter's result screen (endless-copy.md section 4)", () => {
     expect(page).toContain("Q2 2194 (for reference)");
     expect(page).toContain("Q3 2193, adjusted");
     expect(page).toContain("Each goal is Q3 2193, adjusted for what the Council expected this quarter, plus 5%.");
-    expect(page).toContain("To judge your plan, compare it with holding course, not with Q2 2194.");
+    expect(page).toContain("In 2193, Q3 brought in $274,036, and Q2 2193 $164,437. To judge your plan, compare it with holding course, not with Q2 2194.");
     expect(page).toContain("Continue to Q4 2194");
     expect(page).toContain("Back to the ledgers");
     expect(page).not.toContain("Half-year review");

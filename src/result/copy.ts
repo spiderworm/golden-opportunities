@@ -2,9 +2,9 @@
 // (docs/design/m1-copy.md, sections 4 to 6). Change them there first.
 // The discoveries' own text is server-only: see discoveries.server.ts.
 // {braces} are filled by the functions below.
+import { eventTitle } from "~/game/event-title";
 import { quarterNumber, type QuarterId } from "~/simulation/quarters";
 import type { Assumption, Certificate, Grade, MeasureId, MeasureScore, ReportCard } from "~/simulation/types";
-import { FORMAT_WORDS, GENRE_WORDS } from "~/simulation/words";
 
 export const RESULT_COPY = {
   title: "Q1 2194: the results",
@@ -77,48 +77,41 @@ export const quarterName = (quarter: QuarterId | string) => `${quarter.slice(5)}
  * What differs by quarter, for any quarter (docs/design/endless-copy.md section 4): Q1's and Q2's exactly as above,
  * and from Q3 on by Plot's rules. The reference quarter's name comes from the server, which knows what it holds.
  */
-export function quarterCopy(quarter: QuarterId, referenceLabel: string) {
+export function quarterCopy(quarter: QuarterId, referenceLabel: string, stretch: GoalStretch | null = null) {
   if (quarter === "2194-Q1" || quarter === "2194-Q2") return QUARTER_COPY[quarter];
   const base = `Q${quarterNumber(quarter)} 2193`;
   return {
     title: `${quarterName(quarter)}: the results`,
     reference: `${referenceLabel} (for reference)`,
     lastYear: `${base}, adjusted`,
-    goalsNote: `Each goal is ${base}, adjusted for what the Council expected this quarter, plus 5%. Matching the adjusted ${base} scores 70 (C\u2212). Meeting the goal scores 100 (A+).`,
+    goalsNote: `Each goal is ${base}, adjusted for what the Council expected this quarter, plus 5%${stretchClause(stretch)}. Matching the adjusted ${base} scores 70 (C\u2212). Meeting the goal scores 100 (A+).`,
   };
+}
+
+/** The quarter's stretched goal, as the server sends it (results.server.ts goalStretch). */
+export interface GoalStretch {
+  measure: MeasureId;
+  /** A fraction: 0.15 for 15%. */
+  percent: number;
+  /** For a recovery goal, the quarter the measure fell in. */
+  recoveryFrom: QuarterId | null;
+}
+
+/** The goals note's first sentence ends with the stretch, if any (endless-copy.md section 4). */
+function stretchClause(stretch: GoalStretch | null): string {
+  if (!stretch) return "";
+  const measure = RESULT_COPY.reportCard.measures[stretch.measure];
+  const percent = `${Math.round(stretch.percent * 100)}%`;
+  return stretch.recoveryFrom
+    ? `, and ${measure}'s goal was ${percent} above it, to restore its fall in ${quarterName(stretch.recoveryFrom)}`
+    : `, and ${measure}'s goal was raised ${percent} instead`;
 }
 
 /** The primary button while the game goes on: "Continue to Q2" after Q1, as it always was; then "Continue to Q4 2194". */
 export const continueTo = (next: QuarterId) => (next === "2194-Q2" ? CONTINUE_TO_Q2 : `Continue to ${quarterName(next)}`);
 
-/** A word that starts a title opens with a capital: "Science fiction and fantasy orders rising in August". */
-const opening = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-/** An event as the service record names it (endless-copy.md section 1), from Alma's type and params. */
-export function eventTitle(quarter: QuarterId, event: { type: string; params: Readonly<Record<string, string | number>> } | null): string {
-  if (!event) return quarter === "2194-Q2" ? "The new Inspector Ryeslton volume" : "None";
-  const p = event.params;
-  // An event's month is its place in the quarter, 1 to 3.
-  const month = () => MONTH_NAMES[(quarterNumber(quarter) - 1) * 3 + Number(p.month) - 1]!;
-  switch (event.type) {
-    case "genre_surge":
-      return `${opening(GENRE_WORDS[String(p.genre)] ?? String(p.genre))} orders rising in ${month()}`;
-    case "genre_slump":
-      return `${opening(GENRE_WORDS[String(p.genre)] ?? String(p.genre))} orders falling in ${month()}`;
-    case "quiet_days":
-      return `Quiet ${p.weekday}s`;
-    case "author_fares":
-      return `Author nights at $${p.cost}`;
-    case "format_costs":
-      return `${opening(FORMAT_WORDS[String(p.format)] ?? String(p.format))} costs at ${p.percent}%`;
-    case "quiet_quarter":
-      return "A quiet quarter";
-    default:
-      // Alma's types are a fixed list (src/alma/events.ts); a test checks each has a title here.
-      return "None";
-  }
-}
+/** An event's short title (endless-copy.md section 1): the game's one definition, shared with the memo and the bell. */
+export { eventTitle };
 
 /** The service record (endless.md section 6), which follows every result from Q2 on once the half-year review goes. */
 export const SERVICE_RECORD = {
@@ -318,16 +311,23 @@ export function lowestMeasureSpeakers(card: ReportCard): string {
 }
 
 /** A certificate's words. */
-export function certificateText(certificate: Certificate): string {
+export function certificateText(certificate: Certificate, quarter?: QuarterId): string {
   switch (certificate.id) {
     case "exceeds":
       return `Exceeds Requirements: ${RESULT_COPY.reportCard.measures[certificate.measure!]} beat its goal. Certificates don't change your score.`;
     case "wellRounded":
       return "Well-Rounded Shop: every measure scored 80 or more.";
-    // Neither can happen in M1 (one quarter, no Alma), so Plot hasn't written them yet.
+    // From Q3 on (endless-copy.md section 4): the engine puts their measures, quarter and event on the certificate.
     case "comeback":
-    case "weathered":
-      return "";
+      return `Comeback: ${RESULT_COPY.reportCard.measures[certificate.measure!]} fell in ${quarterName(certificate.previous ?? "")}, and you restored it. Certificates don't change your score.`;
+    case "weathered": {
+      const measures = (certificate.measures ?? []).map((m) => RESULT_COPY.reportCard.measures[m]);
+      const named = measures.length < 2 ? (measures[0] ?? "") : `${measures.slice(0, -1).join(", ")} and ${measures.at(-1)}`;
+      const title = certificate.event && quarter ? eventTitle(quarter, certificate.event) : "";
+      // The short title, with its first letter in lower case: "despite quiet Tuesdays".
+      const despite = title.charAt(0).toLowerCase() + title.slice(1);
+      return `Weathered the Storm: ${named} met ${measures.length === 1 ? "its goal" : "their goals"} despite ${despite}. Certificates don't change your score.`;
+    }
   }
 }
 
