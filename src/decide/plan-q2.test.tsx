@@ -15,7 +15,7 @@ const CANDIDATES = [
 ];
 
 function render() {
-  const Stub = createRoutesStub([{ path: "/decide", Component: () => <PlanQ2 candidates={CANDIDATES} /> }]);
+  const Stub = createRoutesStub([{ path: "/decide", Component: () => <PlanQ2 quarter="2194-Q2" candidates={CANDIDATES} /> }]);
   return renderToString(<Stub initialEntries={["/decide"]} />);
 }
 
@@ -59,5 +59,21 @@ describe("the Q2 plan (q2.md section 5)", () => {
   it("names an edition by what's printed on it: title, format and price", () => {
     expect(editionLabel(CANDIDATES[0]!)).toBe("Heliotrope Pajamas (paperback), $12.50");
     expect(editionLabel(CANDIDATES[2]!)).toBe("Land Water Sky Space (hardcover), $48.00");
+  });
+});
+
+describe("a later quarter's plan, on Q2's form (endless-copy.md section 3)", () => {
+  it("is headed for its quarter, with its months, its brief and the event's fare on the move", () => {
+    const brief = { strikes: 0, stretch: null, formatCost: null, authorFare: 300, lot: false };
+    const Stub = createRoutesStub([{ path: "/decide", Component: () => <PlanQ2 quarter="2194-Q3" candidates={CANDIDATES} brief={brief} /> }]);
+    const html = renderToString(<Stub initialEntries={["/decide"]} />);
+    expect(html).toContain(">PLAN FOR Q3 2194</h2>");
+    const all = text(html);
+    for (const month of ["July", "August", "September"]) expect(all).toContain(month);
+    expect(all).not.toContain("April");
+    expect(all).toContain("LKS-2194-Q3-0004");
+    expect(all).toContain("$300 a night");
+    const teasers = [...html.matchAll(/class="[^"]*teaserLine[^"]*">([^<]+)</g)].map((m) => m[1]);
+    expect(teasers).toEqual(["YOUR SCORE IS STILL YOUR LOWEST MEASURE.", "PROFIT IS REVENUE MINUS COST.", "MR. ZOOLANDER HAS READ A BOOK.", "THE CALENDAR IS EMPTY AGAIN.", "PICK THREE BOOKS."]);
   });
 });
