@@ -65,6 +65,8 @@ describe("the plan screen's words, any quarter after Q1 (endless-copy.md section
   it("state format costs and author fares in the facts, and the fare on the author nights move", () => {
     const q3 = planCopy("2194-Q3", brief({ formatCost: { format: "Hardcover", percent: 0.67 }, authorFare: 300, lot: true }));
     expect(text(q3.briefing.find((b) => b.boss === "profit")!.facts)).toContain("Hardcover copies cost the store 67% of their list price this quarter; other books, 60%.");
+    const lower = planCopy("2194-Q3", brief({ formatCost: { format: "trade paperback", percent: 0.65 } }));
+    expect(text(lower.briefing.find((b) => b.boss === "profit")!.facts)).toContain("Trade paperback copies cost the store 65%");
     expect(text(q3.briefing.find((b) => b.boss === "culture")!.facts)).toBe("An author night costs $300 this quarter: the author's shuttle fare and the room.");
     expect(text(q3.briefing.find((b) => b.boss === "readers")!.facts)).toContain("An Orbitplace lot is on offer as well.");
     const nights = q3.moves.find((m) => m.id === "events")!;

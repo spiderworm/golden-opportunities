@@ -107,6 +107,9 @@ export const quarterName = (quarter: QuarterId) => `Q${quarterNumber(quarter)} $
 /** The quarter's three months by name: "July", "August", "September". */
 export const monthNames = (quarter: QuarterId): string[] => quarterMonths(quarter).map((m) => MONTH_NAMES[Number(m.slice(5)) - 1]!);
 
+/** It opens the sentence, so its first letter is a capital, whatever case the data gives (Plot, on #212). */
+const capitalized = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+
 /** "15%", from 0.15. */
 const percentText = (fraction: number) => `${Math.round(fraction * 100)}%`;
 
@@ -207,7 +210,7 @@ function factsFor(boss: BossId, quarter: QuarterId, brief: PlanBrief | null): Br
         { strong: "5%" },
         ". ",
         ...(brief?.formatCost
-          ? [{ strong: brief.formatCost.format }, " copies cost the store ", { strong: `${percentText(brief.formatCost.percent)} of their list price` }, " this quarter; other books, 60%."]
+          ? [{ strong: capitalized(brief.formatCost.format) }, " copies cost the store ", { strong: `${percentText(brief.formatCost.percent)} of their list price` }, " this quarter; other books, 60%."]
           : ["Books cost the store ", { strong: "60% of their list price" }, "."]),
       ];
     case "culture":
