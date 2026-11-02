@@ -19,12 +19,13 @@ export const MENU =
 // The server withholds a sentence with a figure or direction of the model's own; the note showing means it tried.
 const noUnbacked: Case["checks"][number] = ({ text }) => (text.includes(WITHHELD) ? "tried to state a figure no tool returned (withheld)" : null);
 const atMostLookups = (n: number): Case["checks"][number] => ({ events }) => {
-  const count = events.filter((e) => e.type === "data" || e.type === "comparison").length;
+  // A chart Dewey drew is a lookup too (show_chart runs its own query).
+  const count = events.filter((e) => e.type === "data" || e.type === "comparison" || e.type === "chart").length;
   return count <= n ? null : `ran ${count} lookups, expected at most ${n}`;
 };
 const not = (pattern: RegExp, why: string): Case["checks"][number] => ({ text }) => (pattern.test(text) ? `${why}: ${pattern}` : null);
 const has = (pattern: RegExp | string, why: string): Case["checks"][number] => ({ text }) => ((typeof pattern === "string" ? text.includes(pattern) : pattern.test(text)) ? null : `${why}`);
-const lookedUp: Case["checks"][number] = ({ events }) => (events.some((e) => e.type === "data" || e.type === "comparison") ? null : "ran no lookup");
+const lookedUp: Case["checks"][number] = ({ events }) => (events.some((e) => e.type === "data" || e.type === "comparison" || e.type === "chart") ? null : "ran no lookup");
 const compared: Case["checks"][number] = ({ events }) => (events.some((e) => e.type === "comparison") ? null : "didn't use compare_data");
 
 export const CASES: Case[] = [
