@@ -26,12 +26,14 @@ export const FILTER_LABELS: Record<FilterId, string> = {
   genre: "Genre",
   format: "Format",
   publisher: "Publisher",
+  price: "Price band",
   discount: "Discount",
   awards: "Awards",
   series: "Series volume",
   month: "Month",
   weekday: "Weekday",
   title: "Title",
+  edition: "Edition",
 };
 
 /** What a menu says when nothing in it is chosen (m1-copy section 2). */
@@ -43,6 +45,8 @@ const ALL: Partial<Record<FilterDimension, string>> = {
   month: "All months",
   weekday: "All weekdays",
   title: "Any title",
+  price_band: "Any price",
+  edition: "Any edition",
 };
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -73,6 +77,8 @@ export function FilterBar({ filters, options, shown, onAdd, onRemove, onChange, 
   const unnamed: readonly FilterDimension[] = [
     ...(shown.includes("awards") && awardChoice(filters) === "all" ? FILTER_PARTS.awards : []),
     ...(shown.includes("series") && seriesChoice(filters) === "all" ? FILTER_PARTS.series : []),
+    // An exact list price, from a drilldown: the Price menu chooses bands.
+    ...(shown.includes("price") ? (["list_price"] as const) : []),
   ];
 
   const control = (id: FilterId) => {
@@ -83,14 +89,20 @@ export function FilterBar({ filters, options, shown, onAdd, onRemove, onChange, 
         return <AwardMenu choice={awardChoice(filters)} awards={options.award} onChange={onAward} />;
       case "series":
         return <SeriesMenu choice={seriesChoice(filters)} volumes={options.volume} onChange={onSeries} />;
+      case "price":
+        return (
+          <FilterMenu dimension="price_band" options={options.price_band} selected={filters.price_band ?? []} onChange={(values) => onChange("price_band", values)} />
+        );
       default: {
-        const choices = id === "month" ? monthsInScope(options.quarter) : id === "weekday" ? WEEKDAYS : id === "title" ? (filters.title ?? []) : options[id];
+        // Titles and editions are too many to list: they come from a chart's drilldown.
+        const choices =
+          id === "month" ? monthsInScope(options.quarter) : id === "weekday" ? WEEKDAYS : id === "title" || id === "edition" ? (filters[id] ?? []) : options[id];
         return (
           <FilterMenu
             dimension={id}
             options={choices}
             selected={filters[id] ?? []}
-            empty={id === "title" ? "Choose a title from a chart broken down by Title." : undefined}
+            empty={id === "title" || id === "edition" ? `Choose ${id === "title" ? "a title" : "an edition"} from a chart broken down by ${FILTER_LABELS[id]}.` : undefined}
             onChange={(values) => onChange(id, values)}
           />
         );
