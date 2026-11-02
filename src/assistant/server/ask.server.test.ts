@@ -320,7 +320,7 @@ describe("answering", () => {
   const chart: ProviderEvent = {
     type: "tool",
     name: "show_chart",
-    input: { kind: "line", query: { measure: "revenue", by: ["quarter"] } },
+    input: { query: { measure: "revenue", by: ["quarter"] } },
     output: JSON.stringify({ ref: "a", columns: [{ key: "quarter", label: "Quarter", type: "string", nullable: false }, { key: "revenue", label: "Revenue", type: "number", nullable: false }], rows: [{ ref: "a1", quarter: "2193-Q3", revenue: 7 }, { ref: "a2", quarter: "2193-Q4", revenue: 5 }], total: 12, source: "Sales, 2193", complete: true }),
     isError: false,
   };
@@ -335,9 +335,15 @@ describe("answering", () => {
     expect(r.stats).toMatchObject({ charts: 1, lookups: 0, figures: 2, withheld: 1 });
   });
 
+  it("chooses the chart from the query: a line over time, bars across anything else (Audit, #252)", () => {
+    const output = (chart as { output: string }).output;
+    const kind = (by: string[]) => (toWire({ type: "tool", name: "show_chart", input: { query: { measure: "revenue", by } }, output, isError: false }) as { chart: { kind: string } }).chart.kind;
+    expect([kind(["quarter"]), kind(["month", "genre"]), kind(["genre"]), kind(["weekday"]), kind(["genre", "quarter"])]).toEqual(["line", "line", "bar", "bar", "bar"]);
+  });
+
   it("shows no chart the tool server wouldn't have drawn", () => {
     const output = (chart as { output: string }).output;
-    for (const input of [{ kind: "table", query: { measure: "revenue", by: ["quarter"] } }, { kind: "bar", query: { measure: "revenue", by: [] } }, { kind: "bar", title: "Profit", query: { measure: "revenue", by: ["quarter"] } }]) {
+    for (const input of [{ kind: "line", query: { measure: "revenue", by: ["genre"] } }, { query: { measure: "revenue", by: [] } }, { title: "Profit", query: { measure: "revenue", by: ["quarter"] } }]) {
       expect(toWire({ type: "tool", name: "show_chart", input, output, isError: false })).toBeNull();
     }
   });

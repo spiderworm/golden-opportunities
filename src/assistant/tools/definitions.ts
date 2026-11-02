@@ -100,14 +100,13 @@ export const TOOLS = [
   {
     name: "show_chart",
     description:
-      "Runs one query, exactly as query_data does, and draws its result as a chart under your reply instead of a table: a line for months or quarters, bars for anything else. Use it when the player asks for a chart, graph or plot, or to see something drawn. It returns the same refs, rows, total and source as query_data; cite its figures by ref, as your rules say. The terminal titles the chart from its query.",
+      "Runs one query, exactly as query_data does, and draws its result as a chart under your reply instead of a table. Use it when the player asks for a chart, graph or plot, or to see something drawn. It returns the same refs, rows, total and source as query_data; cite its figures by ref, as your rules say. The terminal chooses the chart (a line over months or quarters, bars for anything else) and titles it from its query.",
     inputSchema: {
       type: "object",
       properties: {
-        kind: { type: "string", enum: SHOWN_CHART_KINDS },
         query: { type: "object", properties: queryProperties, required: ["measure", "by"], additionalProperties: false },
       },
-      required: ["kind", "query"],
+      required: ["query"],
       additionalProperties: false,
     },
   },
@@ -251,15 +250,18 @@ export function checkChart(input: unknown): ChartSpec {
   return { title: chartTitle(checked), kind, query: checked };
 }
 
-/** Checks a chart to show in the chat, and titles it from its query: a bar or line chart of one query. Throws ToolInputError. */
+/**
+ * Checks a chart to show in the chat, and makes it from its query alone: the title, and the kind, a line over
+ * months or quarters and bars for anything else. The model chooses neither: a line across genres would suggest a
+ * trend (Audit, #252). Throws ToolInputError.
+ */
 export function checkShownChart(input: unknown): ChartSpec & { kind: (typeof SHOWN_CHART_KINDS)[number] } {
   if (!isObject(input)) throw new ToolInputError("The chart must be an object.");
-  onlyKeys(input, ["kind", "query"], "The chart");
-  const { kind, query } = input;
-  if (!has(SHOWN_CHART_KINDS, kind)) throw new ToolInputError(`The kind must be one of: ${SHOWN_CHART_KINDS.join(", ")}. For a table, use query_data.`);
-  const checked = checkQuery(query);
-  if (checked.by.length === 0) throw new ToolInputError('A chart needs a dimension in "by"; for one total, use query_data.');
-  return { title: chartTitle(checked), kind, query: checked };
+  onlyKeys(input, ["query"], "The chart");
+  const checked = checkQuery(input.query);
+  const [x] = checked.by;
+  if (!x) throw new ToolInputError('A chart needs a dimension in "by"; for one total, use query_data.');
+  return { title: chartTitle(checked), kind: x === "month" || x === "quarter" ? "line" : "bar", query: checked };
 }
 
 /** What describe_data returns: the contract's names, so new measures and dimensions appear without changes here. */
