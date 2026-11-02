@@ -58,9 +58,16 @@ export function queryViewForSave(save: GameSave): QueryView {
       listPrice: edition.listPrice, revenue: edition.listPrice * (1 - sale.discount) };
   }) };
 }
+/**
+ * The request's save, its date, and its query view. The view replays the played quarters' lines, so it's built
+ * only when read: the shell's loader on every page reads just the save and the date, and a save whose replay no
+ * longer matches (REPLAY_MISMATCH) still opens every page that doesn't need lines, Settings' Reset game
+ * included (Plot, #198).
+ */
 export function getGameSession(request: Request) {
   const save = saves.read(resolveSaveId(request));
-  return { save, queryView: queryViewForSave(save), date: saveDate(save) };
+  let view: QueryView | undefined;
+  return { save, date: saveDate(save), get queryView() { return (view ??= queryViewForSave(save)); } };
 }
 /** A new save, under the per-minute limit shared by first visits and Play again. The caller sets its cookie. */
 export function startGame(): string {
