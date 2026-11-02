@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runPin } from "./PinnedCharts";
+import { queryCache } from "~/platform/query-cache.client";
 import { QueryRequestError } from "./query-client";
 import type { Pin } from "./spec";
 
@@ -26,32 +27,36 @@ describe("running a pinned comparison", () => {
     expect(loaded).toMatchObject({ kind: "comparison", result: { labels: { from: "2193-Q3", to: "2193-Q4" }, total: { from: 200, to: 150, change: -50, direction: "fell" } } });
   });
 
-  it("fails as a whole when either side fails, and cancels the other", async () => {
-    let cancelled = false;
+  it("fails as a whole when either side fails, without waiting for the other", async () => {
+    queryCache.setVersion("fails");
     vi.stubGlobal("fetch", (_url: string, init: RequestInit) => {
       const quarter = JSON.parse(init.body as string).filter.quarter[0];
       if (quarter === "2193-Q4") return Promise.resolve(new Response(JSON.stringify({ error: { code: "SESSION_ENDED", message: "Ended." } }), { status: 401 }));
-      return new Promise((_resolve, reject) => {
-        init.signal!.addEventListener("abort", () => {
-          cancelled = true;
-          reject(new DOMException("Aborted", "AbortError"));
-        });
-      });
+      return new Promise(() => {});
     });
     await expect(runPin(comparison, new AbortController().signal)).rejects.toEqual(new QueryRequestError("SESSION_ENDED", "Ended."));
-    expect(cancelled).toBe(true);
   });
 
-  it("cancels both sides when the card goes away", async () => {
-    const signals: AbortSignal[] = [];
+  it("stops waiting when the card goes away, but lets its requests finish for the cache (one caller never cancels a shared request)", async () => {
+    queryCache.setVersion("v-card");
+    const answers: ((response: Response) => void)[] = [];
     vi.stubGlobal("fetch", (_url: string, init: RequestInit) => {
-      signals.push(init.signal!);
-      return new Promise((_resolve, reject) => init.signal!.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError"))));
+      expect(init.signal).toBeUndefined();
+      return new Promise<Response>((resolve) => answers.push(resolve));
     });
     const card = new AbortController();
     const running = runPin(comparison, card.signal);
     card.abort();
-    await expect(running).rejects.toThrow();
-    expect(signals.map((s) => s.aborted)).toEqual([true, true]);
+    await expect(running).rejects.toMatchObject({ name: "AbortError" });
+    for (const [i, answer] of answers.entries()) {
+      const quarter = i === 0 ? "2193-Q3" : "2193-Q4";
+      answer(new Response(JSON.stringify(side(quarter, 100)), { headers: { "X-Orbital-Data-Version": "v-card" } }));
+    }
+    await vi.waitFor(() => expect(queryCache.size.entries).toBe(2));
+    // Shown again, the card asks nothing.
+    vi.stubGlobal("fetch", () => {
+      throw new Error("asked again");
+    });
+    expect(await runPin(comparison, new AbortController().signal)).toMatchObject({ kind: "comparison" });
   });
 });
