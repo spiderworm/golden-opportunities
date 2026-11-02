@@ -2,7 +2,9 @@
 // (docs/design/m1-copy.md, sections 4 to 6). Change them there first.
 // The discoveries' own text is server-only: see discoveries.server.ts.
 // {braces} are filled by the functions below.
+import { quarterNumber, type QuarterId } from "~/simulation/quarters";
 import type { Assumption, Certificate, Grade, MeasureId, MeasureScore, ReportCard } from "~/simulation/types";
+import { FORMAT_WORDS, GENRE_WORDS } from "~/simulation/words";
 
 export const RESULT_COPY = {
   title: "Q1 2194: the results",
@@ -67,6 +69,67 @@ export const QUARTER_COPY = {
   },
 } as const;
 export type ResultQuarter = keyof typeof QUARTER_COPY;
+
+/** "Q3 2194", from "2194-Q3". */
+export const quarterName = (quarter: QuarterId | string) => `${quarter.slice(5)} ${quarter.slice(0, 4)}`;
+
+/**
+ * What differs by quarter, for any quarter (docs/design/endless-copy.md section 4): Q1's and Q2's exactly as above,
+ * and from Q3 on by Plot's rules. The reference quarter's name comes from the server, which knows what it holds.
+ */
+export function quarterCopy(quarter: QuarterId, referenceLabel: string) {
+  if (quarter === "2194-Q1" || quarter === "2194-Q2") return QUARTER_COPY[quarter];
+  const base = `Q${quarterNumber(quarter)} 2193`;
+  return {
+    title: `${quarterName(quarter)}: the results`,
+    reference: `${referenceLabel} (for reference)`,
+    lastYear: `${base}, adjusted`,
+    goalsNote: `Each goal is ${base}, adjusted for what the Council expected this quarter, plus 5%. Matching the adjusted ${base} scores 70 (C\u2212). Meeting the goal scores 100 (A+).`,
+  };
+}
+
+/** The primary button while the game goes on: "Continue to Q2" after Q1, as it always was; then "Continue to Q4 2194". */
+export const continueTo = (next: QuarterId) => (next === "2194-Q2" ? CONTINUE_TO_Q2 : `Continue to ${quarterName(next)}`);
+
+/** A word that starts a title opens with a capital: "Science fiction and fantasy orders rising in August". */
+const opening = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** An event as the service record names it (endless-copy.md section 1), from Alma's type and params. */
+export function eventTitle(quarter: QuarterId, event: { type: string; params: Readonly<Record<string, string | number>> } | null): string {
+  if (!event) return quarter === "2194-Q2" ? "The new Inspector Ryeslton volume" : "None";
+  const p = event.params;
+  // An event's month is its place in the quarter, 1 to 3.
+  const month = () => MONTH_NAMES[(quarterNumber(quarter) - 1) * 3 + Number(p.month) - 1]!;
+  switch (event.type) {
+    case "genre_surge":
+      return `${opening(GENRE_WORDS[String(p.genre)] ?? String(p.genre))} orders rising in ${month()}`;
+    case "genre_slump":
+      return `${opening(GENRE_WORDS[String(p.genre)] ?? String(p.genre))} orders falling in ${month()}`;
+    case "quiet_days":
+      return `Quiet ${p.weekday}s`;
+    case "author_fares":
+      return `Author nights at $${p.cost}`;
+    case "format_costs":
+      return `${opening(FORMAT_WORDS[String(p.format)] ?? String(p.format))} costs at ${p.percent}%`;
+    case "quiet_quarter":
+      return "A quiet quarter";
+    default:
+      // Alma's types are a fixed list (src/alma/events.ts); a test checks each has a title here.
+      return "None";
+  }
+}
+
+/** The service record (endless.md section 6), which follows every result from Q2 on once the half-year review goes. */
+export const SERVICE_RECORD = {
+  heading: "Service record",
+  columns: { quarter: "Quarter", profit: "Profit", readers: "Readers served", happiness: "Happiness", culture: "Culture", overall: "Overall", event: "Event" },
+  strike: ", strike",
+  // Scores and grades read as everywhere else on the screen: scoreText's "74 (C\u2212)" (Plot, on #215).
+  tenure: (quarters: number, mean: number, grade: Grade) =>
+    `Manager since January 1, 2194: ${quarters} ${quarters === 1 ? "quarter" : "quarters"}. Average overall score: ${scoreText(mean, grade)}.`,
+  best: (quarter: QuarterId, score: number, grade: Grade) => `Best quarter: ${quarterName(quarter)}, ${scoreText(score, grade)}.`,
+} as const;
 
 /** After Q1, while Q2 is still to play (q2.md section 7): the primary button, to the station on April 1. */
 export const CONTINUE_TO_Q2 = "Continue to Q2";
@@ -280,6 +343,24 @@ export function seasonNote(pctBelowQ4: number, lastQ1: number): string {
 export function q2SeasonNote(revenue: number, q1Revenue: number): string {
   const pct = Math.round(Math.abs(revenue / q1Revenue - 1) * 100);
   return `Q2 revenue was ${pct}% ${revenue >= q1Revenue ? "above" : "below"} Q1 2194. Last year, Q2 was the busier quarter: $164,437, 73% above Q1. To judge your plan, compare it with holding course, not with Q1.`;
+}
+
+/**
+ * From Q3 on (endless-copy.md section 4): the quarter against the one before, then 2193's same two quarters, which
+ * the server sends with Frank's next step (season2193). Until then, the middle sentence is left out.
+ */
+export function laterSeasonNote(
+  quarter: QuarterId,
+  revenue: number,
+  previous: number,
+  previousLabel: string,
+  season2193?: { quarter: number; before: number; beforeLabel: string },
+): string {
+  const pct = Math.round(Math.abs(revenue / previous - 1) * 100);
+  const last = season2193
+    ? ` In 2193, Q${quarterNumber(quarter)} brought in ${moneyText(season2193.quarter)}, and ${season2193.beforeLabel} ${moneyText(season2193.before)}.`
+    : "";
+  return `${quarterName(quarter)} revenue was ${pct}% ${revenue >= previous ? "above" : "below"} ${previousLabel}.${last} To judge your plan, compare it with holding course, not with ${previousLabel}.`;
 }
 
 /** Section 7 of docs/design/q2.md: the review under Q2's result, which ends the game. */

@@ -18,6 +18,20 @@ export interface TurnEvent {
   drop?: number;
 }
 
+/**
+ * The measures each event type works against (endless.md section 2's table, from Sim's bounds): those its
+ * expected effect lowers on holding course, plus Profit for author fares. Alma's events.ts keeps the same
+ * table for its choosing rules; a test checks they agree.
+ */
+export const AGAINST: Readonly<Record<string, readonly MeasureId[]>> = {
+  genre_surge: [],
+  genre_slump: ["profit", "readers", "culture"],
+  quiet_days: ["profit", "readers", "culture"],
+  author_fares: ["profit"],
+  format_costs: ["profit"],
+  quiet_quarter: [],
+};
+
 export interface Conditions {
   /** Orders with a line in this genre, in this month (MM), are dropped or cloned to this factor. */
   genre?: { genre: string; month: string; factor: number };
