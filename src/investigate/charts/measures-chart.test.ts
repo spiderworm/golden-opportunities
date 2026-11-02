@@ -31,6 +31,12 @@ describe("several measures in one chart", () => {
     expect(measuresModel([revenue, units], ["revenue", "units"], "month").kind).toBe("line");
   });
 
+  it("leaves a missing total as no value when the server says it left rows out", () => {
+    const cut = { ...orders, truncated: true };
+    expect(measuresModel([revenue, cut], ["revenue", "orders"], "genre").measures[1]!.values).toEqual([60, null]);
+    expect(measuresModel([revenue, { ...orders, truncated: false }], ["revenue", "orders"], "genre").measures[1]!.values).toEqual([60, 0]);
+  });
+
   it("draws a series per shown measure on its own axis, with each axis named and colored", () => {
     const model = measuresModel([revenue, units], ["revenue", "units"], "genre");
     const option = measuresOption(model) as { yAxis: { name: string; position: string; axisLabel: { color: string } }[]; series: { yAxisIndex: number; name: string }[] };
