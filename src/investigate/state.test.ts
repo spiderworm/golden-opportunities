@@ -135,7 +135,10 @@ describe("investigate state", () => {
 
   it("says why a measure can't join: three at most, two units at most", () => {
     expect(canAddMeasure(["revenue"], "units")).toBe("ok");
-    expect(canAddMeasure(["revenue", "units"], "avg_order_value")).toBe("ok");
+    // An average never shares a total's axis, even in dollars.
+    expect(canAddMeasure(["revenue", "units"], "avg_order_value")).toBe("third unit");
+    expect(canAddMeasure(["revenue"], "avg_order_value")).toBe("ok");
+    expect(canAddMeasure(["units", "orders"], "avg_order_value")).toBe("ok");
     expect(canAddMeasure(["revenue", "units"], "avg_discount")).toBe("third unit");
     expect(canAddMeasure(["revenue", "units", "orders"], "avg_order_value")).toBe("full");
     expect(canCompare("genre", ["units"])).toBe(false);

@@ -340,6 +340,11 @@ describe("prices (Probe's #225)", () => {
     expect(g.push("{{a1.edition}} lists at {{a1.list_price}}. The table is under this message. Indeed. It also has the paperback.\n\nThe paperback also sold well. ") + g.flush()).toBe(`Post Alley (Hardcover) lists at $27.99. The table is under this message. Indeed. ${WITHHELD}\n\nThe paperback also sold well. `);
   });
 
+  it("let an exact edition label into prose, digits and all, as titles are (#225, item 4)", () => {
+    expect(say("Heliotrope Pajamas (Paperback, 2181) sold {{a3}}.", r)).toBe("Heliotrope Pajamas (Paperback, 2181) sold $95.88.");
+    expect(say("Heliotrope Pajamas (Paperback, 2182) sold {{a3}}.", r)).toBe(WITHHELD);
+  });
+
   it("keep a price group apart from any book", () => {
     expect(say("Every title in {{b.list_price}} sold {{b.total}} units.", r)).toBe("Every title in $27.99 sold 51 units.");
     expect(say("{{a2.edition}} is among the books in {{b.list_price}}.", r)).toBe(WITHHELD);
