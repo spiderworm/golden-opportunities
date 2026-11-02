@@ -29,15 +29,15 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
   stars: "Stars",
   awarded: "Award winner",
   award: "Award",
-  volume: "Volume",
+  volume: "Series volume",
   in_series: "In a series",
 };
 
 /** How a dimension value reads on screen: "2193-Q4" as "Q4 2193", "2193-03" as "Mar 2193". */
 export function formatDimensionValue(dimension: Dimension, value: string | null | undefined): string {
   if (value === null || value === undefined) {
-    // A standalone book has no volume; so does the unknown book behind some ratings.
-    if (dimension === "volume") return "No volume";
+    // A standalone book has no volume number; nor does the unknown book behind some ratings (Plot, #186).
+    if (dimension === "volume") return "Not numbered";
     return dimension === "title" ? "Unknown title" : "Unknown";
   }
   if (dimension === "quarter") {

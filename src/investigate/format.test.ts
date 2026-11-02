@@ -26,9 +26,10 @@ describe("Plot's Investigate words (m1-copy section 2)", () => {
     expect(DIMENSION_LABELS.awarded).toBe("Award winner");
   });
 
-  it("names volumes, and books with none", () => {
+  it("names volumes, and books without a number, as Plot worded them (#186)", () => {
     expect(formatDimensionValue("volume", "3")).toBe("Volume 3");
-    expect(formatDimensionValue("volume", null)).toBe("No volume");
+    expect(formatDimensionValue("volume", null)).toBe("Not numbered");
+    expect(DIMENSION_LABELS.volume).toBe("Series volume");
     expect(formatDimensionValue("in_series", "yes")).toBe("In a series");
     expect(formatDimensionValue("in_series", "no")).toBe("Not in a series");
   });
