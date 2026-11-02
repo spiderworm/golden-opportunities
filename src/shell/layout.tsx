@@ -5,6 +5,7 @@ import { Outlet, useFetcher, useLocation } from "react-router";
 import type { Route } from "./+types/layout";
 import { Shell } from "./Shell";
 import { getStationState } from "./station-state";
+import { revalidateAbovePage } from "~/platform/revalidate";
 import { track } from "~/platform/analytics/analytics.client";
 import { flushQueryCacheStats, pageOf, queryCache } from "~/platform/query-cache.client";
 
@@ -13,6 +14,8 @@ export const middleware: Route.MiddlewareFunction[] = [gameSessionMiddleware];
 export function loader({ request }: Route.LoaderArgs) {
   return getStationState(request);
 }
+
+export const shouldRevalidate = revalidateAbovePage;
 
 export default function ShellLayout({ loaderData }: Route.ComponentProps) {
   const seen = useFetcher();

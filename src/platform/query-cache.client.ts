@@ -53,6 +53,8 @@ export interface QueryCache {
   load<T>(key: string, fetcher: () => Promise<Loaded<T>>, signal?: AbortSignal): Promise<T>;
   /** Keeps a value fetched elsewhere (a loader's answer), for the version it was fetched under. */
   put(key: string, value: unknown, bytes: number, version: string | null): void;
+  /** Counts a request made elsewhere after `peek` missed, for the page's summary. */
+  noteMiss(): void;
   /** The counts since the last call, then zero. */
   takeStats(): CacheStats;
   readonly size: { entries: number; bytes: number };
@@ -164,6 +166,9 @@ export function createQueryCache({ maxEntries = 300, maxBytes = 4_000_000 } = {}
     put(key, value, size, fetchedUnder) {
       if (fetchedUnder === null || fetchedUnder !== version) return;
       keep(key, value, size);
+    },
+    noteMiss() {
+      stats.misses++;
     },
     takeStats() {
       const taken = stats;
