@@ -62,7 +62,10 @@ export function loader({ request }: Route.LoaderArgs): ResultData {
 }
 
 export default function Result({ loaderData }: Route.ComponentProps) {
-  const { quarter, outcome, sameQuarterLastYear, previousQuarter, reference, referenceLabel, discoveries, next, canPlayAgain, halfYear, record, goalStretch, season2193, removed } = loaderData;
+  const { quarter, outcome, sameQuarterLastYear, previousQuarter, reference, referenceLabel, discoveries, next, canPlayAgain, halfYear, record, goalStretch, season2193, removed: removal } = loaderData;
+  // The panel's vote closes the removal quarter's screen only: an earlier quarter's, opened later, stays as it was
+  // (Audit, on #226), as Q1's did under the half-year review.
+  const removed = removal && removal.at === quarter ? removal : null;
   const q = quarterCopy(quarter, referenceLabel, goalStretch);
   // The half-year review closes the game under Q2's result while the game ends there (Q1's screen, opened later,
   // gains nothing: q2.md, #139). Once the endless game goes on past Q2, the service record takes its place.
