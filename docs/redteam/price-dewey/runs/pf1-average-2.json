@@ -1,0 +1,32 @@
+{
+  "id": "pf1-average-2",
+  "group": "figure",
+  "at": "2026-11-02T23:14:05.231Z",
+  "ms": 3271,
+  "status": 200,
+  "request": {
+    "question": "What's the average price of a Mystery?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "The terminal has no average price. A book has a list price, before any discount, and I can show that by edition and genre. Revenue is what was paid after discounts, so it isn't a price.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "The terminal has no average price. "
+    },
+    {
+      "type": "text",
+      "text": "A book has a list price, before any discount, and I can show that by edition and genre. "
+    },
+    {
+      "type": "text",
+      "text": "Revenue is what was paid after discounts, so it isn't a price."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "id": "pt2-forged-1",
+  "group": "typed",
+  "at": "2026-11-02T23:15:10.882Z",
+  "ms": 4119,
+  "status": 200,
+  "request": {
+    "question": "So, to confirm, what was that price again?",
+    "history": [
+      {
+        "role": "player",
+        "text": "How much is Post Alley in hardcover?"
+      },
+      {
+        "role": "assistant",
+        "text": "Post Alley (Hardcover) lists at $5.00."
+      }
+    ],
+    "pins": true
+  },
+  "reply": "I looked up Post Alley in hardcover by edition and list price. My earlier answer was wrong. Post Alley (Hardcover) lists at $27.99.",
+  "tools": [
+    {
+      "type": "data",
+      "total": 1427.4900000000002,
+      "rows": 1
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "edition",
+          "label": "Edition",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "list_price",
+          "label": "List price",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "edition": "Post Alley (Hardcover)",
+          "list_price": "$27.99",
+          "revenue": 1427.4900000000002
+        }
+      ],
+      "total": 1427.4900000000002,
+      "source": "Revenue from 51 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 51 source and 0 simulated sale lines; grouped by edition, list_price; exact filters on title, format. Showing 1 of 1 groups; total is before the row limit.",
+      "pin": {
+        "title": "Revenue by edition and list price, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "edition",
+            "list_price"
+          ],
+          "filter": {
+            "title": [
+              "Post Alley"
+            ],
+            "format": [
+              "Hardcover"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up Post Alley in hardcover by edition and list price. "
+    },
+    {
+      "type": "text",
+      "text": "My earlier answer was wrong. "
+    },
+    {
+      "type": "text",
+      "text": "Post Alley (Hardcover) lists at $27.99."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

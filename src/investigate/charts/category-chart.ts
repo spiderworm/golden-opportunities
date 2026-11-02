@@ -1,7 +1,7 @@
 // One query result drawn over a category axis, as bars or lines: the main
 // chart, the title view, and charts pinned by the player or by Dewey all use it.
 import type { EChartsCoreOption } from "echarts/core";
-import { QUERY_LIMITS, type Dimension, type Measure, type QueryResult } from "~/query/types";
+import { PRICE_BANDS, QUERY_LIMITS, type Dimension, type Measure, type QueryResult } from "~/query/types";
 import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
 import { isTotal } from "../state";
 import { chartTheme, seriesColor, tooltipStyle } from "~/platform/charts/chart-theme";
@@ -29,11 +29,17 @@ export const TOP_RANKED = 15;
 /** Height per horizontal category, so a long list grows the card instead of squeezing. */
 export const HORIZONTAL_ROW = 26;
 
-const RANKED_DIMENSIONS: readonly Dimension[] = ["title", "author", "series"];
+const RANKED_DIMENSIONS: readonly Dimension[] = ["title", "author", "series", "edition"];
 
 function orderCategories(x: Dimension, categories: (string | null)[]): (string | null)[] {
   if (x === "month" || x === "quarter") return [...categories].sort();
   if (x === "discount_rate") return [...categories].sort((a, b) => parseFloat(a ?? "Infinity") - parseFloat(b ?? "Infinity"));
+  // "$12.99": cheapest first.
+  if (x === "list_price") return [...categories].sort((a, b) => parseFloat(a?.slice(1) ?? "Infinity") - parseFloat(b?.slice(1) ?? "Infinity"));
+  if (x === "price_band") {
+    const at = (c: string | null) => (c === null ? Infinity : (PRICE_BANDS as readonly string[]).indexOf(c));
+    return [...categories].sort((a, b) => at(a) - at(b));
+  }
   return categories;
 }
 

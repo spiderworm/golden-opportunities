@@ -54,9 +54,12 @@ export const GROUPINGS = [
   "publisher",
   "weekday",
   "discount_rate",
+  "price_band",
+  "list_price",
   "awarded",
   "volume",
   "title",
+  "edition",
 ] as const satisfies readonly Dimension[];
 export type Grouping = (typeof GROUPINGS)[number];
 
@@ -75,6 +78,9 @@ export const FILTER_DIMENSIONS = [
   "award",
   "in_series",
   "volume",
+  "price_band",
+  "list_price",
+  "edition",
 ] as const satisfies readonly Dimension[];
 export type FilterDimension = (typeof FILTER_DIMENSIONS)[number];
 
@@ -101,9 +107,9 @@ function oneOf<T extends string>(allowed: readonly T[], value: string | null, fa
 }
 
 export function canCompare(by: Grouping, also: readonly ChartMeasure[] = []): boolean {
-  // Time groupings already are quarters or sit inside one; titles are too many to split. With several measures,
+  // Time groupings already are quarters or sit inside one; titles and editions are too many to split. With several measures,
   // measures times quarters is too many series to read (David's choice, 2 Nov 2026).
-  return by !== "month" && by !== "quarter" && by !== "title" && also.length === 0;
+  return by !== "month" && by !== "quarter" && by !== "title" && by !== "edition" && also.length === 0;
 }
 
 /** A list of measures cut to what fits one chart, in order: repeats, a fourth measure and a third unit dropped. */
@@ -264,7 +270,7 @@ export function isTotal(measure: Measure): boolean {
  * The filters a player can add to the bar, in the bar's order (David, 2 Nov 2026: an "+ add a filter" list, each
  * filter with an "x"). Some are one control over two dimensions (Discount, Awards, Series volume).
  */
-export const FILTERS = ["quarter", "genre", "format", "publisher", "discount", "awards", "series", "month", "weekday", "title"] as const;
+export const FILTERS = ["quarter", "genre", "format", "publisher", "price", "discount", "awards", "series", "month", "weekday", "title", "edition"] as const;
 export type FilterId = (typeof FILTERS)[number];
 
 export const FILTER_PARTS: Record<FilterId, readonly FilterDimension[]> = {
@@ -272,12 +278,15 @@ export const FILTER_PARTS: Record<FilterId, readonly FilterDimension[]> = {
   genre: ["genre"],
   format: ["format"],
   publisher: ["publisher"],
+  // The menu chooses price bands; an exact list price comes from a chart broken down by list price.
+  price: ["price_band", "list_price"],
   discount: ["discount_rate", "discounted"],
   awards: ["awarded", "award"],
   series: ["in_series", "volume"],
   month: ["month"],
   weekday: ["weekday"],
   title: ["title"],
+  edition: ["edition"],
 };
 
 /** The URL parameter listing the filters the player added, values or not: `show=genre&show=awards`. */

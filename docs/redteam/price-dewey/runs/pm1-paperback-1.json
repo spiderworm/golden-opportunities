@@ -1,0 +1,752 @@
+{
+  "id": "pm1-paperback-1",
+  "group": "misattribution",
+  "at": "2026-11-02T23:13:25.312Z",
+  "ms": 8398,
+  "status": 200,
+  "request": {
+    "question": "How much does the Post Alley paperback cost?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "Nothing matched. I'll check the exact title spelling.\n\nI looked up list price by edition for Post Alley in the trade paperback format. The terminal has no plain \"Paperback\" format for that title.\n\nPost Alley (Trade paperback) lists at $12.50.\n\nThat is the list price before any discount. The terminal has no cost data, so I can't show what the shop pays for it.",
+  "tools": [
+    {
+      "type": "data",
+      "total": 0,
+      "rows": 0
+    },
+    {
+      "type": "data",
+      "total": 56350,
+      "rows": 92
+    },
+    {
+      "type": "data",
+      "total": 307,
+      "rows": 1
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "edition",
+          "label": "Edition",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "list_price",
+          "label": "List price",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [],
+      "total": 0,
+      "source": "Units from 0 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 0 source and 0 simulated sale lines; grouped by edition, list_price; exact filters on title, format. Showing 0 of 0 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by edition and list price, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "edition",
+            "list_price"
+          ],
+          "filter": {
+            "title": [
+              "Post Alley"
+            ],
+            "format": [
+              "Paperback"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "Nothing matched. "
+    },
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "key": "format",
+          "label": "Format",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "b1",
+          "title": "(im)Mortality",
+          "format": "Hardcover",
+          "units": 7
+        },
+        {
+          "ref": "b2",
+          "title": "(im)Mortality",
+          "format": "Trade paperback",
+          "units": 52
+        },
+        {
+          "ref": "b3",
+          "title": "9803 North Millworks Road",
+          "format": "Hardcover",
+          "units": 884
+        },
+        {
+          "ref": "b4",
+          "title": "9803 North Millworks Road",
+          "format": "Mass market paperback",
+          "units": 3204
+        },
+        {
+          "ref": "b5",
+          "title": "A Horrible Human with the Habits of a Monster",
+          "format": "Graphic",
+          "units": 275
+        },
+        {
+          "ref": "b6",
+          "title": "Adventures of Kaya",
+          "format": "Trade paperback",
+          "units": 2077
+        },
+        {
+          "ref": "b7",
+          "title": "Alanna Saves the Day",
+          "format": "Trade paperback",
+          "units": 1778
+        },
+        {
+          "ref": "b8",
+          "title": "And I Said Yes",
+          "format": "Hardcover",
+          "units": 270
+        },
+        {
+          "ref": "b9",
+          "title": "And I Said Yes",
+          "format": "Trade paperback",
+          "units": 51
+        },
+        {
+          "ref": "b10",
+          "title": "Ballinby Boys",
+          "format": "Hardcover",
+          "units": 1433
+        },
+        {
+          "ref": "b11",
+          "title": "Banana Slug and Xyr Friends",
+          "format": "Board book",
+          "units": 337
+        },
+        {
+          "ref": "b12",
+          "title": "Banana Slug and Xyr Friends",
+          "format": "Paperback",
+          "units": 154
+        },
+        {
+          "ref": "b13",
+          "title": "Banana Slug and the Glass Half Full",
+          "format": "Board book",
+          "units": 321
+        },
+        {
+          "ref": "b14",
+          "title": "Banana Slug and the Glass Half Full",
+          "format": "Paperback",
+          "units": 176
+        },
+        {
+          "ref": "b15",
+          "title": "Banana Slug and the Lost Cow",
+          "format": "Board book",
+          "units": 349
+        },
+        {
+          "ref": "b16",
+          "title": "Banana Slug and the Lost Cow",
+          "format": "Paperback",
+          "units": 90
+        },
+        {
+          "ref": "b17",
+          "title": "Banana Slug and the Mossy Rock",
+          "format": "Board book",
+          "units": 327
+        },
+        {
+          "ref": "b18",
+          "title": "Banana Slug and the Mossy Rock",
+          "format": "Paperback",
+          "units": 158
+        },
+        {
+          "ref": "b19",
+          "title": "Burnished Silver",
+          "format": "Mass market paperback",
+          "units": 1459
+        },
+        {
+          "ref": "b20",
+          "title": "Can I Be Honest?",
+          "format": "Hardcover",
+          "units": 104
+        },
+        {
+          "ref": "b21",
+          "title": "Can I Be Honest?",
+          "format": "Trade paperback",
+          "units": 1309
+        },
+        {
+          "ref": "b22",
+          "title": "Concerning Prophecy",
+          "format": "Hardcover",
+          "units": 5
+        },
+        {
+          "ref": "b23",
+          "title": "Concerning Prophecy",
+          "format": "Mass market paperback",
+          "units": 348
+        },
+        {
+          "ref": "b24",
+          "title": "Did You Hear?",
+          "format": "Mass market paperback",
+          "units": 334
+        },
+        {
+          "ref": "b25",
+          "title": "Don't Check your Ego",
+          "format": "Hardcover",
+          "units": 14
+        },
+        {
+          "ref": "b26",
+          "title": "Don't Check your Ego",
+          "format": "Trade paperback",
+          "units": 45
+        },
+        {
+          "ref": "b27",
+          "title": "Dust on the Rim",
+          "format": "Mass market paperback",
+          "units": 109
+        },
+        {
+          "ref": "b28",
+          "title": "Hashtag QuokkaSelfie",
+          "format": "Hardcover",
+          "units": 21
+        },
+        {
+          "ref": "b29",
+          "title": "Hashtag QuokkaSelfie",
+          "format": "Trade paperback",
+          "units": 321
+        },
+        {
+          "ref": "b30",
+          "title": "Heliotrope Pajamas",
+          "format": "Board book",
+          "units": 3622
+        },
+        {
+          "ref": "b31",
+          "title": "Heliotrope Pajamas",
+          "format": "Paperback",
+          "units": 585
+        },
+        {
+          "ref": "b32",
+          "title": "Inconvenient Confessions: a memoir",
+          "format": "Hardcover",
+          "units": 52
+        },
+        {
+          "ref": "b33",
+          "title": "Inconvenient Confessions: a memoir",
+          "format": "Trade paperback",
+          "units": 156
+        },
+        {
+          "ref": "b34",
+          "title": "Interrobangs for All",
+          "format": "Hardcover",
+          "units": 54
+        },
+        {
+          "ref": "b35",
+          "title": "Interrobangs for All",
+          "format": "Trade paperback",
+          "units": 169
+        },
+        {
+          "ref": "b36",
+          "title": "It's Never Just a Glass",
+          "format": "Hardcover",
+          "units": 5
+        },
+        {
+          "ref": "b37",
+          "title": "It's Never Just a Glass",
+          "format": "Trade paperback",
+          "units": 58
+        },
+        {
+          "ref": "b38",
+          "title": "Kalakalal Avenue",
+          "format": "Hardcover",
+          "units": 104
+        },
+        {
+          "ref": "b39",
+          "title": "Kalakalal Avenue",
+          "format": "Mass market paperback",
+          "units": 294
+        },
+        {
+          "ref": "b40",
+          "title": "Lace and Brandy",
+          "format": "Mass market paperback",
+          "units": 634
+        },
+        {
+          "ref": "b41",
+          "title": "Land Water Sky Space",
+          "format": "Hardcover",
+          "units": 2
+        },
+        {
+          "ref": "b42",
+          "title": "Muddy Waters",
+          "format": "Mass market paperback",
+          "units": 1419
+        },
+        {
+          "ref": "b43",
+          "title": "Natural Pamplemousse",
+          "format": "Hardcover",
+          "units": 11
+        },
+        {
+          "ref": "b44",
+          "title": "Natural Pamplemousse",
+          "format": "Trade paperback",
+          "units": 105
+        },
+        {
+          "ref": "b45",
+          "title": "No More Lightning",
+          "format": "Graphic",
+          "units": 170
+        },
+        {
+          "ref": "b46",
+          "title": "Not to Gossip, But",
+          "format": "Mass market paperback",
+          "units": 291
+        },
+        {
+          "ref": "b47",
+          "title": "Nothing But Capers",
+          "format": "Hardcover",
+          "units": 71
+        },
+        {
+          "ref": "b48",
+          "title": "Portmeirion",
+          "format": "Hardcover",
+          "units": 1030
+        },
+        {
+          "ref": "b49",
+          "title": "Portmeirion",
+          "format": "Mass market paperback",
+          "units": 3606
+        },
+        {
+          "ref": "b50",
+          "title": "Post Alley",
+          "format": "Hardcover",
+          "units": 51
+        },
+        {
+          "ref": "b51",
+          "title": "Post Alley",
+          "format": "Trade paperback",
+          "units": 307
+        },
+        {
+          "ref": "b52",
+          "title": "Quiddity and Quoddity",
+          "format": "Hardcover",
+          "units": 15
+        },
+        {
+          "ref": "b53",
+          "title": "Quiddity and Quoddity",
+          "format": "Trade paperback",
+          "units": 200
+        },
+        {
+          "ref": "b54",
+          "title": "Rystwyth",
+          "format": "Hardcover",
+          "units": 4077
+        },
+        {
+          "ref": "b55",
+          "title": "Saint Esme",
+          "format": "Mass market paperback",
+          "units": 556
+        },
+        {
+          "ref": "b56",
+          "title": "Say it with Snap!",
+          "format": "Hardcover",
+          "units": 6
+        },
+        {
+          "ref": "b57",
+          "title": "Say it with Snap!",
+          "format": "Trade paperback",
+          "units": 67
+        },
+        {
+          "ref": "b58",
+          "title": "She Also Tottered",
+          "format": "Hardcover",
+          "units": 42
+        },
+        {
+          "ref": "b59",
+          "title": "She Also Tottered",
+          "format": "Trade paperback",
+          "units": 194
+        },
+        {
+          "ref": "b60",
+          "title": "Soft, Pliable Truth",
+          "format": "Hardcover",
+          "units": 21
+        },
+        {
+          "ref": "b61",
+          "title": "Soft, Pliable Truth",
+          "format": "Trade paperback",
+          "units": 105
+        },
+        {
+          "ref": "b62",
+          "title": "Some Eggs or Something?",
+          "format": "Hardcover",
+          "units": 47
+        },
+        {
+          "ref": "b63",
+          "title": "Some Eggs or Something?",
+          "format": "Trade paperback",
+          "units": 1349
+        },
+        {
+          "ref": "b64",
+          "title": "Tales of the Compass",
+          "format": "Hardcover",
+          "units": 48
+        },
+        {
+          "ref": "b65",
+          "title": "Tales of the Compass",
+          "format": "Mass market paperback",
+          "units": 361
+        },
+        {
+          "ref": "b66",
+          "title": "Thatchwork Cottage",
+          "format": "Hardcover",
+          "units": 94
+        },
+        {
+          "ref": "b67",
+          "title": "Thatchwork Cottage",
+          "format": "Trade paperback",
+          "units": 400
+        },
+        {
+          "ref": "b68",
+          "title": "The Elephant House",
+          "format": "Hardcover",
+          "units": 52
+        },
+        {
+          "ref": "b69",
+          "title": "The Elephant House",
+          "format": "Trade paperback",
+          "units": 168
+        },
+        {
+          "ref": "b70",
+          "title": "The Mallemaroking",
+          "format": "Graphic",
+          "units": 119
+        },
+        {
+          "ref": "b71",
+          "title": "The Mallemaroking",
+          "format": "Hardcover",
+          "units": 1279
+        },
+        {
+          "ref": "b72",
+          "title": "The Mallemaroking",
+          "format": "Mass market paperback",
+          "units": 4568
+        },
+        {
+          "ref": "b73",
+          "title": "The Mallemaroking",
+          "format": "Trade paperback",
+          "units": 1368
+        },
+        {
+          "ref": "b74",
+          "title": "The Scent of Oranges",
+          "format": "Mass market paperback",
+          "units": 502
+        },
+        {
+          "ref": "b75",
+          "title": "The Seawitch Sings",
+          "format": "Mass market paperback",
+          "units": 1829
+        },
+        {
+          "ref": "b76",
+          "title": "The Spark and The Ashes",
+          "format": "Hardcover",
+          "units": 330
+        },
+        {
+          "ref": "b77",
+          "title": "The Startling End of Mr. Hidhoo",
+          "format": "Graphic",
+          "units": 76
+        },
+        {
+          "ref": "b78",
+          "title": "The Thing Is",
+          "format": "Mass market paperback",
+          "units": 315
+        },
+        {
+          "ref": "b79",
+          "title": "The Triscanipt",
+          "format": "Hardcover",
+          "units": 249
+        },
+        {
+          "ref": "b80",
+          "title": "The Triscanipt",
+          "format": "Mass market paperback",
+          "units": 1552
+        },
+        {
+          "ref": "b81",
+          "title": "The Winchcombe Railway Museum Heist",
+          "format": "Hardcover",
+          "units": 826
+        },
+        {
+          "ref": "b82",
+          "title": "The Winchcombe Railway Museum Heist",
+          "format": "Mass market paperback",
+          "units": 2634
+        },
+        {
+          "ref": "b83",
+          "title": "Turn Left Til You Get There",
+          "format": "Hardcover",
+          "units": 62
+        },
+        {
+          "ref": "b84",
+          "title": "Turn Left Til You Get There",
+          "format": "Mass market paperback",
+          "units": 199
+        },
+        {
+          "ref": "b85",
+          "title": "We're Sisters and We Kinda Like Each Other",
+          "format": "Hardcover",
+          "units": 21
+        },
+        {
+          "ref": "b86",
+          "title": "We're Sisters and We Kinda Like Each Other",
+          "format": "Trade paperback",
+          "units": 105
+        },
+        {
+          "ref": "b87",
+          "title": "Whither Thou Goest",
+          "format": "Mass market paperback",
+          "units": 1304
+        },
+        {
+          "ref": "b88",
+          "title": "Who Did You Think You Were Kidding?",
+          "format": "Hardcover",
+          "units": 58
+        },
+        {
+          "ref": "b89",
+          "title": "Zero over Twelve",
+          "format": "Hardcover",
+          "units": 94
+        },
+        {
+          "ref": "b90",
+          "title": "Zero over Twelve",
+          "format": "Mass market paperback",
+          "units": 1363
+        },
+        {
+          "ref": "b91",
+          "title": "the life and times of an utterly inconsequential person",
+          "format": "Hardcover",
+          "units": 281
+        },
+        {
+          "ref": "b92",
+          "title": "the life and times of an utterly inconsequential person",
+          "format": "Trade paperback",
+          "units": 606
+        }
+      ],
+      "total": 56350,
+      "source": "Units from 56,350 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by title, format. Showing 92 of 92 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by title and format",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "title",
+            "format"
+          ],
+          "limit": 200
+        }
+      }
+    },
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "edition",
+          "label": "Edition",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "list_price",
+          "label": "List price",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "c1",
+          "edition": "Post Alley (Trade paperback)",
+          "list_price": "$12.50",
+          "units": 307
+        }
+      ],
+      "total": 307,
+      "source": "Units from 307 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 307 source and 0 simulated sale lines; grouped by edition, list_price; exact filters on title, format. Showing 1 of 1 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by edition and list price, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "edition",
+            "list_price"
+          ],
+          "filter": {
+            "title": [
+              "Post Alley"
+            ],
+            "format": [
+              "Trade paperback"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I'll check the exact title spelling.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "I looked up list price by edition for Post Alley in the trade paperback format. "
+    },
+    {
+      "type": "text",
+      "text": "The terminal has no plain \"Paperback\" format for that title.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "Post Alley (Trade paperback) lists at $12.50.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "That is the list price before any discount. "
+    },
+    {
+      "type": "text",
+      "text": "The terminal has no cost data, so I can't show what the shop pays for it."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
