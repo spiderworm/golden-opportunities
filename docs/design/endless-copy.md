@@ -167,9 +167,9 @@ The rotating lines name no event, no direction and no figure that changes with t
 | Certificate | When (`scoring.md`) | Text |
 | --- | --- | --- |
 | Comeback | The quarter's recovery goal was met | `Comeback: {measure} fell in {previous quarter}, and you restored it. Certificates don't change your score.` |
-| Weathered the Storm | Goals met in a quarter with a major event | `Weathered the Storm: you met your goals despite {short title, first letter in lower case}. Certificates don't change your score.` |
+| Weathered the Storm | Goals met in a quarter with a major event | `Weathered the Storm: {measures} met {its goal / their goals} despite {short title, first letter in lower case}. Certificates don't change your score.` |
 
-- **Weathered the Storm** is earned when every measure the event works against (`endless.md` section 2's table) meets its goal: Profit for author fares or format costs, and Profit, Readers served and Culture for a slump or quiet days. Example: `Weathered the Storm: you met your goals despite quiet Tuesdays.`
+- **Weathered the Storm** is earned when every measure the event works against (`endless.md` section 2's table) meets its goal: Profit for author fares or format costs, and Profit, Readers served and Culture for a slump or quiet days. `{measures}` names exactly those, in report-card order, so the certificate never claims a goal the player missed. Examples: `Weathered the Storm: Profit met its goal despite author nights at $350.` and `Weathered the Storm: Profit, Readers served and Culture met their goals despite quiet Tuesdays.`
 - Only an event that works against a measure can earn it. A genre surge works against none, and nor does a quiet quarter, so neither is ever a storm. Whether every other event counts as major is the engine's call (Sim).
 
 ### What you found, from Q3 on
