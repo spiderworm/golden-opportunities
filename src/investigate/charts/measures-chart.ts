@@ -6,7 +6,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import { QUERY_LIMITS, type Dimension, type QueryResult } from "~/query/types";
 import { chartTheme, tooltipStyle } from "~/platform/charts/chart-theme";
 import { escapeHtml } from "~/platform/charts/escape";
-import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
+import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS, WHOLE_TICKS } from "../format";
 import { isTotal, MEASURE_UNITS, type ChartMeasure } from "../state";
 import { categoryModel, TOP_RANKED, type CategoryModel } from "./category-chart";
 
@@ -104,6 +104,7 @@ export function measuresOption(
     nameTextStyle: { color: axis.color, fontSize: 12, fontWeight: 600 },
     splitNumber: 4,
     alignTicks: true,
+    ...(axis.measures.every((m) => WHOLE_TICKS.includes(m)) ? { minInterval: 1 } : {}),
     axisLine: { show: true, lineStyle: { color: axis.color, width: 2 } },
     axisLabel: { color: axis.color, fontSize: 12, formatter: (v: number) => formatMeasure(axis.measures[0]!, v, { compact: true }) },
     splitLine: { show: k === 0, lineStyle: { color: chartTheme.grid, width: 1, type: "solid" } },

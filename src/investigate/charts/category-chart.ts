@@ -2,7 +2,7 @@
 // chart, the title view, and charts pinned by the player or by Dewey all use it.
 import type { EChartsCoreOption } from "echarts/core";
 import { PRICE_BANDS, QUERY_LIMITS, type Dimension, type Measure, type QueryResult } from "~/query/types";
-import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
+import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS, WHOLE_TICKS } from "../format";
 import { isTotal } from "../state";
 import { chartTheme, seriesColor, tooltipStyle } from "~/platform/charts/chart-theme";
 import { escapeHtml } from "~/platform/charts/escape";
@@ -95,6 +95,12 @@ export function categoryModel(
   };
 }
 
+/**
+ * Whether a model has nothing to draw: every value zero or missing. Its axis would be one ECharts makes up (0 to
+ * 1, which a whole-dollar label reads as "$0, $0, $1, $1, $1"), so it's shown as the chart's empty state instead.
+ */
+export const nothingToDraw = (model: { series: { values: (number | null)[] }[] }) => model.series.every((s) => s.values.every((v) => !v));
+
 export function categoryHeight(model: CategoryModel, height = 320): number {
   return model.horizontal ? Math.max(height, model.categories.length * HORIZONTAL_ROW + 40) : height;
 }
@@ -149,6 +155,8 @@ export function categoryOption(
   const valueAxis = {
     type: "value",
     splitNumber: 4,
+    // Counts and revenue never tick between whole numbers: "0.3 units" isn't a reading.
+    ...(WHOLE_TICKS.includes(measure) ? { minInterval: 1 } : {}),
     axisLabel: { color: chartTheme.textMuted, fontSize: 12, formatter: (v: number) => formatMeasure(measure, v, { compact: true }) },
     splitLine: { lineStyle: { color: chartTheme.grid, width: 1, type: "solid" } },
   };

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { QueryResult } from "~/query/types";
 import { pinMonths } from "../pins/PinnedCharts";
 import type { Pin } from "../pins/spec";
-import { categoryModel, categoryOption } from "./category-chart";
+import { categoryModel, categoryOption, nothingToDraw } from "./category-chart";
 
 const QUARTERS = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
 
@@ -81,5 +81,28 @@ describe("the bar tooltip", () => {
   it("leaves the share out when the bars aren't the whole", () => {
     const html = tooltip(categoryOption(model, { quarters: QUARTERS }))([{ dataIndex: 0, seriesIndex: 0, seriesName: "Units sold", value: 30, color: "#fff" }]);
     expect(html).not.toContain("% of");
+  });
+});
+
+describe("the value axis", () => {
+  // The axis as ECharts draws it, from the server-side SVG renderer.
+  const labels = async (measure: "units" | "avg_order_value", values: number[]) => {
+    const { init } = await import("~/platform/charts/echarts-setup");
+    const chart = init(null as never, null, { renderer: "svg", ssr: true, width: 600, height: 300 });
+    chart.setOption(categoryOption(categoryModel(result(values.map((v, i) => ({ month: `2193-0${i + 1}`, [measure]: v })), ["month"], measure), "month"), { quarters: QUARTERS }) as never);
+    const svg = chart.renderToSVGString();
+    chart.dispose();
+    return [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]!).filter((t) => !/^[A-Z][a-z]{2}$/.test(t));
+  };
+
+  it("never ticks between whole units", async () => {
+    // Before: 0 | 0.3 | 0.6 | 0.9 | 1.2.
+    expect(await labels("units", [0, 1, 0])).toEqual(["0", "1"]);
+  });
+
+  it("calls a chart of zeros nothing to draw, so it shows its empty state, not a made-up axis", () => {
+    expect(nothingToDraw(categoryModel(result([{ month: "2193-01", units: 0 }, { month: "2193-02", units: 0 }], ["month"]), "month"))).toBe(true);
+    expect(nothingToDraw(categoryModel(result([{ month: "2193-01", units: 0 }, { month: "2193-02", units: 1 }], ["month"]), "month"))).toBe(false);
+    expect(nothingToDraw(categoryModel(result([{ month: "2193-01", avg_order_value: null }], ["month"], "avg_order_value"), "month"))).toBe(true);
   });
 });
