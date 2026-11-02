@@ -9,11 +9,12 @@ and never content, recorded on the device first.
 |---|---|
 | `src/client/` | `createAnalytics()`: `track()`, the on-device log, the outbox that sends batches to the endpoint, the player's on/off switch (`sharing`, `setSharing`), and `app_shown`/`app_hidden` events. |
 | `src/device/` | `deviceProps()`: GPU, model, Android version, memory, cores and screen, never the full user agent. `createAnalytics` sends it as a `device` event once per startup. |
-| `src/environment/` | Where the game runs: Google Play's test robots (labeled `testlab`, see `android/TestLab.md`) and automated runs (`navigator.webdriver` or `?analytics-test=1`: nothing sent). |
+| `src/environment/` | Where the game runs: Google Play's test robots (labeled `testlab`, see `android/TestLab.md`) and automated runs (`navigator.webdriver` or `?analytics-test=1`: nothing sent). Moved to `@tellim/platform/environment` (1 Nov 2026); this path re-exports it. |
 | `android/TestLab.md` | The few lines each Android app's `MainActivity` needs so Play's test robots are labeled. |
+| `android/StudioId.md` | The TellimStudio plugin (Android's app set ID, later the iPhone's identifierForVendor) that `link: true` uses to tie one player's play together across Tellim games. |
 | `src/checkin/` | `createCheckin()`: now and then, at a natural pause, "How's <game> going?" 👍 😐 👎, then a reason to tap. Never a store-rating prompt. |
 | `src/ingest/` | The endpoint: a Lambda (`handler.cjs`) that keeps each good batch in a private S3 bucket, behind CloudFront with an edge function (`edge.js`) and a firewall (`waf.ts`); its CloudFormation stack (`stack.ts`). `deployed.ts` says where it is. |
-| `src/report/` | `fetch.ts` brings a game's batches down to the Mac; `report.ts` turns them into players, sessions, times of day, retention, who's stopped, and the game's own `signals` for why. |
+| `src/report/` | `fetch.ts` brings a game's batches down to the Mac; `report.ts` turns them into players (each with a made-up name, `placeholderName()`: "Patient Beluga", never shown in a game), sessions, times of day, retention, who's stopped, and the game's own `signals` for why. |
 
 ## Adding it to a game
 
@@ -38,6 +39,11 @@ and never content, recorded on the device first.
    `release("agent_text")` sends them later with their own time and running number (not while sharing is off);
    `held(class)` reads them, `discard(class)` deletes them. A held string may run to 7000 characters, kept in
    pieces the endpoint takes (`text`, `text_2`, …); `joined(p, "text")` in `src/report` puts it back together.
+   One player across Tellim games (David, 1 Nov 2026): `link: true` sends a `linked` event once per startup,
+   `{ studio, source }`. On Android the id is the app set ID and on iPhone the identifierForVendor, both
+   from the app's TellimStudio plugin (`android/StudioId.md`). On the web it's one id shared by the
+   studio's games on the site. The report then names the player from it, the same in every game.
+   Turn it on only in the build whose privacy policy says so.
 3. Put a "Share play data" switch in the game's menu (`sharing()` / `setSharing()`), and show the install id (`install()`) in its diagnostics.
 4. Android: add `android/TestLab.md`'s lines to `MainActivity`.
 5. Add the game's name to the stack's `Games` parameter and deploy it again (below). The endpoint refuses games it doesn't know.

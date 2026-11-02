@@ -9,6 +9,7 @@ data, and `/cubeberg/` on the web.
 |---|---|
 | `src/app/apps.ts` | The studio's apps, by id: the one list, so no two apps claim an id or keep their data under one prefix, however many share a host. Add an app here first. An id is for good; a rename changes the name only. |
 | `src/app/app.ts` | `defineApp({ id, version, build, home })`: the app, frozen. Its name and its older storage prefix (Waddleberg's `cubeberg`) come from the list. `storageKey(name)` and `channelName(scope)` give keys and channels of its own. An id not on the list is warned about in the console, and still works. |
+| `src/environment/` | Where the app is running: Google Play's test robots (`testLab(userAgent)`, from the mark `packages/analytics/android/TestLab.md` adds to the Android app's WebView) and automated runs (`automation()`: `navigator.webdriver` or `?analytics-test=1`, kept for the tab). Moved from `@tellim/analytics` (1 Nov 2026), which still re-exports it. |
 | `src/presence/` | `createPresence(app)`: the studio's tabs open on this host, this app's (`mine()`) and others' (`peers()`), over one channel they all share. The address is only checked here, never the identity: one id at two homes is two apps claiming it, and the console says so. A browser shows a page only its own host's tabs. |
 
 ## Using it
@@ -23,7 +24,4 @@ work while the games move over.
 
 ## Coming
 
-- Analytics takes `app` (Annie's): its `game`, `key`, `build` and `version` from it, and where it's
-  running (`src/environment/`: web, the Android app, Play's test robots, a test) moves here, for
-  every package.
 - Most apps take it through `@tellim/kit` (`startApp(app, { form })`), with music and analytics.

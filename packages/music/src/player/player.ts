@@ -635,6 +635,8 @@ export function createMusic(o: MusicOptions) {
     },
     /** seconds into the song playing (Pizza's title follows the theme's hits) */
     time: () => now(),
+    /** seconds left of the song playing, once its length is known (the pop-up shows itself near the end) */
+    left: (): number | null => (song && loaded && Number.isFinite(deck.duration) && deck.duration > 0 ? Math.max(0, deck.duration - now()) : null),
     /** the panel or pop-up opened */
     opened(from: Where) {
       track("music_player_opened", { from });
