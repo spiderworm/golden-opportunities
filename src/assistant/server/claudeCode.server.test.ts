@@ -41,6 +41,30 @@ describe("the command line", () => {
   });
 });
 
+describe("with no tool server (Alma)", () => {
+  const args = claudeArgs(prompt, "sonnet", null);
+  const after = (flag: string) => args[args.indexOf(flag) + 1];
+
+  it("allows no tool at all: no built-ins, an empty strict MCP config, nothing allowed", () => {
+    expect(after("--tools")).toBe("");
+    expect(args).toContain("--strict-mcp-config");
+    expect(JSON.parse(after("--mcp-config"))).toEqual({ mcpServers: {} });
+    expect(args).not.toContain("--allowedTools");
+    expect(after("--permission-mode")).toBe("dontAsk");
+    expect(after("--setting-sources")).toBe("");
+    expect(args).toContain("--disable-slash-commands");
+  });
+
+  it("fails closed on any tool or MCP server", () => {
+    const bare = init({ tools: [], mcp_servers: [] });
+    expect(lockViolation(bare, null)).toBeNull();
+    expect(lockViolation({ ...bare, tools: ["Bash"] }, null)).toMatch(/aren't ours \(Bash\)/);
+    expect(lockViolation({ ...bare, tools: ["mcp__orbital__query"] }, null)).toMatch(/aren't ours/);
+    expect(lockViolation({ ...bare, mcp_servers: [{ name: "orbital", status: "connected" }] }, null)).toMatch(/MCP servers/);
+    expect(lockViolation({ ...bare, skills: ["x"] }, null)).toMatch(/skills or commands/);
+  });
+});
+
 it("the environment carries nothing of the app's except our server's secrets", () => {
   const env = minimalEnv({ PATH: "/bin", HOME: "/Users/x", ROUNDHOUSE_TOKEN: "r", ANTHROPIC_API_KEY: "k", GITHUB_TOKEN: "g", CLAUDECODE: "1" }, { ORBITAL_QUERY_TOKEN: "t" });
   expect(env).toEqual({ PATH: "/bin", HOME: "/Users/x", ORBITAL_QUERY_TOKEN: "t" });
