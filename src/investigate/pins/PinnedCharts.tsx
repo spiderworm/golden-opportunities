@@ -5,6 +5,8 @@ import type { ComparisonResult } from "~/assistant/tools/definitions";
 import type { Dimension, QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
 import { categoryHeight, categoryModel, categoryOption, legendItems } from "../charts/category-chart";
+import { measuresModel, measuresOption, measuresTable } from "../charts/measures-chart";
+import type { ChartMeasure } from "../state";
 import { MAX_SERIES } from "~/platform/charts/chart-theme";
 import { EChart } from "~/platform/charts/EChart";
 import { Legend } from "../charts/Legend";
@@ -49,7 +51,7 @@ export function PinnedCharts({ pins, quarters, onRemove, onError }: PinnedCharts
   );
 }
 
-type Loaded = { kind: "query"; result: QueryResult } | { kind: "comparison"; result: ComparisonResult };
+type Loaded = { kind: "query"; result: QueryResult; also: QueryResult[] } | { kind: "comparison"; result: ComparisonResult };
 type Load = { status: "loading" } | ({ status: "ready" } & Loaded) | { status: "failed"; message: string };
 
 /**
@@ -58,7 +60,11 @@ type Load = { status: "loading" } | ({ status: "ready" } & Loaded) | { status: "
  * whole card fails, and the other side is cancelled.
  */
 export async function runPin(pin: Pin, signal: AbortSignal): Promise<Loaded> {
-  if (pin.kind !== "comparison") return { kind: "query", result: await fetchQuery(pin.query, signal) };
+  if (pin.kind !== "comparison") {
+    // Several measures are a query each, as the main chart's.
+    const [result, ...also] = await Promise.all([pin.query.measure, ...(pin.also ?? [])].map((measure) => fetchQuery({ ...pin.query, measure }, signal)));
+    return { kind: "query", result: result!, also };
+  }
   const sides = new AbortController();
   const stop = () => sides.abort();
   signal.addEventListener("abort", stop);
@@ -116,14 +122,19 @@ function PinnedChart({ pin, quarters, onRemove, onError }: { pin: Pin; quarters:
         (pin.kind === "comparison" ? (
           load.kind === "comparison" && <ComparisonBody pin={pin} result={load.result} />
         ) : (
-          load.kind === "query" && <PinBody pin={pin} result={load.result} quarters={quarters} />
+          load.kind === "query" && <PinBody pin={pin} result={load.result} also={load.also} quarters={quarters} />
         ))}
     </article>
   );
 }
 
-function PinBody({ pin, result, quarters }: { pin: ChartPinSpec; result: QueryResult; quarters: readonly string[] }) {
+function PinBody({ pin, result, also, quarters }: { pin: ChartPinSpec; result: QueryResult; also: readonly QueryResult[]; quarters: readonly string[] }) {
   const [x, seriesBy = null] = pin.query.by;
+  const measures = [pin.query.measure, ...(pin.also ?? [])] as ChartMeasure[];
+  const many = useMemo(
+    () => (x && also.length && !seriesBy ? measuresModel([result, ...also], measures, x, x === "month" ? pinMonths(pin, quarters) : []) : null),
+    [result, also, x, seriesBy, quarters, pin],
+  );
   const model = useMemo(
     () => (x ? categoryModel(result, x, seriesBy, x === "month" ? pinMonths(pin, quarters) : [], { limit: pin.query.limit }) : null),
     [result, x, seriesBy, quarters, pin],
@@ -134,7 +145,17 @@ function PinBody({ pin, result, quarters }: { pin: ChartPinSpec; result: QueryRe
   );
 
   let body;
-  if (!x) {
+  if (many) {
+    body =
+      pin.kind === "table" ? (
+        <ResultTable result={measuresTable(many, [result, ...also])} height={CHART_HEIGHT} />
+      ) : (
+        <>
+          <Legend items={many.measures.map((m) => ({ label: MEASURE_LABELS[m.measure], color: m.color }))} label="Measures" />
+          <EChart option={measuresOption(many)} height={categoryHeight({ ...model!, categories: many.categories, horizontal: many.horizontal }, CHART_HEIGHT)} label={pin.title} />
+        </>
+      );
+  } else if (!x) {
     // One number is a figure, not a one-bar chart.
     body = (
       <div className={styles.pinFigure} style={{ height: CHART_HEIGHT }}>

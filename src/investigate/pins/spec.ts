@@ -1,6 +1,7 @@
 // Pinned charts: what a pin holds, and checks for pins read back from storage.
 import { yearMonth } from "~/query/months";
 import { DIMENSIONS, MEASURES, QUERY_LIMITS, type Dimension, type Measure, type Query } from "~/query/types";
+import { canAddMeasure, CHART_MEASURES, type ChartMeasure } from "../state";
 
 export const CHART_PIN_KINDS = ["bar", "line", "table"] as const;
 export const PIN_KINDS = [...CHART_PIN_KINDS, "comparison"] as const;
@@ -14,6 +15,19 @@ export interface ChartPinSpec {
   title: string;
   kind: (typeof CHART_PIN_KINDS)[number];
   query: Query;
+  /** The chart's other measures, each run as the query with its measure swapped in; as the main chart's. */
+  also?: ChartMeasure[];
+}
+
+/** A pin's other measures, kept only if they and the query's measure fit one chart (canAddMeasure). */
+export function parseAlso(measure: Measure, value: unknown): ChartMeasure[] | null {
+  if (!Array.isArray(value) || value.length === 0 || !CHART_MEASURES.includes(measure as ChartMeasure)) return null;
+  const kept: ChartMeasure[] = [measure as ChartMeasure];
+  for (const m of value) {
+    if (!CHART_MEASURES.includes(m) || kept.includes(m) || canAddMeasure(kept, m) !== "ok") return null;
+    kept.push(m);
+  }
+  return kept.slice(1);
 }
 
 /**
@@ -103,9 +117,12 @@ export function parsePinSpec(value: unknown): PinSpec | null {
     const comparison = parseComparison(value.comparison);
     return comparison && { title: value.title, kind: "comparison", comparison };
   }
-  if (!only(value, ["title", "kind", "query"]) || !CHART_PIN_KINDS.includes(value.kind as never)) return null;
+  if (!only(value, ["title", "kind", "query", "also"]) || !CHART_PIN_KINDS.includes(value.kind as never)) return null;
   const query = parseQuery(value.query);
-  return query && { title: value.title, kind: value.kind as ChartPinSpec["kind"], query };
+  if (!query) return null;
+  if (value.also === undefined) return { title: value.title, kind: value.kind as ChartPinSpec["kind"], query };
+  const also = parseAlso(query.measure, value.also);
+  return also && { title: value.title, kind: value.kind as ChartPinSpec["kind"], query, also };
 }
 
 /** Pins as stored; anything malformed is dropped rather than trusted. */
@@ -140,7 +157,7 @@ export function pinKey(spec: PinSpec): string {
     return JSON.stringify([spec.kind, c.measure, c.across, c.from, c.to, c.by, sortedFilter(c.filter)]);
   }
   const { query } = spec;
-  return JSON.stringify([spec.kind, query.measure, query.by, sortedFilter(query.filter), query.sort ?? null, query.limit ?? null]);
+  return JSON.stringify([spec.kind, query.measure, query.by, sortedFilter(query.filter), query.sort ?? null, query.limit ?? null, ...(spec.also?.length ? [spec.also] : [])]);
 }
 
 /** Newest first; a repeat of an existing pin moves it to the front; the oldest drop past MAX_PINS. */
