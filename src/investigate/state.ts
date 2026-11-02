@@ -105,10 +105,15 @@ export function canCompare(by: Grouping, also: readonly ChartMeasure[] = []): bo
   return by !== "month" && by !== "quarter" && by !== "title" && also.length === 0;
 }
 
+/** A list of measures cut to what fits one chart, in order: repeats, a fourth measure and a third unit dropped. */
+export function fittingMeasures(measures: readonly ChartMeasure[]): ChartMeasure[] {
+  return measures.reduce<ChartMeasure[]>((kept, m) => (canAddMeasure(kept, m) === "ok" && !kept.includes(m) ? [...kept, m] : kept), []);
+}
+
 /** The measures a link asks for: `measures=a,b,c`, kept only while they fit one chart; else `measure=a`, as links always did. */
 function readMeasures(params: URLSearchParams): Pick<InvestigateState, "measure" | "also"> {
   const listed = (params.get("measures") ?? "").split(",").filter((m): m is ChartMeasure => CHART_MEASURES.includes(m as ChartMeasure));
-  const fitting = listed.reduce<ChartMeasure[]>((kept, m) => (canAddMeasure(kept, m) === "ok" && !kept.includes(m) ? [...kept, m] : kept), []);
+  const fitting = fittingMeasures(listed);
   if (fitting.length > 0) return { measure: fitting[0]!, also: fitting.slice(1) };
   return { measure: oneOf(CHART_MEASURES, params.get("measure"), DEFAULT_STATE.measure), also: [] };
 }

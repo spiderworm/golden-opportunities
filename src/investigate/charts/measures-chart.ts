@@ -42,7 +42,9 @@ export function measuresModel(
     if (index === 0) return first.series[0]!.values;
     const model = others[index - 1]!;
     // A category this measure's complete result lacks sold nothing: zero for a total, no value for an average.
-    const complete = results[index]!.rows.length < QUERY_LIMITS.rows;
+    // The server says whether it left rows out; a result from before it did is judged by its row count.
+    const { truncated, rows } = results[index]!;
+    const complete = truncated === undefined ? rows.length < QUERY_LIMITS.rows : !truncated;
     const absent = complete && isTotal(measures[index]!) ? 0 : null;
     return first.categories.map((c) => {
       const at = model.categories.indexOf(c);
@@ -114,7 +116,8 @@ export function measuresOption(
     aria: { enabled: true },
     grid: horizontal
       ? { left: 8, right: 24, top: model.axes.length > 1 ? 44 : 16, bottom: 36, containLabel: true }
-      : { left: 24, right: model.axes.length > 1 ? 24 : 16, top: 16, bottom: 4, containLabel: true },
+      : // containLabel leaves room for the tick labels, not an axis's name: room for the second axis's, on the right.
+        { left: 24, right: model.axes.length > 1 ? 40 : 16, top: 16, bottom: 4, containLabel: true },
     tooltip: {
       ...tooltipStyle,
       trigger: "axis",

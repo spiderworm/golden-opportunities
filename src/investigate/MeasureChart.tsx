@@ -9,7 +9,7 @@ import { Legend } from "./charts/Legend";
 import { ResultTable } from "./charts/ResultTable";
 import { measureColor, measuresModel, measuresOption, measuresTable } from "./charts/measures-chart";
 import { ADDITIVE, DIMENSION_LABELS, formatDimensionValue, MEASURE_LABELS, measuresLabel, periodLabel } from "./format";
-import { canAddMeasure, canCompare, CHART_MEASURES, GROUPINGS, measuresOf, monthsInScope, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
+import { canAddMeasure, canCompare, CHART_MEASURES, fittingMeasures, GROUPINGS, measuresOf, monthsInScope, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
 import styles from "./Investigate.module.css";
 
 export interface MeasureChartProps {
@@ -104,7 +104,8 @@ export function MeasureChart({ state, result, also = [], quarters, onMeasures, o
             mode="multi"
             name="Show"
             values={measures}
-            onChange={(next) => next.length > 0 && onMeasures(next)}
+            // Two quick choices can come before the first one's navigation lands: keep what fits.
+            onChange={(next) => next.length > 0 && onMeasures(fittingMeasures(next))}
             options={CHART_MEASURES.map((m) => {
               const on = measures.includes(m);
               const fit = canAddMeasure(measures, m);
