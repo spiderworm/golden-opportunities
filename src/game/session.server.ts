@@ -9,6 +9,7 @@ import { BASELINE_VIEW } from '../query/view.server';
 import { DATA_DIR } from '../platform/analytics/instance.server';
 import { trackServer } from '../platform/analytics/analytics.server';
 import { createSaveStore, isSaveId, SaveError } from './store.server';
+import { quarterLines } from './replay.server';
 import type { GameSave } from './types';
 import { saveDate } from './progress';
 
@@ -42,7 +43,8 @@ export function resolveSaveId(request: Request): string {
   saves.read(id); return id;
 }
 export function queryViewForSave(save: GameSave): QueryView {
-  const sales = save.played.flatMap(q => q.sales);
+  // Each quarter's lines, replayed and checked once per process (replay.server.ts), or as an older save stored them.
+  const sales = save.played.flatMap(q => quarterLines(save.id, save.seed, q, loadBookshop));
   if (!sales.length) return { ...BASELINE_VIEW, periods: [...BASELINE_VIEW.periods, ...save.played.map(q => q.period)] };
   const data = loadBookshop();
   // The new volume is generated, not in the data: the engine's records join it (src/simulation/release.ts).

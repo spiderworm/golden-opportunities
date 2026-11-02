@@ -26,7 +26,7 @@ function upgrade(save: unknown): unknown {
 }
 export function isSaveId(value: string): boolean { return ID.test(value); }
 export class SaveError extends Error {
-  readonly code: 'MISSING_SAVE' | 'INVALID_SAVE' | 'SAVE_BUSY' | 'STALE_SAVE' | 'SAVE_CAPACITY';
+  readonly code: 'MISSING_SAVE' | 'INVALID_SAVE' | 'SAVE_BUSY' | 'STALE_SAVE' | 'SAVE_CAPACITY' | 'REPLAY_MISMATCH';
   constructor(code: SaveError['code']) { super(code); this.code = code; }
 }
 function validEvidence(value: unknown): value is Record<string, string[]> {
@@ -54,8 +54,17 @@ function validate(save: GameSave, id: string): void {
   const ids = new Set<string>();
   for (const [index, quarter] of save.played.entries()) {
     if (!quarter || quarter.period !== QUARTERS[index] || typeof quarter.outcomeId !== 'string' || !/^[a-f0-9-]{36}$/.test(quarter.outcomeId)
-      || !isQuarterOutcome(quarter.period, quarter.outcome) || quarter.outcome.quarter !== quarter.period
-      || !Array.isArray(quarter.sales) || quarter.sales.length > 100_000
+      || !isQuarterOutcome(quarter.period, quarter.outcome) || quarter.outcome.quarter !== quarter.period) throw new SaveError('INVALID_SAVE');
+    // Replayed lines: a hash and a count, matching the outcome's units. The replay itself is checked on read.
+    if (quarter.sales === undefined) {
+      const lines = quarter.lines as unknown;
+      if (typeof lines !== 'object' || lines === null || Object.keys(lines).sort().join() !== 'count,hash'
+        || typeof (lines as { hash: unknown }).hash !== 'string' || !/^[0-9a-f]{64}$/.test((lines as { hash: string }).hash)
+        || !Number.isSafeInteger((lines as { count: unknown }).count) || (lines as { count: number }).count > 100_000
+        || quarter.outcome.totals.plan.units !== (lines as { count: number }).count) throw new SaveError('INVALID_SAVE');
+      continue;
+    }
+    if (quarter.lines !== undefined || !Array.isArray(quarter.sales) || quarter.sales.length > 100_000
       || quarter.outcome.totals.plan.units !== quarter.sales.length) throw new SaveError('INVALID_SAVE');
     const months = quarterMonths(quarter.period); const number = quarterNumber(quarter.period);
     for (const sale of quarter.sales) {

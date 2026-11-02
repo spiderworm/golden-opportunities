@@ -48,7 +48,7 @@ describe('the second quarter', () => {
     expect(q2.quarter).toBe('2194-Q2'); expect(q2.discoveries).toEqual([]);
     const stored = saves.read(save.id);
     expect(stored.played.map(q => q.period)).toEqual(['2194-Q1', '2194-Q2']);
-    expect(stored.played[1]!.sales).toHaveLength(q2.totals.plan.units);
+    expect(stored.played[1]!.lines?.count).toBe(q2.totals.plan.units);
     expect(runQuery({ measure: 'revenue', by: [], filter: { quarter: ['2194-Q2'] } }, getGameSession(req).queryView).total).toBeCloseTo(q2.totals.plan.revenue, 6);
     await refusal(() => submitQ2Plan(req, quiet), 409);
     expect(trackServer).toHaveBeenCalledWith('game_quarter_committed', { quarter: 'Q2', leverCount: 1, pickCount: 3, units: q2.totals.plan.units, durationMs: expect.any(Number) });
