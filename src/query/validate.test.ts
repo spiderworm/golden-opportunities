@@ -8,13 +8,17 @@ describe('fixed query grammar', () => {
     const input = { measure: 'revenue', by: ['quarter'], filter: { genre: ['Mystery', 'Mystery'] }, sort: { column: 'revenue', direction: 'desc' }, limit: 2 };
     expect(validateQuery(input)).toMatchObject({ filter: { genre: ['Mystery'] } });
     expect(input.filter.genre).toHaveLength(2);
-    for (const dimension of DIMENSIONS) {
+    for (const dimension of DIMENSIONS.filter(d => d !== 'award')) {
       const measure = MEASURES.find(m => MEASURE_DIMENSIONS[m].includes(dimension))!;
       expect(validateQuery({ measure, by: [dimension] }).by).toEqual([dimension]);
     }
     // Stars belong to the ratings count only: not sales, and not the average rating.
     expect(() => validateQuery({ measure: 'revenue', by: ['stars'] })).toThrow(/does not support stars/);
     expect(() => validateQuery({ measure: 'avg_rating', by: ['stars'] })).toThrow(/does not support stars/);
+    // Award filters but never groups: a book with two awards would count twice.
+    expect(validateQuery({ measure: 'units', by: ['awarded'], filter: { award: ['Hugo Award'] } }).filter).toEqual({ award: ['Hugo Award'] });
+    expect(() => validateQuery({ measure: 'units', by: ['award'] })).toThrow(/award can filter but not group/);
+    expect(() => validateQuery({ measure: 'units', by: [], sort: { column: 'award', direction: 'asc' } })).toThrow(/Sort column/);
   });
   it.each([
     null, [], 'SELECT * FROM sales', {}, { measure: 'sql', by: [] }, { measure: 'revenue' },

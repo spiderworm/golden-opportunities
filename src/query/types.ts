@@ -1,6 +1,6 @@
 import type { DeepReadonly, SaleLine } from '../bookshop/types';
 
-export const DIMENSIONS = ['quarter', 'month', 'weekday', 'genre', 'format', 'publisher', 'series', 'title', 'author', 'discounted', 'discount_rate', 'stars'] as const;
+export const DIMENSIONS = ['quarter', 'month', 'weekday', 'genre', 'format', 'publisher', 'series', 'title', 'author', 'discounted', 'discount_rate', 'stars', 'awarded', 'award', 'volume', 'in_series'] as const;
 export type Dimension = typeof DIMENSIONS[number];
 export const MEASURES = ['revenue', 'units', 'orders', 'avg_discount', 'avg_rating', 'checkouts', 'avg_order_value', 'orders_per_day', 'ratings'] as const;
 export type Measure = typeof MEASURES[number];
@@ -72,7 +72,12 @@ export const QUERY_LIMITS = {
   errorMessageLength: 300,
 } as const;
 
-const BOOK_DIMENSIONS = ['genre', 'series', 'title', 'author'] as const;
+const BOOK_DIMENSIONS = ['genre', 'series', 'title', 'author', 'awarded', 'award', 'volume', 'in_series'] as const;
+/**
+ * Dimensions that can filter but never group or sort: a book can hold several awards (The Mallemaroking has a
+ * Hugo and a Nebula), so grouping by award would count its facts once per award.
+ */
+export const FILTER_ONLY_DIMENSIONS = ['award'] as const satisfies readonly Dimension[];
 /** A sale line's dimensions: everything but the ratings' own. */
 const SALE_DIMENSIONS = DIMENSIONS.filter(d => d !== 'stars');
 /** Applies equally to grouping and filtering; no fanout through editions/sales. */

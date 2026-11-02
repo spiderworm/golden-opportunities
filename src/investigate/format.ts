@@ -27,11 +27,19 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
   discounted: "Discounted",
   discount_rate: "Discount",
   stars: "Stars",
+  awarded: "Award winner",
+  award: "Award",
+  volume: "Volume",
+  in_series: "In a series",
 };
 
 /** How a dimension value reads on screen: "2193-Q4" as "Q4 2193", "2193-03" as "Mar 2193". */
 export function formatDimensionValue(dimension: Dimension, value: string | null | undefined): string {
-  if (value === null || value === undefined) return dimension === "title" ? "Unknown title" : "Unknown";
+  if (value === null || value === undefined) {
+    // A standalone book has no volume; so does the unknown book behind some ratings.
+    if (dimension === "volume") return "No volume";
+    return dimension === "title" ? "Unknown title" : "Unknown";
+  }
   if (dimension === "quarter") {
     const match = /^(\d+)-(Q[1-4])$/.exec(value);
     return match ? `${match[2]} ${match[1]}` : value;
@@ -43,6 +51,8 @@ export function formatDimensionValue(dimension: Dimension, value: string | null 
   }
   if (dimension === "discounted") return value === "yes" ? "Any discount" : "Full price";
   if (dimension === "discount_rate") return parseFloat(value) === 0 ? "Full price" : `${value} off`;
+  if (dimension === "volume") return `Volume ${value}`;
+  if (dimension === "in_series") return value === "yes" ? "In a series" : value === "no" ? "Not in a series" : value;
   return value;
 }
 

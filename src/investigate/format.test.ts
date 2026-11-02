@@ -14,6 +14,13 @@ describe("Plot's Investigate words (m1-copy section 2)", () => {
     expect(formatDimensionValue("title", null)).toBe("Unknown title");
     expect(formatDimensionValue("genre", null)).toBe("Unknown");
   });
+
+  it("names volumes, and books with none", () => {
+    expect(formatDimensionValue("volume", "3")).toBe("Volume 3");
+    expect(formatDimensionValue("volume", null)).toBe("No volume");
+    expect(formatDimensionValue("in_series", "yes")).toBe("In a series");
+    expect(formatDimensionValue("in_series", "no")).toBe("Not in a series");
+  });
 });
 
 describe("the ledgers' title", () => {

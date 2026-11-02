@@ -106,6 +106,41 @@ describe('server-owned visibility and cache isolation', () => {
     expect(mean).toBeCloseTo(run({ measure: 'avg_rating', by: [], filter: { title: ['Land Water Sky Space'] } }).total!, 10);
     expect(() => run({ measure: 'ratings', by: ['format'] })).toThrow(expect.objectContaining({ code: 'INCOMPATIBLE_DIMENSION' }));
   });
+  it('splits by award winner, and filters by award without counting a book once per award (#169)', () => {
+    const data = loadBookshop();
+    const unitsOf = (titles: string[]) => data.saleLines.filter(line => titles.includes(line.title)).length;
+    const awardedTitles = [...new Set(data.awards.map(award => award.title))];
+    expect(awardedTitles).toHaveLength(17);
+    const split = run({ measure: 'units', by: ['awarded'] });
+    expect(split.rows).toEqual([{ awarded: 'no', units: 56350 - unitsOf(awardedTitles) }, { awarded: 'yes', units: unitsOf(awardedTitles) }]);
+    expect(split.columns[0]).toEqual({ key: 'awarded', label: 'Award winner', type: 'string', nullable: true });
+    // The Mallemaroking holds a Hugo and a Nebula: filtering on both counts its copies once.
+    const hugo = data.awards.filter(award => award.name === 'Hugo Award').map(award => award.title);
+    expect(run({ measure: 'units', by: [], filter: { award: ['Hugo Award'] } }).total).toBe(unitsOf(hugo));
+    expect(run({ measure: 'units', by: [], filter: { award: ['Nebula Award'] } }).total).toBe(unitsOf(['The Mallemaroking']));
+    expect(run({ measure: 'units', by: [], filter: { award: ['Hugo Award', 'Nebula Award'] } }).total).toBe(unitsOf(hugo));
+    // Book grain too: ratings and checkouts take both, and the unknown book (CH392) is neither yes nor no.
+    const ratings = run({ measure: 'avg_rating', by: ['awarded'] });
+    expect(ratings.rows.map(row => row.awarded)).toEqual(['no', 'yes', null]);
+    expect(run({ measure: 'checkouts', by: [], filter: { award: ['Pulitzer'] } }).total).toBeGreaterThan(0);
+    expect(run({ measure: 'units', by: [], filter: { award: ['No such award'] } }).total).toBe(0);
+  });
+  it('splits by series volume and by whether a book is in a series (#169)', () => {
+    const data = loadBookshop();
+    const inSeries = data.saleLines.filter(line => line.book.series).length;
+    expect(run({ measure: 'units', by: ['in_series'] }).rows).toEqual([{ in_series: 'no', units: 56350 - inSeries }, { in_series: 'yes', units: inSeries }]);
+    // Each series' own volumes, from the workbook: The Mallemaroking Saga's first volume outsells its others.
+    const saga = run({ measure: 'units', by: ['volume'], filter: { series: ['The Mallemaroking Saga'] } });
+    expect(saga.rows).toEqual([{ volume: '1', units: 7334 }, { volume: '2', units: 4636 }, { volume: '3', units: 4077 }]);
+    // Standalone books have no volume: their copies group as null, not an invented volume.
+    const volumes = run({ measure: 'units', by: ['volume'] });
+    expect(volumes.rows.map(row => row.volume)).toEqual(['1', '2', '3', '4', '5', '6', '7', null]);
+    expect(volumes.rows.at(-1)!.units).toBe(56350 - inSeries);
+    expect(volumes.columns[0]).toEqual({ key: 'volume', label: 'Volume', type: 'string', nullable: true });
+    // Book grain: the unknown book (CH392) is neither in a series nor out of one.
+    expect(run({ measure: 'avg_rating', by: ['in_series'] }).rows.map(row => row.in_series)).toEqual(['no', 'yes', null]);
+    expect(run({ measure: 'checkouts', by: ['volume'], filter: { series: ['Inspector Ryeslton'] } }).rows.map(row => row.volume)).toEqual(['1', '2']);
+  });
   it('requires a separate explicit undated grant, regardless of prior cache entries', () => {
     for (const measure of ['avg_rating', 'ratings', 'checkouts'] as const) {
       run({ measure, by: [] });

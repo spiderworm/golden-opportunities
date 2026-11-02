@@ -104,10 +104,12 @@ describe('bounded query resource endpoint', () => {
       const ok = (await handle(request(JSON.stringify(query)))).status;
       expect(ok).toBe(200);
     }
-    for (const query of [{ measure: 'ratings', by: ['title'] }, { measure: 'ratings', by: [], filter: { title: ['Rystwyth'] } }]) {
+    for (const [query, name] of [[{ measure: 'ratings', by: ['title'] }, 'ratings'], [{ measure: 'ratings', by: [], filter: { title: ['Rystwyth'] } }, 'ratings'],
+      [{ measure: 'units', by: ['awarded'] }, 'awarded'], [{ measure: 'units', by: [], filter: { award: ['Pulitzer'] } }, 'award'],
+      [{ measure: 'units', by: ['volume'] }, 'volume'], [{ measure: 'units', by: [], filter: { in_series: ['yes'] } }, 'in_series']] as const) {
       const response = await handle(request(JSON.stringify(query), agent));
       expect(response.status).toBe(400);
-      expect((await response.json()).error).toEqual({ code: 'INVALID_QUERY', message: "ratings isn't available to the assistant yet." });
+      expect((await response.json()).error).toEqual({ code: 'INVALID_QUERY', message: `${name} isn't available to the assistant yet.` });
     }
     expect((await handle(request(JSON.stringify({ measure: 'avg_rating', by: ['title'] }), agent))).status).toBe(200);
   });
