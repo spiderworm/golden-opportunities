@@ -351,3 +351,17 @@ describe("prices (Probe's #225)", () => {
     expect(say("Revenue came to {{a.total}} over {{a.rows}} editions.", r)).toBe("Revenue came to $2,135.03 over 3 editions.");
   });
 });
+
+describe("look-alike letters (Probe's review of #229)", () => {
+  it("read as the plain word: marks stripped, Latin look-alikes mapped", () => {
+    for (const sentence of ["Revenue was hìgher in {{a4.quarter}}.", "Revenue was hi\u0307gher in {{a4.quarter}}.", "Revenue was hıgher in {{a4.quarter}}.", "Fívé units sold."]) expect(say(sentence), sentence).toBe(WITHHELD);
+  });
+
+  it("withhold a letter from another script", () => {
+    for (const sentence of ["Fiv\u0435 units sold.", "Revenue was h\u0456gher in {{a4.quarter}}.", "Revenue was l\u03BFwer in {{a4.quarter}}."]) expect(say(sentence), sentence).toBe(WITHHELD);
+  });
+
+  it("keep the catalog's own accent: Karénine is an author's name", () => {
+    expect(say("I looked up units by author for Karénine's books.")).toBe("I looked up units by author for Karénine's books.");
+  });
+});
