@@ -38,6 +38,11 @@ export interface QueryView {
   simulatedSales?: readonly DeepReadonly<SaleLine>[];
   /** The same facts rolled up (sale-cells.ts): a view carries its simulated sales as lines or as cells, not both. */
   simulatedCells?: SaleCells;
+  /**
+   * The save's data version (data-version.server.ts), naming exactly these simulated lines: set by the server with
+   * them, so results over them can be cached. Without it, a view with simulated lines is never cached.
+   */
+  version?: string;
 }
 
 export interface QueryColumn {

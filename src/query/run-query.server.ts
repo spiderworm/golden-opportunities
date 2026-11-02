@@ -22,7 +22,33 @@ interface Fact { dimensions: Dimensions; value: number; orderId?: string; simula
  * of the aggregate's cells (`overlap`), so an order spanning cells is counted once.
  */
 interface Aggregate { sum: number; count: number; orders: Set<string>; cellOrders: number; overlap: number }
-const cache = new Map<string, QueryResult>();
+/**
+ * Results, least recently used out, bounded by count and by their JSON's size (each result is at most
+ * QUERY_LIMITS.responseBytes). A five-year save's Investigate load is 11 scans of about 340 ms each (Frank's
+ * profile, 2 Nov 2026), so a repeat view is served from here.
+ */
+const CACHE_LIMITS = { entries: 512, bytes: 16 * 2 ** 20 };
+let cacheLimits = { ...CACHE_LIMITS };
+const cache = new Map<string, { result: QueryResult; bytes: number }>();
+let cachedBytes = 0;
+function cached(key: string): QueryResult | undefined {
+  const entry = cache.get(key);
+  if (!entry) return undefined;
+  cache.delete(key); cache.set(key, entry);
+  return entry.result;
+}
+function remember(key: string, result: QueryResult, bytes: number) {
+  if (bytes > cacheLimits.bytes) return;
+  cache.set(key, { result, bytes }); cachedBytes += bytes;
+  for (const [oldest, entry] of cache) {
+    if (cache.size <= cacheLimits.entries && cachedBytes <= cacheLimits.bytes) break;
+    cache.delete(oldest); cachedBytes -= entry.bytes;
+  }
+}
+/** For tests: the cache's size, smaller bounds to exercise it, and a fresh start. */
+export const resultCacheSize = () => ({ entries: cache.size, bytes: cachedBytes });
+export function setResultCacheLimits(limits: Partial<typeof CACHE_LIMITS> | null) { cacheLimits = { ...CACHE_LIMITS, ...limits }; }
+export function forgetResults() { cache.clear(); cachedBytes = 0; }
 
 function bookDimensions(book: DeepReadonly<JoinedBook> | null): Dimensions {
   return { genre: book?.info?.genre ?? null, series: book?.series?.name ?? null, title: book?.title ?? null,
@@ -199,15 +225,16 @@ export function runQuery(input: unknown, view: QueryView, track: QueryTrack = tr
   try {
     query = validateQuery(input);
     validateView(view);
-    // History is immutable per build. Simulated arrays have no version contract yet,
-    // so never cache them. The history key includes the ENTIRE visibility grant.
-    const key = view.simulatedSales?.length || view.simulatedCells ? null : JSON.stringify([query, [...view.periods].sort(), view.includeUndated]);
-    let result = key ? cache.get(key) : undefined;
+    // History is immutable per build. Simulated lines and cells are cached only under the save's data version, which the
+    // server sets with them and which changes with every played quarter, new game and reset. The key includes the
+    // ENTIRE visibility grant.
+    const key = (view.simulatedSales?.length || view.simulatedCells) && !view.version ? null : JSON.stringify([query, [...view.periods].sort(), view.includeUndated, view.version ?? null]);
+    let result = key ? cached(key) : undefined;
     const cacheHit = result !== undefined;
     if (!result) {
       result = execute(query, view);
-      serializeResult(result);
-      if (key) { if (cache.size >= 64) cache.delete(cache.keys().next().value!); cache.set(key, result); }
+      const body = serializeResult(result);
+      if (key) remember(key, result, body.length);
     }
     emit(track, 'query_completed', { measure: query.measure, dimensionCount: query.by.length, rowCount: result.rows.length, durationMs: performance.now() - started, cacheHit });
     return structuredClone(result);

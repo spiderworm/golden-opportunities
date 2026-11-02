@@ -6,6 +6,7 @@ import type { JoinedBook } from '../bookshop/types';
 import type { QueryView } from '../query/types';
 import { RELEASE, releaseBook } from '../simulation/release';
 import { BASELINE_VIEW } from '../query/view.server';
+import { dataVersion } from '../query/data-version.server';
 import { DATA_DIR } from '../platform/analytics/instance.server';
 import { trackServer } from '../platform/analytics/analytics.server';
 import { onGameStarted } from '../alma/backstory.server';
@@ -58,7 +59,8 @@ export function queryViewForSave(save: GameSave): QueryView {
   const editions = new Map([...data.editions, RELEASE.edition].map(e => [e.isbn, e]));
   const books = new Map([...data.joinedBooks, releaseBook(data) as JoinedBook].map(b => [b.id, b]));
   const publishers = new Map(data.publishers.map(p => [p.id, p]));
-  return { ...BASELINE_VIEW, periods: [...BASELINE_VIEW.periods, ...save.played.map(q => q.period)], simulatedSales: sales.map(sale => {
+  // The data version names these lines, so results over them can be cached (run-query.server.ts).
+  return { ...BASELINE_VIEW, periods: [...BASELINE_VIEW.periods, ...save.played.map(q => q.period)], version: dataVersion(save), simulatedSales: sales.map(sale => {
     const edition = editions.get(sale.isbn); const book = edition && books.get(edition.bookId); const publisher = edition && publishers.get(edition.publisherId);
     if (!edition || !book || !publisher) throw new SaveError('INVALID_SAVE');
     return { ...sale, book, title: book.title, author: book.author, genre: book.info?.genre ?? null, format: edition.format, publisher,

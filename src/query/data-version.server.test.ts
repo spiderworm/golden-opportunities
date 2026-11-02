@@ -15,8 +15,9 @@ import { PLAYABLE_QUARTERS, setPlayableQuarters } from '../game/quarters';
 import { createQueryHandler } from './http.server';
 import { DATA_VERSION_HEADER, dataVersion } from './data-version.server';
 import { EVIDENCE_HEADER } from './types';
-import { runQuery } from './run-query.server';
+import { forgetResults, resultCacheSize, runQuery, setResultCacheLimits } from './run-query.server';
 import { pendingTurn } from '../alma/hook.server';
+import { validateView } from './view.server';
 
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 const request = (id: string, url = 'http://localhost/decide') =>
@@ -124,5 +125,76 @@ describe('a view that is context, never evidence (Plot, #266)', () => {
     // The same view as evidence: last year's quarters beside Q1 2194 (discovery F) is recorded.
     expect((await ask()).status).toBe(200);
     expect(evidence()).not.toBe(before);
+  });
+});
+
+describe("the result cache, keyed by the save's data version (Goldy)", () => {
+  const byQuarter = { measure: 'revenue' as const, by: ['quarter' as const] };
+  /** A query's rows and whether the cache answered it. */
+  function ask(id: string, query: unknown = byQuarter) {
+    const track = vi.fn();
+    const result = runQuery(query, getGameSession(request(id)).queryView, track);
+    const completed = track.mock.calls.find(([name]) => name === 'query_completed')![1] as { cacheHit: boolean };
+    return { quarters: result.rows.map(row => row.quarter), cacheHit: completed.cacheHit, result };
+  }
+
+  it('answers a repeat from the cache, and never gives a new plan, a reset or a new game an old answer', () => {
+    setPlayableQuarters(2);
+    onTestFinished(() => setPlayableQuarters(PLAYABLE_QUARTERS));
+    forgetResults();
+    const save = saves.create(); const req = request(save.id);
+    submitPlan(req, { levers: [] });
+    const q1 = ask(save.id);
+    expect(q1).toMatchObject({ quarters: ['2193-Q1', '2193-Q2', '2193-Q3', '2193-Q4', '2194-Q1'], cacheHit: false });
+    // The same view again: the cache, the same answer.
+    expect(ask(save.id)).toEqual({ ...q1, cacheHit: true });
+    // A new plan: Q2 is in the answer, not Q1's cached one.
+    submitQ2Plan(req, { picks: [null, null, null], levers: [] });
+    expect(ask(save.id)).toMatchObject({ quarters: ['2193-Q1', '2193-Q2', '2193-Q3', '2193-Q4', '2194-Q1', '2194-Q2'], cacheHit: false });
+    // Play again and Reset game: new saves, with none of the old game's quarters.
+    const again = idOf(startNewGame(request(save.id, 'http://localhost/game/new')));
+    expect(ask(again).quarters).toEqual(['2193-Q1', '2193-Q2', '2193-Q3', '2193-Q4']);
+    submitPlan(request(again), { levers: ['events'] });
+    const played = ask(again);
+    expect(played).toMatchObject({ quarters: ['2193-Q1', '2193-Q2', '2193-Q3', '2193-Q4', '2194-Q1'], cacheHit: false });
+    // Not the first game's Q1 either: a different plan, a different seed, a different total.
+    expect(played.result.rows.at(-1)!.revenue).not.toBe(q1.result.rows.at(-1)!.revenue);
+    const reset = idOf(resetGame(request(again, 'http://localhost/settings/reset')));
+    expect(ask(reset).quarters).toEqual(['2193-Q1', '2193-Q2', '2193-Q3', '2193-Q4']);
+  });
+
+  it("never caches simulated lines the server didn't name, and refuses a malformed version", () => {
+    forgetResults();
+    const save = saves.create();
+    submitPlan(request(save.id), { levers: [] });
+    const { version: _, ...unnamed } = getGameSession(request(save.id)).queryView;
+    for (let i = 0; i < 2; i++) {
+      const track = vi.fn();
+      runQuery(byQuarter, unnamed, track);
+      expect(track).toHaveBeenCalledWith('query_completed', expect.objectContaining({ cacheHit: false }));
+    }
+    expect(() => validateView({ ...unnamed, version: 'not-a-version' })).toThrow(expect.objectContaining({ code: 'INVALID_VIEW' }));
+  });
+
+  it('is bounded by entries and by bytes, least recently used out', () => {
+    forgetResults();
+    onTestFinished(() => { setResultCacheLimits(null); forgetResults(); });
+    const save = saves.create();
+    submitPlan(request(save.id), { levers: [] });
+    const queries = (['revenue', 'units', 'orders', 'avg_discount'] as const).map(measure => ({ measure, by: ['quarter' as const] }));
+    setResultCacheLimits({ entries: 3 });
+    for (const query of queries) ask(save.id, query);
+    expect(resultCacheSize().entries).toBe(3);
+    // The first went; the others are still there.
+    expect(ask(save.id, queries[0]).cacheHit).toBe(false);
+    expect(ask(save.id, queries[3]).cacheHit).toBe(true);
+    forgetResults();
+    // A byte bound that holds about two of these results.
+    const one = JSON.stringify(ask(save.id, queries[0]).result).length;
+    forgetResults();
+    setResultCacheLimits({ bytes: Math.floor(one * 2.5) });
+    for (const query of queries) ask(save.id, query);
+    expect(resultCacheSize().entries).toBe(2);
+    expect(resultCacheSize().bytes).toBeLessThanOrEqual(Math.floor(one * 2.5));
   });
 });
