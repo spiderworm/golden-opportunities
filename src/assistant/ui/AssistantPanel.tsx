@@ -249,7 +249,7 @@ export function LookupView({ lookup, pinning, ChartView }: { lookup: Lookup; pin
         <figcaption style={styles.chartTitle}>{chart.title}</figcaption>
         <ChartView chart={chart} result={result} />
         {result.total !== null && result.columns.length > 1 && <p style={styles.muted}>Total: {number.format(result.total)}</p>}
-        <p style={styles.source}>Source: {result.source}</p>
+        <p style={styles.source}>{`Source: ${result.source}`}</p>
         {pinning && pin && <PinButton pin={pin} pinning={pinning} />}
       </figure>
     );
