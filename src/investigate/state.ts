@@ -25,6 +25,7 @@ export const GROUPINGS = [
   "publisher",
   "weekday",
   "discount_rate",
+  "awarded",
   "title",
 ] as const satisfies readonly Dimension[];
 export type Grouping = (typeof GROUPINGS)[number];
@@ -40,6 +41,8 @@ export const FILTER_DIMENSIONS = [
   "month",
   "weekday",
   "title",
+  "awarded",
+  "award",
 ] as const satisfies readonly Dimension[];
 export type FilterDimension = (typeof FILTER_DIMENSIONS)[number];
 
@@ -129,6 +132,27 @@ export function setDiscount(state: InvestigateState, choice: DiscountChoice): In
   if (choice === "all") return cleared;
   if (choice === "any") return setFilter(cleared, "discounted", ["yes"]);
   return setFilter(cleared, "discount_rate", [choice === "full" ? FULL_PRICE : choice]);
+}
+
+/**
+ * The awards filter is one choice too: every book, award winners, books without one, or one award's winners
+ * ("Hugo Award"). An award can only filter, never group: a book can hold two.
+ */
+export type AwardChoice = "all" | "yes" | "no" | { award: string };
+
+export function awardChoice(filters: Filters): AwardChoice {
+  if (filters.award?.length === 1 && !filters.awarded) return { award: filters.award[0]! };
+  if (filters.awarded?.length === 1 && !filters.award) {
+    const awarded = filters.awarded[0];
+    if (awarded === "yes" || awarded === "no") return awarded;
+  }
+  return "all";
+}
+
+export function setAward(state: InvestigateState, choice: AwardChoice): InvestigateState {
+  const cleared = setFilter(setFilter(state, "awarded", []), "award", []);
+  if (choice === "all") return cleared;
+  return typeof choice === "object" ? setFilter(cleared, "award", [choice.award]) : setFilter(cleared, "awarded", [choice]);
 }
 
 /** Drills into one heatmap cell, or back out if it's the only cell selected. */

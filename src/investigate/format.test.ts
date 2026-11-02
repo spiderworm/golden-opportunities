@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDimensionShort, formatDimensionValue, ledgersTitle, MEASURE_LABELS, periodLabel } from "./format";
+import { DIMENSION_LABELS, formatDimensionShort, formatDimensionValue, ledgersTitle, MEASURE_LABELS, periodLabel } from "./format";
 
 describe("Plot's Investigate words (m1-copy section 2)", () => {
   it("names a span of quarters as the ledgers' title does", () => {
@@ -18,6 +18,12 @@ describe("Plot's Investigate words (m1-copy section 2)", () => {
   it("counts stars as a reader would: one star, five stars", () => {
     expect(formatDimensionValue("stars", "1")).toBe("1 star");
     expect(formatDimensionValue("stars", "5")).toBe("5 stars");
+  });
+
+  it("names award winners and books without an award", () => {
+    expect(formatDimensionValue("awarded", "yes")).toBe("Award winner");
+    expect(formatDimensionValue("awarded", "no")).toBe("No award");
+    expect(DIMENSION_LABELS.awarded).toBe("Award winner");
   });
 });
 
