@@ -95,6 +95,8 @@ export function ledgersTitle(data: unknown): string {
 
 /** Measures whose values add up, so a part can be a share of the whole. */
 export const ADDITIVE: readonly Measure[] = ["revenue", "units", "orders"];
+/** Measures whose axis never needs a tick between whole numbers: counts, and dollars of revenue. */
+export const WHOLE_TICKS: readonly Measure[] = ["revenue", "units", "orders", "checkouts", "ratings"];
 
 /** Short form for axes and tight spaces: "Q4" rather than "Q4 2193". */
 export function formatDimensionShort(dimension: Dimension, value: string | null | undefined, among: readonly string[] = []): string {

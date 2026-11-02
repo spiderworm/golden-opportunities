@@ -4,7 +4,7 @@ import { combineComparison, comparisonQueries } from "~/assistant/tools/comparis
 import type { ComparisonResult } from "~/assistant/tools/definitions";
 import type { Dimension, QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
-import { categoryHeight, categoryModel, categoryOption, legendItems } from "../charts/category-chart";
+import { categoryHeight, categoryModel, categoryOption, legendItems, nothingToDraw } from "../charts/category-chart";
 import { measuresModel, measuresOption, measuresTable } from "../charts/measures-chart";
 import type { ChartMeasure } from "../state";
 import { MAX_SERIES } from "~/platform/charts/chart-theme";
@@ -145,7 +145,13 @@ function PinBody({ pin, result, also, quarters }: { pin: ChartPinSpec; result: Q
   );
 
   let body;
-  if (many) {
+  if (x && pin.kind !== "table" && (result.rows.length === 0 || nothingToDraw(many ? { series: many.measures } : (model ?? { series: [] })))) {
+    body = (
+      <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
+        No sales match this chart.
+      </p>
+    );
+  } else if (many) {
     body =
       pin.kind === "table" ? (
         <ResultTable result={measuresTable(many, [result, ...also])} height={CHART_HEIGHT} />
