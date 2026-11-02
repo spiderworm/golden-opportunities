@@ -4,7 +4,8 @@ import path from 'node:path';
 import { withSaveLock, SaveLockBusy } from './lock.server.ts';
 import { isQuarterOutcome } from './outcome.ts';
 import type { GameSave } from './types';
-import { compareQuarters, isQuarterId, nextQuarter, playableQuarters, quarterAt, quarterMonths, quarterNumber, type QuarterId } from './quarters.ts';
+import { compareQuarters, isQuarterId, isQuarterName, nextQuarter, playableQuarters, quarterAt, quarterMonths, quarterNumber, type QuarterId } from './quarters.ts';
+import { LATER_KEYS } from './later-discoveries.ts';
 import { alertsSeenOf, currentQuarter } from './progress.ts';
 import { isAlmaLog } from '../alma/record.ts';
 import { EVIDENCE_KEYS, MAX_EVIDENCE_SCOPES, discoveriesFromBuckets, q2DiscoveriesFromBuckets, witnessScopes } from './discovery-evidence.ts';
@@ -34,6 +35,15 @@ function validEvidence(value: unknown): value is Record<string, string[]> {
       /^[a-f0-9]{64}$/.test(scope) && Array.isArray(keys) && keys.length <= EVIDENCE_KEYS.size
       && new Set(keys).size === keys.length && keys.every(k => EVIDENCE_KEYS.has(k)));
 }
+/** Later quarters' evidence: one quarter, a bounded number of scopes, each a set of fixed keys (later-discoveries.ts). */
+const MAX_LATER_SCOPES = 32;
+function validLaterEvidence(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const { quarter, scopes } = value as { quarter?: unknown; scopes?: unknown };
+  return Object.keys(value).length === 2 && isQuarterName(quarter) && typeof scopes === 'object' && scopes !== null && !Array.isArray(scopes)
+    && Object.keys(scopes).length <= MAX_LATER_SCOPES && Object.entries(scopes).every(([scope, keys]) => /^[a-f0-9]{64}$/.test(scope)
+      && Array.isArray(keys) && keys.length <= LATER_KEYS.size && new Set(keys).size === keys.length && keys.every(k => LATER_KEYS.has(k)));
+}
 function validate(save: GameSave, id: string): void {
   if (!save || save.version !== 2 || save.id !== id || !isSaveId(id)
     || !Number.isSafeInteger(save.seed) || save.seed < 0 || save.seed > 0xffffffff
@@ -47,6 +57,7 @@ function validate(save: GameSave, id: string): void {
     || new Set(save.discoveries).size !== save.discoveries.length
     || !save.discoveries.every(d => ['A', 'B', 'C', 'D', 'E', 'F'].includes(d))
     || !Array.isArray(save.played) || save.played.length > playableQuarters()
+    || (save.laterEvidence !== undefined && !validLaterEvidence(save.laterEvidence))
     // Alma's records reach no further than the next unplayed quarter, so none before a quarter is played.
     || (save.alma !== undefined && (!save.played.length || !isAlmaLog(save.alma, nextQuarter(save.played.at(-1)!.period))))) throw new SaveError('INVALID_SAVE');
   // Sale ids are unique across quarters, not just within one.
@@ -198,6 +209,31 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
         save.discoveryEvidence = merged;
         save.discoveries = [...new Set([...before, ...discoveriesFromBuckets(merged), ...q2DiscoveriesFromBuckets(merged)])].sort();
         return { save: publish(id, save), before, oldEvidence };
+      });
+    },
+    /**
+     * Evidence for a quarter from Q3 on, while it's the one being planned (as recordEvidence, for A to F). A new
+     * quarter's replaces the last's. The oldest scopes go past the bound, keeping any that already find something.
+     */
+    recordLaterEvidence(id: string, queryRevision: number, quarter: QuarterId, evidence: Record<string, string[]>) {
+      if (!validLaterEvidence({ quarter, scopes: evidence })) throw new SaveError('INVALID_SAVE');
+      return locked(() => {
+        if (existsSync(file(id) + '.lock')) throw new SaveError('SAVE_BUSY');
+        const save = readUnlocked(id);
+        const old = save.laterEvidence?.quarter === quarter ? save.laterEvidence.scopes : {};
+        if (currentQuarter(save) !== quarter || (save.queryRevision ?? save.revision) !== queryRevision) return { save, old };
+        const merged: Record<string, string[]> = structuredClone(old);
+        for (const [scope, keys] of Object.entries(evidence)) {
+          const combined = [...new Set([...(merged[scope] ?? []), ...keys])].sort();
+          delete merged[scope]; merged[scope] = combined;
+        }
+        const finds = (keys: string[]) => keys.includes('event') || keys.includes('weakest') || (keys.includes('r:last') && keys.includes('r:year'));
+        while (Object.keys(merged).length > MAX_LATER_SCOPES) delete merged[Object.keys(merged).find(k => !finds(merged[k]!)) ?? Object.keys(merged)[0]!];
+        if (JSON.stringify(merged) === JSON.stringify(old) && save.laterEvidence?.quarter === quarter) return { save, old };
+        save.queryRevision = save.queryRevision ?? save.revision;
+        save.revision++;
+        save.laterEvidence = { quarter, scopes: merged };
+        return { save: publish(id, save), old };
       });
     },
     /** Record that the current quarter's memo was seen. Not query data, so it never changes the query grant; idempotent. */
