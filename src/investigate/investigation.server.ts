@@ -23,6 +23,8 @@ export interface FilterOptions {
   discount_rate: string[];
   /** Every award a book in the data has won. Not from a query: an award can filter but never group. */
   award: string[];
+  /** Volume numbers ("1" to "7"), in order. */
+  volume: string[];
 }
 
 export interface Investigation {
@@ -106,6 +108,7 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
     publisher: option("publisher"),
     discount_rate: option("discount_rate"),
     award: [...new Set(loadBookshop().awards.map((a) => a.name))].sort(),
+    volume: option("volume").sort((a, b) => Number(a) - Number(b)),
   };
 
   const tileFilter = withFilter(filtersExcept(state.filters, ["quarter"]));

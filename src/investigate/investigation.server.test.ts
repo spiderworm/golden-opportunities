@@ -66,6 +66,20 @@ describe("awards", () => {
   });
 });
 
+describe("series", () => {
+  it("lists the volumes in order, and filters and breaks down by them", () => {
+    const result = investigate(DEFAULT_STATE, runQuery, view);
+    expect(result.options.volume).toEqual(["1", "2", "3", "4", "5", "6", "7"]);
+    const saga = investigate({ ...DEFAULT_STATE, measure: "units", by: "volume" }, runQuery, view);
+    expect(saga.chart.rows.some((row) => row.volume === null)).toBe(true);
+    // The Mallemaroking Saga's volumes, as #169 measured them: 7,334, 4,636 and 4,077 copies.
+    const mallemaroking = runQuery({ measure: "units", by: ["volume"], filter: { series: ["The Mallemaroking Saga"] } }, view);
+    expect(mallemaroking.rows.map((row) => [row.volume, row.units])).toEqual([["1", 7334], ["2", 4636], ["3", 4077]]);
+    const standalone = investigate({ ...DEFAULT_STATE, filters: { in_series: ["no"] } }, runQuery, view);
+    expect(standalone.tiles[0]!.value!).toBeLessThan(result.tiles[0]!.value!);
+  });
+});
+
 describe("the title view", () => {
   it("appears for exactly one title, by month, ignoring its own month filter", () => {
     expect(investigate(DEFAULT_STATE, runQuery, view).titleView).toBeNull();
