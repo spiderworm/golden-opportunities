@@ -1,9 +1,9 @@
 # Reports (design)
 
-Status: **proposal, for David to approve.** Chart wrote it, for Goldy's request (req_3d3635a320e6). Plot owns the copy: every string below is a draft for Plot to rewrite in the game's voice. Nothing here is built.
+Status: **proposal, for David to approve.** Chart wrote it, for Goldy's request (req_3d3635a320e6). Plot owns the copy: the strings are Plot's, from Plot's review on #171. The page is plain chrome, with no boss lines: it's the player's desk. Nothing here is built.
 
 David chose "both, one page" (2 Nov). The Reports nav item (`src/shell/nav.ts`, the one with no page) opens `/reports`:
-- at the top, **the shop's reports**, which the game writes, one per played quarter;
+- at the top, **the shop's reports**, which the game builds from the save, one per played quarter;
 - below them, **the player's own reports**, built from pinned charts with their notes, which they can open in Decide as evidence.
 
 The decisions are listed at the end, each with its alternative.
@@ -16,12 +16,12 @@ The reference ([the Dribbble shot](https://cdn.dribbble.com/userupload/16634923/
 ┌ Reports ─────────────────────────────────────────────────────────────────────┐
 │ You have 1 new report.                                       [ New report ]  │
 │                                                                              │
-│ THE SHOP'S REPORTS                                                           │
+│ QUARTERLY REPORTS                                                            │
 │ ┌ Overall ┐ ┌ Profit ┐ ┌ Readers ┐ ┌ Happiness ┐ ┌ Culture ┐   last quarter │
 │ │ 74 (C)  │ │ 81 (B−)│ │ 74 (C)  │ │ 77 (C+)   │ │ 90 (A−) │   with change  │
-│ │ +8 ↗    │ │ +3 ↗   │ │ +8 ↗    │ │ −2 ↘      │ │ +1 ↗    │   from the one │
+│ │ +8 up   │ │ +3 up  │ │ +8 up   │ │ −2 down   │ │ +1 up   │   from the one │
 │ └─────────┘ └────────┘ └─────────┘ └───────────┘ └─────────┘   before       │
-│ ┌ Overall by quarter ──────────────────────┐ ┌ Service record ──────────────┐│
+│ ┌ Overall score by quarter ────────────────┐ ┌ Service record ──────────────┐│
 │ │ bars per quarter, a line at 70           │ │ Quarter  Overall  Event      ││
 │ │ (a strike under it)                      │ │ Q2 2194  74 (C)   None       ││
 │ │                                          │ │ Q1 2194  66 (D)   None       ││
@@ -41,28 +41,29 @@ The reference ([the Dribbble shot](https://cdn.dribbble.com/userupload/16634923/
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **The greeting line** counts new shop reports (section 2): `You have {n} new report(s).` With none, it reads `Every report is read.` (*draft*).
+- **The greeting line** counts new shop reports (section 2): `You have 1 new report.` or `You have {n} new reports.` With none, it reads `No new reports.`
 - **The nav badge:** Reports shows the same count, as the reference's does, and as the notifications bell counts memos. It's gone at zero.
-- **The tile row** is the last played quarter's report card: overall, then the four measures in report-card order, each with its score and grade and a change badge against the quarter before. Q1 2194 has no quarter before in the game, so its badges compare against its own goal (*draft*: `vs goal`).
-- **Overall by quarter** is a bar chart, one bar per played quarter, with a line at 70, the strike line in `endless.md` section 7. With one quarter played, the chart is hidden and the record takes the row.
+- **The tile row** is the last played quarter's report card: overall, then the four measures in report-card order, each with its score and grade and a change badge against the quarter before. Q1 2194 has no quarter before in the game, so its badges compare against its own goal (`vs. goal`). Tile labels are the report card's names in full (`Readers served`), wrapped rather than shortened. The change badges use the icon set's arrows (SVG), as Investigate's tiles do, never arrow characters, which some systems draw as emoji.
+- **Overall score by quarter** is a bar chart, one bar per played quarter, with a line at 70 labelled `Strike line (70)`, the strike line in `endless.md` section 7. With one quarter played, the chart is hidden and the record takes the row.
 - **Narrow windows** (under 1100 px, Investigate's own breakpoint): the tiles wrap to two rows, and every card goes to one column, the record under the chart. Nothing scrolls sideways.
-- **Before any quarter is played,** the shop's section shows one line: `No quarter has been filed yet. The first report arrives once Q1 2194 is played.` (*draft*). The player's section works from the start.
+- **Before any quarter is played,** the shop's section shows one line: `No quarter has been filed yet. Your first report arrives when Q1 2194 closes.` The player's section works from the start.
 
 ## 2. The shop's reports
 
-**One report per played quarter,** newest first. The game writes it when the quarter is committed. Nothing in it is new data: it gathers what the result screen already shows, so a player can look back without opening each result.
+**One report per played quarter,** newest first. Nothing is stored for it: the loader builds it from what the save already holds once the quarter is committed. Nothing in it is new data: it gathers what the result screen already shows, so a player can look back without opening each result.
 
 | Part | What it shows | From |
 | --- | --- | --- |
-| Heading | `{quarter} report`, and `NEW` until the player has opened it | the save |
-| Score | overall score and grade, the measure that bound it, and `strike` when it's under 70 | the quarter's outcome |
+| Heading | `{quarter} report`, with a `New` badge until the player has opened it | the save |
+| Score | overall score and grade, the measure that bound it, and `, strike` when it's under 70 (`66 (D), strike`, as #168's record has it) | the quarter's outcome |
 | Against goals | each measure's actual against its goal, with its score and grade, as the result's report card has them | the outcome |
 | Your plan | Q1: the move, or `Held course`. From Q2: each month's pick (`editionLabel`), then the one more move | the outcome's plan |
-| Event | Alma's event and the quarter's stretch, in the memo's words, once Alma is wired in (`endless.md` sections 2 and 9). Q1 and Q2 read `None` | the save's Alma record |
+| Event | Alma's event and the quarter's stretch, as the memo's fact sentence (the server's, `endless.md` section 3), not Alma's story, once Alma is wired in. Q1 and Q2 read `None`. The record's Event column shows the event's short title, as the bell does, and a quiet quarter reads `A quiet quarter` | the save's Alma record |
 | What you found | the discoveries earned that quarter, by their found text | the save's discoveries |
-| Link | `Open the full results`, to `/result?quarter={quarter}` | |
+| Link | `See the full results`, to `/result?quarter={quarter}` | |
 
-**The service record** is `endless.md` section 6's table, tenure line and best-quarter line, unchanged, and the annual review's year lines after each Q4. Reports renders the same component the result screen does, so the two can't disagree.
+**The service record** is `endless.md` section 6's table, tenure line and best-quarter line, unchanged, and the annual review's year lines after each Q4. Reports renders the same component the result screen does, so the two can't disagree. It shows every column of #168's table: `Quarter`, the four measures, `Overall` and `Event`.
+- **After removal,** Reports stays readable, as `Back to the ledgers` does (`endless.md` section 7). The record ends with its final row, `Removed by the panel, {date}.`, and the player's reports can still be opened, but no longer edited or made.
 - If David doesn't approve #168 as written, the record here follows whatever replaces it. Until #168 merges, the table shows the same rows from the half-year review's data (both quarters' measures and overall).
 
 **Opened and new.** A report is new until the player opens its card or its full results. The save keeps `reportsSeen?: QuarterId[]`, as it keeps `alertsSeen` for memos.
@@ -88,38 +89,42 @@ interface PlayerReport {
 ```
 
 - **A chart in a report is a copy of the pin,** not a link to it. Unpinning a chart, or the board dropping it past its 8, leaves every report as it was.
-- **Each chart runs again when it's shown,** through `POST /api/query`, as pins do (`runPin`). Nothing a chart showed is stored. The 2193 data and played quarters never change, so a chart filtered to a quarter shows the same thing every time. A chart over every quarter grows as quarters are played; its caption says so (*draft*: `Every quarter played so far`).
-- **The limit is 12 reports** (*tune*). At 12, `New report` explains why it's off (*draft*: `You have 12 reports. Delete one to start another.`).
+- **Each chart runs again when it's shown,** through `POST /api/query`, as pins do (`runPin`). Nothing a chart showed is stored. The 2193 data and played quarters never change, so a chart filtered to a quarter shows the same thing every time. A chart over every quarter grows as quarters are played; its caption says so: `Every quarter played so far`.
+- **The limit is 12 reports** (*tune*). At 12, `New report` explains why it's off: `You have 12 reports. Delete one to start another.`.
 
 ### How it's made
 
 There are two ways in, and both open the same editor:
 1. **From Reports:** `New report` opens the editor with the pinned board listed as checkboxes. The player ticks up to 6 and names the report.
-2. **From a pinned chart in Investigate:** each pin's menu gains `Add to report`, with the player's reports listed, plus `New report…`. Adding to a full report is refused (*draft*: `This report has 6 charts.`).
+2. **From a pinned chart in Investigate:** each pin's menu gains `Add to report`, with the player's reports listed, plus `New report…`. Adding to a full report is refused: `A report holds up to 6 charts. Remove one to add another.`.
 
 Charts Dewey pinned can go in a report like any other pin. Dewey itself can't make or edit reports (section 6).
 
 ### Naming and editing
 
-- **The editor** is the report itself, in edit mode: the title as a text field, the summary, each chart with its note field, and `Move up`, `Move down` and `Remove` on each chart. `Add charts` lists the board again.
-- **Saving:** `Save report` writes the whole report in one action; `Cancel` puts it back. A report can't be saved without a title or with no charts. Leaving with unsaved changes asks first (React Router's `useBlocker`).
-- **Delete:** `Delete report` asks once in an alertdialog, as Decide's confirm does, and is final.
+- **The editor** is the report itself, in edit mode: the title as a text field (`Title`), the summary (`Summary (optional)`), each chart with its note field (`Note (optional)`), and `Move up`, `Move down` and `Remove` on each chart. `Add charts` lists the board again.
+- **Saving:** `Save report` writes the whole report in one action; `Cancel` puts it back. A report can't be saved without a title (`Give the report a title.`) or with no charts (`Add at least one chart.`). Leaving with unsaved changes asks first (React Router's `useBlocker`): `Leave without saving your changes to this report?`, with `Leave` and `Keep editing`.
+- **Delete:** `Delete report` asks once in an alertdialog, as Decide's confirm does, and is final: `Delete "{title}"? This can't be undone.`, with `Delete report` and `Keep it`.
 - **No formatting:** notes are plain text, with line breaks kept. No links, no markdown.
 
 ### Where it's kept
 
-- **In the save, on the server** (`GameSave.reports`), written by the Reports route's action and checked there: the spec with `parsePinSpec`, then the lengths and counts above. So `Play again` starts with no reports, as it starts with no played quarters, and Decide's loader can read them.
+- **In the save, on the server** (`GameSave.reports`), written by the Reports route's action and checked there: the spec with `parsePinSpec`, then the lengths and counts above. So `Play again` starts with no reports, as it starts with no played quarters, and Decide's loader can read them. The save's checks (Audit, on #171):
+  - the server assigns each report's `id`; one sent by the browser is ignored;
+  - `created` and `edited` are the current quarter when written, never later;
+  - titles, summaries and notes refuse control characters (line breaks aside, in notes and the summary) and bidirectional marks;
+  - `validate()` bounds the whole `reports` field (count, items, lengths), as it bounds `discoveryEvidence`, so a hand-edited save can't grow past it.
 - **Pins stay in the browser** for now, as they are (`usePins`, with its TODO to move into the save). Reports copy pins, so they don't wait for that move.
-- **Notes are the player's own words.** They stay in the save on this computer. They never go into analytics, which counts them and their lengths only. Dewey never sees them (section 6).
+- **Notes are the player's own words.** They stay in the save on this computer. They never go into analytics, which counts them and their lengths only. The privacy page says that reports and their notes are kept in the save on this computer. Dewey never sees them (section 6).
 
 ## 4. Reports in Decide
 
 In Decide, the player can open their reports beside the plan. They read their evidence where they decide, without leaving the form.
 
-- **The button:** `Your reports ({n})` sits in the plan form's header, beside the form's serial. With no reports, it reads `No reports yet` and links to Reports (*draft*).
-- **The panel:** a side panel over the boss scene, right-aligned, 480 px wide (the full width under 1100 px). It lists the reports by title. Choosing one shows its summary, then its charts at 220 px high, each with its note, read-only. `Edit in Reports` leaves for `/reports` and asks first if the plan has picks or a move.
+- **The button:** `Your reports ({n})` sits in the plan form's header, beside the form's serial. With no reports, it reads `No reports yet` and links to Reports.
+- **The panel:** a side panel over the boss scene, right-aligned, 480 px wide (the full width under 1100 px). It lists the reports by title. Choosing one shows its summary, then its charts at 220 px high, each with its note, read-only. `Edit in Reports` leaves for `/reports` and asks first if the plan has picks or a move, since leaving Decide clears the plan: `Your plan isn't filed yet. Leaving Decide clears it. Go to Reports?`, with `Go to Reports` and `Stay on the plan`.
 - **The plan is never touched.** The panel is a dialog that keeps the form's state, as the picker does through the 3D scene's swap. Closing it returns focus to the button. Escape closes it.
-- **The shop's reports are there too,** under the player's, by quarter: score, against goals and plan only, so the player can see what they did last time.
+- **The shop's reports are there too,** under the player's, headed `QUARTERLY REPORTS` as on the page, by quarter: score, against goals and plan only, so the player can see what they did last time.
 - **Evidence for discoveries:** a report's charts run through `/api/query`, so before the plan is submitted they count exactly as the same pin would on Investigate's board. No new rule, and no way to earn a discovery the views couldn't already earn.
 - **The plan doesn't cite reports** (section 9, later). `plan_submitted` counts the reports read in the panel (section 5), so we can see whether evidence was looked at before deciding.
 
