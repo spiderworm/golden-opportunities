@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { useRef, type RefObject } from "react";
 
+import { Dropdown } from "~/platform/ui/Dropdown";
 import { Icon } from "~/shell/icons";
 import { DIMENSION_LABELS, formatDimensionValue } from "./format";
 import type { FilterOptions } from "./investigation.server";
@@ -164,61 +165,29 @@ function AddFilter({
   onAdd: (id: FilterId) => void;
   onRemove: (id: FilterId) => void;
 }) {
-  const { open, setOpen, rootRef, panelId } = usePopover(buttonRef);
   return (
-    <div className={styles.filterMenu} ref={rootRef}>
-      <button
-        ref={buttonRef}
-        type="button"
-        className={styles.addFilter}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen(!open)}
-      >
-        <span aria-hidden="true">+</span> Add a filter
-      </button>
-      <fieldset id={panelId} className={styles.filterPanel} hidden={!open}>
-        <legend className={styles.visuallyHidden}>Filters on the bar</legend>
-        {FILTERS.map((id) => (
-          <label key={id} className={styles.filterOption}>
-            <input type="checkbox" checked={shown.includes(id)} onChange={(e) => (e.target.checked ? onAdd(id) : onRemove(id))} />
-            {FILTER_LABELS[id]}
-          </label>
-        ))}
-      </fieldset>
-    </div>
+    <Dropdown
+      mode="multi"
+      name="Add a filter"
+      legend="Filters on the bar"
+      buttonRef={buttonRef}
+      trigger={{
+        className: styles.addFilter,
+        content: (
+          <>
+            <span aria-hidden="true">+</span> Add a filter
+          </>
+        ),
+      }}
+      values={shown}
+      options={FILTERS.map((id) => ({ value: id, label: FILTER_LABELS[id] }))}
+      onChange={(next) => {
+        const added = next.find((id) => !shown.includes(id));
+        if (added) onAdd(added);
+        else for (const id of shown.filter((id) => !next.includes(id))) onRemove(id);
+      }}
+    />
   );
-}
-
-/**
- * A popover's open state. Escape or a click outside closes it. Escape puts the focus back on its button when the
- * focus was in it, or nowhere: WebKit doesn't focus a checkbox that's clicked, which leaves the focus on the page.
- */
-function usePopover(buttonRef?: RefObject<HTMLButtonElement | null>) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const panelId = useId();
-
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      setOpen(false);
-      const focus = document.activeElement;
-      if (!focus || focus === document.body || rootRef.current?.contains(focus)) (buttonRef?.current ?? rootRef.current?.querySelector("button"))?.focus();
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open, buttonRef]);
-
-  return { open, setOpen, rootRef, panelId };
 }
 
 function FilterMenu({
@@ -235,45 +204,42 @@ function FilterMenu({
   empty?: string;
   onChange: (values: string[]) => void;
 }) {
-  const { open, setOpen, rootRef, panelId } = usePopover();
-  const summary =
-    selected.length === 0 ? (ALL[dimension] ?? "All") : selected.length === 1 ? formatDimensionValue(dimension, selected[0]) : `${selected.length} selected`;
-
   return (
-    <div className={styles.filterMenu} ref={rootRef}>
-      <button
-        type="button"
-        className={styles.filterButton}
-        data-active={selected.length > 0 || undefined}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen(!open)}
-      >
-        <span className={styles.filterName}>{DIMENSION_LABELS[dimension]}</span>
-        <span className={styles.filterSummary}>{summary}</span>
-        <Icon name="chevronDown" size={16} />
-      </button>
-      <fieldset id={panelId} className={styles.filterPanel} hidden={!open}>
-        <legend className={styles.visuallyHidden}>{DIMENSION_LABELS[dimension]}</legend>
-        {options.length === 0 && empty && <p className={styles.filterEmpty}>{empty}</p>}
-        {options.map((value) => (
-          <label key={value} className={styles.filterOption}>
-            <input
-              type="checkbox"
-              checked={selected.includes(value)}
-              onChange={(e) => onChange(e.target.checked ? [...selected, value] : selected.filter((v) => v !== value))}
-            />
-            {formatDimensionValue(dimension, value)}
-          </label>
-        ))}
-      </fieldset>
-    </div>
+    <Dropdown
+      mode="multi"
+      name={DIMENSION_LABELS[dimension]}
+      summary={selected.length === 0 ? (ALL[dimension] ?? "All") : selected.length === 1 ? formatDimensionValue(dimension, selected[0]) : `${selected.length} selected`}
+      active={selected.length > 0}
+      empty={empty}
+      values={selected}
+      options={options.map((value) => ({ value, label: formatDimensionValue(dimension, value) }))}
+      onChange={onChange}
+    />
+  );
+}
+
+/**
+ * A one-choice menu whose choices aren't strings (an award, a volume): each is keyed for the dropdown, and the
+ * key is mapped back to its choice.
+ */
+function ChoiceMenu<C>({ name, choices, choice, keyOf, onChange }: { name: string; choices: { value: C; label: string }[]; choice: C; keyOf: (c: C) => string; onChange: (choice: C) => void }) {
+  const fallback = choices[0]!;
+  const current = choices.find((c) => keyOf(c.value) === keyOf(choice)) ?? fallback;
+  return (
+    <Dropdown
+      mode="single"
+      name={name}
+      summary={current.label}
+      active={keyOf(choice) !== keyOf(fallback.value)}
+      value={keyOf(current.value)}
+      options={choices.map((c) => ({ value: keyOf(c.value), label: c.label }))}
+      onChange={(key) => onChange(choices.find((c) => keyOf(c.value) === key)!.value)}
+    />
   );
 }
 
 /** One choice: every sale, full price, any discount, or a single rate. */
 function DiscountMenu({ choice, rates, onChange }: { choice: DiscountChoice; rates: string[]; onChange: (choice: DiscountChoice) => void }) {
-  const { open, setOpen, rootRef, panelId } = usePopover();
   const choices: { value: DiscountChoice; label: string }[] = [
     { value: "all", label: "Any price" },
     { value: "full", label: "Full price" },
@@ -282,133 +248,27 @@ function DiscountMenu({ choice, rates, onChange }: { choice: DiscountChoice; rat
       .filter((rate) => parseFloat(rate) !== 0)
       .map((rate) => ({ value: rate as DiscountChoice, label: formatDimensionValue("discount_rate", rate) })),
   ];
-  const summary = choices.find((c) => c.value === choice)?.label ?? "Any price";
-
-  return (
-    <div className={styles.filterMenu} ref={rootRef}>
-      <button
-        type="button"
-        className={styles.filterButton}
-        data-active={choice !== "all" || undefined}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen(!open)}
-      >
-        <span className={styles.filterName}>Discount</span>
-        <span className={styles.filterSummary}>{summary}</span>
-        <Icon name="chevronDown" size={16} />
-      </button>
-      <fieldset id={panelId} className={styles.filterPanel} hidden={!open}>
-        <legend className={styles.visuallyHidden}>Discount</legend>
-        {choices.map((c) => (
-          <label key={c.value} className={styles.filterOption}>
-            <input
-              type="radio"
-              name={panelId}
-              checked={choice === c.value}
-              onChange={() => {
-                onChange(c.value);
-                setOpen(false);
-              }}
-            />
-            {c.label}
-          </label>
-        ))}
-      </fieldset>
-    </div>
-  );
+  return <ChoiceMenu name="Discount" choices={choices} choice={choice} keyOf={(c) => c} onChange={onChange} />;
 }
 
 /** One choice: every book, award winners, books without an award, or one award's winners. */
 function AwardMenu({ choice, awards, onChange }: { choice: AwardChoice; awards: string[]; onChange: (choice: AwardChoice) => void }) {
-  const { open, setOpen, rootRef, panelId } = usePopover();
-  const key = (c: AwardChoice) => (typeof c === "object" ? `award:${c.award}` : c);
   const choices: { value: AwardChoice; label: string }[] = [
     { value: "all", label: "Any book" },
     { value: "yes", label: formatDimensionValue("awarded", "yes") },
     { value: "no", label: formatDimensionValue("awarded", "no") },
     ...awards.map((award) => ({ value: { award }, label: award })),
   ];
-  const summary = choices.find((c) => key(c.value) === key(choice))?.label ?? "Any book";
-
-  return (
-    <div className={styles.filterMenu} ref={rootRef}>
-      <button
-        type="button"
-        className={styles.filterButton}
-        data-active={choice !== "all" || undefined}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen(!open)}
-      >
-        <span className={styles.filterName}>Awards</span>
-        <span className={styles.filterSummary}>{summary}</span>
-        <Icon name="chevronDown" size={16} />
-      </button>
-      <fieldset id={panelId} className={styles.filterPanel} hidden={!open}>
-        <legend className={styles.visuallyHidden}>Awards</legend>
-        {choices.map((c) => (
-          <label key={key(c.value)} className={styles.filterOption}>
-            <input
-              type="radio"
-              name={panelId}
-              checked={key(choice) === key(c.value)}
-              onChange={() => {
-                onChange(c.value);
-                setOpen(false);
-              }}
-            />
-            {c.label}
-          </label>
-        ))}
-      </fieldset>
-    </div>
-  );
+  return <ChoiceMenu name="Awards" choices={choices} choice={choice} keyOf={(c) => (typeof c === "object" ? `award:${c.award}` : c)} onChange={onChange} />;
 }
 
 /** One choice: every book, books in a series, standalone books, or one volume number. */
 function SeriesMenu({ choice, volumes, onChange }: { choice: SeriesChoice; volumes: string[]; onChange: (choice: SeriesChoice) => void }) {
-  const { open, setOpen, rootRef, panelId } = usePopover();
-  const key = (c: SeriesChoice) => (typeof c === "object" ? `volume:${c.volume}` : c);
   const choices: { value: SeriesChoice; label: string }[] = [
     { value: "all", label: "Any book" },
     { value: "yes", label: formatDimensionValue("in_series", "yes") },
     { value: "no", label: formatDimensionValue("in_series", "no") },
     ...volumes.map((volume) => ({ value: { volume }, label: formatDimensionValue("volume", volume) })),
   ];
-  const summary = choices.find((c) => key(c.value) === key(choice))?.label ?? "Any book";
-
-  return (
-    <div className={styles.filterMenu} ref={rootRef}>
-      <button
-        type="button"
-        className={styles.filterButton}
-        data-active={choice !== "all" || undefined}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen(!open)}
-      >
-        <span className={styles.filterName}>Series volume</span>
-        <span className={styles.filterSummary}>{summary}</span>
-        <Icon name="chevronDown" size={16} />
-      </button>
-      <fieldset id={panelId} className={styles.filterPanel} hidden={!open}>
-        <legend className={styles.visuallyHidden}>Series volume</legend>
-        {choices.map((c) => (
-          <label key={key(c.value)} className={styles.filterOption}>
-            <input
-              type="radio"
-              name={panelId}
-              checked={key(choice) === key(c.value)}
-              onChange={() => {
-                onChange(c.value);
-                setOpen(false);
-              }}
-            />
-            {c.label}
-          </label>
-        ))}
-      </fieldset>
-    </div>
-  );
+  return <ChoiceMenu name="Series volume" choices={choices} choice={choice} keyOf={(c) => (typeof c === "object" ? `volume:${c.volume}` : c)} onChange={onChange} />;
 }

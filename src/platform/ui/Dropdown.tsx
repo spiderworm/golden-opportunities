@@ -3,7 +3,7 @@
 // checkboxes (multi). The panel is a labelled fieldset, so screen readers hear the group and each option's state.
 // Escape or a click outside closes it; Escape puts the focus back on the button, as do a single choice and,
 // in WebKit, which doesn't focus a clicked checkbox, an Escape with the focus on the page.
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { Icon } from "~/shell/icons";
 import styles from "./Dropdown.module.css";
@@ -29,15 +29,22 @@ interface Common<T extends string> {
   empty?: ReactNode;
   /** Open the panel toward the button's right edge, near the edge of the screen. */
   align?: "start" | "end";
+  /** Replaces the button's name and summary, for a button that is an action ("+ Add a filter"). */
+  trigger?: { content: ReactNode; className: string };
+  /** The panel's legend, when it isn't the name. */
+  legend?: string;
+  /** The button, for a caller that moves the focus to it. */
+  buttonRef?: RefObject<HTMLButtonElement | null>;
 }
 export type DropdownProps<T extends string> = Common<T> &
   ({ mode: "single"; value: T; onChange: (value: T) => void } | { mode: "multi"; values: readonly T[]; onChange: (values: T[]) => void });
 
 export function Dropdown<T extends string>(props: DropdownProps<T>) {
-  const { name, options, active, empty, align = "start" } = props;
+  const { name, options, active, empty, align = "start", trigger, legend = name } = props;
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
+  const ownButton = useRef<HTMLButtonElement>(null);
+  const button = props.buttonRef ?? ownButton;
   const panelId = useId();
   // A choice shows at once, though its caller may only take it when a navigation lands: until the props change.
   const given = props.mode === "single" ? [props.value] : props.values;
@@ -72,18 +79,24 @@ export function Dropdown<T extends string>(props: DropdownProps<T>) {
       <button
         ref={button}
         type="button"
-        className={styles.button}
+        className={trigger?.className ?? styles.button}
         data-active={active || undefined}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(!open)}
       >
-        <span className={styles.name}>{name}</span>
-        <span className={styles.summary}>{summary}</span>
-        <Icon name="chevronDown" size={16} />
+        {trigger ? (
+          trigger.content
+        ) : (
+          <>
+            <span className={styles.name}>{name}</span>
+            <span className={styles.summary}>{summary}</span>
+            <Icon name="chevronDown" size={16} />
+          </>
+        )}
       </button>
       <fieldset id={panelId} className={styles.panel} hidden={!open} data-align={align}>
-        <legend className={styles.legend}>{name}</legend>
+        <legend className={styles.legend}>{legend}</legend>
         {options.length === 0 && empty && <p className={styles.empty}>{empty}</p>}
         {options.map((option, i) => {
           const on = chosen.includes(option.value);
