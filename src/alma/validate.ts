@@ -3,7 +3,7 @@
 // text checks. Alma's choice is checked against the rules again, though the server drew only fair candidates.
 
 import { candidateProblem, recoveryOf, type Candidate, type QuarterContext } from "./candidates";
-import { textProblem, type TextField, type TextRules } from "./text";
+import { namesZoolander, textProblem, type TextField, type TextRules } from "./text";
 
 export interface Flavor {
   story: string;
@@ -50,7 +50,7 @@ export function checkAnswer(raw: string, candidates: readonly Candidate[], conte
   const fields: [TextField, unknown][] = [["story", story], ["bossLine", bossLine]];
   if (reason !== undefined) fields.push(["reason", reason]);
   for (const [field, text] of fields) {
-    const problem = textProblem(field, text, { ...rules, candidate, quarter: context.quarter });
+    const problem = textProblem(field, text, { ...rules, candidate, quarter: context.quarter, zoolanderLast: namesZoolander(context.previous.at(-1)?.bossLine) });
     if (problem) return { ok: false, failure: `text:${field}:${problem}` };
   }
   return { ok: true, index, flavor: { story: story as string, ...(reason !== undefined ? { reason: reason as string } : {}), bossLine: bossLine as string } };
