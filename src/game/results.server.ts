@@ -35,8 +35,8 @@ interface Common {
   /** Set once the panel has removed the player (endless.md section 7): the quarter it happened in, and its strikes. */
   removed: { at: QuarterId; strikes: { quarter: QuarterId; score: number }[] } | null;
 }
-/** Narrowed to Q1 and Q2, the quarters the game plays today; Chart's Result PR widens it to any quarter. */
-export type ResultData = Common & ({ quarter: '2194-Q1'; outcome: Outcome } | { quarter: '2194-Q2'; outcome: Q2GameOutcome });
+/** Q1 2194 with M1's outcome; every later quarter with Q2's shape (endless.md). */
+export type ResultData = Common & ({ quarter: '2194-Q1'; outcome: Outcome } | { quarter: QuarterId; outcome: Q2GameOutcome });
 
 /**
  * One row of the service record: a played quarter's measures and overall, whether it was a strike, and its Alma
@@ -106,5 +106,5 @@ export function getResultData(request: Request, period?: QuarterId): ResultData 
     record: serviceRecord(save),
     removed: removalOf(save),
   };
-  return isFirst(played) ? { ...common, quarter: played.period, outcome: played.outcome } : { ...common, quarter: played.period as '2194-Q2', outcome: played.outcome as Q2GameOutcome };
+  return isFirst(played) ? { ...common, quarter: played.period, outcome: played.outcome } : { ...common, quarter: played.period, outcome: played.outcome as Q2GameOutcome };
 }
