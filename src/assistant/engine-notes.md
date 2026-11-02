@@ -106,6 +106,19 @@ boundary, documented rather than chased.
 - The full stop after a percent ref was lost in one of Probe's runs (X3). The renderer keeps punctuation that
   follows a ref, even when the ref is split across chunks (tested), so the model must have left it out.
 
+**Prices** (Probe's #225, before list price reaches Dewey's tools): a list price is a label a ref renders, like a
+discount rate, so no price of the model's own can show. Three more checks, in `priceProblem`:
+- A price is paired with its own book. An edition row's price needs its edition named in the sentence (by ref,
+  or its exact label), a title row's its title. No other edition or title from this answer may be named, and any
+  format word must be the edition's own, matched whole: "paperback" isn't a trade paperback (Audit). A price
+  with no book (a breakdown by price, a confirmed filter) sits only with no book named. Two prices in one
+  sentence are withheld; the prompt asks for one sentence each.
+- A price word ("costs", "priced", "lists at", "paid", "charged", "worth"…) with a dollar figure that isn't a
+  price (revenue, average order value) is withheld: there's no average price.
+- Price comparatives and judgments ("cheapest", "pricier", "bargain", "budget"…) join the direction words, and
+  "under", "over", "at least", "at most" or "up to" directly before a price or figure withholds it. The words
+  alone stay allowed: "the table is under this message", "over {{a.rows}} editions".
+
 **What the filter caught is kept on this machine** (Probe's Q2 red-team, finding Q2): each withheld sentence is
 recorded as `assistant_sentence_withheld` (its text, cut at 1,000 characters, its length, and the question's
 kind), under the `agent_text` hold in `.data/analytics-server.json`. Held events are never sent; that's the

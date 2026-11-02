@@ -258,3 +258,65 @@ describe("invisible characters (Probe)", () => {
     expect(say("Reve\u00ADnue in {{a4.quarter}} was {{a4}}.")).toBe("Revenue in 2193-Q4 was $161,524.69.");
   });
 });
+
+describe("prices (Probe's #225)", () => {
+  // Lookups as #179's dimensions return them: by edition with its list price and band, a confirmed price filter,
+  // and an average order value.
+  const editions = ["query_data", { measure: "revenue", by: ["edition", "list_price", "price_band"] }, { ref: "a", complete: true, columns: [], rows: [
+    { ref: "a1", edition: "Post Alley (Hardcover)", list_price: "$27.99", price_band: "$20 to $29.99", revenue: 1427.49 },
+    { ref: "a2", edition: "Post Alley (Trade paperback)", list_price: "$17.99", price_band: "$10 to $19.99", revenue: 611.66 },
+    { ref: "a3", edition: "Heliotrope Pajamas (Paperback, 2181)", list_price: "$7.99", price_band: "under $10", revenue: 95.88 },
+  ], total: 2135.03, source: SOURCE }] as const;
+  const atPrice = ["query_data", { measure: "units", by: [], filter: { list_price: ["$27.99"] } }, { ref: "b", complete: true, columns: [], rows: [], total: 51, source: SOURCE }] as const;
+  const aov = ["query_data", { measure: "avg_order_value", by: [] }, { ref: "c", complete: true, columns: [], rows: [], total: 31.2, source: SOURCE }] as const;
+  const r = refs(editions, atPrice, aov);
+
+  it("show a price with its own edition, named by ref or by its exact label", () => {
+    expect(say("{{a1.edition}} lists at {{a1.list_price}}, in the {{a1.price_band}} band.", r)).toBe("Post Alley (Hardcover) lists at $27.99, in the $20 to $29.99 band.");
+    expect(say("Post Alley (Hardcover) lists at {{a1.list_price}}.", r)).toBe("Post Alley (Hardcover) lists at $27.99.");
+    expect(say("{{a2.edition}}, the trade paperback, lists at {{a2.list_price}}.", r)).toBe("Post Alley (Trade paperback), the trade paperback, lists at $17.99.");
+  });
+
+  it("never let a price attach to another book, or to none", () => {
+    expect(say("{{a2.edition}} costs {{a1.list_price}}.", r)).toBe(WITHHELD);
+    expect(say("Post Alley (Trade paperback) costs {{a1.list_price}}.", r)).toBe(WITHHELD);
+    expect(say("It lists at {{a1.list_price}}.", r)).toBe(WITHHELD);
+    // Its own edition and another's: withheld, not shown (Goldy).
+    expect(say("{{a1.edition}} lists at {{a1.list_price}}, like {{a2.edition}}.", r)).toBe(WITHHELD);
+  });
+
+  it("match a format word whole against the edition's own format (Audit)", () => {
+    // a2 is the trade paperback: a bare "paperback" could be three formats.
+    expect(say("{{a2.edition}}, the paperback, costs {{a2.list_price}}.", r)).toBe(WITHHELD);
+    expect(say("{{a1.edition}}, the paperback, costs {{a1.list_price}}.", r)).toBe(WITHHELD);
+    expect(say("{{a1.edition}}, the hardcover, costs {{a1.list_price}}.", r)).toBe("Post Alley (Hardcover), the hardcover, costs $27.99.");
+  });
+
+  it("keep a price group apart from any book", () => {
+    expect(say("Every title in {{b.list_price}} sold {{b.total}} units.", r)).toBe("Every title in $27.99 sold 51 units.");
+    expect(say("{{a2.edition}} is among the books in {{b.list_price}}.", r)).toBe(WITHHELD);
+  });
+
+  it("never call revenue or average order value a price (paying words included)", () => {
+    expect(say("{{a1.edition}} costs {{a1}}.", r)).toBe(WITHHELD);
+    expect(say("The average price is {{c.total}}.", r)).toBe(WITHHELD);
+    expect(say("What people paid came to {{c.total}}.", r)).toBe(WITHHELD);
+    expect(say("The shop charged {{a1}}.", r)).toBe(WITHHELD);
+    expect(say("Its sales were worth {{a.total}}.", r)).toBe(WITHHELD);
+    expect(say("Revenue came to {{a.total}}.", r)).toBe("Revenue came to $2,135.03.");
+    expect(say("The average order value was {{c.total}}.", r)).toBe("The average order value was $31.20.");
+  });
+
+  it("withhold price comparatives and judgments", () => {
+    for (const sentence of ["The hardcover is the cheapest edition.", "The paperback is pricier.", "It is expensive.", "It is a bargain.", "It sits in the budget band.", "It costs a buck."]) expect(say(sentence, r), sentence).toBe(WITHHELD);
+  });
+
+  it("withhold a bound put on a figure, but not the words themselves", () => {
+    expect(say("{{a2.edition}} costs under {{a2.list_price}}.", r)).toBe(WITHHELD);
+    expect(say("Revenue was over {{a.total}}.", r)).toBe(WITHHELD);
+    expect(say("Every title in {{b.list_price}} sold at least {{b.total}} units.", r)).toBe(WITHHELD);
+    // The gate's own fallback, and "over" a row count, which isn't a bound (Goldy).
+    expect(say("The table is under this message.", r)).toBe("The table is under this message.");
+    expect(say("Revenue came to {{a.total}} over {{a.rows}} editions.", r)).toBe("Revenue came to $2,135.03 over 3 editions.");
+  });
+});
