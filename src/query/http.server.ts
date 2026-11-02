@@ -6,6 +6,7 @@ import { runQuery } from './run-query.server';
 import { emit, trackQuery } from './telemetry.server';
 import { serializeResult } from './result';
 import { investigateOnly, QUERY_LIMITS } from './types';
+import { DATA_VERSION_HEADER, dataVersion } from './data-version.server';
 import type { QueryErrorCode, QueryErrorResponse, QueryTrack, QueryView } from './types';
 
 const headers = { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin', Vary: 'Origin, Authorization' };
@@ -87,7 +88,9 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
       const body = serializeResult(result);
       recordDiscoveries(access.save, view, [{ query, result }]);
       emit(track, 'query_request_completed', { rowCount: result.rows.length, durationMs: performance.now() - started });
-      return new Response(body, { status: 200, headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8' } });
+      // The version this result was computed under, from the same save as its view: a client cache keys on this,
+      // not on the version it last saw, so a result that raced a plan commit is never filed under the new one.
+      return new Response(body, { status: 200, headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8', [DATA_VERSION_HEADER]: dataVersion(access.save) } });
     } catch (error) {
       let known = error instanceof QueryError ? error : new QueryError('INTERNAL_ERROR', 'Query could not be completed.');
       if (known.message.length > QUERY_LIMITS.errorMessageLength) known = new QueryError('RESULT_TOO_LARGE', 'Query error output exceeds its bounds.');
