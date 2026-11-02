@@ -11,4 +11,5 @@ export type WireEvent =
   | { type: "pin"; chart: ChartSpec; source: string }
   | { type: "lookup_failed"; message: string }
   | { type: "error"; message: string }
-  | { type: "done" };
+  /** `withheld`: how many sentences the figures gate withheld (a count, never their text). */
+  | { type: "done"; withheld?: number };
