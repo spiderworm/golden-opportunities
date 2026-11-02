@@ -54,9 +54,15 @@ const failureOf = (error: unknown) => {
 export async function chooseEvent(
   context: QuarterContext,
   history: readonly QuarterSummary[],
-  { seed, model, titles, timeoutMs = ALMA_TIMEOUT_MS }: { seed: number; model: AlmaModel | null; titles: readonly string[]; timeoutMs?: number },
+  {
+    seed,
+    model,
+    titles,
+    accept,
+    timeoutMs = ALMA_TIMEOUT_MS,
+  }: { seed: number; model: AlmaModel | null; titles: readonly string[]; accept?: (candidate: Candidate) => boolean; timeoutMs?: number },
 ): Promise<AlmaRecord> {
-  const candidates = drawCandidates(seed, context);
+  const candidates = drawCandidates(seed, context, accept);
   const recovery = recoveryOf(context);
   const record = (candidate: Candidate, flavor: Flavor, rest: Pick<AlmaRecord, "source" | "attempts"> & Partial<AlmaRecord>): AlmaRecord => ({
     quarter: context.quarter,

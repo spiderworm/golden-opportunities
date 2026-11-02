@@ -101,6 +101,12 @@ describe("the server's candidates", () => {
     }
   });
 
+  it("never offer a candidate the server's check refuses, unless none could pass (Sim's bound)", () => {
+    for (let seed = 0; seed < 50; seed++) expect(drawCandidates(seed, context, (c) => c.type !== "format_costs").some((c) => c.type === "format_costs")).toBe(false);
+    // A check nothing passes is set aside: a quarter always has its event.
+    expect(drawCandidates(1, context, () => false)).toHaveLength(3);
+  });
+
   it("are weighted away from the last four quarters' types", () => {
     const recent = ["genre_surge", "genre_slump", "genre_surge", "quiet_days"].map((t, i) => stub(t, "happiness", `2194-Q${i + 1}`));
     const counts = new Map<string, number>();
