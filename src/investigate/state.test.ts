@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awardChoice, DEFAULT_STATE, discountChoice, filtersExcept, monthsInScope, parseState, setAward, setDiscount, setSeries, seriesChoice, toggleCell, toggleFilterValue, toSearchParams } from "./state";
+import { awardChoice, DEFAULT_STATE, onlyShownChanged, removeFilter, shownFilters, withShown, discountChoice, filtersExcept, monthsInScope, parseState, setAward, setDiscount, setSeries, seriesChoice, toggleCell, toggleFilterValue, toSearchParams } from "./state";
 
 describe("investigate state", () => {
   it("round-trips through the URL", () => {
@@ -90,6 +90,31 @@ describe("investigate state", () => {
     const parsed = parseState(new URLSearchParams("by=volume&in_series=yes"));
     expect(parsed).toMatchObject({ by: "volume", filters: { in_series: ["yes"] } });
     expect(toSearchParams(parsed).toString()).toBe("by=volume&in_series=yes");
+  });
+
+  it("keeps the bar's filters in the URL: the ones added, and any with values", () => {
+    const params = new URLSearchParams("by=genre&show=awards&show=genre&genre=Fiction");
+    expect(shownFilters(params, parseState(params).filters)).toEqual(["genre", "awards"]);
+    // A drilldown or an old link sets a value without show: that filter is on the bar too.
+    expect(shownFilters(new URLSearchParams("weekday=Monday"), { weekday: ["Monday"] })).toEqual(["weekday"]);
+    // Written in the bar's order, whatever order they were added in, and replacing what was there.
+    expect(withShown(new URLSearchParams("by=genre&show=title"), ["awards", "quarter"]).toString()).toBe("by=genre&show=quarter&show=awards");
+    // The question itself doesn't carry them, so the server's view (and its cache key) ignores them.
+    expect(toSearchParams(parseState(params)).toString()).toBe("by=genre&genre=Fiction");
+  });
+
+  it("clears a filter's values when it comes off the bar, both parts of a two-part one", () => {
+    const state = { ...DEFAULT_STATE, filters: { genre: ["Fiction"], awarded: ["yes"], award: ["Hugo Award"] } };
+    expect(removeFilter(state, "awards").filters).toEqual({ genre: ["Fiction"] });
+    expect(removeFilter(state, "genre").filters).toEqual({ awarded: ["yes"], award: ["Hugo Award"] });
+  });
+
+  it("knows when only the bar changed, which changes no data", () => {
+    const at = (search: string) => new URL(`http://localhost/investigate${search}`);
+    expect(onlyShownChanged(at("?by=genre"), at("?by=genre&show=genre"))).toBe(true);
+    expect(onlyShownChanged(at("?by=genre&show=genre"), at("?by=genre"))).toBe(true);
+    expect(onlyShownChanged(at("?by=genre&show=genre"), at("?by=genre&show=genre&genre=Fiction"))).toBe(false);
+    expect(onlyShownChanged(at("?by=genre"), at("?by=genre"))).toBe(false);
   });
 
   it("lists the months in the quarters in scope", () => {

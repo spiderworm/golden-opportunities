@@ -3,11 +3,48 @@ import { describe, expect, it } from "vitest";
 
 import { FilterBar } from "./FilterBar";
 import type { FilterOptions } from "./investigation.server";
-import type { Filters } from "./state";
+import { shownFilters, type FilterId, type Filters } from "./state";
 
 const options: FilterOptions = { quarter: ["2193-Q4"], genre: [], format: [], publisher: [], discount_rate: [], award: ["Hugo Award", "Nebula Award"], volume: ["1", "2", "3"] };
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-const bar = (filters: Filters) => text(renderToString(<FilterBar filters={filters} options={options} onChange={() => {}} onDiscount={() => {}} onAward={() => {}} onSeries={() => {}} onClear={() => {}} />));
+const html = (filters: Filters, added: FilterId[] = []) => {
+  const shown = shownFilters(new URLSearchParams(added.map((id) => ["show", id])), filters);
+  return renderToString(
+    <FilterBar filters={filters} options={options} shown={shown} onAdd={() => {}} onRemove={() => {}} onChange={() => {}} onDiscount={() => {}} onAward={() => {}} onSeries={() => {}} onClear={() => {}} />,
+  );
+};
+const bar = (filters: Filters, added: FilterId[] = []) => text(html(filters, added));
+
+describe("the bar (David, 2 Nov 2026)", () => {
+  it("shows only the filters the player added, and Add a filter", () => {
+    const empty = bar({});
+    expect(empty).toContain("Add a filter");
+    expect(empty).not.toContain("All genres");
+    expect(empty).not.toContain("Clear filters");
+    const added = bar({}, ["genre", "awards"]);
+    expect(added).toContain("Genre All genres");
+    expect(added).toContain("Awards Any book");
+    expect(added).not.toContain("All quarters");
+  });
+
+  it("shows a filter that has values even if it wasn't added, so nothing applies unseen", () => {
+    expect(bar({ weekday: ["Monday"], month: ["2193-12"] })).toMatch(/Month Dec 2193.*Weekday Monday/);
+  });
+
+  it("gives each filter an x that names it, and lists every filter to add, checked if it's on the bar", () => {
+    const markup = html({ genre: ["Fiction"] }, ["quarter"]);
+    expect(markup).toContain('aria-label="Remove the Quarter filter"');
+    expect(markup).toContain('aria-label="Remove the Genre filter"');
+    const list = markup.slice(markup.indexOf("Filters on the bar"));
+    for (const name of ["Quarter", "Genre", "Format", "Publisher", "Discount", "Awards", "Series volume", "Month", "Weekday", "Title"]) expect(list).toContain(name);
+    expect((list.match(/checked=""/g) ?? []).length).toBe(2);
+    expect(text(markup)).toContain("Clear filters");
+  });
+
+  it("explains how to choose a title when none is chosen", () => {
+    expect(bar({}, ["title"])).toContain("Choose a title from a chart broken down by Title.");
+  });
+});
 
 describe("the awards menu", () => {
   it("names its one choice, and shows no chip for it", () => {

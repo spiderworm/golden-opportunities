@@ -1,24 +1,58 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
 import { Icon } from "~/shell/icons";
 import { DIMENSION_LABELS, formatDimensionValue } from "./format";
 import type { FilterOptions } from "./investigation.server";
-import { awardChoice, discountChoice, FILTER_DIMENSIONS, seriesChoice, type AwardChoice, type DiscountChoice, type FilterDimension, type Filters, type SeriesChoice } from "./state";
+import {
+  awardChoice,
+  discountChoice,
+  FILTER_PARTS,
+  FILTERS,
+  monthsInScope,
+  seriesChoice,
+  type AwardChoice,
+  type DiscountChoice,
+  type FilterDimension,
+  type FilterId,
+  type Filters,
+  type SeriesChoice,
+} from "./state";
 import styles from "./Investigate.module.css";
 
-const MENUS = ["quarter", "genre", "format", "publisher"] as const satisfies readonly (keyof FilterOptions)[];
-/** Dimensions with their own menu; the rest show as chips. */
-/** The awards menu's two dimensions: one choice sets one of them. */
-const AWARDS: readonly FilterDimension[] = ["awarded", "award"];
-/** The series menu's two dimensions: one choice sets one of them. */
-const SERIES: readonly FilterDimension[] = ["in_series", "volume"];
-const IN_MENUS: readonly FilterDimension[] = [...MENUS, "discount_rate", "discounted", ...AWARDS, ...SERIES];
+/** Each filter's name, in the list and on the bar. */
+export const FILTER_LABELS: Record<FilterId, string> = {
+  quarter: "Quarter",
+  genre: "Genre",
+  format: "Format",
+  publisher: "Publisher",
+  discount: "Discount",
+  awards: "Awards",
+  series: "Series volume",
+  month: "Month",
+  weekday: "Weekday",
+  title: "Title",
+};
+
 /** What a menu says when nothing in it is chosen (m1-copy section 2). */
-const ALL: Record<(typeof MENUS)[number], string> = { quarter: "All quarters", genre: "All genres", format: "All formats", publisher: "All publishers" };
+const ALL: Partial<Record<FilterDimension, string>> = {
+  quarter: "All quarters",
+  genre: "All genres",
+  format: "All formats",
+  publisher: "All publishers",
+  month: "All months",
+  weekday: "All weekdays",
+  title: "Any title",
+};
+
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export interface FilterBarProps {
   filters: Filters;
   options: FilterOptions;
+  /** The filters on the bar (state.ts, shownFilters). */
+  shown: readonly FilterId[];
+  onAdd: (id: FilterId) => void;
+  onRemove: (id: FilterId) => void;
   onChange: (dimension: FilterDimension, values: string[]) => void;
   onDiscount: (choice: DiscountChoice) => void;
   onAward: (choice: AwardChoice) => void;
@@ -26,16 +60,42 @@ export interface FilterBarProps {
   onClear: () => void;
 }
 
-/** One row of filters above everything they scope. */
-export function FilterBar({ filters, options, onChange, onDiscount, onAward, onSeries, onClear }: FilterBarProps) {
-  const any = FILTER_DIMENSIONS.some((d) => filters[d]?.length);
-  // Menus show their own selections; chips cover the rest (the heatmap's weekday and month), and a one-choice
-  // menu's filters when no single choice names them (a link with both, or two awards or volumes).
+/**
+ * One row of filters above everything they scope: only the ones the player has added, each with its own control
+ * and an "x" to take it off, then "Add a filter" (David, 2 Nov 2026).
+ */
+export function FilterBar({ filters, options, shown, onAdd, onRemove, onChange, onDiscount, onAward, onSeries, onClear }: FilterBarProps) {
+  const addButton = useRef<HTMLButtonElement>(null);
+  const any = FILTERS.some((id) => FILTER_PARTS[id].some((d) => filters[d]?.length));
+  // A one-choice menu's filters that no single choice names (a link with both, or two awards or volumes) show as
+  // chips too, so nothing applies unseen.
   const unnamed: readonly FilterDimension[] = [
-    ...(awardChoice(filters) === "all" ? AWARDS : []),
-    ...(seriesChoice(filters) === "all" ? SERIES : []),
+    ...(shown.includes("awards") && awardChoice(filters) === "all" ? FILTER_PARTS.awards : []),
+    ...(shown.includes("series") && seriesChoice(filters) === "all" ? FILTER_PARTS.series : []),
   ];
-  const chipped = FILTER_DIMENSIONS.filter((d) => (!IN_MENUS.includes(d) || unnamed.includes(d)) && filters[d]?.length);
+
+  const control = (id: FilterId) => {
+    switch (id) {
+      case "discount":
+        return <DiscountMenu choice={discountChoice(filters)} rates={options.discount_rate} onChange={onDiscount} />;
+      case "awards":
+        return <AwardMenu choice={awardChoice(filters)} awards={options.award} onChange={onAward} />;
+      case "series":
+        return <SeriesMenu choice={seriesChoice(filters)} volumes={options.volume} onChange={onSeries} />;
+      default: {
+        const choices = id === "month" ? monthsInScope(options.quarter) : id === "weekday" ? WEEKDAYS : id === "title" ? (filters.title ?? []) : options[id];
+        return (
+          <FilterMenu
+            dimension={id}
+            options={choices}
+            selected={filters[id] ?? []}
+            empty={id === "title" ? "Choose a title from a chart broken down by Title." : undefined}
+            onChange={(values) => onChange(id, values)}
+          />
+        );
+      }
+    }
+  };
 
   return (
     <div className={styles.filterBar} role="group" aria-label="Filters">
@@ -44,23 +104,34 @@ export function FilterBar({ filters, options, onChange, onDiscount, onAward, onS
           <Icon name="filter" size={18} />
           Only show
         </span>
-        {MENUS.map((dimension) => (
-          <FilterMenu
-            key={dimension}
-            dimension={dimension}
-            options={options[dimension]}
-            selected={filters[dimension] ?? []}
-            onChange={(values) => onChange(dimension, values)}
-          />
+        {shown.map((id) => (
+          <div key={id} className={styles.filterItem}>
+            {control(id)}
+            <button
+              type="button"
+              className={styles.filterRemove}
+              aria-label={`Remove the ${FILTER_LABELS[id]} filter`}
+              onClick={() => {
+                // The filter's own button goes away: the focus goes to "Add a filter".
+                addButton.current?.focus();
+                onRemove(id);
+              }}
+            >
+              <Icon name="close" size={14} />
+            </button>
+          </div>
         ))}
-        <DiscountMenu choice={discountChoice(filters)} rates={options.discount_rate} onChange={onDiscount} />
-        <AwardMenu choice={awardChoice(filters)} awards={options.award} onChange={onAward} />
-        <SeriesMenu choice={seriesChoice(filters)} volumes={options.volume} onChange={onSeries} />
+        <AddFilter buttonRef={addButton} shown={shown} onAdd={onAdd} onRemove={onRemove} />
+        {any && (
+          <button type="button" className={styles.clearAll} onClick={onClear}>
+            Clear filters
+          </button>
+        )}
       </div>
-      {any && (
+      {unnamed.some((d) => filters[d]?.length) && (
         <ul className={styles.chips} aria-label="Other filters">
-          {chipped.flatMap((dimension) =>
-            filters[dimension]!.map((value) => (
+          {unnamed.flatMap((dimension) =>
+            (filters[dimension] ?? []).map((value) => (
               <li key={`${dimension}:${value}`} className={styles.chip}>
                 <span className={styles.chipDimension}>{DIMENSION_LABELS[dimension]}</span>
                 {formatDimensionValue(dimension, value)}
@@ -75,18 +146,55 @@ export function FilterBar({ filters, options, onChange, onDiscount, onAward, onS
               </li>
             )),
           )}
-          <li>
-            <button type="button" className={styles.clearAll} onClick={onClear}>
-              Clear filters
-            </button>
-          </li>
         </ul>
       )}
     </div>
   );
 }
 
-function usePopover() {
+/** "Add a filter": a checkbox for every filter; checking one puts it on the bar, unchecking takes it off. */
+function AddFilter({
+  buttonRef,
+  shown,
+  onAdd,
+  onRemove,
+}: {
+  buttonRef: RefObject<HTMLButtonElement | null>;
+  shown: readonly FilterId[];
+  onAdd: (id: FilterId) => void;
+  onRemove: (id: FilterId) => void;
+}) {
+  const { open, setOpen, rootRef, panelId } = usePopover(buttonRef);
+  return (
+    <div className={styles.filterMenu} ref={rootRef}>
+      <button
+        ref={buttonRef}
+        type="button"
+        className={styles.addFilter}
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen(!open)}
+      >
+        <span aria-hidden="true">+</span> Add a filter
+      </button>
+      <fieldset id={panelId} className={styles.filterPanel} hidden={!open}>
+        <legend className={styles.visuallyHidden}>Filters on the bar</legend>
+        {FILTERS.map((id) => (
+          <label key={id} className={styles.filterOption}>
+            <input type="checkbox" checked={shown.includes(id)} onChange={(e) => (e.target.checked ? onAdd(id) : onRemove(id))} />
+            {FILTER_LABELS[id]}
+          </label>
+        ))}
+      </fieldset>
+    </div>
+  );
+}
+
+/**
+ * A popover's open state. Escape or a click outside closes it. Escape puts the focus back on its button when the
+ * focus was in it, or nowhere: WebKit doesn't focus a checkbox that's clicked, which leaves the focus on the page.
+ */
+function usePopover(buttonRef?: RefObject<HTMLButtonElement | null>) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
@@ -97,7 +205,10 @@ function usePopover() {
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     }
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      const focus = document.activeElement;
+      if (!focus || focus === document.body || rootRef.current?.contains(focus)) (buttonRef?.current ?? rootRef.current?.querySelector("button"))?.focus();
     }
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -105,7 +216,7 @@ function usePopover() {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, buttonRef]);
 
   return { open, setOpen, rootRef, panelId };
 }
@@ -114,16 +225,19 @@ function FilterMenu({
   dimension,
   options,
   selected,
+  empty,
   onChange,
 }: {
-  dimension: (typeof MENUS)[number];
-  options: string[];
+  dimension: FilterDimension;
+  options: readonly string[];
   selected: string[];
+  /** What the menu says when it has nothing to choose from. */
+  empty?: string;
   onChange: (values: string[]) => void;
 }) {
   const { open, setOpen, rootRef, panelId } = usePopover();
   const summary =
-    selected.length === 0 ? ALL[dimension] : selected.length === 1 ? formatDimensionValue(dimension, selected[0]) : `${selected.length} selected`;
+    selected.length === 0 ? (ALL[dimension] ?? "All") : selected.length === 1 ? formatDimensionValue(dimension, selected[0]) : `${selected.length} selected`;
 
   return (
     <div className={styles.filterMenu} ref={rootRef}>
@@ -141,6 +255,7 @@ function FilterMenu({
       </button>
       <fieldset id={panelId} className={styles.filterPanel} hidden={!open}>
         <legend className={styles.visuallyHidden}>{DIMENSION_LABELS[dimension]}</legend>
+        {options.length === 0 && empty && <p className={styles.filterEmpty}>{empty}</p>}
         {options.map((value) => (
           <label key={value} className={styles.filterOption}>
             <input
