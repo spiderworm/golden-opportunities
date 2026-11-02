@@ -2,6 +2,7 @@
 // on, Alma's event as conditions, goals anchored with no ratchet, the recovery goal, and the strikes.
 // Pure and deterministic: a turn depends only on its quarter, seed, plan and event, and the data, so a
 // save's quarters replay exactly. Q1 and Q2 2194 are played by their own engines, unchanged.
+import { FORMAT_WORDS, GENRE_WORDS } from "~/alma/sentences";
 import type { BookshopData, DeepReadonly } from "~/bookshop/types";
 import { applyConditions, changesOrders, conditionsOf, type Conditions, type TurnEvent } from "./conditions";
 import { MONTH_NAMES, type QuarterCopy } from "./copy";
@@ -9,6 +10,7 @@ import { goalFor } from "./grading";
 import { measures } from "./measures";
 import { baseline, run, withRelease, YEAR, type QuarterNumber } from "./model";
 import { picksLines, simulatePicks, simulateQ2, type PicksQuarter } from "./q2";
+import { isQuarterName, quarterAt, quarterIndex, quarterNumber, type QuarterId } from "./quarters";
 import { EFFECT_SEEDS, historyFor, holdLevers, prepare, simulateQuarter } from "./simulate";
 import type { MeasureId, Plan, Q2Plan, Q2SimulationResult, ReportCard, SimulatedLine, SimulationResult } from "./types";
 import { MEASURE_IDS } from "./types";
@@ -30,7 +32,7 @@ export const RECOVERY_FALL = 0.1;
 
 export interface Turn {
   /** "2194-Q1" onward. */
-  quarter: string;
+  quarter: QuarterId;
   seed: number;
   /** M1's Plan in Q1 2194; Q2's form from Q2 2194 on. */
   plan: Plan | Q2Plan;
@@ -42,9 +44,8 @@ type Measures = Record<MeasureId, number>;
 
 /** "2195-Q3" as its year and quarter. */
 export function quarterParts(quarter: string): { year: number; quarter: QuarterNumber } {
-  const match = /^(\d{4})-Q([1-4])$/.exec(quarter);
-  if (!match || Number(match[1]) < YEAR) throw new Error(`Not a playable quarter: ${quarter}`);
-  return { year: Number(match[1]), quarter: Number(match[2]) as QuarterNumber };
+  if (!isQuarterName(quarter)) throw new Error(`Not a playable quarter: ${quarter}`);
+  return { year: YEAR + Math.floor(quarterIndex(quarter) / 4), quarter: quarterNumber(quarter) as QuarterNumber };
 }
 
 const isLaunch = (t: { year: number; quarter: QuarterNumber }) => t.year === YEAR && t.quarter <= 2;
@@ -64,7 +65,7 @@ const anchors = new WeakMap<DeepReadonly<BookshopData>, Map<string, Anchored>>()
  * The quarter's anchor under its event (section 8): the mean, over EFFECT_SEEDS, of holding course with
  * the event's conditions minus without them, added to the quarter's anchor. About 40 runs, cached.
  */
-export function anchorFor(quarter: string, event: TurnEvent | null, data: DeepReadonly<BookshopData>): Anchored {
+export function anchorFor(quarter: QuarterId, event: TurnEvent | null, data: DeepReadonly<BookshopData>): Anchored {
   const t = quarterParts(quarter);
   const p = prepare(data, t.quarter, t.year);
   const conditions = conditionsOf(event, p.history);
@@ -90,7 +91,7 @@ export function anchorFor(quarter: string, event: TurnEvent | null, data: DeepRe
 }
 
 /** "bound" when the event's expected effect on holding course passes 10% of any measure's anchor; the server then falls back. */
-export function eventProblem(event: TurnEvent, quarter: string, data: DeepReadonly<BookshopData>): "bound" | null {
+export function eventProblem(event: TurnEvent, quarter: QuarterId, data: DeepReadonly<BookshopData>): "bound" | null {
   const t = quarterParts(quarter);
   const p = prepare(data, t.quarter, t.year);
   const { effect } = anchorFor(quarter, event, data);
@@ -116,6 +117,7 @@ export function goalsFor(anchor: Measures, quarterlyAverage: Measures, event: Tu
 }
 
 const pct = (share: number) => `${Math.round(share * 100)}%`;
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** The event's rule for the assumptions panel, in the server's words. */
 function eventRule(event: TurnEvent | null, c: Conditions): string | undefined {
@@ -123,10 +125,10 @@ function eventRule(event: TurnEvent | null, c: Conditions): string | undefined {
   if (c.genre) {
     const month = MONTH_NAMES[Number(c.genre.month) - 1];
     const change = c.genre.factor > 1 ? `${pct(c.genre.factor - 1)} higher` : `${pct(1 - c.genre.factor)} lower`;
-    return `${c.genre.genre} orders in ${month} are ${change} than the replay: ${counted}`;
+    return `${capital(GENRE_WORDS[c.genre.genre] ?? c.genre.genre)} orders in ${month} are ${change} than the replay: ${counted}`;
   }
   if (c.weekday) return `${String(event!.params.weekday)} orders are ${pct(1 - c.weekday.factor)} lower than the replay all quarter: ${counted}`;
-  if (c.costs.cogs) return `${c.costs.cogs.format} copies cost the store ${pct(c.costs.cogs.rate)} of their list price, instead of 60%: ${counted}`;
+  if (c.costs.cogs) return `${capital(FORMAT_WORDS[c.costs.cogs.format] ?? c.costs.cogs.format)} copies cost the store ${pct(c.costs.cogs.rate)} of their list price, instead of 60%: ${counted}`;
   return undefined;
 }
 
@@ -181,7 +183,7 @@ export function removedAt(overall: readonly number[]): number | null {
 }
 
 export interface PlayedQuarter {
-  quarter: string;
+  quarter: QuarterId;
   /** The plan's card from the quarter's outcome. */
   card: ReportCard;
 }
@@ -208,7 +210,8 @@ export function recoveryFor(played: readonly PlayedQuarter[], data: DeepReadonly
   let before: Measures;
   if (t.year === YEAR) before = prepare(data, t.quarter, t.year).lastYear;
   else {
-    const earlier = played.find((q) => q.quarter === `${t.year - 1}-Q${t.quarter}`);
+    const yearEarlier = quarterAt(quarterIndex(last.quarter) - 4);
+    const earlier = played.find((q) => q.quarter === yearEarlier);
     if (!earlier) return undefined;
     before = netOf(earlier);
   }

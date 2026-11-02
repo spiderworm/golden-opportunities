@@ -6,7 +6,8 @@ import type { MeasureId } from "./events";
 import { quarterMonths } from "./names";
 import type { AlmaRecord } from "./record";
 
-const GENRE_WORDS: Record<string, string> = {
+/** How a genre and a format are named in running text; the engine's assumptions use them too. */
+export const GENRE_WORDS: Record<string, string> = {
   Fiction: "fiction",
   Mystery: "mystery",
   Romance: "romance",
@@ -16,7 +17,7 @@ const GENRE_WORDS: Record<string, string> = {
   Nonfiction: "nonfiction",
   Memoir: "memoir",
 };
-const FORMAT_WORDS: Record<string, string> = {
+export const FORMAT_WORDS: Record<string, string> = {
   Hardcover: "hardcover",
   "Trade paperback": "trade paperback",
   Paperback: "paperback",

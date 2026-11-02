@@ -14,7 +14,7 @@ export interface TurnEvent {
   params: Readonly<Record<string, string | number>>;
   /** None while two strikes count. For a recovery goal (`drop` set), `percent` is its cap, 20. */
   stretch: { measure: MeasureId; percent: number } | null;
-  /** A recovery goal's fall, in whole percent: the goal is the anchor times (1 + drop), within the cap. */
+  /** A recovery goal's fall, in whole percent: the goal is the anchor times (1 + drop / 100), within the cap. */
   drop?: number;
 }
 
