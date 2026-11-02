@@ -146,10 +146,12 @@ function draw(type: EventType, context: QuarterContext, next: () => number, repe
  * works against, after a surge), only the rules about repeating last quarter give way, never the limits,
  * "no piling on" or the recovery goal.
  */
-export function drawCandidates(seed: number, context: QuarterContext): [Candidate, Candidate, Candidate] {
-  const next = random(seed, context.quarter, "candidates");
+export function drawCandidates(seed: number, context: QuarterContext, accept: (candidate: Candidate) => boolean = () => true): [Candidate, Candidate, Candidate] {
   const recent = context.previous.slice(-RECENT).map((r) => r.type);
-  for (const repeats of [true, false]) {
+  // `accept` is a check the server makes that needs the data (Sim's eventProblem, the 10% bound): drawn
+  // candidates must pass it. Only if no three can is it set aside, so a quarter always has its event.
+  for (const [repeats, checked] of [[true, true], [false, true], [true, false], [false, false]] as const) {
+    const next = random(seed, context.quarter, "candidates");
     const allowed = EVENT_TYPES.filter((t) => typeAllowed(t, context, repeats));
     if (!allowed.length) continue;
     const weight = (t: EventType) => 1 / (1 + recent.filter((id) => id === t.id).length);
@@ -165,7 +167,7 @@ export function drawCandidates(seed: number, context: QuarterContext): [Candidat
       const candidate = draw(type, context, next, repeats, chosen.filter((c) => c.type === type.id));
       // Really different offers while the tries last; at the end, any distinct one (two strikes can leave only
       // fares, and three fares can't all be $50 apart between $100 and $200 unless they're exactly that).
-      if (candidate && chosen.every((c) => (tries < 150 ? apart(c, candidate) : JSON.stringify(c) !== JSON.stringify(candidate)))) chosen.push(candidate);
+      if (candidate && (!checked || accept(candidate)) && chosen.every((c) => (tries < 150 ? apart(c, candidate) : JSON.stringify(c) !== JSON.stringify(candidate)))) chosen.push(candidate);
     }
     if (chosen.length === 3) return chosen as [Candidate, Candidate, Candidate];
   }

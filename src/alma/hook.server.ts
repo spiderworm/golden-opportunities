@@ -11,8 +11,10 @@ import { isQuarterId } from "~/game/quarters";
 import { SaveError } from "~/game/store.server";
 import type { GameSave, PlayedQuarter } from "~/game/types";
 import { trackServer } from "~/platform/analytics/analytics.server";
-import type { QuarterContext } from "./candidates";
+import type { Candidate, QuarterContext } from "./candidates";
 import { almaModel, chooseEvent, type AlmaModel } from "./director.server";
+import type { DeepReadonly, BookshopData } from "~/bookshop/types";
+import { eventProblem, recoveryFor, strikes, STRIKE_BELOW } from "~/simulation/turn";
 import type { MeasureId } from "./events";
 import type { QuarterSummary } from "./prompt";
 import { quarterAfter } from "./quarters";
@@ -20,17 +22,13 @@ import { quarterIndex, type AlmaRecord } from "./record";
 
 /** Alma's first quarter: Q1 and Q2 2194 stay as built (section 9). */
 export const FIRST_ALMA_QUARTER = "2194-Q3";
-/**
- * A quarter that scored under this is a strike (section 7). A strike counts for the quarter it was earned in and
- * the three after it, so while the next quarter is prepared, only the last three played still count (Audit).
- */
-const STRIKE_BELOW = 70;
-const STRIKE_QUARTERS = 3;
 
 /** What the hook needs, injectable so tests never reach the real model or the real saves. */
 export interface AlmaDeps {
   saves: Pick<typeof gameSaves, "read" | "update">;
   model: AlmaModel | null;
+  /** The bookshop data: the engine's strikes, recovery goals and bound read it. */
+  data: DeepReadonly<BookshopData>;
   titles: readonly string[];
   track: (name: string, props: Record<string, string | number | boolean>) => void;
   /** Whether the game can play a quarter yet: Alma prepares only those, so no model call is spent on Q3 before it exists. */
@@ -40,6 +38,7 @@ export interface AlmaDeps {
 const defaultDeps = (): AlmaDeps => ({
   saves: gameSaves,
   model: almaModel(),
+  data: loadBookshop(),
   titles: [...new Set(loadBookshop().books.map((b) => b.title))],
   track: (name, props) => {
     try {
@@ -70,19 +69,22 @@ export function summarize(quarter: PlayedQuarter): QuarterSummary {
 }
 
 /**
- * The context for the quarter after the last one played: Alma's earlier records, and the strikes that will
- * count in it (those of the last three quarters played). No recovery goal yet: its baseline is the player's own
- * same quarter a year earlier (2193's replay in 2194), not the report card's `lastYear`, which is the anchor
- * (Frank's review). Sim's `recoveryFor` in src/simulation/turn.ts will give it, and `strikesCounting` the
- * strikes, as one definition for Alma, the removal check and the memo; this calls them once they land.
+ * The context for the quarter after the last one played: Alma's earlier records, the strikes that will count in
+ * it, and its recovery goal, if any. The last two are the engine's (src/simulation/turn.ts), one definition for
+ * Alma, the removal check and the memo: strikes from the last three quarters played, and the recovery goal
+ * from the plan's own fall, net of every expected effect (section 2; Frank's and Sim's reviews of #195).
  */
-export function contextFor(save: GameSave): QuarterContext | null {
+export function contextFor(save: GameSave, data: DeepReadonly<BookshopData>): QuarterContext | null {
   const last = save.played.at(-1);
   if (!last) return null;
-  const quarter = quarterAfter(last.period);
-  const strikes = save.played.slice(-STRIKE_QUARTERS).filter((q) => q.outcome.reportCard.plan.overall.score < STRIKE_BELOW).length;
-  return { quarter, previous: save.alma ?? [], strikes };
+  const counting = strikes(save.played.map((q) => q.outcome.reportCard.plan.overall.score), "next");
+  const recovery = recoveryFor(save.played.map((q) => ({ quarter: q.period, card: q.outcome.reportCard.plan })), data);
+  return { quarter: quarterAfter(last.period), previous: save.alma ?? [], strikes: counting, ...(recovery ? { recovery } : {}) };
 }
+
+/** The engine's 10% bound on an event's expected effect: a candidate it would refuse is never drawn (Sim). */
+const withinBound = (context: QuarterContext, data: DeepReadonly<BookshopData>) => (candidate: Candidate) =>
+  !eventProblem({ ...candidate, ...(context.recovery && candidate.stretch ? { drop: context.recovery.drop } : {}) }, context.quarter, data);
 
 type Written = { record: AlmaRecord; kept: boolean } | null;
 
@@ -124,7 +126,7 @@ const key = (saveId: string, quarter: string) => `${saveId}:${quarter}`;
 
 function record(saveId: string, context: QuarterContext, history: QuarterSummary[], seed: number, deps: AlmaDeps, model: AlmaModel | null): Promise<AlmaRecord | null> {
   const started = performance.now();
-  return chooseEvent(context, history, { seed, model, titles: deps.titles }).then((chosen) => {
+  return chooseEvent(context, history, { seed, model, titles: deps.titles, accept: withinBound(context, deps.data) }).then((chosen) => {
     const written = write(saveId, chosen, deps);
     if (!written) return null;
     if (written.kept) {
@@ -152,7 +154,7 @@ export function onQuarterCommitted({ saveId, quarter, seed }: { saveId: string; 
     const next = quarterAfter(quarter);
     if (quarterIndex(next) < quarterIndex(FIRST_ALMA_QUARTER) || !deps.playable(next)) return;
     const save = deps.saves.read(saveId);
-    const context = contextFor(save);
+    const context = contextFor(save, deps.data);
     if (!context || context.quarter !== next || save.alma?.some((r) => r.quarter === next)) return;
     const turn = record(saveId, context, save.played.map(summarize), seed, deps, deps.model)
       .catch(() => {
@@ -173,7 +175,7 @@ export function onQuarterCommitted({ saveId, quarter, seed }: { saveId: string; 
  */
 export async function almaRecordFor(saveId: string, budgetMs: number, deps: AlmaDeps = defaultDeps()): Promise<AlmaRecord | null> {
   const save = deps.saves.read(saveId);
-  const context = contextFor(save);
+  const context = contextFor(save, deps.data);
   if (!context || quarterIndex(context.quarter) < quarterIndex(FIRST_ALMA_QUARTER) || !deps.playable(context.quarter)) return null;
   const saved = save.alma?.find((r) => r.quarter === context.quarter);
   if (saved) return saved;
