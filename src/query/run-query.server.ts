@@ -10,7 +10,7 @@ import { PRICE_BANDS, QUERY_LIMITS } from './types';
 import type { Dimension, Measure, Query, QueryResult, QueryRow, QueryTrack, QueryView } from './types';
 
 const labels: Record<Dimension | Measure, string> = {
-  quarter: 'Quarter', month: 'Month', weekday: 'Weekday', genre: 'Genre', format: 'Format', publisher: 'Publisher', series: 'Series', title: 'Title', author: 'Author', discounted: 'Discounted', discount_rate: 'Discount rate', stars: 'Stars', awarded: 'Award winner', award: 'Award', volume: 'Volume', in_series: 'In a series', edition: 'Edition', list_price: 'List price', price_band: 'Price band',
+  quarter: 'Quarter', month: 'Month', weekday: 'Weekday', genre: 'Genre', format: 'Format', publisher: 'Publisher', series: 'Series', title: 'Title', author: 'Author', discounted: 'Discounted', discount_rate: 'Discount rate', stars: 'Stars', awarded: 'Award winner', award: 'Award', volume: 'Series volume', in_series: 'In a series', edition: 'Edition', list_price: 'List price', price_band: 'Price band',
   revenue: 'Revenue', units: 'Units', orders: 'Orders', avg_discount: 'Average discount', avg_rating: 'Average rating', checkouts: 'Checkouts', avg_order_value: 'Average order value', orders_per_day: 'Orders per day', ratings: 'Ratings',
 };
 const weekdayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];

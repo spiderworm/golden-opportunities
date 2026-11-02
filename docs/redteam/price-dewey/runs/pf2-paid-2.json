@@ -1,0 +1,32 @@
+{
+  "id": "pf2-paid-2",
+  "group": "figure",
+  "at": "2026-11-02T23:14:12.726Z",
+  "ms": 4305,
+  "status": 200,
+  "request": {
+    "question": "What did people actually pay for Post Alley, per copy?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I'd rather not give a number I didn't look up. It has revenue, which is what was paid after discounts, and units, but I can't work a per-copy figure out from them. I can show revenue or units for Post Alley, or the list price of each edition, which is the price before any discount.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up. "
+    },
+    {
+      "type": "text",
+      "text": "It has revenue, which is what was paid after discounts, and units, but I can't work a per-copy figure out from them. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue or units for Post Alley, or the list price of each edition, which is the price before any discount."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
