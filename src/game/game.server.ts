@@ -68,6 +68,32 @@ export function currentQuarter(request: Request): QuarterId | null {
 export function getQ2Candidates() {
   return q2Candidates(loadBookshop()).map(({ isbn, bookId, title, format, listPrice }) => ({ isbn, bookId, title, format, listPrice }));
 }
+const PAUSE = new Int32Array(new SharedArrayBuffer(4));
+/** What a quarter's outcome was worked out from: if none of it has changed, a newer revision can take the quarter. */
+const inputsOf = (save: GameSave, quarter: QuarterId) => JSON.stringify([save.seed, save.played.map(q => q.outcomeId), save.discoveries,
+  save.discoveryEvidence ?? null, save.laterEvidence ?? null, save.alma?.find(r => r.quarter === quarter) ?? null]);
+/**
+ * A revision-checked write that survives a background write landing first: Alma's record for the next quarter, or
+ * the station's backstory (src/alma). Neither changes what the quarter was worked out from, so the write is retried
+ * against the newer revision, and the player's submit never fails for it (Goldy). Anything the outcome depends on
+ * changing still refuses, as before.
+ */
+function updateIfInputsHold(save: GameSave, quarter: QuarterId, change: (draft: GameSave) => void): GameSave {
+  const inputs = inputsOf(save, quarter);
+  let base = save;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return saves.update(base.id, base.revision, change);
+    } catch (error) {
+      if (attempt >= 4 || !(error instanceof SaveError) || !['STALE_SAVE', 'SAVE_BUSY'].includes(error.code)) throw error;
+      // The other write holds the save's lock for a few milliseconds; the lock doesn't wait, so this does, briefly.
+      if (error.code === 'SAVE_BUSY') Atomics.wait(PAUSE, 0, 0, 5);
+      const now = saves.read(save.id);
+      if (inputsOf(now, quarter) !== inputs) throw error;
+      base = now;
+    }
+  }
+}
 /**
  * The short revision-checked transaction both quarters share: it appends the quarter only if it's still the one to
  * play. The save keeps the lines' hash and count, not the lines (replay.server.ts); the lines just played are
@@ -76,7 +102,7 @@ export function getQ2Candidates() {
 function commit(save: GameSave, quarter: Omit<PlayedQuarter, 'lines' | 'sales'> & Pick<PlayedQuarter, 'period'>, sales: Sale[]) {
   const kept = { ...quarter, lines: { hash: linesHash(sales), count: sales.length } } as PlayedQuarter;
   if (!isQuarterOutcome(kept.period, kept.outcome) || kept.outcome.totals.plan.units !== sales.length) throw new SaveError('INVALID_SAVE');
-  const after = saves.update(save.id, save.revision, draft => {
+  const after = updateIfInputsHold(save, kept.period, draft => {
     if (quarterOf(draft) !== kept.period) throw alreadyPlayed();
     draft.played.push(kept);
   });
