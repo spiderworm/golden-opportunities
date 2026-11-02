@@ -116,8 +116,11 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   const chartPin = pinSpecFor(state);
 
   /** The next question, with the bar's filters kept: a filter that gets a value stays on the bar when it's cleared. */
-  function update(next: InvestigateState, nextShown: readonly FilterId[] = shownFilters(searchParams, next.filters).concat(shown)) {
-    setSearchParams(withShown(toSearchParams(next), nextShown), { preventScrollReset: true });
+  // Not a default parameter: React Router's route splitting (on since the clientLoader, #191) can't follow a
+  // default that refers to an earlier parameter, and the production build fails ("Expected a Path, but got null").
+  function update(next: InvestigateState, nextShown?: readonly FilterId[]) {
+    const bar = nextShown ?? shownFilters(searchParams, next.filters).concat(shown);
+    setSearchParams(withShown(toSearchParams(next), bar), { preventScrollReset: true });
   }
 
   return (
