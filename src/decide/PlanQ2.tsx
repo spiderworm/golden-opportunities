@@ -175,7 +175,7 @@ export function PlanQ2({ quarter, candidates, brief = null }: { quarter: Quarter
               autoFocus
               onClick={() => {
                 setStep("playing");
-                fetcher.submit({ picks: picks.map((p) => p ?? "").join(","), levers: lever ?? "" }, { method: "post" });
+                fetcher.submit({ picks: picks.map((p) => p ?? "").join(","), levers: lever ?? "", quarter }, { method: "post" });
               }}
             >
               {COPY.confirmSubmit}

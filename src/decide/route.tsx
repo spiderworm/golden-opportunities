@@ -66,7 +66,7 @@ export async function action({ request }: Route.ActionArgs) {
     if (error instanceof PlanRefused) return data({ ok: false as const, played: false, problem: "shape" as const }, { status: error.status });
     throw error;
   }
-  return sent.form === "moves" ? actionQ1(request, sent.plan) : actionQ2(request, sent.plan);
+  return sent.form === "moves" ? actionQ1(request, sent.plan) : actionQ2(request, sent.plan, sent.quarter);
 }
 
 function actionQ1(request: Request, plan: Plan) {
@@ -100,14 +100,16 @@ function laterPlayed(request: Request, asked: QuarterId | null): boolean {
 
 type Q2Problem = "shape" | "unknown-edition" | "same-title";
 
-async function actionQ2(request: Request, plan: Q2Plan) {
-  // The quarter this plan is for: the one open now. Read before submitting, for the answer and analytics.
-  let asked: QuarterId | null = null;
+async function actionQ2(request: Request, plan: Q2Plan, asked: QuarterId) {
+  // A plan is filed only for the quarter its form was written for, and only while that quarter is open: a form
+  // left open in another tab, sent once the save has moved on, goes to the results (Frank and Audit, #212).
+  let open: QuarterId | null | undefined;
   try {
-    asked = currentQuarter(request);
+    open = currentQuarter(request);
   } catch {
     // Unreadable save: the submit below refuses it with a Response.
   }
+  if (open !== undefined && open !== asked) return data({ ok: false as const, played: laterPlayed(request, asked) }, { status: 409 });
   try {
     submitQ2Plan(request, plan);
   } catch (error) {
@@ -121,7 +123,7 @@ async function actionQ2(request: Request, plan: Q2Plan) {
     throw error;
   }
   const picks = plan.picks.filter(Boolean).length;
-  trackServer("plan_submitted", { quarter: asked ?? "unknown", levers: planLabel(plan.levers), moves: plan.levers.length, picks });
+  trackServer("plan_submitted", { quarter: asked, levers: planLabel(plan.levers), moves: plan.levers.length, picks });
   return { ok: true as const };
 }
 
