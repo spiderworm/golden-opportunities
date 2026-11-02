@@ -206,6 +206,22 @@ describe("calling tools against the app", () => {
     expect(JSON.parse((await callTool("query_data", { measure: "revenue", by: ["quarter"], limit: 1 }, env)).content[0].text).complete).toBe(false);
   });
 
+  it("draws a chart by running its query as query_data does, refs and all; never a table, a single total or a title of the model's", async () => {
+    resetRefsForTests();
+    const result = await callTool("show_chart", { kind: "line", query: { measure: "revenue", by: ["quarter"] } }, env);
+    expect(result.isError).toBeUndefined();
+    expect(JSON.parse(result.content[0].text)).toMatchObject({ ref: "a", rows: [{ ref: "a1", quarter: "2193-Q1", revenue: 10 }], source: "Sales, 2193-Q1 to Q4", complete: true });
+    expect(seen.at(-1)).toEqual({ auth: "Bearer tok", body: { measure: "revenue", by: ["quarter"] } });
+    const before = seen.length;
+    for (const args of [
+      { kind: "table", query: { measure: "revenue", by: ["quarter"] } },
+      { kind: "bar", query: { measure: "revenue", by: [] } },
+      { kind: "bar", title: "Profit 63843", query: { measure: "revenue", by: ["genre"] } },
+      { kind: "bar", query: { measure: "profit", by: ["genre"] } },
+    ]) expect((await callTool("show_chart", args, env)).isError).toBe(true);
+    expect(seen.length).toBe(before);
+  });
+
   it("never reaches the app with a bad query", async () => {
     const before = seen.length;
     const result = await callTool("query_data", { measure: "revenue", by: [], view: { periods: ["2194-Q1"] } }, env);

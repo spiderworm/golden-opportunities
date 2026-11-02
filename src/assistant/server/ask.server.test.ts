@@ -315,6 +315,33 @@ describe("answering", () => {
     expect((await answer(fakeAssistant([failed, { type: "text", text: "Gross profit was 63843. It was {{a.total}}." }]))).text.trim()).toBe(WITHHELD);
   });
 
+  // David, 2 Nov 2026: Dewey draws charts in his chat (show_chart). A chart's figures are a lookup's like any
+  // table's: cited by ref, and the model's own withheld. Its title is built from its query, never the model's.
+  const chart: ProviderEvent = {
+    type: "tool",
+    name: "show_chart",
+    input: { kind: "line", query: { measure: "revenue", by: ["quarter"] } },
+    output: JSON.stringify({ ref: "a", columns: [{ key: "quarter", label: "Quarter", type: "string", nullable: false }, { key: "revenue", label: "Revenue", type: "number", nullable: false }], rows: [{ ref: "a1", quarter: "2193-Q3", revenue: 7 }, { ref: "a2", quarter: "2193-Q4", revenue: 5 }], total: 12, source: "Sales, 2193", complete: true }),
+    isError: false,
+  };
+
+  it("draws a chart with its lookup's rows and source, titled from its query; its figures cite like a table's", async () => {
+    const r = await answer(fakeAssistant([chart, { type: "text", text: "Revenue in {{a1.quarter}} was {{a1.revenue}}. It peaked at $9 in the autumn." }]));
+    const drawn = r.out.find((e) => e.type === "chart") as Extract<WireEvent, { type: "chart" }>;
+    expect(drawn).toMatchObject({ chart: { title: "Revenue by quarter", kind: "line", query: { measure: "revenue", by: ["quarter"] } }, total: 12, source: "Sales, 2193" });
+    expect(drawn.rows.map((row) => row.revenue)).toEqual([7, 5]);
+    expect(drawn.pin).toEqual(drawn.chart);
+    expect(r.text.trim()).toBe(`Revenue in 2193-Q3 was $7.00. ${WITHHELD}`);
+    expect(r.stats).toMatchObject({ charts: 1, lookups: 0, figures: 2, withheld: 1 });
+  });
+
+  it("shows no chart the tool server wouldn't have drawn", () => {
+    const output = (chart as { output: string }).output;
+    for (const input of [{ kind: "table", query: { measure: "revenue", by: ["quarter"] } }, { kind: "bar", query: { measure: "revenue", by: [] } }, { kind: "bar", title: "Profit", query: { measure: "revenue", by: ["quarter"] } }]) {
+      expect(toWire({ type: "tool", name: "show_chart", input, output, isError: false })).toBeNull();
+    }
+  });
+
   it("titles every pin from its query, whatever title the tool output carries (Probe X1)", async () => {
     const pin = (title: string): ProviderEvent => ({ type: "tool", name: "pin_chart", input: {}, output: JSON.stringify({ pinned: true, chart: { title, kind: "bar", query: { measure: "avg_order_value", by: ["quarter"] } }, rows: 4, source: "S" }), isError: false });
     const out = await events(await ask(post({ question: "pin it", pins: true }), () => fakeAssistant([pin("Profit 63843"), pin("Seven dollars"), pin("Revenue drop"), pin("Order value by quarter")]), () => {}));
