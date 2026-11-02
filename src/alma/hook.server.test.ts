@@ -14,7 +14,7 @@ import type { GameSave, PlayedQuarter } from "~/game/types";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { AlmaModel } from "./director.server";
 import { almaRecordFor, contextFor, forgetPending, onQuarterCommitted, pendingTurn, type AlmaDeps } from "./hook.server";
-import { quarterAfter } from "./quarters";
+import { nextQuarter, type QuarterId } from "~/simulation/quarters";
 import { loadBookshop } from "~/bookshop/loader.server";
 import { anchorFor, recoveryFor } from "~/simulation/turn";
 import { isAlmaRecord, type AlmaRecord } from "./record";
@@ -73,8 +73,8 @@ describe("the save's check", () => {
 // A save with played quarters, for the fake store: only what Alma reads of each.
 const DATA = loadBookshop();
 /** A card with no fall: every measure's result is its anchor, as the report card's lastYear has it. */
-const steady = (period: string) => Object.entries(anchorFor(period, null, DATA).anchor).map(([id, anchor]) => ({ id, result: anchor, lastYear: anchor, score: 80 }));
-function played(period: string, overall: number, measures: { id: string; result: number; lastYear: number; score: number }[] = steady(period)): PlayedQuarter {
+const steady = (period: QuarterId) => Object.entries(anchorFor(period, null, DATA).anchor).map(([id, anchor]) => ({ id, result: anchor, lastYear: anchor, score: 80 }));
+function played(period: QuarterId, overall: number, measures: { id: string; result: number; lastYear: number; score: number }[] = steady(period)): PlayedQuarter {
   return { period, sales: [], outcomeId: "x", outcome: { plan: { levers: ["events"] }, reportCard: { plan: { measures, overall: { score: overall, grade: overall < 70 ? "D" : "B" } } } } } as unknown as PlayedQuarter;
 }
 function fakeStore(save: GameSave, { staleOnce = false } = {}) {
@@ -164,7 +164,7 @@ describe("Alma's turn and the save", () => {
 
 describe("the quarter's context", () => {
   it("counts the strikes that still count next quarter: those of the last three played (section 7, Audit)", () => {
-    const quarters = ["2194-Q1", "2194-Q2", "2194-Q3", "2194-Q4", "2195-Q1"];
+    const quarters: QuarterId[] = ["2194-Q1", "2194-Q2", "2194-Q3", "2194-Q4", "2195-Q1"];
     const save = (scores: number[]) => base({ played: quarters.map((q, i) => played(q, scores[i]!)) });
     expect(contextFor(save([60, 80, 65, 90, 68]), DATA)).toMatchObject({ quarter: "2195-Q2", strikes: 2 });
     // A strike at N-3 (2194-Q2) counted through 2195-Q1, its fourth quarter, and no longer counts in 2195-Q2.
@@ -183,7 +183,7 @@ describe("the quarter's context", () => {
   });
 
   it("names quarters past the built ones", () => {
-    expect(quarterAfter("2194-Q2")).toBe("2194-Q3");
-    expect(quarterAfter("2194-Q4")).toBe("2195-Q1");
+    expect(nextQuarter("2194-Q2")).toBe("2194-Q3");
+    expect(nextQuarter("2194-Q4")).toBe("2195-Q1");
   });
 });

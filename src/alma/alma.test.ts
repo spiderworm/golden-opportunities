@@ -5,6 +5,7 @@ import { apart, candidateProblem, drawCandidates, type Candidate, type QuarterCo
 import { almaModel, chooseEvent, type AlmaModel } from "./director.server";
 import { EVENT_TYPES, FORMATS, GENRES, MEASURE_IDS, STRETCH_PERCENT, WEEKDAYS, type MeasureId } from "./events";
 import { almaInput, ALMA_RULES, type QuarterSummary } from "./prompt";
+import { quarterAt, type QuarterId } from "~/simulation/quarters";
 import { FAILURES, isAlmaLog, isAlmaRecord, type AlmaRecord } from "./record";
 import { scriptedFlavor } from "./scripted";
 import { factSentence, stretchSentence } from "./sentences";
@@ -68,7 +69,7 @@ describe("the event types", () => {
 });
 
 describe("the server's candidates", () => {
-  const stub = (type: string, measure: MeasureId, quarter: string): AlmaRecord => record({ quarter, type, stretch: { measure, percent: 15 } });
+  const stub = (type: string, measure: MeasureId, quarter: QuarterId): AlmaRecord => record({ quarter, type, stretch: { measure, percent: 15 } });
 
   it("are the same for the same seed and quarter, and vary across them", () => {
     expect(drawCandidates(7, context)).toEqual(drawCandidates(7, context));
@@ -123,7 +124,7 @@ describe("the server's candidates", () => {
   });
 
   it("are weighted away from the last four quarters' types", () => {
-    const recent = ["genre_surge", "genre_slump", "genre_surge", "quiet_days"].map((t, i) => stub(t, "happiness", `2194-Q${i + 1}`));
+    const recent = ["genre_surge", "genre_slump", "genre_surge", "quiet_days"].map((t, i) => stub(t, "happiness", quarterAt(i)));
     const counts = new Map<string, number>();
     for (let seed = 0; seed < 300; seed++) for (const c of drawCandidates(seed, { quarter: "2195-Q1", previous: recent, strikes: 0 })) counts.set(c.type, (counts.get(c.type) ?? 0) + 1);
     expect(counts.get("quiet_days")).toBeUndefined(); // last quarter's type
