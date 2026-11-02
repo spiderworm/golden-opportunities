@@ -47,6 +47,14 @@ describe('resetting the game', () => {
     expect(trackServer).toHaveBeenCalledWith('game_reset', { quarter: reached });
   });
 
+  it('starts over from a save that is missing or unreadable, recording the quarter as unknown', () => {
+    for (const cookie of [undefined, 'A'.repeat(43)]) {
+      const id = newId(resetGame(request(cookie)));
+      expect(saves.read(id)).toMatchObject({ played: [], revision: 0 });
+      expect(trackServer).toHaveBeenLastCalledWith('game_reset', { quarter: 'unknown' });
+    }
+  });
+
   it('refuses anything but a same-origin local POST, and records nothing then', async () => {
     const save = saves.create();
     await refusal(() => resetGame(request(save.id, 'GET')), 405);
