@@ -129,17 +129,18 @@ describe("last year, measured with the same recipe (scoring.md, Audit's full-pre
       expect(anchor[m.id]).toBe(lastYear[m.id] + effect[m.id]);
       expect(m.lastYear).toBe(anchor[m.id]);
     }
-    // m1-new-volume.md, "Scoring": about +$2.9k, +317 readers, -0.45 happiness, +308 culture.
+    // m1-new-volume.md, "Scoring": about +$2.9k, +256 readers, -0.40 happiness, +308 culture
+    // (about a fifth of the copies join an existing order, so they add no reader).
     expect(effect.profit).toBeCloseTo(2912.833, 3);
-    expect(effect.readers).toBeCloseTo(316.75, 9);
-    expect(effect.happiness).toBeCloseTo(-0.451051, 6);
+    expect(effect.readers).toBeCloseTo(255.55, 9);
+    expect(effect.happiness).toBeCloseTo(-0.402438, 6);
     expect(effect.culture).toBeCloseTo(308.299399, 6);
   });
 
   it("sets the M1 goals from the anchor", () => {
     expect(goal.profit).toBeCloseTo(42582.1376, 4);
-    expect(goal.readers).toBeCloseTo(7498.8375, 9);
-    expect(goal.happiness).toBeCloseTo(67.8505, 4);
+    expect(goal.readers).toBeCloseTo(7434.5775, 9);
+    expect(goal.happiness).toBeCloseTo(67.9016, 4);
     expect(goal.culture).toBeCloseTo(18559.8142, 4);
   });
 });
@@ -209,7 +210,7 @@ describe("the levers against holding course (m1-slice section 3)", SWEEP, () => 
 });
 
 describe("the new volume (m1-new-volume.md)", SWEEP, () => {
-  it("sells about 313 copies by March 31, from February 4, at full price, one copy an order", () => {
+  it("sells about 313 copies by March 31, from February 4, at full price, about a fifth of them with other books", () => {
     const copies = Array.from({ length: 20 }, (_, i) => outcomeOf(HOLD, i + 1).facts.release!.copies);
     expect(Math.min(...copies)).toBeGreaterThanOrEqual(305);
     expect(Math.max(...copies)).toBeLessThanOrEqual(325);
@@ -217,13 +218,21 @@ describe("the new volume (m1-new-volume.md)", SWEEP, () => {
     const lines = simulateQuarter(HOLD, 1, data).lines.filter((l) => l.isbn === RELEASE.edition.isbn);
     expect(lines).toHaveLength(outcomeOf(HOLD, 1).facts.release!.copies);
     expect(lines.every((l) => l.date >= RELEASE_DAY && l.discount === 0 && l.book.id === RELEASE.book.id && l.title === RELEASE.book.title)).toBe(true);
-    expect(new Set(lines.map((l) => l.orderId)).size).toBe(lines.length);
+    // Volume 2 shared an order with another book for 21% of its 2193 copies (model.test.ts).
+    const sizes = new Map<string, number>();
+    for (const l of simulateQuarter(HOLD, 1, data).lines) sizes.set(l.orderId, (sizes.get(l.orderId) ?? 0) + 1);
+    const shared = lines.filter((l) => sizes.get(l.orderId)! > 1).length / lines.length;
+    expect(shared).toBeGreaterThan(0.12);
+    expect(shared).toBeLessThan(0.3);
   });
 
   it("launches at three times its rate, then twice, then settles", () => {
     const base = baseline(history, 2);
-    const release = withRelease(history, base, 2).slice(base.length);
-    expect(release.every((o) => o.kind === "release" && o.items.length === 1)).toBe(true);
+    const orders = withRelease(history, base, 2);
+    // A copy arrives alone, or joins a baseline order.
+    expect(orders.slice(base.length).every((o) => o.kind === "release" && o.items.length === 1)).toBe(true);
+    const release = orders.flatMap((o) => o.items.filter((i) => i.isbn === RELEASE.edition.isbn).map(() => o));
+    expect(release.length).toBeGreaterThan(orders.length - base.length);
     // Copies per baseline order: a day's copies follow its share of the quarter's orders.
     const rate = (from: string, to: string) =>
       release.filter((o) => o.day >= from && o.day < to).length / base.filter((o) => o.day >= from && o.day < to).length;
@@ -260,20 +269,20 @@ describe("the overall score, against Plot's calibration on seeds 1 to 20 (scorin
     expect(o.filter((x) => x.binding.includes("profit")).length).toBeGreaterThanOrEqual(18);
   });
 
-  it("the re-pick: 71 to 76, median 72", () => {
-    within(scores(plan("repick")), 71, 76);
-    expect(Math.abs(median(scores(plan("repick"))) - 72)).toBeLessThanOrEqual(1);
+  it("the re-pick: 70 to 76, median 71", () => {
+    within(scores(plan("repick")), 70, 76);
+    expect(Math.abs(median(scores(plan("repick"))) - 71)).toBeLessThanOrEqual(1);
   });
 
-  it("author nights: 69 to 90, median 72", () => {
-    within(scores(plan("events")), 69, 90);
-    expect(Math.abs(median(scores(plan("events"))) - 72)).toBeLessThanOrEqual(1);
+  it("author nights: 70 to 90, median 73", () => {
+    within(scores(plan("events")), 70, 90);
+    expect(Math.abs(median(scores(plan("events"))) - 73)).toBeLessThanOrEqual(1);
   });
 
-  it("the re-pick and author nights: 85 to 91, median 87, bound by Happiness", () => {
+  it("the re-pick and author nights: 85 to 91, median 86.5, bound by Happiness", () => {
     const o = overall(plan("repick", "events"));
     within(o.map((x) => x.score), 85, 91);
-    expect(median(o.map((x) => x.score))).toBe(87);
+    expect(median(o.map((x) => x.score))).toBe(86.5);
     expect(o.every((x) => x.binding.includes("happiness"))).toBe(true);
   });
 

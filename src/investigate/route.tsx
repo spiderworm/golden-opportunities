@@ -1,8 +1,10 @@
-import { Link, useLocation, useNavigation, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigation, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
 
 import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
 import type { ShellHandle } from "~/shell/Shell";
 import { track } from "~/platform/analytics/analytics.client";
+import { queryCache } from "~/platform/query-cache.client";
+import { dataVersion } from "~/query/data-version.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { Route } from "./+types/route";
 import { FilterBar } from "./FilterBar";
@@ -33,6 +35,7 @@ import { PinnedCharts } from "./pins/PinnedCharts";
 import type { PinSpec } from "./pins/spec";
 import { usePins } from "./pins/usePins";
 import { TitleView } from "./TitleView";
+import { cachedView } from "./view-cache.client";
 import styles from "./Investigate.module.css";
 
 export const handle: ShellHandle = { title: ledgersTitle };
@@ -49,11 +52,14 @@ export function loader({ request }: Route.LoaderArgs) {
   const observed: ObservedQuery[] = [];
   const investigation = investigate(state, runQuery, session.queryView, (query, result) => observed.push({ query, result }));
   // The observer includes only panels whose query differs from that panel's default.
+  let evidence: "recorded" | "deferred" = "recorded";
   try {
     recordDiscoveries(session.save, session.queryView, observed);
   } catch (error) {
     if (!(error instanceof QueryError) || error.code !== 'RATE_LIMITED') throw error;
-    // Evidence is best effort under contention; the loaded ledgers remain usable.
+    // Evidence is best effort under contention; the loaded ledgers remain usable, but the browser mustn't keep
+    // this view, so showing it again asks (and records) again.
+    evidence = "deferred";
     try { trackServer('discovery_record_deferred', { code: 'SAVE_BUSY' }); } catch { /* Rendering is independent of telemetry. */ }
   }
   trackServer("investigate_loaded", {
@@ -62,7 +68,25 @@ export function loader({ request }: Route.LoaderArgs) {
     by: state.by,
     filters: Object.keys(state.filters).length,
   });
-  return { state, ...investigation, planned: currentQuarter(session.save) === null };
+  return { state, ...investigation, planned: currentQuarter(session.save) === null, dataVersion: dataVersion(session.save), evidence };
+}
+
+/**
+ * A view already shown under this data version comes from the browser's cache, without asking the server again
+ * (view-cache.client.ts). Also on hydration, so the first view is kept too.
+ */
+export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
+  return cachedView(queryCache, request.url, serverLoader);
+}
+clientLoader.hydrate = true as const;
+
+/**
+ * The memo's "seen" mark is the one action Investigate's page can send (the shell's fetcher), and it changes no
+ * data: no need to look again. Anything else, a navigation or another action, revalidates as usual.
+ */
+export function shouldRevalidate({ formAction, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
+  if (formAction === "/alert/seen") return false;
+  return defaultShouldRevalidate;
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {
