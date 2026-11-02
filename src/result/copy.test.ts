@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { outcomeOption } from "./outcome-chart";
 import type { MeasureId, MeasureScore, ReportCard } from "~/simulation/types";
+import { EVENT_TYPES } from "~/alma/events";
 import {
+  continueTo,
+  eventTitle,
+  laterSeasonNote,
   q2SeasonNote,
+  QUARTER_COPY,
+  quarterCopy,
   administratorLine,
   bossLine,
   certificateText,
@@ -157,5 +163,35 @@ describe("the outcome chart after Q2", () => {
     const tip = option.tooltip.formatter([{ dataIndex: 1, seriesName: "Q1 2194 (for reference)", value: 2, color: "#000" }]);
     expect(tip).toContain("Feb 2194");
     expect(tip).toContain("May 2194");
+  });
+});
+
+describe("the result's words for any quarter (endless-copy.md sections 1 and 4)", () => {
+  it("keep Q1's and Q2's exactly, and build later quarters' from the quarter", () => {
+    expect(quarterCopy("2194-Q1", "Q4 2193")).toBe(QUARTER_COPY["2194-Q1"]);
+    expect(quarterCopy("2194-Q2", "Q1 2194")).toBe(QUARTER_COPY["2194-Q2"]);
+    expect(quarterCopy("2195-Q1", "Q4 2194")).toMatchObject({ title: "Q1 2195: the results", reference: "Q4 2194 (for reference)", lastYear: "Q1 2193, adjusted" });
+    expect(continueTo("2194-Q2")).toBe("Continue to Q2");
+    expect(continueTo("2194-Q4")).toBe("Continue to Q4 2194");
+  });
+
+  it("title every event Alma can choose, with its genre and format words opening in a capital", () => {
+    for (const type of EVENT_TYPES) expect(eventTitle("2194-Q3", { type: type.id, params: {} })).not.toBe("None");
+    expect(eventTitle("2194-Q3", { type: "genre_surge", params: { genre: "SciFi/Fantasy", month: 2, percent: 20 } })).toBe("Science fiction and fantasy orders rising in August");
+    expect(eventTitle("2194-Q4", { type: "genre_slump", params: { genre: "Romance", month: 2, percent: 15 } })).toBe("Romance orders falling in November");
+    expect(eventTitle("2194-Q3", { type: "quiet_days", params: { weekday: "Tuesday", percent: 15 } })).toBe("Quiet Tuesdays");
+    expect(eventTitle("2194-Q3", { type: "author_fares", params: { cost: 350 } })).toBe("Author nights at $350");
+    expect(eventTitle("2194-Q3", { type: "format_costs", params: { format: "Mass market paperback", percent: 66 } })).toBe("Mass market paperback costs at 66%");
+    expect(eventTitle("2194-Q3", { type: "format_costs", params: { format: "Graphic", percent: 68 } })).toBe("Graphic novel costs at 68%");
+    expect(eventTitle("2194-Q3", { type: "quiet_quarter", params: {} })).toBe("A quiet quarter");
+    expect(eventTitle("2194-Q1", null)).toBe("None");
+    expect(eventTitle("2194-Q2", null)).toBe("The new Inspector Ryeslton volume");
+  });
+
+  it("compare a later quarter's revenue with the one before, and with 2193's when the server sends it", () => {
+    expect(laterSeasonNote("2194-Q3", 120_000, 150_000, "Q2 2194")).toBe("Q3 2194 revenue was 20% below Q2 2194. To judge your plan, compare it with holding course, not with Q2 2194.");
+    expect(laterSeasonNote("2195-Q1", 120_000, 100_000, "Q4 2194", { quarter: 95_246, before: 161_525, beforeLabel: "Q4 2193" })).toBe(
+      "Q1 2195 revenue was 20% above Q4 2194. In 2193, Q1 brought in $95,246, and Q4 2193 $161,525. To judge your plan, compare it with holding course, not with Q4 2194.",
+    );
   });
 });

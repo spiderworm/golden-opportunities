@@ -146,15 +146,17 @@ describe("Q2's result screen", () => {
     expect(page).toMatch(/Q2 revenue was \d+% above Q1 2194\. Last year, Q2 was the busier quarter: \$164,437, 73% above Q1\. To judge your plan, compare it with holding course, not with Q1\./);
   });
 
-  it("shows Q2's discoveries, D to F, and keeps the ledgers link for the review", () => {
+  it("shows Q2's discoveries, D to F, and without the review, the ledgers link and the service record", () => {
     const page = text(renderQ2());
     expect(page).toContain("You compared your first quarter with last year's.");
     expect(page).toContain("Look at the average rating, title by title.");
     expect(page).toContain("1 of 3 found.");
     expect(page).not.toContain("Weekdays emptied");
-    // Without the review (not both quarters yet), no Play again, and no ledgers link in What happened.
+    // Without the review (the endless game, going on past Q2): no Play again, the ledgers link in What happened,
+    // and the service record in the review's place (endless.md section 6).
     expect(page).not.toContain("Play again");
-    expect(page).not.toContain("Back to the ledgers");
+    expect(page).toContain("Back to the ledgers");
+    expect(page).toContain("Service record");
     expect(page).not.toContain("Continue to Q2");
   });
 
@@ -189,5 +191,64 @@ describe("Q2's result screen", () => {
     expect(html).toMatch(/<a[^>]*href="\/investigate"[^>]*>Back to the ledgers<\/a>/);
     // Play again sits after the review's closing line, and the review after the discoveries.
     expect(page.indexOf("of 3 found.")).toBeLessThan(page.indexOf("Half-year review"));
+  });
+});
+
+describe("a later quarter's result screen (endless-copy.md section 4)", () => {
+  const row = (quarter: string, score: number, grade: string, event: ResultData["record"][number]["event"] = null) => ({
+    quarter: quarter as never,
+    measures: (["profit", "readers", "happiness", "culture"] as const).map((id) => ({ id, result: 0, lastYear: 0, goal: 0, score: score + 2, grade: grade as never, met: false, exceeds: false })),
+    overall: { score, grade: grade as never },
+    strike: score < 70,
+    event,
+  });
+  function renderQ3(next: ResultData["next"] = "2194-Q4") {
+    const outcome = { ...simulateQ2(QUIET, 3, data).outcome, discoveries: [] };
+    return text(
+      show({
+        quarter: "2194-Q3",
+        outcome,
+        sameQuarterLastYear: 274036.2,
+        previousQuarter: 150_000,
+        reference: [],
+        discoveries: earnedDiscoveries([], "2194-Q3"),
+        next,
+        canPlayAgain: false,
+        halfYear: null,
+        lastYearLabel: "Q3 2193",
+        referenceLabel: "Q2 2194",
+        record: [row("2194-Q1", 66, "D"), row("2194-Q2", 74, "C"), row("2194-Q3", 81, "B-", { type: "quiet_days", params: { weekday: "Tuesday", percent: 15 } })],
+        removed: null,
+        goalStretch: null,
+        season2193: { quarter: 274036.2, before: 164436.9, beforeLabel: "Q2 2193" },
+      }),
+    );
+  }
+
+  it("names the quarter, its reference and last year's adjusted quarter, and continues to the next", () => {
+    const page = renderQ3();
+    expect(page).toContain("Q3 2194: the results");
+    expect(page).toContain("Q2 2194 (for reference)");
+    expect(page).toContain("Q3 2193, adjusted");
+    expect(page).toContain("Each goal is Q3 2193, adjusted for what the Council expected this quarter, plus 5%.");
+    expect(page).toContain("To judge your plan, compare it with holding course, not with Q2 2194.");
+    expect(page).toContain("Continue to Q4 2194");
+    expect(page).toContain("Back to the ledgers");
+    expect(page).not.toContain("Half-year review");
+  });
+
+  it("ends with the service record: newest first, strikes marked, events by their short titles, tenure and best", () => {
+    const page = renderQ3();
+    expect(page).toContain("Service record");
+    expect(page.indexOf("Q3 2194 ")).toBeLessThan(page.indexOf("Q1 2194 "));
+    expect(page).toContain("66 (D), strike");
+    expect(page).toContain("Quiet Tuesdays");
+    expect(page).toContain("The new Inspector Ryeslton volume");
+    expect(page).toContain("Manager since January 1, 2194: 3 quarters. Average overall score: 74 (C).");
+    expect(page).toContain("Best quarter: Q3 2194, 81 (B-).");
+  });
+
+  it("doesn't offer to continue from a quarter that isn't the last one played", () => {
+    expect(renderQ3("2195-Q1")).not.toContain("Continue to");
   });
 });
