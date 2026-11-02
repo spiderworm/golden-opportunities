@@ -41,6 +41,12 @@ export function ratingsOf(history: DeepReadonly<BookshopData>): Ratings {
   return { average, culture: (bookId) => 1 + 9 * stretch(average(bookId)) + 3 * (awards.get(bookId) ?? 0) };
 }
 
+/** What an event changes about costs (endless.md section 2): the author-night fare, and one format's cost of goods. */
+export interface Costs {
+  fare?: number;
+  cogs?: { format: string; rate: number };
+}
+
 export interface Ledger {
   revenue: number;
   units: number;
@@ -50,18 +56,21 @@ export interface Ledger {
   grossProfit: number;
 }
 
-export function ledger(orders: readonly Order[], events = 0): Ledger {
+export function ledger(orders: readonly Order[], events = 0, costs: Costs = {}): Ledger {
   let revenue = 0;
   let list = 0;
+  // List price of the format whose cost an event changed: summed apart, so the usual sum is unchanged.
+  let changed = 0;
   let units = 0;
   for (const order of orders)
     for (const item of order.items) {
       revenue += item.listPrice * (1 - item.discount);
-      list += item.listPrice;
+      if (costs.cogs && item.template.format === costs.cogs.format) changed += item.listPrice;
+      else list += item.listPrice;
       units += 1;
     }
-  const costOfGoods = COST_OF_GOODS * list;
-  const eventCosts = EVENT_COST * events;
+  const costOfGoods = COST_OF_GOODS * list + (costs.cogs ? costs.cogs.rate * changed : 0);
+  const eventCosts = (costs.fare ?? EVENT_COST) * events;
   return { revenue, units, orders: orders.length, costOfGoods, eventCosts, grossProfit: revenue - costOfGoods - eventCosts };
 }
 
@@ -100,9 +109,9 @@ export function culture(orders: readonly Order[], ratings: Ratings, eventOrders 
   return total + CULTURE_PER_ATTENDEE * eventOrders;
 }
 
-export function measures(orders: readonly Order[], ratings: Ratings, events = 0, eventOrders = 0): Record<MeasureId, number> {
+export function measures(orders: readonly Order[], ratings: Ratings, events = 0, eventOrders = 0, costs: Costs = {}): Record<MeasureId, number> {
   return {
-    profit: ledger(orders, events).grossProfit,
+    profit: ledger(orders, events, costs).grossProfit,
     readers: orders.length,
     happiness: happiness(orders, ratings),
     culture: culture(orders, ratings, eventOrders),
