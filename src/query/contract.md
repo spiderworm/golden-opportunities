@@ -119,6 +119,18 @@ is the measure, a grouping, a filter or the sort. Browser queries may use it.
 Investigate-only now: the `ratings` measure, and the `stars`, `awarded`,
 `award`, `volume` and `in_series` dimensions (#169).
 
+## Data version
+
+`dataVersion(save)` (`data-version.server.ts`) is an opaque 16-hex string that
+changes exactly when what a save's queries can see changes: a plan commit, a
+reset or new game (a new save), or a new server process. Discovery, evidence and
+alert-seen writes keep it. It's a hash, never the save ID. The shell layout's
+loader returns it (`dataVersion`, route `shell/layout`), and every successful
+`/api/query` response carries the version its result was computed under, in
+`X-Orbital-Data-Version`. A client cache keys results on that header, not on the
+version it last saw, so a result that raced a plan commit is never filed under
+the new version. Errors carry no version.
+
 ## Visibility and access
 
 `QueryView` is trusted server state. Filter facts against `periods` BEFORE
