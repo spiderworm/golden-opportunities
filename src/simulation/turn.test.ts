@@ -19,7 +19,10 @@ import {
   type Turn,
   type TurnEvent,
 } from "./turn";
+import type { QuarterId } from "./quarters";
 import type { Plan, Q2Plan, Q2SimulationResult, ReportCard } from "./types";
+import { drawCandidates } from "~/alma/candidates";
+import { STRETCH_PERCENT } from "~/alma/events";
 
 const data = joinBookshop(tables as BookshopTables);
 const candidates = q2Candidates(data);
@@ -30,7 +33,7 @@ const SALE: Q2Plan = { picks: [null, null, null], levers: ["sale"] };
 const event = (type: string, params: TurnEvent["params"] = {}, stretch: TurnEvent["stretch"] = null, drop?: number): TurnEvent =>
   drop === undefined ? { type, params, stretch } : { type, params, stretch, drop };
 const QUIET = event("quiet_quarter");
-const turn = (quarter: string, plan: Plan | Q2Plan, ev: TurnEvent | null = QUIET, seed = 1): Turn => ({ quarter, seed, plan, event: ev });
+const turn = (quarter: QuarterId, plan: Plan | Q2Plan, ev: TurnEvent | null = QUIET, seed = 1): Turn => ({ quarter, seed, plan, event: ev });
 const played = (t: Turn) => simulateTurn(t, data) as Q2SimulationResult;
 const card = (t: Turn): ReportCard => simulateTurn(t, data).outcome.reportCard.plan;
 const measure = (c: ReportCard, id: string) => c.measures.find((m) => m.id === id)!;
@@ -53,8 +56,8 @@ describe("2194 doesn't move (ENGINE_VERSION 1)", () => {
 
   it("takes no event in Q1 and Q2 2194, and no quarter before them", () => {
     expect(() => simulateTurn(turn("2194-Q2", HOLD, QUIET), data)).toThrow(/no event/);
-    expect(() => simulateTurn(turn("2193-Q4", HOLD), data)).toThrow(/playable/);
-    expect(() => simulateTurn(turn("2195-Q5", HOLD), data)).toThrow(/playable/);
+    expect(() => simulateTurn(turn("2193-Q4" as QuarterId, HOLD), data)).toThrow(/playable/);
+    expect(() => simulateTurn(turn("2195-Q5" as QuarterId, HOLD), data)).toThrow(/playable/);
   });
 });
 
@@ -85,7 +88,7 @@ describe("later quarters", () => {
 
   it("hold course scores as calibrated: about 64 in Q3 and 62 in Q4, a strike", () => {
     expect(measure(card(turn("2194-Q3", HOLD)), "profit").score).toBeLessThan(70);
-    for (const [quarter, low, high] of [["2194-Q3", 60, 67], ["2194-Q4", 58, 64], ["2195-Q1", 64, 72]] as const) {
+    for (const [quarter, low, high] of [["2194-Q3", 60, 67], ["2194-Q4", 58, 64], ["2195-Q1", 64, 72]] as [QuarterId, number, number][]) {
       const overall = card(turn(quarter, HOLD)).overall.score;
       expect(overall).toBeGreaterThanOrEqual(low);
       expect(overall).toBeLessThanOrEqual(high);
@@ -93,7 +96,7 @@ describe("later quarters", () => {
   });
 
   it("keeps section 8's bands on seeds 1 to 20: Q3 and Q4 are the hard quarters", { timeout: 60_000 }, () => {
-    const band = (quarter: string, plan: Q2Plan) => Array.from({ length: 20 }, (_, i) => card(turn(quarter, plan, QUIET, i + 1)).overall.score);
+    const band = (quarter: QuarterId, plan: Q2Plan) => Array.from({ length: 20 }, (_, i) => card(turn(quarter, plan, QUIET, i + 1)).overall.score);
     const within = (scores: number[], low: number, high: number) => {
       expect(Math.min(...scores)).toBeGreaterThanOrEqual(low);
       expect(Math.max(...scores)).toBeLessThanOrEqual(high);
@@ -116,7 +119,7 @@ describe("later quarters", () => {
       const year = 2194 + Math.floor(n / 4);
       const q = (n % 4) + 1;
       const plan: Plan | Q2Plan = n === 0 ? { levers: ["repick", "events"] } : NIGHTS;
-      return turn(`${year}-Q${q}`, plan, n < 2 ? null : QUIET, 7);
+      return turn(`${year}-Q${q}` as QuarterId, plan, n < 2 ? null : QUIET, 7);
     });
     // Warm the shared history and join shares, as the server's first load after the data does.
     linesOfTurn(turns[0], data);
@@ -144,6 +147,11 @@ describe("Alma's events, as conditions", () => {
     const ratio = tuesdays(played(turn("2194-Q4", HOLD, quiet))) / tuesdays(played(turn("2194-Q4", HOLD)));
     expect(ratio).toBeGreaterThan(0.7);
     expect(ratio).toBeLessThan(0.8);
+  });
+
+  it("names the event's genre as the memo does", () => {
+    const text = played(turn("2194-Q3", HOLD, event("genre_surge", { genre: "SciFi/Fantasy", month: 2, percent: 20 }))).outcome.assumptions.find((a) => a.id === "event")!.text;
+    expect(text).toMatch(/^Science fiction and fantasy orders in August are 20% higher than the replay/);
   });
 
   it("charges an event's fare and format cost", () => {
@@ -188,6 +196,14 @@ describe("goals", () => {
   it("stretch one measure by the event's percent", () => {
     expect(goalsFor(anchor, average, event("quiet_quarter", {}, { measure: "readers", percent: 15 }))).toEqual({ readers: 23_000 });
     expect(goalsFor(anchor, average, QUIET)).toEqual({});
+  });
+
+  it("take the recovery cap from Alma's candidates, the largest extra stretch (Frank's review of #201)", () => {
+    const candidates = drawCandidates(7, { quarter: "2194-Q3", previous: [], strikes: 0, recovery: { measure: "profit", drop: 35 } });
+    for (const c of candidates) expect(c.stretch).toEqual({ measure: "profit", percent: STRETCH_PERCENT.max });
+    expect(STRETCH_PERCENT.max).toBe(20);
+    const goal = goalsFor(anchor, average, { ...candidates[0], drop: 35 }).profit;
+    expect(goal).toBeCloseTo(anchor.profit * 1.2, 6);
   });
 
   it("set a recovery goal at the drop, never below the usual goal and never past the cap", () => {
