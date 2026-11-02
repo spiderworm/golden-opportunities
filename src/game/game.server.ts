@@ -129,12 +129,20 @@ export function startNewGame(request: Request): string {
 }
 /**
  * Reset, from Settings, at any point in the game: a new save from 1 January with a new seed, as Play again gives.
- * Returns its Set-Cookie value; the old save expires unused. Records how far the old game had got.
+ * Returns its Set-Cookie value; the old save expires unused. Records how far the old game had got ("unknown" when
+ * there was no readable save to start over from).
  */
 export function resetGame(request: Request): string {
   try {
     refuseUnlessLocalPost(request);
-    const reached = quarterOf(current(request))?.slice(5) ?? 'finished';
+    // A save that's missing or unreadable is what a reset is for: it starts over all the same (Audit, #173).
+    let reached: string;
+    try {
+      reached = quarterOf(current(request))?.slice(5) ?? 'finished';
+    } catch (error) {
+      if (!(error instanceof SaveError) || !['MISSING_SAVE', 'INVALID_SAVE'].includes(error.code)) throw error;
+      reached = 'unknown';
+    }
     const cookie = saveCookie(startGame(), request);
     event('game_reset', { quarter: reached });
     return cookie;
