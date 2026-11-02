@@ -359,14 +359,17 @@ const BANNED = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS
 const ROMAN = /\b(?!MIX\b)(?=[MDCLXVI]{2,}\b)M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})(?<=\b[MDCLXVI]{2,})\b/u;
 /** The whole ban, for other text a player is shown as fact-free flavor (Alma's): run it on NFKC-folded text. */
 /**
- * Look-alike letters (Probe's review of #229). The checks read a plain copy: accents and other marks stripped
- * ("hìgher" is "higher"), and the Latin look-alikes NFKD keeps ("ı", "ȷ", "ɡ") mapped. A letter from another
- * script ("fivе" with a Cyrillic е) is withheld outright: the catalog has none (its one accent, the é in an
- * author's name, is Latin and allowed).
+ * Look-alike letters (Probe's and Audit's reviews of #229 and #235). The checks read a plain copy, with accents
+ * and other marks stripped ("hìgher" is "higher"), and any letter that's still not A to Z withholds the text:
+ * another script ("fivе" with a Cyrillic е), and Latin small capitals and phonetic letters ("ꜰɪᴠᴇ", "hɪgher"),
+ * which NFKD keeps. The catalog's one other letter, the é in an author's name (Karénine), is plain e here.
  */
-const plain = (text: string) => text.normalize("NFKD").replace(/\p{M}/gu, "").replace(/ı/g, "i").replace(/ȷ/g, "j").replace(/ɡ/g, "g");
-const FOREIGN = /(?!\p{Script=Latin})\p{L}/u;
-const banned = (text: string) => FOREIGN.test(text) || BANNED.test(plain(text)) || ROMAN.test(plain(text));
+const plain = (text: string) => text.normalize("NFKD").replace(/\p{M}/gu, "");
+const FOREIGN = /(?![A-Za-z])\p{L}/u;
+const banned = (text: string) => {
+  const p = plain(text);
+  return FOREIGN.test(p) || BANNED.test(p) || ROMAN.test(p);
+};
 export const hasBannedWord = (folded: string) => banned(folded);
 // Exact phrases allowed despite their words, in exact contexts only.
 const ALLOWED = /\blook(?:s|ed|ing)? (?:(?:it|them|that) )?up\b|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))/giu;
@@ -465,26 +468,43 @@ function bookPrices(folded: string, refs: Refs, known: number): string[] {
   });
 }
 
+/** What a shown book price holds the sentences after it to (see carriesOver). */
+export interface PriceContext {
+  /** The book whose price was shown, for the next shown sentence: it may name no other book. */
+  book: readonly string[];
+  /** A book's price was shown in this paragraph: no carry-over words until it ends. */
+  paragraph: boolean;
+}
+const NO_PRICE: PriceContext = { book: [], paragraph: false };
+
 /**
- * After a sentence that showed a book's price, the next can't carry it over (Probe's review of #228): with no
- * price of its own, it's withheld if it has a carry-over word ("The Lantern Hours does too.") or names another
- * book from this answer. `after` is the previous sentence's book (its own subjects).
+ * A book's price can't be carried over to another (Probe's reviews of #228 and #235). A sentence with no price of
+ * its own is withheld for a carry-over word ("The Lantern Hours does too.") anywhere in the paragraph after a
+ * book's price, and for naming another book from this answer in the next shown sentence.
  */
-function carriesOver(folded: string, refs: Refs, known: number, after: readonly string[]): boolean {
-  if (!after.length || [...folded.matchAll(REF)].some((m) => refs.describe(m[1]!.trim(), known)?.price)) return false;
+function carriesOver(folded: string, refs: Refs, known: number, context: PriceContext): boolean {
+  if ([...folded.matchAll(REF)].some((m) => refs.describe(m[1]!.trim(), known)?.price)) return false;
   const prose = folded.replace(REF, " ");
-  if (CARRY_OVER.test(prose)) return true;
+  if ((context.paragraph || context.book.length) && CARRY_OVER.test(prose)) return true;
+  if (!context.book.length) return false;
   const cited = [...folded.matchAll(REF)].flatMap((m) => refs.describe(m[1]!.trim(), known)?.subject ?? []);
   const named = [...cited, ...refs.subjects(known).filter((s) => wholeLabel(s, "u").test(prose))];
-  return named.some((n) => !after.includes(n));
+  return named.some((n) => !context.book.includes(n));
+}
+
+/** The context after a sentence: a shown price sets it, a shown sentence ends `book`, a withheld one leaves it, and a paragraph break clears it. */
+export function nextPriceContext(context: PriceContext, result: { price: string[] } | null, sentence: string): PriceContext {
+  if (/\n\s*\n/.test(sentence)) return NO_PRICE;
+  if (!result) return context;
+  return result.price.length ? { book: result.price, paragraph: true } : { book: [], paragraph: context.paragraph };
 }
 
 /**
  * Renders a sentence's refs and checks its own prose; null if it must be withheld. `known` is how many lookups
- * had come back when the sentence's text arrived (the earliest stamp among its chunks). `after` is the book
- * whose price the previous sentence showed, if it did; the result's `price` is this sentence's, for the next.
+ * had come back when the sentence's text arrived (the earliest stamp among its chunks). `after` is what the prices
+ * shown before it hold it to; the result's `price` is the book this sentence priced, for nextPriceContext.
  */
-export function renderSentence(sentence: string, refs: Refs, known = Infinity, after: readonly string[] = []): { text: string; refs: number; price: string[] } | null {
+export function renderSentence(sentence: string, refs: Refs, known = Infinity, after: PriceContext = NO_PRICE): { text: string; refs: number; price: string[] } | null {
   let count = 0;
   let bad = false;
   const folded = fold(sentence);
@@ -525,8 +545,8 @@ export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s
   let noted = false;
   let withheld = 0;
   let rendered = 0;
-  // The book whose price the last sentence showed, so the next can't carry it over.
-  let after: string[] = [];
+  // What the prices shown so far hold the next sentences to, so none can carry a price over.
+  let after = NO_PRICE;
   const knownAt = (start: number, end: number) => Math.min(...stamps.filter((s, i) => s.at < end && (stamps[i + 1]?.at ?? Infinity) > start).map((s) => s.known));
   const check = (text: string) => {
     let out = "";
@@ -538,8 +558,7 @@ export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s
       // A sentence may cite only lookups that had come back before its earliest chunk arrived.
       const result = renderSentence(sentence, refs, knownAt(at, at + sentence.length), after);
       at += sentence.length;
-      // Only the next sentence is held to the price: one after that names its own subject or none.
-      after = result?.price ?? [];
+      after = nextPriceContext(after, result, sentence);
       if (result) {
         out += gap + result.text;
         rendered += result.refs;

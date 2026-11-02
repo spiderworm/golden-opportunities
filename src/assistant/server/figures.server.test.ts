@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Refs, renderSentence, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
+import { hasBannedWord, Refs, renderSentence, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
 
 const SOURCE = "Revenue from 56,350 visible matching sale lines; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; grouped by quarter.";
 const byQuarter = ["query_data", { measure: "revenue", by: ["quarter"] }, { ref: "a", complete: true, columns: [], rows: [{ ref: "a1", quarter: "2193-Q1", revenue: 95245.8078 }, { ref: "a2", quarter: "2193-Q2", revenue: 164436.94 }, { ref: "a3", quarter: "2193-Q3", revenue: 274036.16 }, { ref: "a4", quarter: "2193-Q4", revenue: 161524.69 }], total: 695243.61, source: SOURCE }] as const;
@@ -332,8 +332,12 @@ describe("prices (Probe's #225)", () => {
     // Its own book, or a sentence with its own price, carries on; and only the next sentence is held to it.
     g = gate();
     expect(g.push("{{a1.edition}} lists at {{a1.list_price}}. {{a1.edition}} sold well. {{a2.edition}} lists at {{a2.list_price}}. ") + g.flush()).toBe("Post Alley (Hardcover) lists at $27.99. Post Alley (Hardcover) sold well. Post Alley (Trade paperback) lists at $17.99. ");
+    // A withheld sentence in between doesn't end it (Probe's and Audit's reviews of #235).
     g = gate();
-    expect(g.push("{{a1.edition}} lists at {{a1.list_price}}. The table is under this message. It also has the paperback. ") + g.flush()).toBe("Post Alley (Hardcover) lists at $27.99. The table is under this message. It also has the paperback. ");
+    expect(g.push("{{a1.edition}} lists at {{a1.list_price}}. It fell. The Lantern Hours does too. ") + g.flush()).toBe(`Post Alley (Hardcover) lists at $27.99. ${WITHHELD} `);
+    // Carry-over words stay withheld for the rest of the paragraph; a new paragraph starts afresh.
+    g = gate();
+    expect(g.push("{{a1.edition}} lists at {{a1.list_price}}. The table is under this message. Indeed. It also has the paperback.\n\nThe paperback also sold well. ") + g.flush()).toBe(`Post Alley (Hardcover) lists at $27.99. The table is under this message. Indeed. ${WITHHELD}\n\nThe paperback also sold well. `);
   });
 
   it("keep a price group apart from any book", () => {
@@ -370,8 +374,9 @@ describe("look-alike letters (Probe's review of #229)", () => {
     for (const sentence of ["Revenue was hìgher in {{a4.quarter}}.", "Revenue was hi\u0307gher in {{a4.quarter}}.", "Revenue was hıgher in {{a4.quarter}}.", "Fívé units sold."]) expect(say(sentence), sentence).toBe(WITHHELD);
   });
 
-  it("withhold a letter from another script", () => {
-    for (const sentence of ["Fiv\u0435 units sold.", "Revenue was h\u0456gher in {{a4.quarter}}.", "Revenue was l\u03BFwer in {{a4.quarter}}."]) expect(say(sentence), sentence).toBe(WITHHELD);
+  it("withhold any letter that isn't A to Z once accents are off: other scripts, small capitals (Audit)", () => {
+    for (const sentence of ["Fiv\u0435 units sold.", "Revenue was h\u0456gher in {{a4.quarter}}.", "Revenue was l\u03BFwer in {{a4.quarter}}.", "Revenue was hɪgher in {{a4.quarter}}.", "ꜰɪᴠᴇ units sold.", "Revenue went ᴜp.", "Revenue was loᴡer in {{a4.quarter}}.", "Revenue was hıgher in {{a4.quarter}}.", "ʜɪɢʜᴇʀ revenue.", "Revenue was hɩgher in {{a4.quarter}}."]) expect(say(sentence), sentence).toBe(WITHHELD);
+    expect(hasBannedWord("WE SOLD ꜰɪᴠᴇ BOOKS.")).toBe(true);
   });
 
   it("keep the catalog's own accent: Karénine is an author's name", () => {
