@@ -1,7 +1,8 @@
 // The one analytics interface features use (How We Build, principle 3).
-// Events record what happened, never content. The single exception is the
-// text players type to the in-game agent, which is held on the device
-// (`{ hold: "agent_text" }`) until David decides whether it's ever sent.
+// Events record what happened, never content. The exception is the in-game
+// agent's text: what players type to it, and the sentences of its replies the
+// figures gate withheld (#162). Both are held on the machine that records them
+// (`{ hold: "agent_text" }`) until David decides whether they're ever sent.
 
 export type Props = Record<string, string | number | boolean>;
 export type TrackOptions = { hold?: "agent_text" };
