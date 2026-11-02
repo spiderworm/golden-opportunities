@@ -42,6 +42,7 @@ function render(...levers: LeverId[]) {
     next: null,
     canPlayAgain: false,
     halfYear: null,
+    lastYearLabel: "Q1 2193", referenceLabel: "Q4 2193", record: [], removed: null,
   };
   return { html: show(loaderData), outcome };
 }
@@ -72,6 +73,7 @@ function renderQ2(plan: Q2Plan = QUIET, halfYear: ResultData["halfYear"] = null)
     next: null,
     canPlayAgain: halfYear !== null,
     halfYear,
+    lastYearLabel: "Q2 2193", referenceLabel: "Q1 2194", record: [], removed: null,
   });
 }
 
@@ -120,7 +122,7 @@ describe("the result screen", () => {
 
   it("after Q1, offers Continue to Q2 to the station, but only while Q2 is still to play", () => {
     const { outcome } = render("events");
-    const base: ResultData = { quarter: "2194-Q1", outcome, sameQuarterLastYear: 95245.8, previousQuarter: 161524.7, reference: [], discoveries: earnedDiscoveries([]), next: "2194-Q2", canPlayAgain: false, halfYear: null };
+    const base: ResultData = { quarter: "2194-Q1", outcome, sameQuarterLastYear: 95245.8, previousQuarter: 161524.7, reference: [], discoveries: earnedDiscoveries([]), next: "2194-Q2", canPlayAgain: false, halfYear: null, lastYearLabel: "Q1 2193", referenceLabel: "Q4 2193", record: [], removed: null, };
     const html = show(base);
     expect(html).toMatch(/<a[^>]*href="\/"[^>]*>Continue to Q2<\/a>/);
     expect(text(html)).toContain("Back to the ledgers");

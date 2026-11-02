@@ -18,7 +18,7 @@ export type QuarterLines = { lines: { hash: string; count: number }; sales?: nev
 /** A committed quarter: its plan and result (the plan is in the outcome), and its lines, written together. */
 export type PlayedQuarter = (
   | { period: '2194-Q1'; outcomeId: string; outcome: Outcome }
-  | { period: '2194-Q2'; outcomeId: string; outcome: Q2GameOutcome }
+  | { period: Exclude<QuarterId, '2194-Q1'>; outcomeId: string; outcome: Q2GameOutcome }
 ) & QuarterLines;
 /** Private server persistence. Never return a save or its seed from a route. */
 export interface GameSave {
