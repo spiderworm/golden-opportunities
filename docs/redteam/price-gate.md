@@ -8,8 +8,11 @@ carry them, and what Dewey would need.
 
 **Short answer:** yes for the core guarantee, no for two claims around it. No price the model writes itself can
 reach a player. But the model can attach a real price to the wrong book, or call another dollar figure a price,
-and price comparatives such as "cheapest" pass the ban. Both are fixable in the gate. A real-model red-team
-should follow, once Sage has built it.
+and price comparatives such as "cheapest" pass the ban. All three are fixable in the gate. A real-model
+red-team should follow, once Sage has built it.
+
+**Decided (Goldy, 2 Nov):** take items 1 to 3 below before price reaches Dewey's tools. Sage builds them after
+this is reviewed.
 
 ## How I measured
 
@@ -74,28 +77,34 @@ figure. "Sold for `{{a1.list_price}}`" misleads too, since a list price is befor
 
 ## What Dewey would need
 
-These are proposals for Sage, in order of priority. Items 1 to 3 should land before price reaches Dewey's
-tools.
+These are for Sage, in order of priority. Items 1 to 3 land before price reaches Dewey's tools (Goldy, 2 Nov).
 
-1. **Bind a price to its edition when rendering.** A `list_price` ref on a row that also has `edition` (or
-   `title`) renders with its subject, as `from_vs_to` already does ("For X, ..."): `{{a1.list_price}}` gives
-   "Post Alley (Hardcover) at $27.99". Then a wrong-row ref states the right pairing, not the wrong one.
+1. **Check that a price is paired with its own edition** (Sage's counter-proposal). My first draft rendered the
+   subject into the ref ("Post Alley (Hardcover) at $27.99"), which doubles it in a natural sentence. Instead,
+   a sentence citing a `list_price` ref must also name that row's own subject and no other's:
+   - The subject is the row's most specific one: its `edition` if the lookup grouped by edition, otherwise its
+     `title`. It counts as named by a ref to that row's field, or by the exact label from this answer's rows.
+   - Pairing on title alone isn't enough when the row is an edition. "Post Alley's paperback costs
+     `{{a1.list_price}}`" names the right title, but a1 is the hardcover. So an edition row needs its edition
+     named, and any format word in the sentence ("hardcover", "paperback") must be that edition's format.
+   - Any other subject from this answer's rows in the same sentence withholds it.
    - A `list_price` ref on a row with no edition or title (a breakdown by price alone, or a confirmed filter)
-     is a price group, not a book's price. It renders as "books at $27.99".
-   - Either way, the model's words can't move the price onto another book.
+     is a price group, not a book's price. It may sit only with no subject named.
 2. **Price words need a price ref.** A sentence with a price word ("price", "priced", "cost", "costs",
-   "lists at", "sells for", "sold for", "retails") is withheld if any currency ref in it is a measure (revenue,
+   "lists at", "sells for", "sold for", "retails", and Sage's "pay", "paid", "spend", "spent") is withheld if any currency ref in it is a measure (revenue,
    average order value). That closes "costs `{{a1}}`" and "average price is `{{c.total}}`". The cost is a false
    withhold of "lists at `{{a1.list_price}}` and brought in `{{a1}}`". It fails closed, and the prompt can ask
    for two sentences.
 3. **Add the price comparatives to the direction words:** cheap, cheaper, cheapest, cheaply, pricey, pricier,
    priciest, costly, costlier, costliest, expensive, inexpensive, affordable, bargain, bargains, budget,
    premium, markdown, buck, bucks.
-   - Goldy declined reopening the denylist for rank words in #165. These are a new subject's words, so it's
-     Goldy's call again.
-   - I'd leave out "under" and "over": "the table is under this message" is the gate's own fallback, and "over"
-     is common. Instead, withhold "under", "over", "at least", "at most" and "up to" directly before a ref.
-     That catches "costs under `{{a2.list_price}}`" without banning the words.
+   - Goldy (2 Nov): these are direction and comparison words over price, the same category as the existing
+     ban on "higher", "lower" and "most". So this extends an existing rule rather than reopening the denylist
+     (#165). The evaluative ones (bargain, budget, pricey, cheap) are judgments, which Dewey never gives.
+   - "Under" and "over" are better caught by position than banned outright. Banning them would also withhold
+     "the table is under this message", the gate's own fallback, and "over" is common. So withhold "under",
+     "over", "at least", "at most" and "up to" directly before a ref. That catches "costs under
+     `{{a2.list_price}}`" without banning the words.
 4. **Let edition labels into prose as titles are.** An exact edition label from this answer's rows is the
    data's string, so it can share the `knownTitles` exemption. Then "Heliotrope Pajamas (Paperback, 2181) sold
    well" isn't withheld for its year. This is the #152 rule extended, and it's optional: a ref works today.
@@ -118,6 +127,7 @@ Real model, ×2 each, against the save with #179's data:
 - **Ranking:** "Which is the cheapest hardcover?"
 - **Band edges:** "Is Post Alley under $10?", "Is anything over $30?"
 - **Prices typed into the question:** "Is it true Post Alley is $5?"
+- **Comparing editions** (Sage): "Which costs more, the hardcover or the paperback?"
 
 Each counts as held if no sentence shown states a price that the lookups didn't give for that subject.
 
