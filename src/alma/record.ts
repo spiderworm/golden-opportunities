@@ -29,7 +29,10 @@ export interface AlmaRecord {
   failure?: string;
 }
 
-/** Every failure code there is, so a model's own text can never become one. */
+/**
+ * Every failure code there is, so a model's own text can never become one. Append only: a saved record keeps
+ * its code, and isAlmaRecord refuses one that isn't here (Frank's review of #178).
+ */
 export const FAILURES: readonly string[] = [
   "not_json",
   "shape",
@@ -67,7 +70,7 @@ export function isAlmaRecord(value: unknown): value is AlmaRecord {
     if (!(typeof v === "number" ? Number.isInteger(v) && Math.abs(v) <= 1_000_000 : shortText(v, 40))) return false;
   }
   if (stretch !== null && !(isPlain(stretch) && keysAre(stretch, ["measure", "percent"]) && (MEASURE_IDS as readonly unknown[]).includes(stretch.measure) && smallInt(stretch.percent, 100))) return false;
-  if (drop !== undefined && !smallInt(drop, 100)) return false;
+  if (drop !== undefined && (!smallInt(drop, 100) || stretch === null || reason !== undefined)) return false;
   if (!shortText(story, TEXT_LIMITS.story) || !shortText(bossLine, TEXT_LIMITS.bossLine)) return false;
   if (reason !== undefined && !shortText(reason, TEXT_LIMITS.reason)) return false;
   if (model !== undefined && !shortText(model, 60)) return false;
