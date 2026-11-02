@@ -1,6 +1,7 @@
 import type { Outcome, Q2Outcome } from '../simulation/types';
 import type { Sale } from '../bookshop/types';
 import type { QuarterId } from './quarters';
+import type { AlmaRecord } from '../alma/record';
 
 /** A to C are found in Q1, D to F in Q2 (docs/design/q2.md section 6). */
 export type DiscoveryId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
@@ -30,4 +31,9 @@ export interface GameSave {
   alertSeen?: true;
   /** The quarters whose Commerce Office memo the player has seen, in play order. */
   alertsSeen?: QuarterId[];
+  /**
+   * Alma's event records, one per quarter from Q3 2194, in quarter order, up to the next unplayed quarter (the
+   * one Alma prepares). Absent in older saves. Once written, a record is the quarter's truth (src/alma).
+   */
+  alma?: AlmaRecord[];
 }
