@@ -274,7 +274,9 @@ export class Refs {
       if (!row) return null;
       if (field && lookup.dims.includes(field)) return round ? null : label(row[field]);
       if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
-      if (lookup.name === "query_data") return !field && isNum(row[lookup.measure]) ? signed(kind, row[lookup.measure] as number, round) : null;
+      // A row's figure, as {{a1}} or by its own measure's column, {{a1.revenue}} (Probe's #252 red-team); any
+      // other measure's name isn't this lookup's, so it doesn't resolve.
+      if (lookup.name === "query_data") return (!field || field === lookup.measure) && isNum(row[lookup.measure]) ? signed(kind, row[lookup.measure] as number, round) : null;
       return this.comparison(lookup, row, field, round, lookup.dims.map((d) => label(row[d])).join(", "));
     }
     if (field === "rows") return round ? null : whole.format(lookup.ordered.length);
