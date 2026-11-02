@@ -27,7 +27,8 @@ export interface Investigation {
   chart: QueryResult;
   heatmap: QueryResult;
   /** One title's sales by month, when the player has drilled into a single title. */
-  titleView: { title: string; result: QueryResult } | null;
+  /** One title: its sales by month, and its ratings by stars (undated, so no other filter applies to them). */
+  titleView: { title: string; result: QueryResult; ratings: QueryResult } | null;
   options: FilterOptions;
 }
 
@@ -117,6 +118,9 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
     ? {
         title,
         result: rendered({ measure: state.measure, by: ["month"], ...withFilter(filtersExcept(state.filters, ["month"])) }),
+        // The ratings aren't dated or sold, so only the title scopes them. Context, like the heatmap: not
+        // discovery evidence.
+        ratings: run({ measure: "ratings", by: ["stars"], filter: { title: [title] } }),
       }
     : null;
 

@@ -62,6 +62,19 @@ describe("the title view", () => {
     const twoTitles = investigate({ ...DEFAULT_STATE, filters: { title: [title, "The Thing Is"] } }, runQuery, view);
     expect(twoTitles.titleView).toBeNull();
   });
+
+  it("counts the title's ratings by stars, whatever else the screen filters, and records them as no evidence", () => {
+    const observed: unknown[] = [];
+    const title = "Land Water Sky Space";
+    const state = { ...DEFAULT_STATE, filters: { title: [title], quarter: ["2193-Q4"], format: ["Hardcover"] } };
+    const drilled = investigate(state, runQuery, view, (query) => observed.push(query));
+    const ratings = drilled.titleView!.ratings;
+    expect(ratings.rows.reduce((sum, row) => sum + Number(row.ratings), 0)).toBe(95);
+    expect(ratings.rows.every((row) => ["1", "2", "3", "4", "5"].includes(String(row.stars)))).toBe(true);
+    expect(observed.some((q) => (q as { measure: string }).measure === "ratings")).toBe(false);
+    // A title nobody rated has none.
+    expect(investigate({ ...DEFAULT_STATE, filters: { title: ["Cimornul"] } }, runQuery, view).titleView!.ratings.rows).toEqual([]);
+  });
 });
 
 describe("buildTile", () => {

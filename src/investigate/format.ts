@@ -43,6 +43,7 @@ export function formatDimensionValue(dimension: Dimension, value: string | null 
   }
   if (dimension === "discounted") return value === "yes" ? "Any discount" : "Full price";
   if (dimension === "discount_rate") return parseFloat(value) === 0 ? "Full price" : `${value} off`;
+  if (dimension === "stars") return value === "1" ? "1 star" : `${value} stars`;
   return value;
 }
 

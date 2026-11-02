@@ -375,6 +375,88 @@
   border-color: var(--color-accent-selected);
 }
 
+/* One title: its sales by month beside its ratings by stars; stacked in narrow windows. */
+.titleBody {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .titleBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ratings {
+  min-width: 0;
+}
+
+.ratingsTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ratingsSummary {
+  margin: 4px 0 12px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.ratingsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ratingsTable td,
+.ratingsTable th {
+  padding: 5px 0;
+}
+
+.ratingsStars {
+  width: 4.5em;
+  color: var(--color-text-muted);
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ratingsBarCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ratingsTrack {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--color-panel-raised);
+  overflow: hidden;
+}
+
+.ratingsBar {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--color-accent);
+}
+
+.ratingsCount {
+  min-width: 3.5em;
+  text-align: right;
+}
+
+.ratingsShare {
+  width: 3.5em;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
 .cardControls {
   display: flex;
   flex-wrap: wrap;
