@@ -24,9 +24,9 @@ import {
   type Object3D,
 } from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
-import type { GLTFLoader } from "three-stdlib";
 
 import { BOSSES, type BossId } from "./bosses";
+import { failedLoad, softFailFor, type Failed } from "./soft-load";
 import type { BossSceneProps } from "./BossScene2D";
 import styles from "./BossScene3D.module.css";
 
@@ -52,27 +52,7 @@ export interface BossScene3DProps extends BossSceneProps {
   onFailed?: () => void;
 }
 
-/**
- * A model that didn't arrive, in its place. A failed load mustn't be thrown inside the canvas: R3F's root
- * reports every error there with reportError, even one a boundary catches, so a page left mid-download
- * (WebKit cancels the fetches) showed page errors. The loader answers with this instead, and the scene
- * gives up quietly.
- */
-const FAILED = Symbol("model failed");
-type Loaded = { scene: Group; animations: AnimationClip[] } | { [FAILED]: unknown };
-const failedLoad = (model: Loaded): model is { [FAILED]: unknown } => FAILED in model;
-
-/** Makes the shared GLTF loader answer a failed load with FAILED rather than an error; once per loader. */
-function failSoftly(loader: GLTFLoader) {
-  const marked = loader as GLTFLoader & { [FAILED]?: true };
-  if (marked[FAILED]) return;
-  marked[FAILED] = true;
-  const load = loader.load.bind(loader);
-  loader.load = (url, onLoad, onProgress, onError) =>
-    load(url, onLoad, onProgress, (error) => {
-      if (onError) onLoad({ [FAILED]: error } as never);
-    });
-}
+type Loaded = { scene: Group; animations: AnimationClip[] } | Failed;
 
 /**
  * Each boss's model, its height in the scene (the Administrator, the
@@ -87,6 +67,8 @@ const MODELS: Record<BossId, { height: number; hover?: number }> = {
   readers: { height: 0.86 },
 };
 const modelUrl = (boss: BossId) => `/models/bosses/${boss}.glb`;
+// Its loads, and only its, fail quietly (soft-load.ts).
+const softFail = softFailFor((Object.keys(MODELS) as BossId[]).map(modelUrl));
 
 /** How far the open boss leans in and grows, where it stands. */
 const LEAN = 0.14;
@@ -206,10 +188,10 @@ function Bosses({
   onFailed?: () => void;
 }) {
   const urls = useMemo(() => bosses.map(modelUrl), [bosses]);
-  const models = useGLTF(urls, false, undefined, failSoftly) as unknown as Loaded[];
+  const models = useGLTF(urls, false, undefined, softFail) as unknown as Loaded[];
   const failed = models.some(failedLoad);
   const figures = useMemo(
-    () => (failed ? [] : bosses.map((boss, i) => makeFigure(boss, models[i] as Exclude<Loaded, { [FAILED]: unknown }>))),
+    () => (failed ? [] : bosses.map((boss, i) => makeFigure(boss, models[i] as Exclude<Loaded, Failed>))),
     [bosses, models, failed],
   );
   // Forgotten, so the next visit to Decide loads them afresh rather than failing again from the cache.
@@ -512,4 +494,4 @@ function faint(object: Object3D): Material[] {
   return made;
 }
 
-for (const boss of Object.keys(MODELS) as BossId[]) useGLTF.preload(modelUrl(boss), false);
+for (const boss of Object.keys(MODELS) as BossId[]) useGLTF.preload(modelUrl(boss), false, undefined, softFail);
