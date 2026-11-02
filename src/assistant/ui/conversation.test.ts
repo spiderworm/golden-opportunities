@@ -39,6 +39,15 @@ const reply = (n: number, extra: Partial<StoredReply> = {}): StoredReply => ({
   lookups: [
     { type: "data", columns: [{ key: "revenue", label: "Revenue", type: "number", nullable: false }], rows: [{ revenue: 161524.69 }], total: 161524.69, source: "Revenue from sale lines" },
     { type: "pin", chart: { title: "Revenue by quarter", kind: "bar", query: { measure: "revenue", by: ["quarter"] } }, source: "S", placed: true },
+    {
+      type: "chart",
+      chart: { title: "Revenue by month", kind: "line", query: { measure: "revenue", by: ["month"] } },
+      pin: { title: "Revenue by month", kind: "line", query: { measure: "revenue", by: ["month"] } },
+      columns: [{ key: "month", label: "Month", type: "string", nullable: false }, { key: "revenue", label: "Revenue", type: "number", nullable: false }],
+      rows: [{ month: "2193-01", revenue: 30000 }],
+      total: 30000,
+      source: "Revenue from sale lines",
+    },
   ],
   state: "done",
   ...extra,

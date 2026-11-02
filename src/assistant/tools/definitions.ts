@@ -12,6 +12,8 @@ import { AGENT_DIMENSIONS as DIMENSIONS, AGENT_MEASURE_DIMENSIONS as MEASURE_DIM
 export const SERVER_NAME = "orbital";
 export const CHART_KINDS = ["bar", "line", "table"] as const;
 export type ChartKind = (typeof CHART_KINDS)[number];
+/** What show_chart draws in the chat: a table is what query_data already shows. */
+export const SHOWN_CHART_KINDS = ["bar", "line"] as const;
 export interface ChartSpec {
   title: string;
   kind: ChartKind;
@@ -92,6 +94,20 @@ export const TOOLS = [
         filter: queryProperties.filter,
       },
       required: ["measure", "across", "from", "to"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "show_chart",
+    description:
+      "Runs one query, exactly as query_data does, and draws its result as a chart under your reply instead of a table: a line for months or quarters, bars for anything else. Use it when the player asks for a chart, graph or plot, or to see something drawn. It returns the same refs, rows, total and source as query_data; cite its figures by ref, as your rules say. The terminal titles the chart from its query.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: SHOWN_CHART_KINDS },
+        query: { type: "object", properties: queryProperties, required: ["measure", "by"], additionalProperties: false },
+      },
+      required: ["kind", "query"],
       additionalProperties: false,
     },
   },
@@ -205,7 +221,7 @@ export const comparisonTitle = (c: Comparison) => `${MEASURE_TITLES[c.measure]} 
  * Investigate runs it again through POST /api/query. Structurally one of Chart's PinSpecs
  * (src/investigate/pins/spec.ts).
  */
-export type LookupPin = { title: string; kind: "table"; query: Query } | { title: string; kind: "comparison"; comparison: Comparison };
+export type LookupPin = { title: string; kind: "table" | (typeof SHOWN_CHART_KINDS)[number]; query: Query } | { title: string; kind: "comparison"; comparison: Comparison };
 
 /** The pin for a lookup that ran, from the tool's input checked as the tool server checked it; null if it doesn't check. */
 export function lookupPin(tool: string, input: unknown): LookupPin | null {
@@ -218,6 +234,7 @@ export function lookupPin(tool: string, input: unknown): LookupPin | null {
       const comparison = checkComparison(input);
       return { title: comparisonTitle(comparison), kind: "comparison", comparison };
     }
+    if (tool === "show_chart") return checkShownChart(input);
   } catch (e) {
     if (!(e instanceof ToolInputError)) throw e;
   }
@@ -231,6 +248,17 @@ export function checkChart(input: unknown): ChartSpec {
   const { kind, query } = input;
   if (!has(CHART_KINDS, kind)) throw new ToolInputError(`The kind must be one of: ${CHART_KINDS.join(", ")}.`);
   const checked = checkQuery(query);
+  return { title: chartTitle(checked), kind, query: checked };
+}
+
+/** Checks a chart to show in the chat, and titles it from its query: a bar or line chart of one query. Throws ToolInputError. */
+export function checkShownChart(input: unknown): ChartSpec & { kind: (typeof SHOWN_CHART_KINDS)[number] } {
+  if (!isObject(input)) throw new ToolInputError("The chart must be an object.");
+  onlyKeys(input, ["kind", "query"], "The chart");
+  const { kind, query } = input;
+  if (!has(SHOWN_CHART_KINDS, kind)) throw new ToolInputError(`The kind must be one of: ${SHOWN_CHART_KINDS.join(", ")}. For a table, use query_data.`);
+  const checked = checkQuery(query);
+  if (checked.by.length === 0) throw new ToolInputError('A chart needs a dimension in "by"; for one total, use query_data.');
   return { title: chartTitle(checked), kind, query: checked };
 }
 

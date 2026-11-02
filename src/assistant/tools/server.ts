@@ -8,7 +8,7 @@
 import { createInterface } from "node:readline";
 import { QUERY_LIMITS, type QueryResult } from "../../query/types.ts";
 import { combineComparison, comparisonQueries } from "./comparison.ts";
-import { checkChart, checkComparison, checkQuery, describeData, SERVER_NAME, ToolInputError, TOOLS, type Comparison, type ComparisonResult } from "./definitions.ts";
+import { checkChart, checkComparison, checkQuery, checkShownChart, describeData, SERVER_NAME, ToolInputError, TOOLS, type Comparison, type ComparisonResult } from "./definitions.ts";
 
 const MAX_LINE = 65_536;
 const MAX_RESPONSE = 1_000_000;
@@ -94,6 +94,12 @@ export async function callTool(name: unknown, args: unknown, env: NodeJS.Process
     if (name === "describe_data") return ok(describeData());
     if (name === "query_data") {
       const query = checkQuery(args);
+      const result = await runQuery(query, queryEndpoint(env));
+      return ok(withRefs(result, isComplete(result.rows.length, query.limit)));
+    }
+    if (name === "show_chart") {
+      // Drawn in the chat; to the model it's a query_data lookup, refs and all.
+      const { query } = checkShownChart(args);
       const result = await runQuery(query, queryEndpoint(env));
       return ok(withRefs(result, isComplete(result.rows.length, query.limit)));
     }
