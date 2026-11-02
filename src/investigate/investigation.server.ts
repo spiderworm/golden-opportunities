@@ -1,7 +1,7 @@
 // Turns the player's question (InvestigateState) into the queries the screen
 // draws, and returns only those results to the browser.
 import { loadBookshop } from "~/bookshop/loader.server";
-import type { Measure, Query, QueryResult, QueryView } from "~/query/types";
+import { PRICE_BANDS, type Measure, type Query, type QueryResult, type QueryView } from "~/query/types";
 import { DEFAULT_STATE, filtersExcept, TILE_MEASURES, type Filters, type InvestigateState, type TileMeasure } from "./state";
 
 export type RunQuery = (query: Query, view: QueryView) => QueryResult;
@@ -25,6 +25,8 @@ export interface FilterOptions {
   award: string[];
   /** Volume numbers ("1" to "7"), in order. */
   volume: string[];
+  /** The price bands, cheapest first: every band, whether anything in it sold or not. */
+  price_band: string[];
 }
 
 export interface Investigation {
@@ -112,6 +114,7 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
     discount_rate: option("discount_rate"),
     award: [...new Set(loadBookshop().awards.map((a) => a.name))].sort(),
     volume: option("volume").sort((a, b) => Number(a) - Number(b)),
+    price_band: [...PRICE_BANDS],
   };
 
   const tileFilter = withFilter(filtersExcept(state.filters, ["quarter"]));

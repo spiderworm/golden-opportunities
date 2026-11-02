@@ -35,6 +35,15 @@ describe("Plot's Investigate words (m1-copy section 2)", () => {
   });
 });
 
+describe("prices", () => {
+  it("reads a price band as a label, and a list price as it comes", () => {
+    expect(formatDimensionValue("price_band", "under $10")).toBe("Under $10");
+    expect(formatDimensionValue("price_band", "$30 and up")).toBe("$30 and up");
+    expect(formatDimensionValue("list_price", "$12.99")).toBe("$12.99");
+    expect(formatDimensionValue("edition", null)).toBe("Unknown edition");
+  });
+});
+
 describe("the ledgers' title", () => {
   it("names the visible span, and falls back without data (Audit's probe on #59)", () => {
     expect(ledgersTitle({ options: { quarter: ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1"] } })).toBe("Ledgers: 2193 and Q1 2194");

@@ -133,6 +133,16 @@ describe("investigate state", () => {
     expect(measuresOf(parseState(new URLSearchParams("measures=")))).toEqual(["revenue"]);
   });
 
+  it("breaks down and filters by price band, list price and edition, from a link", () => {
+    const state = parseState(new URLSearchParams("by=edition&compare=quarter&price_band=under%20%2410&list_price=%2412.99&edition=Rystwyth%20(Hardcover)"));
+    expect(state.by).toBe("edition");
+    // Editions are too many to split by quarter.
+    expect(state.compare).toBe(false);
+    expect(state.filters).toEqual({ price_band: ["under $10"], list_price: ["$12.99"], edition: ["Rystwyth (Hardcover)"] });
+    expect(shownFilters(new URLSearchParams(), state.filters)).toEqual(["price", "edition"]);
+    expect(parseState(new URLSearchParams("by=price_band&compare=quarter")).compare).toBe(true);
+  });
+
   it("says why a measure can't join: three at most, two units at most", () => {
     expect(canAddMeasure(["revenue"], "units")).toBe("ok");
     // An average never shares a total's axis, even in dollars.
