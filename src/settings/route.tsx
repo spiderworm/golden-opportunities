@@ -5,6 +5,7 @@ import { setSharing, sharingConfirmed, startAnalytics, track } from "~/platform/
 import type { loader as rootLoader } from "~/root";
 import type { ShellHandle } from "~/shell/Shell";
 import { MusicSettings } from "./MusicSettings";
+import { ResetGame } from "./ResetGame";
 import styles from "./Settings.module.css";
 
 export const handle: ShellHandle = { title: "Settings" };
@@ -82,6 +83,7 @@ export default function Settings() {
         <p className={styles.note}>To have your play data deleted, email tellim.games@gmail.com with your install number.</p>
       </section>
       <MusicSettings />
+      <ResetGame instance={root?.instance} />
     </div>
   );
 }

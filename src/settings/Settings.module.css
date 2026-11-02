@@ -110,3 +110,58 @@
   color: var(--color-text);
   font-size: 14px;
 }
+
+.button {
+  flex: none;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--color-panel-raised);
+}
+
+.button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* The confirm step's way on: it can't be undone, so it's marked as such. */
+.danger {
+  border-color: var(--color-down);
+  background: var(--color-down-wash);
+}
+
+.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-down) 25%, transparent);
+}
+
+.confirm {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.question {
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
