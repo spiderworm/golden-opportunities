@@ -103,8 +103,9 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             update(setDiscount(state, choice));
           }}
           onAward={(choice) => {
-            // Award names are a fixed list from the data, like discount rates: not content.
-            track("investigate_award_filtered", typeof choice === "object" ? { choice: "award", award: choice.award } : { choice });
+            // Award names are a fixed list from the data, like discount rates: not content. Only a listed name is sent.
+            const listed = typeof choice === "object" && options.award.includes(choice.award);
+            track("investigate_award_filtered", typeof choice === "object" ? { choice: "award", ...(listed ? { award: choice.award } : {}) } : { choice });
             update(setAward(state, choice));
           }}
           onClear={() => {
