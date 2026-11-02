@@ -65,8 +65,9 @@ const anchors = new WeakMap<DeepReadonly<BookshopData>, Map<string, Anchored>>()
 /**
  * The quarter's anchor under its event (section 8): the mean, over EFFECT_SEEDS, of holding course with
  * the event's conditions minus without them, added to the quarter's anchor. About 40 runs, cached.
+ * `quarter` is any quarter name from 2194-Q1 on, as a plain string (Alma's context has one); it's checked.
  */
-export function anchorFor(quarter: QuarterId, event: TurnEvent | null, data: DeepReadonly<BookshopData>): Anchored {
+export function anchorFor(quarter: string, event: TurnEvent | null, data: DeepReadonly<BookshopData>): Anchored {
   const t = quarterParts(quarter);
   const p = prepare(data, t.quarter, t.year);
   const conditions = conditionsOf(event, p.history);
@@ -92,7 +93,7 @@ export function anchorFor(quarter: QuarterId, event: TurnEvent | null, data: Dee
 }
 
 /** "bound" when the event's expected effect on holding course passes 10% of any measure's anchor; the server then falls back. */
-export function eventProblem(event: TurnEvent, quarter: QuarterId, data: DeepReadonly<BookshopData>): "bound" | null {
+export function eventProblem(event: TurnEvent, quarter: string, data: DeepReadonly<BookshopData>): "bound" | null {
   const t = quarterParts(quarter);
   const p = prepare(data, t.quarter, t.year);
   const { effect } = anchorFor(quarter, event, data);
