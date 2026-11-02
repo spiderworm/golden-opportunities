@@ -34,7 +34,7 @@ Each quarter has **one event** from a fixed list of types, and **one measure to 
 | **Genre slump** | One genre's orders fall in one month | −10 to −25%, one month | The station's archive has put its romance collection online for free. |
 | **Quiet days** | One weekday's orders fall all quarter | −10 to −25%, one weekday | The Ring C shuttle now docks an hour later on Tuesdays. |
 | **Author fares** | An author night's cost changes | $100 to $400 a night, instead of $200 | The shuttle line has repriced its author fares. |
-| **Format costs** | One format's cost of goods rises | 60% of list rising to 65 to 70% | A shortage of hardcover board at the printworks. |
+| **Format costs** | One format's cost of goods rises | 60% of list rising to 65 to 69% | A shortage of hardcover board at the printworks. |
 | **A quiet quarter** | Nothing but the stretch | At most once in any three quarters | |
 
 **Tier 2, if there's time:** an **Orbitplace lot.** A seller offers a lot of one edition (50 to 300 copies) at 30 to 50% of list, and a rival buyer, played by Alma, may bid against the player. Copies of that edition sold in the quarter, up to the lot's size, cost the lot price instead of 60% of list. Unsold copies are written off at the quarter's end, so the shop still keeps no stock.
@@ -67,7 +67,7 @@ Each quarter has **one event** from a fixed list of types, and **one measure to 
   - Alma runs from Q3 2194, so the first possible recovery goal is in Q3 2194, from Q2 2194 against Q2 2193.
   - The server writes the reason from the drop: `HAPPINESS FELL {drop}. RESTORE IT.` **Recovery wins** over "never the same measure two quarters running", when a measure falls two quarters in a row, but not over "no piling on": with two strikes counting, there's no recovery goal.
 
-**Bound:** an event's expected effect on holding course is at most 10% of any measure's anchor; the server rejects a record past that (section 8). The tier-1 limits stay inside it, with the largest swing at 9.8% (format costs, on profit).
+**Bound:** an event's expected effect on holding course is at most 10% of any measure's anchor; the server rejects a record past that (section 8). The tier-1 limits stay inside it, with the largest swing at 9.9% (hardcover costs at 69%, on profit).
 
 **How goals count an event (proposal).** As with the new volume (#107), each goal adds the event's expected effect on holding course. So an event changes what's best, not where 70 sits. The stretch is the exception: it raises one goal on purpose. **Alternative:** don't anchor events, so a bad event lowers everyone's grades, and meeting the goals anyway earns Weathered the Storm. That makes the dice decide strikes, which the removal rule can't tolerate.
 
@@ -285,10 +285,10 @@ The swing of each type's expected effect on holding course, as a share of the qu
 | Genre surge, +10 to 30% | 0 to +5.3% | 0 to +4.6% | −0.2 to +0.5% | 0 |
 | Genre slump, −10 to −25% | −2.7 to 0% | −2.3 to 0% | −0.3 to +0.2% | −0.9 to −0.1% |
 | Quiet days, −10 to −25% | −5.4 to −1.1% | −5.4 to −1.1% | under 0.1% | −2.2 to −0.4% |
-| Format costs, 65 to 70% | −9.8 to −0.2% (largest for hardcovers, then mass market paperbacks) | 0 | 0 | 0 |
+| Format costs, 65 to 69% | −9.9 to −0.2% (largest for hardcovers, then mass market paperbacks) | 0 | 0 | 0 |
 | Author fares, $100 to $400 | 0 for holding course; the good plan's profit lift ranges from −0.6% to +10.4% | 0 | 0 | 0 |
 
-- **The bound:** the server rejects an event record whose expected effect on holding course is more than **10% of any measure's anchor**. It checks this when the record is chosen, with the same seeds as the anchor, and a rejected record falls back like any invalid one. Every tier-1 type fits by construction: the largest swing measured is 9.8%.
+- **The bound:** the server rejects an event record whose expected effect on holding course is more than **10% of any measure's anchor**. It checks this when the record is chosen, with the same seeds as the anchor, and a rejected record falls back like any invalid one. Every tier-1 type fits by construction, checked at each type's extreme limit over every genre, month, weekday and format. The largest swing is 9.9%, hardcover costs at 69% on profit in Q1 2195. Format costs stop at 69%: hardcovers at 70% take 10.1 to 11.0% off holding course's profit from Q3 2194 to Q1 2195, past the bound, and the calibration's random draws had missed that corner (Sim). The other types' worst cases are far inside: quiet days 5.7%, a surge 5.5%, a slump 4.6%.
 - **Because the goals are anchored, an event can't cause a strike by itself.** Holding course scores the same with or without it, and so does a plan that ignores it, within noise. What an event changes is what's best. Author fares, for example, move the author-night plan's profit lift over holding course from 2.2% (median) to anywhere between −0.6% and +10.4%.
 - **Culture under a surge:** a genre surge adds orders but almost no Culture. The clones repeat titles already sold that day, and each title counts once a day.
 - **Tier 2's lot** isn't calibrated. Its bound, when it's built:
