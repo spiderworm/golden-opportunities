@@ -8,7 +8,9 @@ import styles from "./Investigate.module.css";
 
 const MENUS = ["quarter", "genre", "format", "publisher"] as const satisfies readonly (keyof FilterOptions)[];
 /** Dimensions with their own menu; the rest show as chips. */
-const IN_MENUS: readonly FilterDimension[] = [...MENUS, "discount_rate", "discounted", "awarded", "award"];
+/** The awards menu's two dimensions: one choice sets one of them. */
+const AWARDS: readonly FilterDimension[] = ["awarded", "award"];
+const IN_MENUS: readonly FilterDimension[] = [...MENUS, "discount_rate", "discounted", ...AWARDS];
 /** What a menu says when nothing in it is chosen (m1-copy section 2). */
 const ALL: Record<(typeof MENUS)[number], string> = { quarter: "All quarters", genre: "All genres", format: "All formats", publisher: "All publishers" };
 
@@ -24,8 +26,10 @@ export interface FilterBarProps {
 /** One row of filters above everything they scope. */
 export function FilterBar({ filters, options, onChange, onDiscount, onAward, onClear }: FilterBarProps) {
   const any = FILTER_DIMENSIONS.some((d) => filters[d]?.length);
-  // Menus show their own selections; chips cover the rest (the heatmap's weekday and month).
-  const chipped = FILTER_DIMENSIONS.filter((d) => !IN_MENUS.includes(d) && filters[d]?.length);
+  // Menus show their own selections; chips cover the rest (the heatmap's weekday and month), and a one-choice
+  // menu's filters when no single choice names them (a link with both, or two awards).
+  const unnamed: readonly FilterDimension[] = awardChoice(filters) === "all" ? AWARDS : [];
+  const chipped = FILTER_DIMENSIONS.filter((d) => (!IN_MENUS.includes(d) || unnamed.includes(d)) && filters[d]?.length);
 
   return (
     <div className={styles.filterBar} role="group" aria-label="Filters">
