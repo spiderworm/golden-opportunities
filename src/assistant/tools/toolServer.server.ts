@@ -15,14 +15,17 @@ const PORT = /^\d{1,5}$/;
  *   is busy, and only the server knows where it ended up.
  * - PORT: `npm start` sets it (3000 unless it's set already), and react-router-serve listens there.
  * - Vite's 5173.
- * The host is 127.0.0.1 when the dev server listens on IPv4 only, else [::1]: Vite listens on [::1] here (measured
- * 30 Oct), and react-router-serve on every interface (31 Oct).
+ * The host is 127.0.0.1 when the server listens on IPv4 only, else [::1]. Vite listens on [::1] here (measured
+ * 30 Oct), and its address is ORBITAL_LISTEN_HOST. `npm start` passes react-router-serve HOST, 127.0.0.1 unless
+ * ORBITAL_HOST says otherwise (David, 2 Nov: this computer only). A HOST that isn't an IP (a hostname) needs
+ * ORBITAL_QUERY_URL.
  */
 export function defaultQueryUrl(env: NodeJS.ProcessEnv = process.env): string {
   if (env.ORBITAL_QUERY_URL) return env.ORBITAL_QUERY_URL;
   const listening = PORT.test(env.ORBITAL_LISTEN_PORT ?? "") ? env.ORBITAL_LISTEN_PORT : undefined;
   const port = listening ?? (PORT.test(env.PORT ?? "") ? env.PORT : "5173");
-  const host = listening && ["127.0.0.1", "0.0.0.0"].includes(env.ORBITAL_LISTEN_HOST ?? "") ? "127.0.0.1" : "[::1]";
+  const bound = listening ? env.ORBITAL_LISTEN_HOST : env.HOST;
+  const host = ["127.0.0.1", "0.0.0.0"].includes(bound ?? "") ? "127.0.0.1" : "[::1]";
   return `http://${host}:${port}/api/query`;
 }
 
