@@ -6,9 +6,9 @@ import type { Grade, MeasureScore, Outcome } from '../simulation/types';
 import { getGameSession } from './session.server';
 import { currentQuarter, isFinished } from './progress';
 import type { QuarterId } from './quarters';
-import type { DiscoveryId, GameSave, Q2GameOutcome } from './types';
+import type { DiscoveryId, GameSave, PlayedQuarter, Q2GameOutcome } from './types';
 
-export interface HalfYearQuarter { quarter: QuarterId; measures: MeasureScore[]; overall: { score: number; grade: Grade } }
+export interface HalfYearQuarter { quarter: PlayedQuarter['period']; measures: MeasureScore[]; overall: { score: number; grade: Grade } }
 /** Set once both quarters are played. The score is the mean of the two overall scores, rounded half up (q2.md section 7). */
 export interface HalfYear { quarters: HalfYearQuarter[]; score: number; grade: Grade }
 interface Common {
