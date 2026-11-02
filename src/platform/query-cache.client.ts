@@ -66,6 +66,8 @@ export interface QueryCache {
   noteVersion(answered: string | null | undefined): void;
   /** Called once each time the page is found to be overtaken. Returns a function that stops listening. */
   onStale(listener: () => void): () => void;
+  /** Counts a request made elsewhere after `peek` missed, for the page's summary. */
+  noteMiss(): void;
   /** The counts since the last call, then zero. */
   takeStats(): CacheStats;
   readonly size: { entries: number; bytes: number };
@@ -203,6 +205,9 @@ export function createQueryCache({ maxEntries = 300, maxBytes = 4_000_000 } = {}
       return () => {
         staleListeners.delete(listener);
       };
+    },
+    noteMiss() {
+      stats.misses++;
     },
     takeStats() {
       const taken = stats;
