@@ -275,12 +275,20 @@ export class Refs {
 }
 
 const NUMBER_WORDS =
-  "zero|one|ones|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|billions?|dozens?|half|halves|halved|twice|thrice|double|doubled|triple|tripled|quadruple|single|thirds?|fourths?|fifths?|sixths?|sevenths?|eighths?|ninths?|tenths?";
+  "zero|one|ones|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|billions?|dozens?|half|halves|halved|twice|thrice|double[sd]?|doubling|triple[sd]?|tripling|treble[sd]?|trebling|quadruple[sd]?|quadrupling|quintuple[sd]?|sextuple[sd]?|single|thirds?|fourths?|fifths?|sixths?|sevenths?|eighths?|ninths?|tenths?|eleventh|twelfth|\\w+teenth|\\w+tieth|hundredths?|thousandths?|millionths?|nil|fortnights?";
 const DIRECTION_WORDS =
   "higher|highest|lower|lowest|more|most|less|least|fewer|fewest|greater|greatest|larger|largest|bigger|biggest|smaller|smallest|rise|rises|rising|rose|risen|fall|falls|falling|fell|fallen|up|down|increase|increases|increased|increasing|decrease|decreases|decreased|decreasing|grow|grows|grew|grown|growing|growth|drop|drops|dropped|dropping|decline|declines|declined|declining|gain|gains|gained|lose|loses|lost|loss|losses|above|below|exceed|exceeds|exceeded|beat|beats|trail|trails|trailed|outsold|outperformed|surge|surges|surged|jump|jumps|jumped|climb|climbs|climbed|dip|dips|dipped|slump|slumps|slumped|plunge|plunges|plunged|shrink|shrinks|shrank|shrunk|slip|slips|slipped|tumble|tumbles|tumbled|soar|soars|soared|edged|outpace|outpaces|outpaced|lag|lags|lagged|lagging|overtake|overtakes|overtook|overtaken|surpass|surpasses|surpassed|sink|sinks|sank|sunk|better|worse|peak|peaks|peaked|bottomed|unchanged|flat|steady|top|bottom|best|worst|ahead|behind";
 // Digits in any script and number symbols (after NFKC, so "１６１" and "¾" are caught), fractions written with
-// "quarter", "a couple", and "-fold".
-const BANNED = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS}|${DIRECTION_WORDS})\\b|\\ba quarter\\b|\\bquarters? of\\b|\\ba couple\\b|\\w*-?fold\\b`, "iu");
+// "quarter", "a couple", "a score of", "a pair of", and "-fold".
+const QUANTITY = "\\ba quarter\\b|\\bquarters? of\\b|\\ba couple\\b|\\ba (?:score|pair) of\\b|\\w*-?fold\\b";
+const BANNED = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS}|${DIRECTION_WORDS})\\b|${QUANTITY}`, "iu");
+/**
+ * Roman numerals in capitals ("XX", and "XII" from a folded "Ⅻ"): two letters or more, so "I" stays a word, and
+ * only whole valid numerals, so "DID", "MILD" and "CIVIL" pass. "MIX" is the one common word that's also one.
+ */
+const ROMAN = /\b(?!MIX\b)(?=[MDCLXVI]{2,}\b)M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})(?<=\b[MDCLXVI]{2,})\b/u;
+/** The whole ban, for other text a player is shown as fact-free flavor (Alma's): run it on NFKC-folded text. */
+export const hasBannedWord = (folded: string) => BANNED.test(folded) || ROMAN.test(folded);
 // Exact phrases allowed despite their words, in exact contexts only.
 const ALLOWED = /\blook(?:s|ed|ing)? (?:(?:it|them|that) )?up\b|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))/giu;
 const REF = /\{\{([^{}]{1,40})\}\}/g;
@@ -312,7 +320,7 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity): 
     .replace(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
     .replace(/\bQ([1-4])\b/g, (q) => (refs.hasQuarter(q, known) ? " " : q))
     .replace(ALLOWED, " ");
-  if (BANNED.test(prose)) return null;
+  if (BANNED.test(prose) || ROMAN.test(prose)) return null;
   // "Yes" or "No" is itself a claim: allowed only to open a sentence that is otherwise refs ("No, {{b.to_vs_from}}.").
   const answer = /^\s*(?:yes|no)\b/i.exec(prose);
   if (answer && (count === 0 || /\p{L}/u.test(prose.slice(answer[0].length)))) return null;
