@@ -20,7 +20,12 @@ export const RESET_COPY = {
   failed: "The game couldn't be reset. Try again in a moment.",
 } as const;
 
-export function ResetGame({ instance }: { instance: string | undefined }) {
+/**
+ * The panel, in Settings' words unless `copy` gives others: the shell's "Your save can't be replayed" screen uses it
+ * with its own heading, text and button, and the same confirm step (src/shell/replay-mismatch.tsx).
+ */
+export function ResetGame({ instance, copy = {} }: { instance: string | undefined; copy?: Partial<Record<"heading" | "text" | "open", string>> }) {
+  const words = { ...RESET_COPY, ...copy };
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -66,13 +71,13 @@ export function ResetGame({ instance }: { instance: string | undefined }) {
       <div className={styles.row}>
         <div>
           <h2 id="reset-heading" className={styles.heading}>
-            {RESET_COPY.heading}
+            {words.heading}
           </h2>
-          <p className={styles.text}>{RESET_COPY.text}</p>
+          <p className={styles.text}>{words.text}</p>
         </div>
         {!asking && (
           <button ref={opener} type="button" className={styles.button} disabled={!instance} onClick={ask}>
-            {RESET_COPY.open}
+            {words.open}
           </button>
         )}
       </div>

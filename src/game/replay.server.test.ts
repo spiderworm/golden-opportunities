@@ -98,7 +98,24 @@ describe('a save whose replay no longer matches', () => {
     // Only what needs the lines refuses, and only when it reads them.
     const session = getGameSession(req);
     expect(session.save.id).toBe(id);
-    expect(() => session.queryView).toThrow(expect.objectContaining({ code: 'REPLAY_MISMATCH' }));
+    // For a page's loader it's a 409 naming the first quarter that no longer replays, for the shell's error screen.
+    let thrown: unknown;
+    try { void session.queryView; } catch (error) { thrown = error; }
+    expect(thrown).toMatchObject({ data: { replayMismatch: '2194-Q1' }, init: { status: 409 } });
+  });
+});
+
+describe('the query endpoint, on a save that no longer replays', () => {
+  it("says so, with its own code, rather than an internal error (Audit, #198)", async () => {
+    const { createQueryHandler } = await import('../query/http.server');
+    const id = played();
+    const save = saves.read(id);
+    saves.update(id, save.revision, draft => { draft.played[1] = { ...draft.played[1]!, lines: { ...draft.played[1]!.lines!, hash: 'e'.repeat(64) } } as PlayedQuarter; });
+    forgetReplays();
+    const response = await createQueryHandler({ track: () => {} })(new Request('http://localhost:3000/api/query', { method: 'POST',
+      headers: { cookie: 'orbital_save=' + id, origin: 'http://localhost:3000', 'content-type': 'application/json' }, body: JSON.stringify({ measure: 'units', by: [] }) }));
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toEqual({ code: 'SAVE_NOT_REPLAYABLE', message: "This game was saved by an earlier version, and can't be replayed. Start over from Settings." });
   });
 });
 

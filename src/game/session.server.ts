@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
-import type { MiddlewareFunction } from 'react-router';
+import { data, type MiddlewareFunction } from 'react-router';
 import { loadBookshop } from '../bookshop/loader.server';
 import type { JoinedBook } from '../bookshop/types';
 import type { QueryView } from '../query/types';
@@ -11,7 +11,7 @@ import { DATA_DIR } from '../platform/analytics/instance.server';
 import { trackServer } from '../platform/analytics/analytics.server';
 import { onGameStarted } from '../alma/backstory.server';
 import { createSaveStore, isSaveId, SaveError } from './store.server';
-import { quarterLines } from './replay.server';
+import { quarterLines, ReplayMismatch } from './replay.server';
 import type { TurnEvent } from '../simulation/turn';
 import type { GameSave } from './types';
 import { saveDate } from './progress';
@@ -76,7 +76,14 @@ export function queryViewForSave(save: GameSave): QueryView {
 export function getGameSession(request: Request) {
   const save = saves.read(resolveSaveId(request));
   let view: QueryView | undefined;
-  return { save, date: saveDate(save), get queryView() { return (view ??= queryViewForSave(save)); } };
+  return { save, date: saveDate(save), get queryView() {
+    try { return (view ??= queryViewForSave(save)); }
+    catch (error) {
+      // For a page's loader: the shell's error boundary shows "Your save can't be replayed" for this quarter.
+      if (error instanceof ReplayMismatch) throw data({ replayMismatch: error.quarter }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
+      throw error;
+    }
+  } };
 }
 /** A new save, under the per-minute limit shared by first visits and Play again. The caller sets its cookie. */
 export function startGame(): string {

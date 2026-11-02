@@ -64,7 +64,7 @@ export interface QueryResult {
   source: string;
 }
 
-export type QueryErrorCode = 'INVALID_QUERY' | 'INCOMPATIBLE_DIMENSION' | 'UNAVAILABLE_FACTS' | 'INVALID_VIEW' | 'UNAUTHORIZED' | 'SESSION_ENDED' | 'METHOD_NOT_ALLOWED' | 'UNSUPPORTED_MEDIA_TYPE' | 'PAYLOAD_TOO_LARGE' | 'RATE_LIMITED' | 'INTERNAL_ERROR' | 'RESULT_TOO_LARGE';
+export type QueryErrorCode = 'INVALID_QUERY' | 'INCOMPATIBLE_DIMENSION' | 'UNAVAILABLE_FACTS' | 'INVALID_VIEW' | 'UNAUTHORIZED' | 'SESSION_ENDED' | 'METHOD_NOT_ALLOWED' | 'UNSUPPORTED_MEDIA_TYPE' | 'PAYLOAD_TOO_LARGE' | 'RATE_LIMITED' | 'INTERNAL_ERROR' | 'RESULT_TOO_LARGE' | 'SAVE_NOT_REPLAYABLE';
 export interface QueryErrorResponse { error: { code: QueryErrorCode; message: string } }
 export type QueryTrack = (event: string, props?: Record<string, string | number | boolean>) => void;
 

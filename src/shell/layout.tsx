@@ -1,10 +1,12 @@
 import { gameSessionMiddleware } from "~/game/session.server";
-import { useEffect, useRef } from "react";
-import { Outlet, useFetcher, useLocation, useRevalidator } from "react-router";
+import { useEffect, useRef, type ReactNode } from "react";
+import { Outlet, isRouteErrorResponse, useFetcher, useLocation, useRevalidator, useRouteLoaderData } from "react-router";
 
 import type { Route } from "./+types/layout";
+import type { loader as rootLoader } from "../root";
 import { Shell } from "./Shell";
-import { getStationState } from "./station-state";
+import { getStationState, type StationState } from "./station-state";
+import { ReplayMismatch, replayMismatchOf } from "./replay-mismatch";
 import { revalidateAbovePage } from "~/platform/revalidate";
 import { track } from "~/platform/analytics/analytics.client";
 import { flushQueryCacheStats, pageOf, queryCache } from "~/platform/query-cache.client";
@@ -17,8 +19,23 @@ export function loader({ request }: Route.LoaderArgs) {
 
 export const shouldRevalidate = revalidateAbovePage;
 
-export default function ShellLayout({ loaderData }: Route.ComponentProps) {
+function Frame({ station, children }: { station: StationState; children: ReactNode }) {
   const seen = useFetcher();
+  return (
+    <Shell
+      stationDate={station.date}
+      notifications={station.alerts}
+      standingOrder={station.standingOrder}
+      q1={station.q1}
+      onAlertSeen={() => seen.submit(null, { method: "post", action: "/alert/seen" }).catch(() => {})}
+      track={track}
+    >
+      {children}
+    </Shell>
+  );
+}
+
+export default function ShellLayout({ loaderData }: Route.ComponentProps) {
   const { pathname } = useLocation();
   // In render, before any child's effects run, so a pin fetched on mount is filed under this version (Frank's
   // note on #189). Only in the browser: the cache module is client-only. Idempotent: setting the version it
@@ -57,15 +74,28 @@ export default function ShellLayout({ loaderData }: Route.ComponentProps) {
   }, [pathname]);
 
   return (
-    <Shell
-      stationDate={loaderData.date}
-      notifications={loaderData.alerts}
-      standingOrder={loaderData.standingOrder}
-      q1={loaderData.q1}
-      onAlertSeen={() => seen.submit(null, { method: "post", action: "/alert/seen" }).catch(() => {})}
-      track={track}
-    >
+    <Frame station={loaderData}>
       <Outlet />
-    </Shell>
+    </Frame>
   );
+}
+
+/**
+ * A page's error, inside the shell, so the navigation stays (Plot, #198). A save that no longer replays gets its
+ * own screen, with Start over; anything else reads as the root's would. If the shell's own loader failed, there's
+ * no shell to keep, and the error shows alone.
+ */
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const station = useRouteLoaderData<typeof loader>("shell/layout");
+  const root = useRouteLoaderData<typeof rootLoader>("root");
+  const quarter = replayMismatchOf(error);
+  const content = quarter ? (
+    <ReplayMismatch quarter={quarter} instance={root?.instance} />
+  ) : (
+    <main>
+      <h1>{isRouteErrorResponse(error) && error.status === 404 ? "Not found" : "Something went wrong"}</h1>
+      <p>{isRouteErrorResponse(error) && error.status === 404 ? "The requested page could not be found." : "An unexpected error occurred."}</p>
+    </main>
+  );
+  return station ? <Frame station={station}>{content}</Frame> : content;
 }

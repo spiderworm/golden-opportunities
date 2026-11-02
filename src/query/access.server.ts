@@ -2,6 +2,7 @@ import { QueryError } from './errors';
 import { resolveSaveId, saves, queryViewForSave } from '../game/session.server';
 import { saveForQueryToken } from '../game/query-token.server';
 import { SaveError } from '../game/store.server';
+import { ReplayMismatch } from '../game/replay.server';
 import type { GameSave } from '../game/types';
 
 /** Shared local browser boundary; Host never chooses a token destination or save. */
@@ -29,4 +30,11 @@ export function authorizeQuery(request: Request): QueryAccess {
   }
 }
 /** Uses the authorized snapshot; request bodies cannot grant periods or select saves. */
-export function viewForAccess(access: QueryAccess) { return queryViewForSave(access.save); }
+export function viewForAccess(access: QueryAccess) {
+  try { return queryViewForSave(access.save); }
+  catch (error) {
+    // A save this version can't replay: a pin or Dewey says so, rather than an internal error (Audit, #198).
+    if (error instanceof ReplayMismatch) throw new QueryError('SAVE_NOT_REPLAYABLE', "This game was saved by an earlier version, and can't be replayed. Start over from Settings.");
+    throw error;
+  }
+}
