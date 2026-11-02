@@ -294,7 +294,10 @@ const ALLOWED = /\blook(?:s|ed|ing)? (?:(?:it|them|that) )?up\b|\b(?:broken|brea
 const REF = /\{\{([^{}]{1,40})\}\}/g;
 
 /** Text as it will be read: compatibility forms ("７", "½") folded to plain ones before any check. */
-const fold = (text: string) => text.normalize("NFKC");
+// Invisible characters (a soft hyphen, a zero-width space, a word joiner, bidi controls) are dropped first: NFKC
+// keeps them, so "fi\u00ADve" would read as "five" while slipping past every word check (Probe). The checks and
+// the text shown both use this, so what's checked is what's shown.
+const fold = (text: string) => text.normalize("NFKC").replace(/\p{Default_Ignorable_Code_Point}/gu, "");
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
