@@ -28,9 +28,9 @@ async function overall(page: Page): Promise<[number, string]> {
   return [Number(score), grade!];
 }
 
-// The whole game (docs/design/q2.md): Q1, Continue to Q2, Q2's memo quoting Q1, Q2's plan with a pick,
-// Q2's result and the half-year review, Q1's result still there, then Play again from January 1.
-test('Q1, then Q2 with a pick, then the half-year review, then Play again', async ({ page, browserName }) => {
+// The first two quarters (docs/design/q2.md) and the way on (endless.md): Q1, Continue to Q2, Q2's memo quoting Q1,
+// Q2's plan with a pick, Q2's result with the service record, Q1's result still there, then Continue to Q3.
+test('Q1, then Q2 with a pick, then the service record, then on to Q3', async ({ page, browserName }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -114,34 +114,34 @@ test('Q1, then Q2 with a pick, then the half-year review, then Play again', asyn
   await expect(found).not.toContainText('Weekdays emptied');
   const [q2Score, q2Grade] = await overall(page);
 
-  // The half-year review: both quarters' scores, and their mean, rounded half up.
-  const review = page.getByRole('region', { name: 'Half-year review' });
-  await expect(review.getByRole('row', { name: /^Q1 2194/ })).toContainText(`${score} (${grade})`);
-  await expect(review.getByRole('row', { name: /^Q2 2194/ })).toContainText(`${q2Score} (${q2Grade})`);
-  const half = Math.floor((score + q2Score) / 2 + 0.5);
-  await expect(review).toContainText(new RegExp(`Half-year score: ${half} \\(`));
-  await expect(review).toContainText(`HALF-YEAR SCORE: ${half}.`);
-  await expect(review).toContainText("That's the end of the first half of 2194. Thanks for minding the shop.");
-  await expect(review.getByRole('link', { name: 'Back to the ledgers' })).toBeVisible();
+  // The endless game (endless.md section 6): the service record replaces the half-year review, and the game goes on.
+  await expect(page.getByRole('region', { name: 'Half-year review' })).toHaveCount(0);
+  const record = page.getByRole('region', { name: 'Service record' });
+  await expect(record.getByRole('row', { name: /^Q1 2194/ })).toContainText(`${score} (${grade})`);
+  await expect(record.getByRole('row', { name: /^Q2 2194/ })).toContainText(`${q2Score} (${q2Grade})`);
+  await expect(record).toContainText('The new Inspector Ryeslton volume');
 
-  // Q1's result is still there, as it was: no way on, and no review.
+  // Q1's result is still there, as it was: no way on from an older quarter, and no record.
   await settle(page);
   await page.goto('/result?analytics-test=1&quarter=2194-Q1');
   await expect(page.getByRole('heading', { name: 'Q1 2194: the results' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Continue to Q2' })).toHaveCount(0);
-  await expect(page.getByRole('region', { name: 'Half-year review' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /^Continue to/ })).toHaveCount(0);
 
-  // Play again: a new save from January 1, with Q1's memo.
+  // Continue to Q3: Decide waits for Alma's record (scripted under e2e), then plans Q3 on Q2's form.
   await settle(page);
   await page.goto('/result?analytics-test=1');
-  const before = (await page.context().cookies()).find(c => c.name === 'orbital_save')?.value;
-  await page.getByRole('region', { name: 'Half-year review' }).getByRole('button', { name: 'Play again' }).click();
+  await page.getByRole('link', { name: 'Continue to Q3 2194', exact: true }).click();
   await expect(page).toHaveURL(/\/(?:\?|$)/);
-  await expect(page.getByRole('dialog', { name: 'Transmission from the Commerce Office' })).toContainText('THE NUMBERS HAVE GONE DOWN.');
-  await expect(page.locator('time')).toHaveText('1 Jan 2194');
-  const after = (await page.context().cookies()).find(c => c.name === 'orbital_save')?.value;
-  expect(after).toBeTruthy();
-  expect(after).not.toBe(before);
+  await settle(page);
+  await page.goto('/decide?analytics-test=1');
+  await expect(page.getByRole('heading', { name: 'PLAN FOR Q3 2194' })).toBeVisible({ timeout: 20_000 });
+  // Q3's memo, from Alma's record, quotes Q2's score.
+  await settle(page);
+  await page.goto('/?analytics-test=1');
+  const q3Memo = page.getByRole('dialog', { name: 'Transmission from the Commerce Office' });
+  await expect(q3Memo).toContainText(`Q2 2194 overall score: ${q2Score}`);
+  await expect(q3Memo).toContainText('July 1, 2194');
+  await expect(page.locator('time')).toHaveText('1 Jul 2194');
   const excused = (message: string) => browserName === 'webkit' && ABORTED_ON_WEBKIT.some(a => a.pattern.test(message));
   expect(errors.filter(message => !excused(message))).toEqual([]);
 });

@@ -97,7 +97,8 @@ export function removalOf(save: GameSave): Common['removed'] {
 export const isFirst = (q: PlayedQuarter): q is Extract<PlayedQuarter, { period: '2194-Q1' }> => q.period === '2194-Q1';
 
 export function halfYearOf(save: GameSave): HalfYear | null {
-  if (!isFinished(save)) return null;
+  // Only a game that ended after Q2, as the game did before the endless loop: from Q3 the service record replaces it.
+  if (!isFinished(save) || save.played.length !== 2) return null;
   const quarters = save.played.map(({ period, outcome }) => ({ quarter: period as HalfYearQuarter['quarter'], measures: outcome.reportCard.plan.measures,
     overall: { score: outcome.reportCard.plan.overall.score, grade: outcome.reportCard.plan.overall.grade } }));
   const score = roundHalfUp(quarters.reduce((sum, q) => sum + q.overall.score, 0) / quarters.length);
