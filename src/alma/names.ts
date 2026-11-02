@@ -26,35 +26,44 @@ const FORMAT_FORMS: Record<string, string[]> = {
 };
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 export const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const weekdayForms = (d: string) => [d.toLowerCase(), `${d.toLowerCase()}s`];
-// "May" and "March" are ordinary words too ("the bosses may", "a march"), so months count only capitalized in
-// prose, and in the capitals fields every month counts but those two.
-const monthForms = (m: string) => [m];
+// "May" and "March" are ordinary words too ("the bosses may", "march on"): in prose they count only as written
+// "May" and "March", and in the capitals fields not at all. Every other month counts in any case.
+const WORD_MONTHS = new Set(["May", "March"]);
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const anyOf = (forms: string[], flags: string) => (forms.length ? new RegExp(`(?<![\\p{L}\\p{N}])(?:${forms.map(escape).sort((a, b) => b.length - a.length).join("|")})(?![\\p{L}\\p{N}])`, flags) : null);
 
 /** The month names of a quarter's three months, "2194-Q3" → July, August, September. */
 export const quarterMonths = (quarter: string) => MONTHS.slice((Number(quarter.slice(-1)) - 1) * 3, Number(quarter.slice(-1)) * 3);
 
-/** Why a field names something the candidate doesn't, or null. `titles` are the catalog's titles. */
-export function nameProblem(text: string, candidate: Candidate, quarter: string, titles: readonly string[], capitals: boolean): string | null {
-  const own: string[] = [];
-  const others: string[] = [];
-  for (const [value, forms] of Object.entries(GENRE_FORMS)) (candidate.params.genre === value ? own : others).push(...forms);
-  for (const [value, forms] of Object.entries(FORMAT_FORMS)) (candidate.params.format === value ? own : others).push(...forms);
-  for (const day of WEEKDAYS) (candidate.params.weekday === day ? own : others).push(...weekdayForms(day));
-  const month = typeof candidate.params.month === "number" ? quarterMonths(quarter)[candidate.params.month - 1] : undefined;
-  const months: string[] = [];
-  for (const m of MONTHS) (m === month ? own : months).push(...monthForms(m));
+/** Every form, with the value it names: "genre:Mystery", "month:July". */
+function forms(capitals: boolean): Map<string, string> {
+  const owner = new Map<string, string>();
+  for (const [value, list] of Object.entries(GENRE_FORMS)) for (const f of list) owner.set(f, `genre:${value}`);
+  for (const [value, list] of Object.entries(FORMAT_FORMS)) for (const f of list) owner.set(f, `format:${value}`);
+  for (const day of WEEKDAYS) for (const f of [day, `${day}s`]) owner.set(f.toLowerCase(), `weekday:${day}`);
+  for (const m of MONTHS) if (!WORD_MONTHS.has(m)) owner.set(m.toLowerCase(), `month:${m}`);
+  if (!capitals) for (const m of WORD_MONTHS) owner.set(m, `month:${m}`);
+  return owner;
+}
 
-  // The candidate's own names come out first, so "science fiction" for SciFi/Fantasy doesn't read as Fiction.
-  let rest = text;
-  const mine = anyOf(own, "giu");
-  if (mine) rest = rest.replace(mine, " ");
-  if (anyOf(others, "iu")?.test(rest)) return "names another value";
-  const monthPattern = capitals ? anyOf(months.filter((m) => m !== "May" && m !== "March"), "iu") : anyOf(months, "u");
-  if (monthPattern?.test(rest)) return "names another month";
-  if (anyOf([...titles], "iu")?.test(rest)) return "names a title";
+/**
+ * Why a field names something the candidate doesn't, or null. One scan, longest form first, so a longer value
+ * that contains the candidate's own ("science fiction" around "fiction", "trade paperback" around "paperback")
+ * is read as itself (Probe's review of #178). `titles` are the catalog's titles.
+ */
+export function nameProblem(text: string, candidate: Candidate, quarter: string, titles: readonly string[], capitals: boolean): string | null {
+  const month = typeof candidate.params.month === "number" ? quarterMonths(quarter)[candidate.params.month - 1] : undefined;
+  const own = new Set([`genre:${candidate.params.genre}`, `format:${candidate.params.format}`, `weekday:${candidate.params.weekday}`, `month:${month}`]);
+  const owner = forms(capitals);
+  const all = [...owner.keys()].sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(`(?<![\\p{L}\\p{N}])(?:${all.map(escape).join("|")})(?![\\p{L}\\p{N}])`, "giu");
+  for (const match of text.matchAll(pattern)) {
+    const found = match[0];
+    // Case-insensitive, except the two months that are words: those are keyed only as written ("May").
+    const value = owner.get(found.toLowerCase()) ?? owner.get(found);
+    if (!value) continue;
+    if (!own.has(value)) return value.startsWith("month:") ? "names another month" : "names another value";
+  }
+  for (const title of titles) if (new RegExp(`(?<![\\p{L}\\p{N}])${escape(title)}(?![\\p{L}\\p{N}])`, "iu").test(text)) return "names a title";
   return null;
 }

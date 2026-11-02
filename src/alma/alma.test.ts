@@ -119,6 +119,19 @@ describe("the text checks", () => {
     const scifi = { ...surge, params: { genre: "SciFi/Fantasy", month: 1, percent: 12 } };
     expect(textProblem("story", "Science fiction fans have opened a club.", rules(scifi))).toBeNull();
     expect(textProblem("story", "Fiction fans have opened a club.", rules(scifi))).toBe("name");
+    // A longer value around the candidate's own is still another value (Probe's review of #178).
+    const fiction = { ...surge, params: { genre: "Fiction", month: 1, percent: 12 } };
+    expect(textProblem("story", "Fiction readers have opened a club.", rules(fiction))).toBeNull();
+    expect(textProblem("story", "Science fiction readers have opened a club.", rules(fiction))).toBe("name");
+    expect(textProblem("story", "Non-fiction readers have opened a club.", rules(fiction))).toBe("name");
+    const paperback: Candidate = { type: "format_costs", params: { format: "Paperback", percent: 66 }, stretch: { measure: "culture", percent: 12 } };
+    expect(textProblem("story", "Paperback binding is scarce.", rules(paperback))).toBeNull();
+    expect(textProblem("story", "Trade paperback binding is scarce.", rules(paperback))).toBe("name");
+    expect(textProblem("story", "Mass market paperbacks are scarce.", rules(paperback))).toBe("name");
+    // Months count in any case in prose ("AUGUST" for a July candidate), but "may" and "march" only as "May" and "March".
+    expect(textProblem("story", "The AUGUST rush is the talk of the deck.", rules({ ...surge, params: { ...surge.params, month: 1 } }))).toBe("name");
+    expect(textProblem("story", "Readers may march to the deck in August.", rules())).toBeNull();
+    expect(textProblem("story", "Readers will meet in May.", rules())).toBe("name");
     // Months count in capitals too, except the two that are words.
     expect(textProblem("bossLine", "WE MAY ALLOW IT. MARCH ON.", rules())).toBeNull();
     expect(textProblem("bossLine", "SEE YOU IN JULY.", rules())).toBe("name");
