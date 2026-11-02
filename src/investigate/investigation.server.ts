@@ -1,5 +1,6 @@
 // Turns the player's question (InvestigateState) into the queries the screen
 // draws, and returns only those results to the browser.
+import { loadBookshop } from "~/bookshop/loader.server";
 import type { Query, QueryResult, QueryView } from "~/query/types";
 import { DEFAULT_STATE, filtersExcept, TILE_MEASURES, type Filters, type InvestigateState, type TileMeasure } from "./state";
 
@@ -20,6 +21,8 @@ export interface FilterOptions {
   format: string[];
   publisher: string[];
   discount_rate: string[];
+  /** Every award a book in the data has won. Not from a query: an award can filter but never group. */
+  award: string[];
 }
 
 export interface Investigation {
@@ -102,6 +105,7 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
     format: option("format"),
     publisher: option("publisher"),
     discount_rate: option("discount_rate"),
+    award: [...new Set(loadBookshop().awards.map((a) => a.name))].sort(),
   };
 
   const tileFilter = withFilter(filtersExcept(state.filters, ["quarter"]));

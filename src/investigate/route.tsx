@@ -20,6 +20,7 @@ import {
   DEFAULT_STATE,
   filtersExcept,
   parseState,
+  setAward,
   setDiscount,
   setFilter,
   toggleCell,
@@ -100,6 +101,11 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             // Rates are labels like "15%", not content; "all", "full" and "any" are fixed choices.
             track("investigate_discount_filtered", { choice });
             update(setDiscount(state, choice));
+          }}
+          onAward={(choice) => {
+            // Award names are a fixed list from the data, like discount rates: not content.
+            track("investigate_award_filtered", typeof choice === "object" ? { choice: "award", award: choice.award } : { choice });
+            update(setAward(state, choice));
           }}
           onClear={() => {
             track("investigate_filters_cleared");

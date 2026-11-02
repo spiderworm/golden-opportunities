@@ -52,6 +52,20 @@ describe("the queries it sends", () => {
   });
 });
 
+describe("awards", () => {
+  it("lists every award a book has won, and filters and breaks down by them", () => {
+    const result = investigate(DEFAULT_STATE, runQuery, view);
+    expect(result.options.award).toHaveLength(12);
+    expect(result.options.award).toContain("Hugo Award");
+    expect([...result.options.award]).toEqual([...result.options.award].sort());
+    const hugo = investigate({ ...DEFAULT_STATE, filters: { award: ["Hugo Award"] } }, runQuery, view);
+    expect(hugo.tiles[0]!.value!).toBeGreaterThan(0);
+    expect(hugo.tiles[0]!.value!).toBeLessThan(result.tiles[0]!.value!);
+    const split = investigate({ ...DEFAULT_STATE, by: "awarded" }, runQuery, view);
+    expect(split.chart.rows.map((row) => row.awarded).sort()).toEqual(["no", "yes"]);
+  });
+});
+
 describe("the title view", () => {
   it("appears for exactly one title, by month, ignoring its own month filter", () => {
     expect(investigate(DEFAULT_STATE, runQuery, view).titleView).toBeNull();

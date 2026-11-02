@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_STATE, discountChoice, filtersExcept, monthsInScope, parseState, setDiscount, toggleCell, toggleFilterValue, toSearchParams } from "./state";
+import { awardChoice, DEFAULT_STATE, discountChoice, filtersExcept, monthsInScope, parseState, setAward, setDiscount, toggleCell, toggleFilterValue, toSearchParams } from "./state";
 
 describe("investigate state", () => {
   it("round-trips through the URL", () => {
@@ -54,6 +54,25 @@ describe("investigate state", () => {
     expect(setDiscount(any, "full").filters).toEqual({ discount_rate: ["0%"] });
     expect(discountChoice(setDiscount(any, "full").filters)).toBe("full");
     expect(setDiscount(any, "all").filters).toEqual({});
+  });
+
+  it("keeps one awards choice: winners, books without one, or one award, never two at once", () => {
+    const state = { ...DEFAULT_STATE, filters: { genre: ["Fiction"] } };
+    expect(awardChoice(state.filters)).toBe("all");
+    const hugo = setAward(state, { award: "Hugo Award" });
+    expect(hugo.filters).toEqual({ genre: ["Fiction"], award: ["Hugo Award"] });
+    expect(awardChoice(hugo.filters)).toEqual({ award: "Hugo Award" });
+    const winners = setAward(hugo, "yes");
+    expect(winners.filters).toEqual({ genre: ["Fiction"], awarded: ["yes"] });
+    expect(awardChoice(setAward(winners, "no").filters)).toBe("no");
+    expect(setAward(winners, "all").filters).toEqual({ genre: ["Fiction"] });
+    // A link holding both, or two awards, reads as no single choice.
+    expect(awardChoice({ awarded: ["yes"], award: ["Hugo Award"] })).toBe("all");
+    expect(awardChoice({ award: ["Hugo Award", "Nebula Award"] })).toBe("all");
+    // Both travel in the URL, and award winners can be a breakdown.
+    const parsed = parseState(new URLSearchParams("by=awarded&award=Hugo+Award"));
+    expect(parsed).toMatchObject({ by: "awarded", filters: { award: ["Hugo Award"] } });
+    expect(toSearchParams(parsed).toString()).toBe("by=awarded&award=Hugo+Award");
   });
 
   it("lists the months in the quarters in scope", () => {
