@@ -23,7 +23,8 @@ export default function ShellLayout({ loaderData }: Route.ComponentProps) {
   if (typeof document !== "undefined") queryCache.setVersion(loaderData.dataVersion);
 
   // The page looks again when an answer shows its data is out of date (a plan committed in another tab), and when
-  // the player comes back to this tab, so it learns the new version before serving anything cached (Audit, #191).
+  // the player comes back to this tab or window, so it learns the new version before serving anything cached
+  // (Audit, #191). Two windows side by side never hide each other, so focus counts too.
   const revalidator = useRevalidator();
   const revalidate = useRef(revalidator.revalidate);
   revalidate.current = revalidator.revalidate;
@@ -32,10 +33,13 @@ export default function ShellLayout({ loaderData }: Route.ComponentProps) {
     const shown = () => {
       if (document.visibilityState === "visible") void revalidate.current();
     };
+    const focused = () => void revalidate.current();
     document.addEventListener("visibilitychange", shown);
+    window.addEventListener("focus", focused);
     return () => {
       stop();
       document.removeEventListener("visibilitychange", shown);
+      window.removeEventListener("focus", focused);
     };
   }, []);
 
