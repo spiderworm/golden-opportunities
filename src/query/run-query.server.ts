@@ -10,19 +10,21 @@ import { QUERY_LIMITS } from './types';
 import type { Dimension, Measure, Query, QueryResult, QueryRow, QueryTrack, QueryView } from './types';
 
 const labels: Record<Dimension | Measure, string> = {
-  quarter: 'Quarter', month: 'Month', weekday: 'Weekday', genre: 'Genre', format: 'Format', publisher: 'Publisher', series: 'Series', title: 'Title', author: 'Author', discounted: 'Discounted', discount_rate: 'Discount rate', stars: 'Stars',
+  quarter: 'Quarter', month: 'Month', weekday: 'Weekday', genre: 'Genre', format: 'Format', publisher: 'Publisher', series: 'Series', title: 'Title', author: 'Author', discounted: 'Discounted', discount_rate: 'Discount rate', stars: 'Stars', awarded: 'Award winner', award: 'Award',
   revenue: 'Revenue', units: 'Units', orders: 'Orders', avg_discount: 'Average discount', avg_rating: 'Average rating', checkouts: 'Checkouts', avg_order_value: 'Average order value', orders_per_day: 'Orders per day', ratings: 'Ratings',
 };
 const weekdayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 type Dimensions = Partial<Record<Dimension, string | null>>;
-interface Fact { dimensions: Dimensions; value: number; orderId?: string; simulated?: boolean }
+interface Fact { dimensions: Dimensions; value: number; orderId?: string; simulated?: boolean; awards?: readonly string[] }
 interface Aggregate { sum: number; count: number; orders: Set<string> }
 const cache = new Map<string, QueryResult>();
 
 function bookDimensions(book: DeepReadonly<JoinedBook> | null): Dimensions {
   return { genre: book?.info?.genre ?? null, series: book?.series?.name ?? null, title: book?.title ?? null,
-    author: book ? `${book.author.firstName} ${book.author.lastName}` : null };
+    author: book ? `${book.author.firstName} ${book.author.lastName}` : null, awarded: book ? (book.awards.length ? 'yes' : 'no') : null };
 }
+/** A book's award names, for the filter-only award dimension: a fact matches if any of them is in the filter. */
+const awardsOf = (book: DeepReadonly<JoinedBook> | null): readonly string[] => book?.awards.map(award => award.name) ?? [];
 function saleFact(sale: DeepReadonly<SaleLine>, measure: Measure, periods: Set<string>, simulated: boolean): Fact | null {
   if (typeof sale.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(sale.date)) throw new QueryError('INVALID_VIEW', 'A sale has an invalid calendar date.');
   const date = new Date(`${sale.date}T00:00:00Z`);
@@ -34,18 +36,18 @@ function saleFact(sale: DeepReadonly<SaleLine>, measure: Measure, periods: Set<s
   return { dimensions: { ...bookDimensions(sale.book), quarter, month: sale.date.slice(0, 7), weekday: WEEKDAYS[date.getUTCDay()],
     format: sale.format, publisher: sale.publisher.name, discounted: sale.discount > 0 ? 'yes' : 'no', discount_rate: `${Number((sale.discount * 100).toFixed(8))}%` },
     value: (measure === 'revenue' || measure === 'avg_order_value') ? sale.listPrice * (1 - sale.discount) : measure === 'avg_discount' ? sale.discount : 1,
-    orderId: sale.orderId, simulated };
+    orderId: sale.orderId, simulated, awards: awardsOf(sale.book) };
 }
 function* facts(query: Query, view: QueryView): Generator<Fact> {
   if (undated(query.measure) && !view.includeUndated) throw new QueryError('UNAVAILABLE_FACTS', 'This view does not allow the undated ratings and checkout snapshot.');
   const data = loadBookshop();
   if (query.measure === 'avg_rating' || query.measure === 'ratings') {
     // One fact per rating, so a count by stars is one title's histogram and never fans out through editions.
-    for (const rating of data.joinedRatings) yield { dimensions: { ...bookDimensions(rating.book), stars: String(rating.rating) }, value: query.measure === 'ratings' ? 1 : rating.rating };
+    for (const rating of data.joinedRatings) yield { dimensions: { ...bookDimensions(rating.book), stars: String(rating.rating) }, value: query.measure === 'ratings' ? 1 : rating.rating, awards: awardsOf(rating.book) };
   } else if (query.measure === 'checkouts') {
     // The checkout snapshot has a month but no year (Checkout.year is null). It came with the 2193 workbook, before
     // any 2194 sale, so its months are 2193's: the same keys as 2193's sales, never mixed with the player's 2194.
-    for (const checkout of data.joinedCheckouts) yield { dimensions: { ...bookDimensions(checkout.book), month: `2193-${String(checkout.month).padStart(2, '0')}` }, value: checkout.count };
+    for (const checkout of data.joinedCheckouts) yield { dimensions: { ...bookDimensions(checkout.book), month: `2193-${String(checkout.month).padStart(2, '0')}` }, value: checkout.count, awards: awardsOf(checkout.book) };
   } else {
     const periods = new Set<string>(view.periods);
     for (const sale of data.saleLines) { const fact = saleFact(sale, query.measure, periods, false); if (fact) yield fact; }
@@ -82,7 +84,10 @@ function execute(query: Query, view: QueryView): QueryResult {
   let simulated = 0;
   if (!query.by.length) groups.set('[]', { dimensions: {}, aggregate: aggregate() });
   for (const fact of facts(query, view)) {
-    if (!filters.every(([dimension, values]) => { const v = fact.dimensions[dimension]; return v != null && values.has(v); })) continue;
+    if (!filters.every(([dimension, values]) => {
+      if (dimension === 'award') return fact.awards!.some(award => values.has(award));
+      const v = fact.dimensions[dimension]; return v != null && values.has(v);
+    })) continue;
     add(total, fact, query.measure);
     if (fact.simulated) simulated++;
     const values = query.by.map(dimension => fact.dimensions[dimension] ?? null);
@@ -111,7 +116,7 @@ function execute(query: Query, view: QueryView): QueryResult {
   const calculation = { avg_order_value: 'sum of revenue / distinct OrderID', orders_per_day: `distinct OrderID / eligible calendar days including zero-sale days; total denominator ${days.length} days; group denominators use only calendar dimensions`, revenue: 'sum of price × (1 - discount), without per-line rounding', units: 'one unit per sale line', orders: 'distinct OrderID; total counted independently of groups', avg_discount: 'arithmetic mean of sale-line discount fractions', avg_rating: 'arithmetic mean of individual ratings, joined directly to books', checkouts: 'sum of Number of Checkouts, joined directly to books', ratings: 'count of individual ratings, joined directly to books' }[query.measure];
   const scope = undated(query.measure) ? 'undated source snapshot; no observed year or sales-quarter attribution' : `allowed periods: ${[...view.periods].sort().join(', ') || 'none'}; ${total.count - simulated} source and ${simulated} simulated sale lines`;
   const source = `${labels[query.measure]} from ${total.count.toLocaleString('en-US')} visible matching ${grain}: ${calculation}; ${scope}${query.by.length ? `; grouped by ${query.by.join(', ')}` : ''}${filters.length ? `; exact filters on ${filters.map(([dimension]) => dimension).join(', ')}` : ''}. Showing ${visibleRows.length} of ${rows.length} groups; total is before the row limit.`;
-  return { truncated: visibleRows.length < rows.length, columns: [...query.by.map(key => ({ key, label: labels[key], type: 'string' as const, nullable: ['genre', 'series', 'title', 'author'].includes(key) })),
+  return { truncated: visibleRows.length < rows.length, columns: [...query.by.map(key => ({ key, label: labels[key], type: 'string' as const, nullable: ['genre', 'series', 'title', 'author', 'awarded'].includes(key) })),
     { key: query.measure, label: labels[query.measure], type: 'number', nullable: query.measure.startsWith('avg_') || query.measure === 'orders_per_day' }], rows: visibleRows, total: value(total, query.measure, days.length), source };
 }
 
