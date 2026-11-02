@@ -39,6 +39,8 @@ const query: Query = { measure: 'revenue', by: ['quarter'] };
 - discount_rate: actual discount as a percent label (`0%`, `5%`, `10%`, `13%`,
   `15%`, `20%` in the source); up to eight fractional percentage digits for
   future rates, with trailing zeros omitted.
+- stars: a rating's own value, `1` to `5`, for the ratings count only (one
+  title's ratings by stars is its histogram). Investigate-only.
 
 Filters are exact, case-sensitive matches. Values within one dimension are OR;
 different dimensions are AND. Each filter contains 1–50 strings of at most 200
@@ -63,20 +65,23 @@ also apply to direct `runQuery` results, not only the HTTP endpoint.
 
 | Measure | Fact grain and aggregation | Supported dimensions (group and filter) |
 | --- | --- | --- |
-| revenue | Sum price × (1 − discount), no per-line cent rounding | All |
-| units | Count sale lines | All |
-| orders | Count distinct source OrderID in each group; global total is independently distinct | All |
-| avg_order_value | Sum revenue / distinct OrderID | All |
-| orders_per_day | Distinct OrderID / eligible calendar days | All |
-| avg_discount | Arithmetic mean of the sale-line discount fractions, not percentages | All |
+| revenue | Sum price × (1 − discount), no per-line cent rounding | All but stars |
+| units | Count sale lines | All but stars |
+| orders | Count distinct source OrderID in each group; global total is independently distinct | All but stars |
+| avg_order_value | Sum revenue / distinct OrderID | All but stars |
+| orders_per_day | Distinct OrderID / eligible calendar days | All but stars |
+| avg_discount | Arithmetic mean of the sale-line discount fractions, not percentages | All but stars |
 | avg_rating | Arithmetic mean of individual source ratings, including unknown-book ratings | genre, series, title, author |
 | checkouts | Sum source Number of Checkouts at book/month grain | genre, series, title, author, month |
+| ratings | Count individual source ratings, including unknown-book ratings. Investigate-only | genre, series, title, author, stars |
 
 Ratings/checkouts join directly to Book → Author/Info/Series, never through
 sales or editions. This avoids multiplying ratings or checkouts by sales volume
 or edition count. CH392's unmatched rows remain, with null book dimensions.
 Edition, discount, and sales-calendar dimensions are rejected for ratings and
-checkouts, except the observed checkout month. An average over no facts is
+checkouts, except the observed checkout month. Stars apply to the ratings count
+only: an average rating by stars would be the stars themselves. A book with no
+ratings has no row, as with any group without facts. An average over no facts is
 null; empty sums/counts are zero. Total is over all filtered visible facts before
 grouping or limiting, so grouped distinct orders need not sum to total and
 averages are never an unweighted average of group averages.
@@ -89,6 +94,18 @@ orders by all eligible days, independently of groups. No eligible calendar days
 means null; eligible days with no orders means zero. avg_order_value is null
 when there are no orders. Both calculations respect visibility before any
 aggregation; neither averages already-computed group values.
+
+## What Dewey may use
+
+Dewey's tools see only `AGENT_MEASURES`, `AGENT_DIMENSIONS` and
+`AGENT_MEASURE_DIMENSIONS` (`types.ts`). A new measure or dimension joins them
+only after Probe has reviewed it against Dewey's figures gate (Goldy, 2 Nov).
+Until then it's Investigate-only: left out of the tool schemas and
+`describe_data`, and refused by the HTTP adapter for Dewey's bearer token with
+`INVALID_QUERY` ("ratings isn't available to the assistant yet."), whether it
+is the measure, a grouping, a filter or the sort. Browser queries may use it.
+
+Investigate-only now: the `ratings` measure and the `stars` dimension (#169).
 
 ## Visibility and access
 

@@ -11,6 +11,7 @@ export const MEASURE_LABELS: Record<Measure, string> = {
   checkouts: "Checkouts",
   avg_order_value: "Average order value",
   orders_per_day: "Orders per day",
+  ratings: "Ratings",
 };
 
 export const DIMENSION_LABELS: Record<Dimension, string> = {
@@ -25,6 +26,7 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
   author: "Author",
   discounted: "Discounted",
   discount_rate: "Discount",
+  stars: "Stars",
 };
 
 /** How a dimension value reads on screen: "2193-Q4" as "Q4 2193", "2193-03" as "Mar 2193". */

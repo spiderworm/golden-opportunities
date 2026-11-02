@@ -97,6 +97,20 @@ describe('bounded query resource endpoint', () => {
     expect(response.status).toBe(400);
     expect((await response.json()).error.code).toBe('INVALID_QUERY');
   });
+  it("refuses Investigate-only measures and dimensions from Dewey's token, until Probe has reviewed them", async () => {
+    const handle = createQueryHandler({ track: () => {} });
+    const agent = { authorization: `Bearer ${getQueryToken()}` };
+    for (const query of [{ measure: 'ratings', by: [] }, { measure: 'avg_rating', by: ['title'], sort: { column: 'title', direction: 'asc' }, filter: { title: ['Rystwyth'] } }]) {
+      const ok = (await handle(request(JSON.stringify(query)))).status;
+      expect(ok).toBe(200);
+    }
+    for (const query of [{ measure: 'ratings', by: ['title'] }, { measure: 'ratings', by: [], filter: { title: ['Rystwyth'] } }]) {
+      const response = await handle(request(JSON.stringify(query), agent));
+      expect(response.status).toBe(400);
+      expect((await response.json()).error).toEqual({ code: 'INVALID_QUERY', message: "ratings isn't available to the assistant yet." });
+    }
+    expect((await handle(request(JSON.stringify({ measure: 'avg_rating', by: ['title'] }), agent))).status).toBe(200);
+  });
   it('rejects URL query input and incompatible fact dimensions clearly', async () => {
     const handle = createQueryHandler({ track: () => {} });
     expect((await handle(request(payload, {}, url + '?view=future'))).status).toBe(400);

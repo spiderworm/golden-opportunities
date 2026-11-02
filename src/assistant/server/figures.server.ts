@@ -27,6 +27,7 @@ const KINDS: Record<Measure, Kind> = {
   avg_discount: "fraction",
   avg_rating: "plain",
   orders_per_day: "plain",
+  ratings: "count",
 };
 const NOUNS: Record<Measure, string> = {
   revenue: "revenue",
@@ -37,6 +38,7 @@ const NOUNS: Record<Measure, string> = {
   avg_discount: "average discount",
   avg_rating: "average rating",
   orders_per_day: "orders per day",
+  ratings: "ratings",
 };
 
 const ROUNDINGS = [10, 100, 1_000, 10_000, 100_000, 1_000_000];

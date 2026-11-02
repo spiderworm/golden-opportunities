@@ -5,7 +5,7 @@ import { QueryError } from './errors';
 import { runQuery } from './run-query.server';
 import { emit, trackQuery } from './telemetry.server';
 import { serializeResult } from './result';
-import { QUERY_LIMITS } from './types';
+import { investigateOnly, QUERY_LIMITS } from './types';
 import type { QueryErrorCode, QueryErrorResponse, QueryTrack, QueryView } from './types';
 
 const headers = { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin', Vary: 'Origin, Authorization' };
@@ -77,6 +77,9 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
       if (counts[caller] >= 60 || counts.total >= 100 || active >= 8) throw new QueryError('RATE_LIMITED', 'Query capacity reached; retry later.');
       counts[caller]++; counts.total++; active++; admitted = true;
       const query = validateQuery(await readJson(request));
+      // Investigate-only until Probe has reviewed it against Dewey's figures gate (types.ts, AGENT_DIMENSIONS).
+      const unreviewed = caller === 'agent' ? investigateOnly(query) : null;
+      if (unreviewed) throw new QueryError('INVALID_QUERY', `${unreviewed} isn't available to the assistant yet.`);
       // Body arrival is asynchronous: recheck expiry, revocation and revision after that wait.
       const access = authorizeQuery(request);
       const view = resolveView(access);
