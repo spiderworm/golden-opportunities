@@ -125,9 +125,10 @@ describe('Q2 discoveries', () => {
     submitQ2Plan(request(id), { picks: [null, null, null], levers: [] });
     expect(getOutcome(request(id))!.discoveries).toEqual(['C']);
     expect(getOutcome(request(id), '2194-Q2')!.discoveries).toEqual(['D', 'E', 'F']);
+    // D to F stay Q2's: views once Q3 is open add nothing to them (Q3 gathers its own, later-discoveries.ts).
     const after = saves.read(id);
     see(id, { measure: 'units', by: ['quarter'] });
-    expect(saves.read(id)).toEqual(after);
+    expect(saves.read(id)).toMatchObject({ discoveries: after.discoveries, discoveryEvidence: after.discoveryEvidence });
   });
 
   it("keeps D's two witnesses when the oldest scopes are discarded", { timeout: 30_000 }, () => {

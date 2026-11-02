@@ -14,6 +14,7 @@
 // message", with the same lexical ban.
 
 import type { Measure } from "../../query/types.ts";
+import { FORMAT_WORDS } from "../../simulation/words.ts";
 
 export const WITHHELD = "I'd rather not give a number I didn't look up.";
 
@@ -62,6 +63,26 @@ function amount(kind: Kind, value: number, round?: number): string {
 const signed = (kind: Kind, value: number, round?: number) => (value < 0 ? `minus ${amount(kind, value, round)}` : amount(kind, value, round));
 
 type Row = Record<string, unknown>;
+/** See Refs.describe. */
+interface RefInfo {
+  /** It renders a measure's value (a figure), not a label or a row count. */
+  value: boolean;
+  /** That value is in dollars (revenue, average order value). */
+  currency: boolean;
+  /** A list price: the row's own subjects, the one it must be named with, and its format's words. */
+  price?: { own: string[]; subject: string | null; format: string | null };
+  /** An edition or title label. */
+  subject?: string;
+  /** A format label, as running text says it ("trade paperback"). */
+  format?: string;
+}
+/** The title in an edition label, "Post Alley (Hardcover)" → "Post Alley". */
+const editionTitle = (edition: string) => /^(.*?)\s*\([^()]*\)\s*$/.exec(edition)?.[1]?.trim() || null;
+/** The format in an edition label, "Post Alley (Trade paperback)" or "Heliotrope Pajamas (Paperback, 2181)", as running text says it. */
+const editionFormat = (edition: string) => {
+  const m = /\(([^,()]+)(?:,[^()]*)?\)\s*$/.exec(edition);
+  return m ? (FORMAT_WORDS[m[1]!.trim()] ?? null) : null;
+};
 interface Lookup {
   /** Its place in this answer's lookups: text that arrived before it can't cite it. */
   seq: number;
@@ -113,6 +134,55 @@ export class Refs {
   }
   hasQuarter(quarter: string, known: number): boolean {
     return [...this.periods].some(([name, seq]) => seq < known && name.endsWith(`-${quarter}`));
+  }
+
+  /**
+   * What a ref points at, for the price checks (Probe's #225): whether it renders a measure's value (and whether
+   * that's in dollars), a book's list price (with the row's own subjects and format, for the pairing check), or
+   * a subject (an edition or title label). Null if it doesn't resolve.
+   */
+  describe(ref: string, known = Infinity): RefInfo | null {
+    const m = /^([a-z]+)(\d*)(?:\.([a-z_]+))?(?:\|round:\d+)?$/.exec(ref.replace(/^([a-z]+)\.total\.(?=[a-z])/, "$1.total_"));
+    if (!m) return null;
+    const [, id, rowNumber, rawField = ""] = m;
+    const field = rawField.replace(/^total_/, "");
+    const lookup = this.lookups.get(id);
+    if (!lookup || lookup.seq >= known) return null;
+    const row = rowNumber ? lookup.rows.get(id + rowNumber) : undefined;
+    if (rowNumber && !row) return null;
+    const isLabel = field !== "" && ((row && lookup.dims.includes(field)) || lookup.filtered.has(field));
+    const value = !isLabel && field !== "rows";
+    const info: RefInfo = { value, currency: value && KINDS[lookup.measure] === "currency" };
+    if (!isLabel) return info;
+    const at = (dim: string) => (row && lookup.dims.includes(dim) ? label(row[dim]) : lookup.filtered.get(dim));
+    if (field === "list_price") {
+      // The row's most specific subject: its edition if the lookup grouped by edition, else its title.
+      const edition = at("edition");
+      const own = [edition, edition && editionTitle(edition), at("title")].filter((s): s is string => !!s);
+      const format = edition ? editionFormat(edition) : at("format") ? (FORMAT_WORDS[at("format")!] ?? null) : null;
+      info.price = { own, subject: own[0] ?? null, format };
+    }
+    if (field === "edition" || field === "title") info.subject = at(field);
+    if (field === "format") info.format = FORMAT_WORDS[at("format") ?? ""] ?? at("format")?.toLowerCase();
+    return info;
+  }
+
+  /** Every edition and title label this answer's rows and confirmed filters hold, longest first. */
+  subjects(known: number): string[] {
+    const all = new Set<string>();
+    for (const lookup of this.lookups.values()) {
+      if (lookup.seq >= known) continue;
+      for (const dim of ["edition", "title"]) {
+        const values = [...(lookup.dims.includes(dim) ? lookup.ordered.map((row) => row[dim]) : []), lookup.filtered.get(dim)];
+        for (const v of values) {
+          if (typeof v !== "string") continue;
+          all.add(v);
+          // The title inside an edition label is a book named too ("Heliotrope Pajamas", Probe's review of #228).
+          if (dim === "edition" && editionTitle(v)) all.add(editionTitle(v)!);
+        }
+      }
+    }
+    return [...all].sort((a, b) => b.length - a.length);
   }
 
   /** The two compared values of a comparison, where the data had something there (null otherwise). */
@@ -277,7 +347,7 @@ export class Refs {
 const NUMBER_WORDS =
   "zero|one|ones|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|billions?|dozens?|half|halves|halved|twice|thrice|double[sd]?|doubling|triple[sd]?|tripling|treble[sd]?|trebling|quadruple[sd]?|quadrupling|quintuple[sd]?|sextuple[sd]?|single|thirds?|fourths?|fifths?|sixths?|sevenths?|eighths?|ninths?|tenths?|eleventh|twelfth|\\w+teenth|\\w+tieth|hundredths?|thousandths?|millionths?|nil|fortnights?";
 const DIRECTION_WORDS =
-  "higher|highest|lower|lowest|more|most|less|least|fewer|fewest|greater|greatest|larger|largest|bigger|biggest|smaller|smallest|rise|rises|rising|rose|risen|fall|falls|falling|fell|fallen|up|down|increase|increases|increased|increasing|decrease|decreases|decreased|decreasing|grow|grows|grew|grown|growing|growth|drop|drops|dropped|dropping|decline|declines|declined|declining|gain|gains|gained|lose|loses|lost|loss|losses|above|below|exceed|exceeds|exceeded|beat|beats|trail|trails|trailed|outsold|outperformed|surge|surges|surged|jump|jumps|jumped|climb|climbs|climbed|dip|dips|dipped|slump|slumps|slumped|plunge|plunges|plunged|shrink|shrinks|shrank|shrunk|slip|slips|slipped|tumble|tumbles|tumbled|soar|soars|soared|edged|outpace|outpaces|outpaced|lag|lags|lagged|lagging|overtake|overtakes|overtook|overtaken|surpass|surpasses|surpassed|sink|sinks|sank|sunk|better|worse|peak|peaks|peaked|bottomed|unchanged|flat|steady|top|bottom|best|worst|ahead|behind";
+  "higher|highest|lower|lowest|more|most|less|least|fewer|fewest|greater|greatest|larger|largest|bigger|biggest|smaller|smallest|rise|rises|rising|rose|risen|fall|falls|falling|fell|fallen|up|down|increase|increases|increased|increasing|decrease|decreases|decreased|decreasing|grow|grows|grew|grown|growing|growth|drop|drops|dropped|dropping|decline|declines|declined|declining|gain|gains|gained|lose|loses|lost|loss|losses|above|below|exceed|exceeds|exceeded|beat|beats|trail|trails|trailed|outsold|outperformed|surge|surges|surged|jump|jumps|jumped|climb|climbs|climbed|dip|dips|dipped|slump|slumps|slumped|plunge|plunges|plunged|shrink|shrinks|shrank|shrunk|slip|slips|slipped|tumble|tumbles|tumbled|soar|soars|soared|edged|outpace|outpaces|outpaced|lag|lags|lagged|lagging|overtake|overtakes|overtook|overtaken|surpass|surpasses|surpassed|sink|sinks|sank|sunk|better|worse|peak|peaks|peaked|bottomed|unchanged|flat|steady|top|bottom|best|worst|ahead|behind|cheap|cheaper|cheapest|cheaply|pricey|pricier|priciest|costly|costlier|costliest|expensive|inexpensive|affordable|bargain|bargains|budget|premium|markdown|markdowns|buck|bucks";
 // Digits in any script and number symbols (after NFKC, so "１６１" and "¾" are caught), fractions written with
 // "quarter", "a couple", "a score of", "a pair of", and "-fold".
 const QUANTITY = "\\ba quarter\\b|\\bquarters? of\\b|\\ba couple\\b|\\ba (?:score|pair) of\\b|\\w*-?fold\\b";
@@ -294,8 +364,89 @@ const ALLOWED = /\blook(?:s|ed|ing)? (?:(?:it|them|that) )?up\b|\b(?:broken|brea
 const REF = /\{\{([^{}]{1,40})\}\}/g;
 
 /** Text as it will be read: compatibility forms ("７", "½") folded to plain ones before any check. */
-const fold = (text: string) => text.normalize("NFKC");
+// Invisible characters (a soft hyphen, a zero-width space, a word joiner, bidi controls) are dropped first: NFKC
+// keeps them, so "fi\u00ADve" would read as "five" while slipping past every word check (Probe). The checks and
+// the text shown both use this, so what's checked is what's shown.
+const fold = (text: string) => text.normalize("NFKC").replace(/\p{Default_Ignorable_Code_Point}/gu, "");
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Words that make a dollar figure a price (Probe's #225, with Sage's and Audit's additions).
+const PRICE_WORDS = /\b(?:price[sd]?|pricing|costs?|costing|list(?:s|ed)? at|sells? for|sold for|retail(?:s|ed)?|pay(?:s|ing)?|paid|spend(?:s|ing)?|spent|charge[sd]?|charging|worth)\b/iu;
+// A bound put on a figure: "costs under {{a2.list_price}}" claims a comparison the data didn't make.
+const BOUND = /\b(?:under|over|at least|at most|up to)\s*$/iu;
+// Format words as running text says them, with their plurals and synonyms, longest first, each with the format it
+// names. A synonym that fits more than one format ("softcover": trade, mass market or plain paperback) names
+// none, so it never matches a price's own format (Probe's review of #228).
+const FORMAT_NAMES: Record<string, string> = {
+  ...Object.fromEntries(Object.values(FORMAT_WORDS).map((f) => [f, f])),
+  hardback: "hardcover",
+  "hard cover": "hardcover",
+  "hard-cover": "hardcover",
+  "mass-market paperback": "mass market paperback",
+  softcover: "soft cover",
+  "soft cover": "soft cover",
+  "soft-cover": "soft cover",
+  softback: "soft cover",
+  "soft-back": "soft cover",
+};
+const FORMATS = Object.entries(FORMAT_NAMES).flatMap(([word, format]) => [[word, format], [`${word}s`, format]] as const).sort((a, b) => b[0].length - a[0].length);
+// In a sentence citing a list price, words that carry it over to another book (Probe's review of #228).
+const CARRY_OVER = /\b(?:same|too|also|likewise|as well|(?:as|so) (?:does|do|did|is|are)|like|alike|other|others|another|every|all|each|both|either)\b/iu;
+const wholeLabel = (text: string, flags: string) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(text)}(?![\\p{L}\\p{N}])`, flags);
+
+/**
+ * Probe's #225: price can't be misstated, though it's a label a ref renders. A sentence is withheld when:
+ * - "under", "over", "at least", "at most" or "up to" stands directly before a price or a figure;
+ * - it has a price word and a dollar figure that isn't a price (revenue or average order value called a price);
+ * - a list price isn't paired with its own book: an edition row's price needs its edition named (by ref, or its
+ *   exact label), a title row's its title; no other edition or title from this answer may be named; and any
+ *   format word, by ref or in prose, must be the price row's own format, matched whole ("paperback" isn't a trade
+ *   paperback; a synonym that fits several formats, "softcover", fits none), for a book's price or a group's (a
+ *   breakdown by format). The title inside an edition label counts as a book named. A book's price can't be
+ *   carried over to another ("too", "the same as", "like", "the other editions"). A price with no book (a
+ *   breakdown by price or format, or a confirmed filter) may sit only with no book named.
+ */
+function priceProblem(folded: string, refs: Refs, known: number): boolean {
+  const cited = [...folded.matchAll(REF)].map((m) => ({ at: m.index!, info: refs.describe(m[1]!.trim(), known) }));
+  if (cited.some(({ at, info }) => (info?.price || info?.value) && BOUND.test(folded.slice(0, at)))) return true;
+  const prose = folded.replace(REF, " ");
+  if (PRICE_WORDS.test(prose) && cited.some(({ info }) => info?.currency)) return true;
+  const prices = cited.flatMap(({ info }) => (info?.price ? [info.price] : []));
+  if (!prices.length) return false;
+  // A book's price can't be carried over to another ("…, and Heliotrope Pajamas does too"); a price group's
+  // words are about the group ("every title in $27.99"), so they stay.
+  if (prices.some((p) => p.subject) && CARRY_OVER.test(prose)) return true;
+  // The books the sentence names: by ref, and by exact label in its prose (longest first, each once).
+  const named = cited.flatMap(({ info }) => (info?.subject ? [info.subject] : []));
+  let rest = prose;
+  for (const subject of refs.subjects(known)) {
+    const pattern = wholeLabel(subject, "gu");
+    if (pattern.test(rest)) {
+      named.push(subject);
+      rest = rest.replace(pattern, " ");
+    }
+  }
+  // Format words: cited by ref ({{f1.format}}) or in the prose, whole phrases, longest first.
+  const formats = cited.flatMap(({ info }) => (info?.format ? [info.format] : []));
+  for (const [f, format] of FORMATS) {
+    const pattern = wholeLabel(f, "giu");
+    if (pattern.test(rest)) {
+      formats.push(format);
+      rest = rest.replace(pattern, " ");
+    }
+  }
+  for (const price of prices) {
+    // Every price, a book's or a group's: a format named beside it must be its own, and one without a format
+    // can't be given one (Audit's review of #228: "Hardcovers at {{f2.list_price}}", f2 the trade paperback).
+    if (formats.some((f) => f !== price.format)) return true;
+    if (!price.subject) {
+      if (named.length) return true;
+      continue;
+    }
+    if (!named.includes(price.subject) || named.some((n) => !price.own.includes(n))) return true;
+  }
+  return false;
+}
 
 /**
  * Renders a sentence's refs and checks its own prose; null if it must be withheld. `known` is how many lookups
@@ -312,6 +463,7 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity): 
     return text ?? "";
   });
   if (bad) return null;
+  if (priceProblem(folded, refs, known)) return null;
   // Titles the data returned, exactly and whole, are the data's words, not the model's: cleared before the ban.
   let prose = folded.replace(REF, " ");
   for (const title of refs.knownTitles(known)) prose = prose.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(title)}(?![\\p{L}\\p{N}])`, "gu"), " ");

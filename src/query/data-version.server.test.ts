@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { rmSync } from 'node:fs';
 const directory = await vi.hoisted(async () => {
   const { mkdtempSync } = await import('node:fs');
@@ -11,6 +11,7 @@ import { markAlertSeen, resetGame, startNewGame, submitPlan, submitQ2Plan } from
 import { recordDiscoveries } from '../game/discoveries.server';
 import { getGameSession, saves } from '../game/session.server';
 import { getStationState } from '../shell/station-state';
+import { PLAYABLE_QUARTERS, setPlayableQuarters } from '../game/quarters';
 import { createQueryHandler } from './http.server';
 import { DATA_VERSION_HEADER, dataVersion } from './data-version.server';
 import { runQuery } from './run-query.server';
@@ -49,6 +50,9 @@ describe("a save's data version", () => {
   });
 
   it('is new for a new game and after a reset, so nothing cached for the old save applies', () => {
+    // Play again needs a finished game: here, the two-quarter one (the endless game finishes at a removal).
+    setPlayableQuarters(2);
+    onTestFinished(() => setPlayableQuarters(PLAYABLE_QUARTERS));
     const save = saves.create(); const req = request(save.id);
     submitPlan(req, { levers: [] }); submitQ2Plan(req, { picks: [null, null, null], levers: [] });
     const finished = version(save.id);

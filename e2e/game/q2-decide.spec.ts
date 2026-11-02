@@ -98,7 +98,7 @@ test('Q2: pick a book for each month, or none, and one more move, then play the 
   await expect(page.getByText('April...', { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/result(?:\?|$)/, { timeout: 20_000 });
 
-  // Played: there's no quarter left to plan.
+  // Played: the game goes on (endless.md), so Decide now plans Q3, on Q2's form.
   await page.goto('/decide?analytics-test=1');
-  await expect(page).toHaveURL(/\/result(?:\?|$)/);
+  await expect(page.getByRole('heading', { name: 'PLAN FOR Q3 2194' })).toBeVisible({ timeout: 20_000 });
 });

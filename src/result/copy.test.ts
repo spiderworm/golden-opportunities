@@ -4,6 +4,8 @@ import type { MeasureId, MeasureScore, ReportCard } from "~/simulation/types";
 import { EVENT_TYPES } from "~/alma/events";
 import {
   continueTo,
+  dayAfter,
+  REMOVAL_COPY,
   eventTitle,
   laterSeasonNote,
   q2SeasonNote,
@@ -217,5 +219,14 @@ describe("the result's later-quarter notes and certificates (endless-copy.md sec
     expect(
       certificateText({ id: "weathered", measures: ["profit", "readers", "culture"], event: { type: "quiet_days", params: { weekday: "Tuesday", percent: 15 } } }, "2194-Q3"),
     ).toBe("Weathered the Storm: Profit, Readers served and Culture met their goals despite quiet Tuesdays. Certificates don't change your score.");
+  });
+});
+
+describe("the removal screen's words (endless.md section 7)", () => {
+  it("date the removal the day after its quarter, and list the strikes", () => {
+    expect(dayAfter("2194-Q3")).toBe("October 1, 2194");
+    expect(dayAfter("2194-Q4")).toBe("January 1, 2195");
+    expect(REMOVAL_COPY.finalRow("2195-Q2")).toBe("Removed by the panel, July 1, 2195.");
+    expect(REMOVAL_COPY.lines.map((l) => l.boss)).toEqual(["overall", "profit", "readers", "happiness", "culture"]);
   });
 });
