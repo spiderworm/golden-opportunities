@@ -12,7 +12,10 @@ export interface AlmaRecord {
   source: "alma" | "scripted";
   type: string;
   params: Record<string, string | number>;
-  /** None while two strikes count. */
+  /**
+   * None while two strikes count. For a recovery goal (`drop` set), `percent` is the cap, 20, not the goal: the
+   * goal is scoring.md's recovery rule, capped at the anchor plus this (section 2, Probe's review of #178).
+   */
   stretch: { measure: MeasureId; percent: number } | null;
   /** For a recovery goal, the measure's fall in whole percent: the server writes its reason from it. */
   drop?: number;
