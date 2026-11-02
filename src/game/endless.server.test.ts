@@ -9,12 +9,14 @@ vi.mock('../platform/analytics/instance.server', () => ({ DATA_DIR: directory })
 vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }));
 import { runQuery } from '../query/run-query.server';
 import { getQ2Candidates, getQuarterBrief, submitPlan, submitQ2Plan, submitQuarterPlan } from './game.server';
+import { recordDiscoveries } from './discoveries.server';
 import { forgetReplays } from './replay.server';
 import { currentQuarter, isFinished } from './progress';
 import { PLAYABLE_QUARTERS, setPlayableQuarters } from './quarters';
 import { getResultData } from './results.server';
 import { getGameSession, saves } from './session.server';
 import type { Q2Plan } from '../simulation/types';
+import type { Query } from '../query/types';
 
 // The endless loop (endless.md), played before it's switched on: the game plays six quarters here, two in play.
 beforeAll(() => setPlayableQuarters(6));
@@ -57,6 +59,30 @@ describe('quarters past Q2', { timeout: 30_000 }, () => {
     expect(result.season2193).toMatchObject({ quarter: expect.any(Number), before: expect.any(Number), beforeLabel: 'Q2 2193' });
     expect(result.season2193.quarter).toBeCloseTo(274036.165, 3);
     expect(result.goalStretch).toEqual(record.stretch ? { measure: record.stretch.measure, percent: (record.drop ?? record.stretch.percent) / 100, recoveryFrom: record.drop !== undefined ? '2194-Q2' : null } : null);
+  });
+
+  it("find a quarter's own discoveries from the views made while planning it, and keep them with its result", async () => {
+    const save = saves.create(); const req = request(save.id);
+    submitPlan(req, { levers: ['repick', 'events'] });
+    submitQ2Plan(req, { picks: [getQ2Candidates()[0]!.isbn, null, null], levers: ['events'] });
+    // While planning Q3: revenue by quarter shows Q2 2194 and Q3 2193 together (the record), and units by title in
+    // Q2 2194 look into Culture if that was the lowest; the brief makes sure Alma's record is in.
+    await getQuarterBrief(req);
+    const s = saves.read(save.id);
+    const binding = s.played[1]!.outcome.reportCard.plan.overall.binding;
+    const { queryView } = getGameSession(req);
+    const shown: Query[] = [{ measure: 'revenue', by: ['quarter'] }];
+    const look: Record<string, Query> = { profit: { measure: 'revenue', by: ['month'], filter: { quarter: ['2194-Q2'] } }, readers: { measure: 'orders', by: ['month'], filter: { quarter: ['2194-Q2'] } },
+      happiness: { measure: 'avg_rating', by: ['title'] }, culture: { measure: 'units', by: ['title'], filter: { quarter: ['2194-Q2'] } } };
+    if (binding.length) shown.push(look[binding[0]!]!);
+    recordDiscoveries(s, queryView, shown.map(query => ({ query, result: runQuery(query, queryView) })));
+    expect(saves.read(save.id).laterEvidence?.quarter).toBe('2194-Q3');
+    await submitQuarterPlan(req, hold, '2194-Q3');
+    const result = getResultData(req)!;
+    expect(result.laterDiscoveries).toEqual(['record', ...(binding.length ? ['weakest'] : [])]);
+    expect(result.discoveries).toEqual([]);
+    expect(result.discoveryOffers.map(o => o.id)).toEqual(expect.arrayContaining(['record']));
+    expect(result.discoveryOffers.find(o => o.id === 'record')!.params).toEqual({ last: '2194-Q2', yearBefore: '2193-Q3' });
   });
 
   it('end when the panel removes the player: three strikes in any four quarters', async () => {
