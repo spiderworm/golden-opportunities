@@ -326,7 +326,7 @@ describe("answering", () => {
   };
 
   it("draws a chart with its lookup's rows and source, titled from its query; its figures cite like a table's", async () => {
-    const r = await answer(fakeAssistant([chart, { type: "text", text: "Revenue in {{a1.quarter}} was {{a1.revenue}}. It peaked at $9 in the autumn." }]));
+    const r = await answer(fakeAssistant([chart, { type: "text", text: "Revenue in {{a1.quarter}} was {{a1}}. It peaked at $9 in the autumn." }]));
     const drawn = r.out.find((e) => e.type === "chart") as Extract<WireEvent, { type: "chart" }>;
     expect(drawn).toMatchObject({ chart: { title: "Revenue by quarter", kind: "line", query: { measure: "revenue", by: ["quarter"] } }, total: 12, source: "Sales, 2193" });
     expect(drawn.rows.map((row) => row.revenue)).toEqual([7, 5]);
