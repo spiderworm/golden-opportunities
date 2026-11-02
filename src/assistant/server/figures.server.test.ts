@@ -292,6 +292,21 @@ describe("prices (Probe's #225)", () => {
     expect(say("{{a1.edition}}, the hardcover, costs {{a1.list_price}}.", r)).toBe("Post Alley (Hardcover), the hardcover, costs $27.99.");
   });
 
+  it("hold a price grouped by format to its own format, named in prose or by ref (Audit's review)", () => {
+    const byFormat = ["query_data", { measure: "units", by: ["format", "list_price"] }, { ref: "f", complete: true, columns: [], rows: [
+      { ref: "f1", format: "Hardcover", list_price: "$27.99", units: 51 },
+      { ref: "f2", format: "Trade paperback", list_price: "$17.99", units: 34 },
+    ], total: 85, source: SOURCE }] as const;
+    const f = refs(byFormat);
+    expect(say("Hardcovers at {{f2.list_price}} sold {{f2}} copies.", f)).toBe(WITHHELD);
+    expect(say("The trade paperback lists at {{f1.list_price}}.", f)).toBe(WITHHELD);
+    expect(say("{{f1.format}} lists at {{f2.list_price}}.", f)).toBe(WITHHELD);
+    expect(say("{{f2.format}} copies at {{f2.list_price}} sold {{f2}}.", f)).toBe("Trade paperback copies at $17.99 sold 34.");
+    expect(say("Trade paperbacks at {{f2.list_price}} sold {{f2}}.", f)).toBe("Trade paperbacks at $17.99 sold 34.");
+    // A price group with no format can't be given one.
+    expect(say("Hardcovers in {{b.list_price}} sold {{b.total}} units.", r)).toBe(WITHHELD);
+  });
+
   it("keep a price group apart from any book", () => {
     expect(say("Every title in {{b.list_price}} sold {{b.total}} units.", r)).toBe("Every title in $27.99 sold 51 units.");
     expect(say("{{a2.edition}} is among the books in {{b.list_price}}.", r)).toBe(WITHHELD);
