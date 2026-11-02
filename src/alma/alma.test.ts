@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AssistantUnavailable } from "~/assistant/server/provider.server";
-import { candidateProblem, drawCandidates, type Candidate, type QuarterContext } from "./candidates";
+import { apart, candidateProblem, drawCandidates, type Candidate, type QuarterContext } from "./candidates";
 import { almaModel, chooseEvent, type AlmaModel } from "./director.server";
 import { EVENT_TYPES, FORMATS, GENRES, MEASURE_IDS, WEEKDAYS, type MeasureId } from "./events";
 import { almaInput, ALMA_RULES, type QuarterSummary } from "./prompt";
@@ -92,6 +92,16 @@ describe("the server's candidates", () => {
     }
   });
 
+  it("are different offers: other types where the rules allow, else other values or fares $50 apart (Plot)", () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const three = drawCandidates(seed, context);
+      expect(new Set(three.map((c) => c.type)).size, `seed ${seed}`).toBe(3);
+      // Two strikes after a quiet quarter leave surges and fares: never twins.
+      const gentle = drawCandidates(seed, { ...context, strikes: 2, previous: [stub("quiet_quarter", "culture", "2194-Q2")] });
+      for (const [i, a] of gentle.entries()) for (const b of gentle.slice(i + 1)) expect(apart(a, b), JSON.stringify(gentle)).toBe(true);
+    }
+  });
+
   it("are weighted away from the last four quarters' types", () => {
     const recent = ["genre_surge", "genre_slump", "genre_surge", "quiet_days"].map((t, i) => stub(t, "happiness", `2194-Q${i + 1}`));
     const counts = new Map<string, number>();
@@ -153,6 +163,10 @@ describe("the text checks", () => {
     expect(textProblem("story", "Zoolander would approve of the club.", rules())).toBe("zoolander");
     expect(textProblem("bossLine", "ZOOLANDER WOULD APPROVE.", rules())).toBeNull();
     expect(textProblem("bossLine", "WELL DONE, ALMA.", rules())).toBe("alma");
+    // Every other quarter at most (Plot): not when last quarter's boss line named him.
+    expect(textProblem("bossLine", "ZOOLANDER WOULD APPROVE.", { ...rules(), zoolanderLast: true })).toBe("zoolander");
+    expect(checkAnswer(answer({ bossLine: "ZOOLANDER WOULD APPROVE." }), [surge, surge, surge], { ...context, previous: [record({ quarter: "2194-Q2" })] }, checks)).toEqual({ ok: false, failure: "text:bossLine:zoolander" });
+    expect(checkAnswer(answer({ bossLine: "ZOOLANDER WOULD APPROVE." }), [surge, surge, surge], { ...context, previous: [record({ quarter: "2194-Q2", bossLine: "CARRY ON." })] }, checks).ok).toBe(true);
     expect(textProblem("story", "a".repeat(241), rules())).toBe("too_long");
   });
 });
@@ -262,7 +276,8 @@ describe("what Alma sees", () => {
   it("is past plans, scores, strikes, its own past choices and the candidates, never text", () => {
     const history: QuarterSummary[] = [{ quarter: "2194-Q2", plan: ["pick:123"], scores: { profit: 80, readers: 70, happiness: 75, culture: 90 }, overall: 70, grade: "C-", strike: false }];
     const input = JSON.parse(almaInput({ ...context, previous: [record({ quarter: "2194-Q2" })] }, history, drawCandidates(1, context)));
-    expect(Object.keys(input)).toEqual(["quarter", "strikes", "history", "lastEvents", "candidates"]);
+    expect(Object.keys(input)).toEqual(["quarter", "strikes", "zoolanderLast", "history", "lastEvents", "candidates"]);
+    expect(input.zoolanderLast).toBe(true);
     expect(Object.keys(input.history[0])).toEqual(["quarter", "plan", "scores", "overall", "grade", "strike"]);
     expect(input.lastEvents[0]).toEqual({ quarter: "2194-Q2", type: "genre_surge", params: record().params, stretch: { measure: "culture" } });
     expect(input.candidates).toHaveLength(3);
