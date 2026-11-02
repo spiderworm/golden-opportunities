@@ -92,88 +92,6 @@
   white-space: nowrap;
 }
 
-.filterMenu {
-  position: relative;
-}
-
-.filterButton {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 12px 0 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--color-text);
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.filterButton:hover,
-.filterButton[aria-expanded="true"] {
-  background: var(--color-panel-raised);
-}
-
-.filterButton[data-active] {
-  border-color: var(--color-accent);
-  background: var(--color-accent-wash);
-}
-
-.filterName {
-  color: var(--color-text-muted);
-}
-
-.filterSummary {
-  max-width: 160px;
-  overflow: hidden;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.filterPanel {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 10;
-  display: grid;
-  gap: 2px;
-  min-width: 220px;
-  margin: 0;
-  padding: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  background: var(--color-panel-raised);
-  box-shadow: var(--shadow-popover);
-}
-
-.filterPanel[hidden] {
-  display: none;
-}
-
-.filterOption {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.filterOption:hover {
-  background: var(--color-panel);
-}
-
-.filterOption input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--color-accent);
-}
-
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -291,13 +209,6 @@
 .addFilter[aria-expanded="true"] {
   border-color: var(--color-accent);
   background: var(--color-accent-wash);
-}
-
-.filterEmpty {
-  max-width: 260px;
-  margin: 4px 6px;
-  color: var(--color-text-muted);
-  font-size: 13px;
 }
 
 /* Metric tiles */
@@ -527,35 +438,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-}
-
-.select {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 4px 0 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  font-size: 13px;
-}
-
-.selectLabel {
-  color: var(--color-text-muted);
-}
-
-.select select {
-  height: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--color-text);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.select select option {
-  background: var(--color-panel-raised);
 }
 
 .toggle {
