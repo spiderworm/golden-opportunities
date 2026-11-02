@@ -1,14 +1,18 @@
-// What Alma is told (endless.md section 9). The rules and the type list go in the system prompt; the game state
-// goes in on stdin. Alma sees only past plans, scores, strikes and its own past choices: never anything the
-// player typed, investigated or discovered, so nothing a player writes can reach it. `almaInput` picks the
-// fields one by one, and a test pins them.
+// What Alma is told (endless.md section 9). The rules go in the system prompt; the game state and this quarter's
+// three candidates go in on stdin. Alma sees only past plans, scores, strikes and its own past choices: never
+// anything the player typed, investigated or discovered, so nothing a player writes can reach it. `almaInput`
+// picks the fields one by one, and a test pins them.
 
-import { EVENT_TYPES, STRETCH_PERCENT, type MeasureId } from "./events";
+import type { Candidate, QuarterContext } from "./candidates";
+import type { MeasureId } from "./events";
+import { namesZoolander } from "./text";
+import { quarterMonths } from "./names";
+import { factSentence } from "./sentences";
 import { TEXT_LIMITS } from "./text";
-import type { ChoiceContext } from "./validate";
+import { wantsReason } from "./validate";
 
 /** Recorded with each record, so a replay knows which rules wrote it. */
-export const PROMPT_VERSION = 1;
+export const PROMPT_VERSION = 2;
 
 /** One past quarter, as Alma may see it. */
 export interface QuarterSummary {
@@ -21,44 +25,43 @@ export interface QuarterSummary {
   strike: boolean;
 }
 
-const describeType = (t: (typeof EVENT_TYPES)[number]) => {
-  const params = Object.entries(t.params).map(([name, spec]) =>
-    spec.kind === "enum" ? `${name}: one of ${spec.values.map((v) => JSON.stringify(v)).join(", ")}` : `${name}: a whole number from ${spec.min} to ${spec.max} (${spec.unit === "month" ? "the month of the quarter" : spec.unit})`,
-  );
-  return `- ${t.id}${params.length ? `: ${params.join("; ")}` : ": no params"}${t.mild ? " (mild)" : ""}${t.against.length ? `; works against ${t.against.join(" and ")}` : ""}${t.oncePer ? `; at most once in any ${t.oncePer} quarters` : ""}`;
-};
+export const ALMA_RULES = `You are the event director of Orbital Books, a bookstore game on a space station. The player never meets you.
 
-export const ALMA_RULES = `You are Alma, the event director of Orbital Books, a bookstore game on a space station. Each quarter you choose one event and one measure to stretch, and write the memo's text. The player never meets you.
+Each quarter the game offers you three candidate events, each already set: its type, its details and the bosses' stretch goal. Choose one, and write its flavor. The game itself writes every fact for the player: what changes, by how much, when, and the stretch's size. You write only what surrounds the facts.
 
-Choose one event type, with its params within these limits exactly:
-${EVENT_TYPES.map(describeType).join("\n")}
+Write:
+- story: one or two sentences of plain prose for the memo, at most ${TEXT_LIMITS.story} characters: a cause for the event, something happening on the station. The candidate's "fact" is the game's sentence that follows it: your cause must fit it.
+- reason: only when the candidate says reasonWanted is true. The bosses' reason for the stretch goal, in capitals, at most ${TEXT_LIMITS.reason} characters. Leave the key out otherwise.
+- bossLine: the bosses' line for the transmission, in capitals, at most ${TEXT_LIMITS.bossLine} characters. Only this line may mention Zoolander, and only sometimes: never when the input says zoolanderLast is true.
 
-Choose the stretch: a measure (profit, readers, happiness or culture) and a percent from ${STRETCH_PERCENT.min} to ${STRETCH_PERCENT.max}.
-
-Rules:
-- Never the same event type as last quarter, and never the same stretched measure as last quarter.
-- Never an event that works against the stretched measure.
-- If two or more strikes count against the player, choose only a mild event. A strike is the bosses' mark against the player for a quarter that scored under 70: not a labor strike. Never mention strikes or scores in your texts.
-- Vary your choices across quarters and games: use every type, and the whole range of each limit, not the same values each time.
-- If the input names a recovery measure, the stretch must be that measure, and its reason says it fell, with {{drop}}.
-
-Write three texts:
-- story: one or two sentences of plain prose for the memo, at most ${TEXT_LIMITS.story} characters, about what is happening on the station.
-- stretch.reason: the bosses' reason for the stretch, in capitals, at most ${TEXT_LIMITS.reason} characters.
-- bossLine: the bosses' line for the transmission, in capitals, at most ${TEXT_LIMITS.bossLine} characters. Only this line may mention Zoolander.
-
-In all three, write no digits and no number words. Write every number as a slot: the name of a param in double braces ({{percent}}, {{cost}}, {{month}}), or {{stretch}} for the stretch's percent, {{quarter}} for the quarter, {{drop}} for a recovery's fall. Names from the lists may be slots too ({{genre}}). A slot is shown with its unit: {{percent}} reads "20%", {{cost}} reads "$250", {{month}} reads "August", {{quarter}} reads "Q3 2194". So write "a rise of {{percent}} in {{month}}", never "{{percent}} percent", "\${{cost}}" or "month {{month}}". No emoji, no email addresses, no @. Never name yourself: the player never meets Alma.
+In every field:
+- No numbers of any kind: no digits, no number words, no Roman numerals, no fractions, no $ or %.
+- No directions or comparisons: not rise, fall, up, down, more, less, higher, lower, best, worst, surge, slump or the like. The fact sentence says which way things go.
+- Name no genre, weekday, format or month except the chosen candidate's own, and no book title. You may leave them out.
+- No emoji, no email addresses, no @, no braces. Never name yourself, and never a real person.
+- "Strike" means the bosses' mark against the player for a weak quarter, not a labor strike. Never mention strikes or scores.
 
 Answer with exactly one JSON object and nothing else:
-{"type": "...", "params": {...}, "stretch": {"measure": "...", "percent": 0, "reason": "..."}, "story": "...", "bossLine": "..."}`;
+{"candidate": 0, "story": "...", "reason": "...", "bossLine": "..."}`;
 
-/** The state Alma reads, as the JSON it receives. Only these fields, named one by one. */
-export function almaInput(context: ChoiceContext, history: readonly QuarterSummary[]): string {
+/** The state and candidates Alma reads, as the JSON it receives. Only these fields, named one by one. */
+export function almaInput(context: QuarterContext, history: readonly QuarterSummary[], candidates: readonly Candidate[]): string {
+  const months = quarterMonths(context.quarter);
   return JSON.stringify({
     quarter: context.quarter,
     strikes: context.strikes,
-    recovery: context.recovery ? { measure: context.recovery.measure } : null,
+    zoolanderLast: namesZoolander(context.previous.at(-1)?.bossLine),
     history: history.map((q) => ({ quarter: q.quarter, plan: [...q.plan], scores: { ...q.scores }, overall: q.overall, grade: q.grade, strike: q.strike })),
-    lastEvents: context.previous.map((r) => ({ quarter: r.quarter, type: r.type, params: { ...r.params }, stretch: { measure: r.stretch.measure, percent: r.stretch.percent } })),
+    lastEvents: context.previous.map((r) => ({ quarter: r.quarter, type: r.type, params: { ...r.params }, stretch: r.stretch && { measure: r.stretch.measure } })),
+    candidates: candidates.map((c, i) => ({
+      candidate: i,
+      type: c.type,
+      params: { ...c.params, ...(typeof c.params.month === "number" ? { month: months[c.params.month - 1] } : {}) },
+      stretch: c.stretch && { measure: c.stretch.measure, recovery: !wantsReason(c, context) },
+      // The sentence the game puts after the story, so the flavor fits what happens (the live check: cheaper
+      // fares were told as a burden).
+      fact: factSentence({ quarter: context.quarter, ...c }),
+      reasonWanted: wantsReason(c, context),
+    })),
   });
 }

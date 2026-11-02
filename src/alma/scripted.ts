@@ -1,71 +1,106 @@
 // The scripted fallback (endless.md section 9): when the model is unavailable, too slow, or wrong twice, the
-// quarter gets a scripted event of the same shape, chosen from the save's seed and the quarter, so a retry after
-// a failed write picks the same one. It passes the same checks as Alma's answers.
+// quarter takes the first of its three candidates with scripted flavor. The candidates come from the save's
+// seed and the quarter, so a retry after a failed write scripts the same event. The flavor passes the same
+// checks as Alma's (tested for every type and measure).
 //
-// The texts are stand-ins until Plot writes them (one per type and value).
+// The texts are Plot's: a story per type and value, a reason per measure, and a boss line per type.
 
-import { EVENT_TYPES, MEASURE_IDS, STRETCH_PERCENT, type EventType, type MeasureId } from "./events";
-import type { AlmaChoice } from "./record";
-import { choiceProblem, type ChoiceContext } from "./validate";
+import type { Candidate, QuarterContext } from "./candidates";
+import type { MeasureId } from "./events";
+import { wantsReason, type Flavor } from "./validate";
 
-const STORIES: Record<string, string> = {
-  genre_surge: "A book club on the hydroponics deck has started on {{genre}}. Expect a busy {{month}}.",
-  genre_slump: "The station archive is lending its {{genre}} collection free of charge through {{month}}.",
-  quiet_days: "The Ring C shuttle now docks an hour later on {{weekday}}s, all quarter.",
-  author_fares: "The shuttle line has repriced its author fares: an author night now costs {{cost}}.",
-  format_costs: "A shortage at the printworks: {{format}} copies now cost the shop {{percent}} of list.",
-  quiet_quarter: "Nothing out of the ordinary is expected on the station this quarter.",
+// Stories are keyed by type, then by the candidate's genre, weekday or format, so the cause fits the event.
+// Types with no such param use the "" key. Each story names only its own value, or nothing.
+const STORIES: Record<string, Record<string, string>> = {
+  genre_surge: {
+    Fiction: "The Ring C reading circle has voted to spend the season on fiction.",
+    Mystery: "A book club on the hydroponics deck has started on mysteries, and its members are trading suspects over the tomato vines.",
+    Romance: "The station's matchmaking service has started sending a romance home with every match.",
+    "SciFi/Fantasy": "The observation deck is screening old Earth space films, and the audience keeps asking for science fiction to read afterward.",
+    "Young Adult": "The station school has set its older students a reading challenge, and young adult books fill the list.",
+    Childrens: "The station nursery has started a bedtime story hour, and parents are looking for children's books to take home.",
+    Nonfiction: "The Station Council has announced a quiz night on the history of Larkspur, and the contestants are studying nonfiction.",
+    Memoir: "The retired shuttle pilots' society has started a writing class, and its members are reading memoirs for ideas.",
+  },
+  genre_slump: {
+    Fiction: "The station archive is lending its fiction collection free of charge this season.",
+    Mystery: "A stall on Ring B has started selling secondhand mysteries by the crate.",
+    Romance: "The station archive has put its romance collection on the ring network, free to every resident.",
+    "SciFi/Fantasy": "The observation deck's film season has ended, and the station's fantasy fans have gone back to their games.",
+    "Young Adult": "Exams have started at the station school, and its older students are studying instead of reading young adult books for fun.",
+    Childrens: "The station nursery is closed for refitting, and many of its families are visiting relatives planetside.",
+    Nonfiction: "The Station Council has opened its reference library to every resident, free of charge.",
+    Memoir: "The retired shuttle pilots' society is away on a cruise to the outer rings.",
+  },
+  quiet_days: {
+    Monday: "The Ring C shuttle now docks an hour later on Mondays.",
+    Tuesday: "Ring C's main corridor is closed for cleaning on Tuesdays.",
+    Wednesday: "The station gym has moved its free classes to Wednesdays, and the corridor outside the shop has gone quiet.",
+    Thursday: "The hydroponics deck now holds its market on Thursdays, at the far end of the ring.",
+    Friday: "The Commerce Office has moved its weekly inspections to Fridays, and visitors are keeping away from Ring C while the inspectors are out.",
+    Saturday: "The station's sports league now plays its matches on Saturdays, and the whole ring turns out to watch.",
+    Sunday: "The Ring C shuttle runs a reduced service on Sundays while its engines are overhauled.",
+  },
+  author_fares: { "": "The shuttle line has repriced its author fares for the season." },
+  format_costs: {
+    Hardcover: "The printworks has run short of hardcover board, and its supplier is charging what it likes.",
+    "Trade paperback": "The printworks' trade paperback press is out for repairs, and the backup press charges extra.",
+    Paperback: "The paper mill on Ring D has repriced the stock it sells for paperbacks.",
+    "Mass market paperback": "The freighter that carries mass market paperbacks has added a fuel surcharge.",
+    Graphic: "The printworks has run short of color ink, and graphic novels are the hardest hit.",
+    "Board book": "The board book bindery has run short of laminate.",
+  },
+  quiet_quarter: { "": "The station's calendar is clear this quarter: no festivals, no closures and no shortages." },
 };
 
-const BOSS_LINES: Record<string, string> = {
-  genre_surge: "THE COMMERCE OFFICE HAS NOTED THE BOOK CLUB. DO NOT WASTE IT.",
-  genre_slump: "THE ARCHIVE IS NOT OUR CONCERN. YOUR LEDGER IS.",
-  quiet_days: "THE SHUTTLE TIMETABLE IS FINAL. ADAPT.",
-  author_fares: "THE FARES ARE THE FARES. PLAN ACCORDINGLY.",
-  format_costs: "THE PRINTWORKS SENDS ITS REGRETS. WE DO NOT ACCEPT THEM.",
-  quiet_quarter: "A QUIET QUARTER IS NO EXCUSE. WE ARE WATCHING.",
+// The stretch's reason, in the voice of the measure's boss.
+const REASONS: Record<MeasureId, string> = {
+  profit: "THE COMMERCE OFFICE HAS BOUGHT A NEW LEDGER. IT IS VERY EMPTY.",
+  readers: "THE COUNCIL HAS READ A STUDY ABOUT FOOT TRAFFIC.",
+  happiness: "THE SURVEY DRONE HAS BEEN RECALIBRATED. IT NOW NOTICES FROWNS.",
+  culture: "THE MINISTRY HAS DECLARED THIS A SEASON OF SERIOUS READING.",
 };
 
-const NAMES: Record<MeasureId, string> = { profit: "PROFIT", readers: "READERS SERVED", happiness: "HAPPINESS", culture: "CULTURE" };
+// Two boss lines per type, one naming Mr. Zoolander and one plain. They name no genre, day or format, so they
+// fit any value. The bosses quote him every other quarter at most, so the joke stays odd rather than constant.
+const BOSS_LINES: Record<string, { zoolander: string; plain: string }> = {
+  genre_surge: {
+    zoolander: "THE COMMERCE OFFICE HAS NOTED THE ENTHUSIASM. MR. ZOOLANDER SAYS A CROWD IS A RUNWAY NOBODY HAS WALKED YET. DO NOT WASTE IT.",
+    plain: "THE COMMERCE OFFICE HAS NOTED THE ENTHUSIASM. ENTHUSIASM IS NOT REVENUE. MAKE IT REVENUE.",
+  },
+  genre_slump: {
+    zoolander: "FREE BOOKS ARE NOT OUR CONCERN. MR. ZOOLANDER NEVER WORRIED ABOUT FREE THINGS. HE WAS TOO GOOD-LOOKING.",
+    plain: "FREE BOOKS ARE NOT OUR CONCERN. YOUR LEDGER IS OUR CONCERN. WE HAVE NO OTHER CONCERNS.",
+  },
+  quiet_days: {
+    zoolander: "THE TIMETABLE IS FINAL. MR. ZOOLANDER COULD NOT TURN LEFT, AND HE ADAPTED. ADAPT.",
+    plain: "THE TIMETABLE IS FINAL. WE DO NOT ADJUST TIMETABLES. TIMETABLES ADJUST US.",
+  },
+  author_fares: {
+    zoolander: "THE FARES ARE THE FARES. MR. ZOOLANDER ALSO TRAVELED FOR WORK. HE NEVER ASKED ABOUT FARES. BE LIKE HIM.",
+    plain: "THE FARES ARE THE FARES. WE ASKED WHETHER AUTHORS COULD WALK. THEY CANNOT WALK IN SPACE.",
+  },
+  format_costs: {
+    zoolander: "THE PRINTWORKS SENDS ITS REGRETS. MR. ZOOLANDER DOES NOT ACCEPT REGRETS. NEITHER DO WE.",
+    plain: "THE PRINTWORKS SENDS ITS REGRETS. WE DO NOT ACCEPT REGRETS. WE ACCEPT RECEIPTS.",
+  },
+  quiet_quarter: {
+    zoolander: "NOTHING IS EXPECTED THIS QUARTER. THE PANEL WILL EXPECT SOMETHING ANYWAY. MR. ZOOLANDER CALLS THIS BLUE STEEL.",
+    plain: "NOTHING IS EXPECTED THIS QUARTER. THE PANEL WILL EXPECT SOMETHING ANYWAY.",
+  },
+};
 
-/** A small deterministic hash (FNV-1a), so the same seed and quarter always script the same event. */
-function hash(...parts: (string | number)[]): number {
-  let h = 0x811c9dc5;
-  for (const ch of parts.join(":")) {
-    h ^= ch.codePointAt(0)!;
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
+/** True if last quarter's boss line quoted Mr. Zoolander, so this quarter's shouldn't. */
+const zoolanderLastQuarter = (context: QuarterContext) => /zoolander/i.test(context.previous.at(-1)?.bossLine ?? "");
 
-const rotate = <T>(list: readonly T[], by: number) => list.map((_, i) => list[(i + by) % list.length]);
+/** The value a story is keyed by: the candidate's genre, weekday or format, or "" for a type with none. */
+const storyKey = (candidate: Candidate) => String(candidate.params.genre ?? candidate.params.weekday ?? candidate.params.format ?? "");
 
-function build(type: EventType, measure: MeasureId, seed: number, context: ChoiceContext): AlmaChoice {
-  const params: Record<string, string | number> = {};
-  for (const [name, spec] of Object.entries(type.params)) {
-    const h = hash(seed, context.quarter, type.id, name);
-    params[name] = spec.kind === "enum" ? spec.values[h % spec.values.length] : spec.min + (h % (spec.max - spec.min + 1));
-  }
-  const percent = STRETCH_PERCENT.min + (hash(seed, context.quarter, "stretch") % (STRETCH_PERCENT.max - STRETCH_PERCENT.min + 1));
-  const reason = context.recovery ? `${NAMES[measure]} FELL {{drop}}. RESTORE IT.` : `THE COUNCIL REQUIRES {{stretch}} MORE ${NAMES[measure]} THIS QUARTER.`;
-  return { type: type.id, params, stretch: { measure, percent, reason }, story: STORIES[type.id], bossLine: BOSS_LINES[type.id] };
-}
-
-/**
- * The scripted choice for a quarter. It keeps every rule it can: if the rules leave nothing (on a strike, with
- * a recovery stretch, after a surge and a recent quiet quarter), it drops only the rules about repeating the
- * last quarter, never the limits, "no piling on" or the recovery stretch.
- */
-export function scriptedChoice(seed: number, context: ChoiceContext): AlmaChoice {
-  const types = rotate(EVENT_TYPES, hash(seed, context.quarter, "type") % EVENT_TYPES.length);
-  const measures = context.recovery ? [context.recovery.measure] : rotate(MEASURE_IDS, hash(seed, context.quarter, "measure") % MEASURE_IDS.length);
-  for (const rules of [context, { ...context, previous: [] }]) {
-    for (const type of types) {
-      for (const measure of measures) {
-        const choice = build(type, measure, seed, context);
-        if (!choiceProblem(choice, rules)) return choice;
-      }
-    }
-  }
-  throw new Error(`No scripted event fits ${context.quarter}.`);
+/** The scripted flavor for a candidate. */
+export function scriptedFlavor(candidate: Candidate, context: QuarterContext): Flavor {
+  return {
+    story: STORIES[candidate.type][storyKey(candidate)],
+    ...(wantsReason(candidate, context) && candidate.stretch ? { reason: REASONS[candidate.stretch.measure] } : {}),
+    bossLine: BOSS_LINES[candidate.type][zoolanderLastQuarter(context) ? "plain" : "zoolander"],
+  };
 }

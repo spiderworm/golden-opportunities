@@ -287,12 +287,8 @@ const BANNED = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS
  * only whole valid numerals, so "DID", "MILD" and "CIVIL" pass. "MIX" is the one common word that's also one.
  */
 const ROMAN = /\b(?!MIX\b)(?=[MDCLXVI]{2,}\b)M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})(?<=\b[MDCLXVI]{2,})\b/u;
-/**
- * The number half of the ban, for text whose directions are the speaker's own truth (Alma's stories, where
- * "surge" and "slump" are the event): a figure in it must still come from a slot. Run it on NFKC-folded text.
- */
-const NUMBER_BAN = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS})\\b|${QUANTITY}`, "iu");
-export const hasNumber = (folded: string) => NUMBER_BAN.test(folded) || ROMAN.test(folded);
+/** The whole ban, for other text a player is shown as fact-free flavor (Alma's): run it on NFKC-folded text. */
+export const hasBannedWord = (folded: string) => BANNED.test(folded) || ROMAN.test(folded);
 // Exact phrases allowed despite their words, in exact contexts only.
 const ALLOWED = /\blook(?:s|ed|ing)? (?:(?:it|them|that) )?up\b|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))/giu;
 const REF = /\{\{([^{}]{1,40})\}\}/g;
