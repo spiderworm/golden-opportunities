@@ -12,6 +12,7 @@ import type { Route } from "./+types/root";
 import { startAnalytics } from "./platform/analytics/analytics.client";
 import { serverAnalytics } from "./platform/analytics/analytics.server";
 import { instanceId } from "./platform/analytics/instance.server";
+import { revalidateAbovePage } from "./platform/revalidate";
 import "./platform/theme/theme.css";
 import { useIsPhone } from "./phone/phone";
 import { PhoneScreen } from "./phone/PhoneScreen";
@@ -20,6 +21,8 @@ export function loader() {
   serverAnalytics();
   return { instance: instanceId() };
 }
+
+export const shouldRevalidate = revalidateAbovePage;
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
