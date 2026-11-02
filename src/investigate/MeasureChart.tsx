@@ -121,7 +121,7 @@ export function MeasureChart({ state, result, also = [], quarters, onMeasures, o
                   : fit === "full"
                     ? "Three at most"
                     : fit === "third unit"
-                      ? "Two units at most"
+                      ? "Two axes at most"
                       : null,
               };
             })}
