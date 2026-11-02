@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { acceptable, createAnalytics, nextBatch } from "./analytics.ts";
+import { acceptable, createAnalytics, nextBatch, studioId } from "./analytics.ts";
 import { joined } from "../report/report.ts";
 import { createRequire } from "node:module";
 const { check } = createRequire(import.meta.url)("../ingest/handler.cjs");
@@ -250,4 +250,48 @@ test("an app gives the game, storage key, build and version; explicit options ov
   assert.ok(storage.m.has("pizza.test.install"), "an explicit key wins (Pizza's local runs)");
 
   assert.throws(() => createAnalytics({ platform: "web", storage } as any), /needs an app/);
+});
+
+test("one studio-wide id: the native app's when it has one, else one the site's games share", async () => {
+  assert.deepEqual(await studioId({ native: true, get: async () => ({ id: "9f1c2a4e-1111-4222-8333-444455556666" }) }), { studio: "9f1c2a4e-1111-4222-8333-444455556666", source: "appset" });
+  assert.deepEqual(await studioId({ native: true, get: async () => ({ id: "B2C3", source: "idfv" }) }), { studio: "B2C3", source: "idfv" });
+  assert.equal(await studioId({ native: true }), null, "a native app without the plugin links nothing");
+  assert.equal(await studioId({ native: true, get: async () => { throw new Error("no Play services"); } }), null);
+  const site = memory();
+  const waddleberg = await studioId({ native: false }, site);
+  const pizza = await studioId({ native: false }, site);
+  assert.equal(waddleberg?.source, "web");
+  assert.equal(pizza?.studio, waddleberg?.studio, "two games on one site share it");
+  const now = Date.now();
+  const batch = { v: 1, rt: now, game: "waddleberg", install: "9f1c2a4e-1111-4222-8333-444455556666", platform: "web", build: "20261101000000", tz: 0, events: [{ t: now, s: "abc123", n: 1, e: "linked", p: waddleberg }] };
+  assert.equal(check(JSON.stringify(batch), new Set(["waddleberg"]), now).status, 200, "the endpoint takes it");
+});
+
+test("every game: the Android emulator is ours, so it sends nothing unless switched on, and then says it's an emulator", async () => {
+  const run = (ua: string, on: boolean) => {
+    const storage = memory();
+    if (on) storage.setItem("tellim.emulatorAnalytics", "1");
+    const bodies: any[] = [];
+    const a = createAnalytics({
+      game: "test", endpoint: "https://x", key: "t", build: "b1", platform: "android", storage,
+      env: { userAgent: ua, webdriver: false, search: "" },
+      send: async (_u, body) => (bodies.push(JSON.parse(body)), true),
+    });
+    return { a, bodies, storage };
+  };
+  const quiet = run("Mozilla/5.0 (Linux; Android 15; sdk_gphone64_arm64; wv) TellimEmulator", false);
+  quiet.a.track("one");
+  await quiet.a.flush();
+  assert.equal(quiet.bodies.length, 0, "nothing sent");
+  assert.equal(quiet.a.events().length, 1, "kept on the emulator");
+  assert.ok(quiet.storage.m.has("t.test.install") && !quiet.storage.m.has("t.install"), "under keys of its own");
+  const testing = run("Mozilla/5.0 (Linux; Android 15; sdk_gphone64_arm64; wv) TellimEmulator", true);
+  testing.a.track("one");
+  await testing.a.flush();
+  assert.equal(testing.bodies[0].platform, "emulator");
+  assert.equal(check(JSON.stringify(testing.bodies[0]), new Set(["test"]), Date.now()).status, 200, "the endpoint takes it");
+  const robot = run("Mozilla/5.0 (Linux; Android 15; sdk_gphone64_arm64; wv) TellimTestLab TellimEmulator", false);
+  robot.a.track("one");
+  await robot.a.flush();
+  assert.equal(robot.bodies[0].platform, "testlab", "Play's robots on emulators stay labeled testlab, and still send");
 });

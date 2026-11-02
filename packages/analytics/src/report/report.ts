@@ -2,6 +2,9 @@
 // long, when they stop, and (with the game's own signals) why. Pure: give it
 // the batches as ingest kept them (see fetch.ts for getting them from S3).
 import type { Sent } from "../client/analytics.ts";
+import { placeholderName } from "./names.ts";
+
+export { placeholderName };
 
 /** version: the release the build is; versionFrom: "reported" by the build, or looked up at ingest ("play": its Play bundle, "code": the game's version when it was built) */
 export type Batch = { rt: number; game: string; install: string; platform: string; build: string; version?: string; versionFrom?: "reported" | "play" | "code"; tz: number; events: Sent[] };
@@ -97,10 +100,15 @@ export function report(batches: Batch[], o: Options = {}) {
     const lapsed = now - last > lapsedDays * DAY;
     const sharingOff = evs.at(-1)!.e === "sharing_set" && evs.at(-1)!.p.on === false;
     const lastSession = mine.at(-1);
+    // the studio-wide id, when the game links players across Tellim games: one person, one name in every game
+    const linked = [...evs].reverse().find((r) => r.e === "linked")?.p.studio;
+    const studio = typeof linked === "string" && linked ? linked : null;
     return {
       game: evs[0].game,
       install,
       short: install.slice(0, 8),
+      studio,
+      name: placeholderName(studio ?? install),
       platform: evs.at(-1)!.platform,
       build: evs.at(-1)!.build,
       first,

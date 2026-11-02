@@ -64,3 +64,13 @@ test("players and rows say which game they're from", () => {
   assert.deepEqual(r.games, ["g", "pizza"]);
   assert.deepEqual(r.players.map((x) => x.game).sort(), ["g", "pizza"]);
 });
+
+test("a player linked across Tellim games has one made-up name in every game", () => {
+  const studio = "8a1b2c3d-1111-4222-8333-444455556666";
+  const waddleberg = report([batch("install-in-waddleberg", [[T0, "app_shown"], [T0 + 1000, "linked", { studio, source: "appset" }]])], { now: T0 + H });
+  const pizza = report([{ ...batch("install-in-pizza", [[T0, "app_shown"], [T0 + 1000, "linked", { studio, source: "appset" }]]), game: "pizza" }], { now: T0 + H });
+  const unlinked = report([batch("install-alone", [[T0, "app_shown"]])], { now: T0 + H });
+  assert.equal(waddleberg.players[0].studio, studio);
+  assert.equal(waddleberg.players[0].name, pizza.players[0].name);
+  assert.equal(unlinked.players[0].studio, null);
+});

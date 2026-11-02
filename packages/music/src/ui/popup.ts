@@ -14,8 +14,15 @@
 // (Goldy's sidebar, David 30 Oct 2026: "can always live in tooltip player
 // mode, never really needs to go away") and shows the song playing, or
 // "Music" with a play button before the first one.
+//
+// A song's end (David, 1 Nov 2026): the pop-up shows itself for a song's
+// last seconds and stays up as the next starts, so either can be hearted.
+// A tap just after the name changes is taken as meant for the song before
+// (grace.ts): its heart hearts that one, and its next doesn't skip the new
+// song too. Its back already means that one (the song before, under 3 s in).
 
 import type { Music, Song, Where } from "../player/player.ts";
+import { meantForBefore, nearEnd } from "./grace.ts";
 import { icons } from "./icons.ts";
 import { fullName, heartButton, nowPlaying, otherTabNotice, playButton, playlist, volume } from "./parts.ts";
 
@@ -38,6 +45,9 @@ export type PopupHost = {
 const SHOW_MS = 4000; // the name alone
 const TOUCHED_MS = 6000; // after a control's been touched
 const WAIT_MS = 500;
+const LOVED_MS = 1500; // the song before, named with its heart, after hearting it late
+const CHECK_MS = 1000; // how often the pop-up looks for a song's end
+const PRESS_MS = 1000; // a press older than this didn't make the click
 const MARGIN = 8;
 
 export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
@@ -79,15 +89,31 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
   // that), or it's playing in another tab (the button is Pause)
   let begun = false;
   let starting = false;
+  // the song on screen, the one before it and when it changed (grace.ts)
+  let drawn: Song | null = null;
+  let before: Song | null = null;
+  let changedAt: number | null = null;
+  let pressedAt: number | null = null;
+  // the song whose end the pop-up showed itself for, and the song before, hearted late, named a moment
+  let ending: string | null = null;
+  let loved: Song | null = null;
+  let lovedTimer = 0;
 
   function draw() {
     const s = music.state();
     if (!s.song && !docked) return;
-    el.querySelector(".music-title")!.textContent = s.song?.title ?? "Music";
+    if (s.song?.id !== drawn?.id) {
+      // only a change the player could see: the pop-up was up with the song before
+      before = (shown || docked) && drawn ? drawn : null;
+      changedAt = before ? performance.now() : null;
+      drawn = s.song;
+    }
+    const song = loved ?? s.song;
+    el.querySelector(".music-title")!.textContent = song?.title ?? "Music";
     named();
     playButton(button("play"), s.playing);
-    heartButton(button("heart"), !!s.song && music.hearted(s.song.id));
-    button("heart").disabled = !s.song;
+    heartButton(button("heart"), !!song && music.hearted(song.id));
+    button("heart").disabled = !song;
   }
 
   function show() {
@@ -100,12 +126,28 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     }
     waiting = false;
     if (!music.state().song) return hide();
+    reveal(SHOW_MS);
+  }
+
+  function reveal(ms: number) {
     draw();
     shown = true;
     host.place(el, false);
     el.classList.add("on");
-    linger(SHOW_MS);
+    linger(ms);
   }
+
+  // a song's last seconds: up until the next is named (its show() sets the
+  // time), or a moment past the end if none follows. Not over a card.
+  function checkEnd() {
+    const s = music.state();
+    if (shown || full || waiting || doc.hidden || !s.playing || !s.song || ending === s.song.id) return;
+    const left = music.left();
+    if (!nearEnd(left) || host.busy()) return;
+    ending = s.song.id;
+    reveal((left! + 2) * 1000);
+  }
+  const checking = docked ? 0 : window.setInterval(checkEnd, CHECK_MS);
 
   function linger(ms: number) {
     if (docked) return;
@@ -182,16 +224,35 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     if (t.closest(".music-popup-name")) return openFull();
     const d = t.closest<HTMLElement>("[data-do]")?.dataset.do;
     const song = music.state().song;
+    // the press that made this click (one with none, a screen reader's, is now)
+    const at = pressedAt !== null && performance.now() - pressedAt < PRESS_MS ? pressedAt : performance.now();
+    const late = before && meantForBefore(at, changedAt) ? before : null;
+    pressedAt = null;
     if (!d) return;
+    if (late && d === "skip") return linger(TOUCHED_MS); // that song's over: skipping again would skip the new one
+    if (late && d === "heart") {
+      music.setHearted(late.id, !music.hearted(late.id), where);
+      // its name and heart a moment, so the tap is seen to have counted
+      loved = late;
+      clearTimeout(lovedTimer);
+      lovedTimer = window.setTimeout(() => {
+        loved = null;
+        draw();
+      }, LOVED_MS);
+      draw();
+      return linger(TOUCHED_MS);
+    }
     // (unless another app has the music: then this play is the player's own, and takes it)
     if (d === "play" && starting && !music.state().elsewhere) return;
     if (d === "back") void music.back(where).then(said);
     if (d === "skip") void music.skip(where).then(said);
     if (d === "play") music.state().playing ? music.pause(where) : void music.resume(where).then(said);
-    if (d === "heart" && song) music.setHearted(song.id, !music.hearted(song.id), where);
+    const shownSong = loved ?? song;
+    if (d === "heart" && shownSong) music.setHearted(shownSong.id, !music.hearted(shownSong.id), where);
     linger(TOUCHED_MS);
   });
-  const pressed = () => {
+  const pressed = (e: Event) => {
+    pressedAt = e.timeStamp;
     const s = music.state();
     starting = !begun && !s.paused && !s.playing;
   };
@@ -228,6 +289,8 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     dispose() {
       closeFull();
       clearTimeout(timer);
+      clearTimeout(lovedTimer);
+      clearInterval(checking);
       offSong();
       offState();
       doc.removeEventListener("keydown", escape);

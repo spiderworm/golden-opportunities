@@ -1,1 +1,1 @@
-export * from "@tellim/analytics/environment";
+export * from "@tellim/platform/environment";
