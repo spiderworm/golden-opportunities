@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigation, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
 
 import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
@@ -20,7 +21,13 @@ import { currentQuarter } from "~/game/progress";
 import { QueryError } from "~/query/errors";
 import {
   DEFAULT_STATE,
+  FILTER_PARTS,
   filtersExcept,
+  onlyShownChanged,
+  removeFilter,
+  shownFilters,
+  withShown,
+  type FilterId,
   parseState,
   setAward,
   setDiscount,
@@ -81,26 +88,35 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
 clientLoader.hydrate = true as const;
 
 /**
- * The memo's "seen" mark is the one action Investigate's page can send (the shell's fetcher), and it changes no
- * data: no need to look again. Anything else, a navigation or another action, revalidates as usual.
+ * When no data changes, the loader isn't asked again:
+ * - the memo's "seen" mark, the one action Investigate's page can send (the shell's fetcher);
+ * - adding a filter to the bar, or taking off one with nothing chosen, which changes only the URL's `show`.
+ * Anything else, a navigation or another action, revalidates as usual.
  */
-export function shouldRevalidate({ formAction, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
+export function shouldRevalidate({ currentUrl, nextUrl, formMethod, formAction, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
   if (formAction === "/alert/seen") return false;
+  if (!formMethod && onlyShownChanged(currentUrl, nextUrl)) return false;
   return defaultShouldRevalidate;
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {
   const { state, tiles, chart, heatmap, titleView, options, planned } = loaderData;
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigation = useNavigation();
   const location = useLocation();
   const refreshing = navigation.state === "loading" && navigation.location?.pathname === location.pathname;
+  // The bar follows the URL. A filter added or taken off is on (or off) the bar in the same event, before the
+  // navigation lands: otherwise React puts the checkbox back for a moment (measured: a check reads unchecked).
+  const [chosen, setChosen] = useState<readonly FilterId[] | null>(null);
+  useEffect(() => setChosen(null), [searchParams]);
+  const shown = chosen ?? shownFilters(searchParams, state.filters);
 
   const pins = usePins(track);
   const chartPin = pinSpecFor(state);
 
-  function update(next: InvestigateState) {
-    setSearchParams(toSearchParams(next), { preventScrollReset: true });
+  /** The next question, with the bar's filters kept: a filter that gets a value stays on the bar when it's cleared. */
+  function update(next: InvestigateState, nextShown: readonly FilterId[] = shownFilters(searchParams, next.filters).concat(shown)) {
+    setSearchParams(withShown(toSearchParams(next), nextShown), { preventScrollReset: true });
   }
 
   return (
@@ -118,6 +134,20 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
         <FilterBar
           filters={state.filters}
           options={options}
+          shown={shown}
+          onAdd={(id) => {
+            track("investigate_filter_added", { filter: id });
+            const next = [...shown, id];
+            setChosen(next);
+            update(state, next);
+          }}
+          onRemove={(id) => {
+            const values = FILTER_PARTS[id].reduce((n, d) => n + (state.filters[d]?.length ?? 0), 0);
+            track("investigate_filter_removed", { filter: id, values });
+            const next = shown.filter((other) => other !== id);
+            setChosen(next);
+            update(removeFilter(state, id), next);
+          }}
           onChange={(dimension, values) => {
             track("investigate_filter_changed", { dimension, values: values.length });
             update(setFilter(state, dimension, values));
@@ -141,7 +171,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           }}
           onClear={() => {
             track("investigate_filters_cleared");
-            update({ ...state, filters: DEFAULT_STATE.filters });
+            update({ ...state, filters: DEFAULT_STATE.filters }, []);
           }}
         />
         <MetricTiles tiles={tiles} />

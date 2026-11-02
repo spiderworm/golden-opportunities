@@ -34,10 +34,17 @@ describe("Investigate's loader, for the browser's cache", () => {
 });
 
 describe("when Investigate looks again", () => {
-  const args = (formAction?: string) => ({ formAction, defaultShouldRevalidate: true }) as never;
+  // React Router always passes both URLs; a real look at the data changes more than the bar's `show`.
+  const at = (search: string) => new URL("http://localhost/investigate" + search);
+  const args = (formAction?: string, from = at("?by=genre"), to = at("?by=format")) =>
+    ({ formAction, formMethod: formAction ? "POST" : undefined, currentUrl: from, nextUrl: to, defaultShouldRevalidate: true }) as never;
 
   it("doesn't, for the memo's seen mark, which changes no data", () => {
     expect(shouldRevalidate(args("/alert/seen"))).toBe(false);
+  });
+
+  it("doesn't, when only the filter bar's shown filters change", () => {
+    expect(shouldRevalidate(args(undefined, at("?by=genre"), at("?by=genre&show=genre")))).toBe(false);
   });
 
   it("does, as usual, for anything else", () => {

@@ -5,10 +5,11 @@
 
 import { MEASURE_IDS, type MeasureId } from "../simulation/types.ts";
 import { TEXT_LIMITS, TEXT_PROBLEMS } from "./limits.ts";
+import { isQuarterName, quarterIndex, type QuarterId } from "../simulation/quarters.ts";
 
 export interface AlmaRecord {
   /** The quarter it's for, "2194-Q3". */
-  quarter: string;
+  quarter: QuarterId;
   source: "alma" | "scripted";
   type: string;
   params: Record<string, string | number>;
@@ -46,7 +47,6 @@ export const FAILURES: readonly string[] = [
   ...(["story", "reason", "bossLine"] as const).flatMap((field) => TEXT_PROBLEMS.map((p) => `text:${field}:${p}`)),
 ];
 
-export const QUARTER = /^\d{4}-Q[1-4]$/;
 
 const isPlain = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
 const shortText = (v: unknown, limit: number) => typeof v === "string" && v.length <= limit;
@@ -64,7 +64,8 @@ export function isAlmaRecord(value: unknown): value is AlmaRecord {
   if (!isPlain(value)) return false;
   if (!keysAre(value, ["quarter", "source", "type", "params", "stretch", "story", "bossLine", "promptVersion", "attempts"], ["drop", "reason", "model", "failure"])) return false;
   const { quarter, source, type, params, stretch, drop, story, reason, bossLine, model, promptVersion, attempts, failure } = value;
-  if (typeof quarter !== "string" || !QUARTER.test(quarter)) return false;
+  // Where a quarter enters from the save: a well-formed name, Q1 2194 or later.
+  if (!isQuarterName(quarter)) return false;
   if (source !== "alma" && source !== "scripted") return false;
   if (!shortText(type, 40) || !/^[a-z_]+$/.test(type as string)) return false;
   if (!isPlain(params) || Object.keys(params).length > 8) return false;
@@ -82,14 +83,12 @@ export function isAlmaRecord(value: unknown): value is AlmaRecord {
   return true;
 }
 
-export const quarterIndex = (q: string) => Number(q.slice(0, 4)) * 4 + Number(q.slice(-1));
-
 /**
  * The save's check on the whole log: every record valid, at most one per quarter, in quarter order, and none
  * past `latest`, the furthest quarter that may have one (the next, unplayed quarter Alma is preparing).
  */
-export function isAlmaLog(value: unknown, latest: string): value is AlmaRecord[] {
-  if (!Array.isArray(value) || value.length > 400 || !QUARTER.test(latest)) return false;
+export function isAlmaLog(value: unknown, latest: QuarterId): value is AlmaRecord[] {
+  if (!Array.isArray(value) || value.length > 400) return false;
   let last = -Infinity;
   for (const record of value) {
     if (!isAlmaRecord(record)) return false;
