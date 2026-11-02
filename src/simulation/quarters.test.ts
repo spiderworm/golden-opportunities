@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compareQuarters, isQuarterName, nextQuarter, quarterAt, quarterIndex, quarterMonths, quarterNumber } from './quarters';
 import { isQuarterId, PLAYABLE_QUARTERS, playableQuarters, quarterAfter, setPlayableQuarters, stationDate } from '../game/quarters';
+import { MAX_VIEW_PERIODS } from '../query/view.server';
 
 describe('quarter names, past the two the game has built (endless.md)', () => {
   it('count from Q1 2194, and run on across years', () => {
@@ -22,6 +23,8 @@ describe('quarter names, past the two the game has built (endless.md)', () => {
 describe('the quarters the game plays today', () => {
   it('run on past Q2, now that the endless loop is on, until the panel removes the player', () => {
     expect(PLAYABLE_QUARTERS).toBe(400);
+    // The query view allows 2193's four quarters and every playable one.
+    expect(4 + PLAYABLE_QUARTERS).toBeLessThanOrEqual(MAX_VIEW_PERIODS);
     expect(playableQuarters()).toBe(400);
     expect(isQuarterId('2194-Q3')).toBe(true);
     expect([0, 1, 2].map(quarterAfter)).toEqual(['2194-Q1', '2194-Q2', '2194-Q3']);
