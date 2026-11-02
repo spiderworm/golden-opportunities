@@ -16,12 +16,13 @@ export function resolveQueryView(): QueryView { return BASELINE_VIEW; }
  */
 export const MAX_VIEW_PERIODS = 404;
 /**
- * Most simulated lines a view may carry. A five-year save (20 quarters) is about 300,000 lines and some 500 MB of the
- * server's memory as views are built now (Frank's measurement, 2 Nov 2026), so a million is about 15 years and under
- * 2 GB. The 200,000 before the endless loop failed a save at about 13 quarters. Past this a save's ledgers refuse
- * rather than exhaust the heap, until views stop rebuilding every line per request.
+ * Most simulated lines a view may carry. A five-year save (20 quarters, 302,517 lines) took the server from 322 MB to
+ * 830 to 1,000 MB as views are built now (Frank's measurement, 2 Nov 2026): 1.7 to 2.2 KB a line. So 600,000 is
+ * about ten years and 1.0 to 1.3 GB more (Sim, #242). The 200,000 before the endless loop failed a save at about 13
+ * quarters. Past this a save's ledgers refuse rather than exhaust the heap, until views stop rebuilding every line
+ * per request.
  */
-export const MAX_SIMULATED_LINES = 1_000_000;
+export const MAX_SIMULATED_LINES = 600_000;
 
 export function validateView(view: QueryView): void {
   if (!isRecord(view) || Object.keys(view).some(key => !['periods', 'includeUndated', 'simulatedSales'].includes(key))
