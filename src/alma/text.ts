@@ -23,7 +23,11 @@ export interface TextRules {
   titles: readonly string[];
   /** The signed-in account's words (account.server.ts): none may appear. */
   account: readonly string[];
+  /** Last quarter's boss line named Zoolander, so this one may not: odd, not constant, is the joke (Plot). */
+  zoolanderLast?: boolean;
 }
+
+export const namesZoolander = (text: string | undefined) => /zoolander/i.test(text ?? "");
 
 const word = (w: string) => new RegExp(`(?<![\\p{L}\\p{N}])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "iu");
 
@@ -42,7 +46,7 @@ export function textProblem(field: TextField, text: unknown, rules: TextRules): 
   const capitals = field !== "story";
   if (capitals ? /\p{Ll}/u.test(text) : !/\p{Ll}/u.test(text)) return "voice";
   // Zoolander belongs to the bosses' lines only (David's direction, collaboration log).
-  if (field !== "bossLine" && /zoolander/i.test(text)) return "zoolander";
+  if (namesZoolander(text) && (field !== "bossLine" || rules.zoolanderLast)) return "zoolander";
   // Alma is behind the scenes: the player never meets her.
   if (/\balma\b/iu.test(text)) return "alma";
   if (nameProblem(text, rules.candidate, rules.quarter, rules.titles, capitals)) return "name";

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AssistantUnavailable } from "~/assistant/server/provider.server";
-import { candidateProblem, drawCandidates, type Candidate, type QuarterContext } from "./candidates";
+import { apart, candidateProblem, drawCandidates, type Candidate, type QuarterContext } from "./candidates";
 import { almaModel, chooseEvent, type AlmaModel } from "./director.server";
 import { EVENT_TYPES, FORMATS, GENRES, MEASURE_IDS, WEEKDAYS, type MeasureId } from "./events";
 import { almaInput, ALMA_RULES, type QuarterSummary } from "./prompt";
@@ -92,6 +92,16 @@ describe("the server's candidates", () => {
     }
   });
 
+  it("are different offers: other types where the rules allow, else other values or fares $50 apart (Plot)", () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const three = drawCandidates(seed, context);
+      expect(new Set(three.map((c) => c.type)).size, `seed ${seed}`).toBe(3);
+      // Two strikes after a quiet quarter leave surges and fares: never twins.
+      const gentle = drawCandidates(seed, { ...context, strikes: 2, previous: [stub("quiet_quarter", "culture", "2194-Q2")] });
+      for (const [i, a] of gentle.entries()) for (const b of gentle.slice(i + 1)) expect(apart(a, b), JSON.stringify(gentle)).toBe(true);
+    }
+  });
+
   it("are weighted away from the last four quarters' types", () => {
     const recent = ["genre_surge", "genre_slump", "genre_surge", "quiet_days"].map((t, i) => stub(t, "happiness", `2194-Q${i + 1}`));
     const counts = new Map<string, number>();
@@ -119,6 +129,19 @@ describe("the text checks", () => {
     const scifi = { ...surge, params: { genre: "SciFi/Fantasy", month: 1, percent: 12 } };
     expect(textProblem("story", "Science fiction fans have opened a club.", rules(scifi))).toBeNull();
     expect(textProblem("story", "Fiction fans have opened a club.", rules(scifi))).toBe("name");
+    // A longer value around the candidate's own is still another value (Probe's review of #178).
+    const fiction = { ...surge, params: { genre: "Fiction", month: 1, percent: 12 } };
+    expect(textProblem("story", "Fiction readers have opened a club.", rules(fiction))).toBeNull();
+    expect(textProblem("story", "Science fiction readers have opened a club.", rules(fiction))).toBe("name");
+    expect(textProblem("story", "Non-fiction readers have opened a club.", rules(fiction))).toBe("name");
+    const paperback: Candidate = { type: "format_costs", params: { format: "Paperback", percent: 66 }, stretch: { measure: "culture", percent: 12 } };
+    expect(textProblem("story", "Paperback binding is scarce.", rules(paperback))).toBeNull();
+    expect(textProblem("story", "Trade paperback binding is scarce.", rules(paperback))).toBe("name");
+    expect(textProblem("story", "Mass market paperbacks are scarce.", rules(paperback))).toBe("name");
+    // Months count in any case in prose ("AUGUST" for a July candidate), but "may" and "march" only as "May" and "March".
+    expect(textProblem("story", "The AUGUST rush is the talk of the deck.", rules({ ...surge, params: { ...surge.params, month: 1 } }))).toBe("name");
+    expect(textProblem("story", "Readers may march to the deck in August.", rules())).toBeNull();
+    expect(textProblem("story", "Readers will meet in May.", rules())).toBe("name");
     // Months count in capitals too, except the two that are words.
     expect(textProblem("bossLine", "WE MAY ALLOW IT. MARCH ON.", rules())).toBeNull();
     expect(textProblem("bossLine", "SEE YOU IN JULY.", rules())).toBe("name");
@@ -140,6 +163,10 @@ describe("the text checks", () => {
     expect(textProblem("story", "Zoolander would approve of the club.", rules())).toBe("zoolander");
     expect(textProblem("bossLine", "ZOOLANDER WOULD APPROVE.", rules())).toBeNull();
     expect(textProblem("bossLine", "WELL DONE, ALMA.", rules())).toBe("alma");
+    // Every other quarter at most (Plot): not when last quarter's boss line named him.
+    expect(textProblem("bossLine", "ZOOLANDER WOULD APPROVE.", { ...rules(), zoolanderLast: true })).toBe("zoolander");
+    expect(checkAnswer(answer({ bossLine: "ZOOLANDER WOULD APPROVE." }), [surge, surge, surge], { ...context, previous: [record({ quarter: "2194-Q2" })] }, checks)).toEqual({ ok: false, failure: "text:bossLine:zoolander" });
+    expect(checkAnswer(answer({ bossLine: "ZOOLANDER WOULD APPROVE." }), [surge, surge, surge], { ...context, previous: [record({ quarter: "2194-Q2", bossLine: "CARRY ON." })] }, checks).ok).toBe(true);
     expect(textProblem("story", "a".repeat(241), rules())).toBe("too_long");
   });
 });
@@ -169,6 +196,19 @@ describe("Alma's answer", () => {
     const recover = { ...surge, stretch: { measure: "culture" as const, percent: 20 } };
     expect(checkAnswer(answer(), [recover, recover, recover], recovering, checks)).toEqual({ ok: false, failure: "reason" });
     expect(checkAnswer(answer({ reason: undefined }), [recover, recover, recover], recovering, checks).ok).toBe(true);
+  });
+
+  it("can fail only with codes in FAILURES (Frank's review)", async () => {
+    const { TEXT_PROBLEMS } = await import("./text");
+    const parseFailures = ["not_json", "shape", "candidate", "reason"];
+    const textFailures = (["story", "reason", "bossLine"] as const).flatMap((f) => TEXT_PROBLEMS.map((p) => `text:${f}:${p}`));
+    for (const code of [...parseFailures, ...textFailures, "timeout"]) expect(FAILURES).toContain(code);
+    // A kind the provider doesn't list yet still makes a valid record.
+    const odd = { name: "x", ask: async () => { throw new AssistantUnavailable("new", "brand_new" as never); } };
+    const r = await chooseEvent(context, [], { seed: 1, model: odd, ...checks });
+    expect(r.failure).toBe("unavailable:other");
+    expect(isAlmaRecord(r)).toBe(true);
+    for (const kind of ["timeout", "missing", "signed_out", "broken", "other"]) expect(FAILURES).toContain(`unavailable:${kind}`);
   });
 
   it("names a field and a problem from the fixed list when it fails", () => {
@@ -207,6 +247,10 @@ describe("the save's checks (Frank's validate())", () => {
     expect(isAlmaRecord({ ...record(), attempts: 99 })).toBe(false);
     expect(isAlmaRecord({ ...record(), failure: "the model said something" })).toBe(false);
     expect(isAlmaRecord({ ...record(), failure: "text:story:name" })).toBe(true);
+    // A drop belongs to a recovery goal: it has a stretch, and the server writes its reason (Frank's review).
+    expect(isAlmaRecord(record({ stretch: { measure: "happiness", percent: 20 }, drop: 14, reason: undefined }))).toBe(true);
+    expect(isAlmaRecord(record({ drop: 14 }))).toBe(false);
+    expect(isAlmaRecord(record({ stretch: null, drop: 14, reason: undefined }))).toBe(false);
   });
   it("accept a log in quarter order, one per quarter, none past the quarter being prepared", () => {
     const q3 = record(), q4 = record({ quarter: "2194-Q4" });
@@ -252,11 +296,12 @@ describe("what Alma sees", () => {
   it("is past plans, scores, strikes, its own past choices and the candidates, never text", () => {
     const history: QuarterSummary[] = [{ quarter: "2194-Q2", plan: ["pick:123"], scores: { profit: 80, readers: 70, happiness: 75, culture: 90 }, overall: 70, grade: "C-", strike: false }];
     const input = JSON.parse(almaInput({ ...context, previous: [record({ quarter: "2194-Q2" })] }, history, drawCandidates(1, context)));
-    expect(Object.keys(input)).toEqual(["quarter", "strikes", "history", "lastEvents", "candidates"]);
+    expect(Object.keys(input)).toEqual(["quarter", "strikes", "zoolanderLast", "history", "lastEvents", "candidates"]);
+    expect(input.zoolanderLast).toBe(true);
     expect(Object.keys(input.history[0])).toEqual(["quarter", "plan", "scores", "overall", "grade", "strike"]);
     expect(input.lastEvents[0]).toEqual({ quarter: "2194-Q2", type: "genre_surge", params: record().params, stretch: { measure: "culture" } });
     expect(input.candidates).toHaveLength(3);
-    expect(Object.keys(input.candidates[0])).toEqual(["candidate", "type", "params", "stretch", "reasonWanted"]);
+    expect(Object.keys(input.candidates[0])).toEqual(["candidate", "type", "params", "stretch", "fact", "reasonWanted"]);
     expect(JSON.stringify(input)).not.toContain("book club");
     expect(ALMA_RULES).not.toMatch(/\{\{/);
   });
