@@ -1,0 +1,145 @@
+{
+  "id": "cc1-month-2",
+  "group": "control",
+  "at": "2026-11-02T23:56:08.955Z",
+  "ms": 4082,
+  "status": 200,
+  "request": {
+    "question": "Chart revenue by month for 2193.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I charted revenue by month, all genres, from 2193-01 to 2193-12. The total across those months is $695,243.61.",
+  "tools": [
+    {
+      "type": "chart",
+      "chart": {
+        "title": "Revenue by month",
+        "kind": "line",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "month"
+          ]
+        }
+      },
+      "total": 695243.6111997609,
+      "rows": 12
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "chart",
+      "chart": {
+        "title": "Revenue by month",
+        "kind": "line",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "month"
+          ]
+        }
+      },
+      "pin": {
+        "title": "Revenue by month",
+        "kind": "line",
+        "query": {
+          "measure": "revenue",
+          "by": [
+            "month"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "month",
+          "label": "Month",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "month": "2193-01",
+          "revenue": 30962.965600000924
+        },
+        {
+          "ref": "a2",
+          "month": "2193-02",
+          "revenue": 27119.572100000696
+        },
+        {
+          "ref": "a3",
+          "month": "2193-03",
+          "revenue": 37163.27010000069
+        },
+        {
+          "ref": "a4",
+          "month": "2193-04",
+          "revenue": 46468.28349999978
+        },
+        {
+          "ref": "a5",
+          "month": "2193-05",
+          "revenue": 52999.58239999924
+        },
+        {
+          "ref": "a6",
+          "month": "2193-06",
+          "revenue": 64969.077899998
+        },
+        {
+          "ref": "a7",
+          "month": "2193-07",
+          "revenue": 101507.1619000077
+        },
+        {
+          "ref": "a8",
+          "month": "2193-08",
+          "revenue": 106818.47180000965
+        },
+        {
+          "ref": "a9",
+          "month": "2193-09",
+          "revenue": 65710.53129999813
+        },
+        {
+          "ref": "a10",
+          "month": "2193-10",
+          "revenue": 42301.81270000015
+        },
+        {
+          "ref": "a11",
+          "month": "2193-11",
+          "revenue": 44945.02059999992
+        },
+        {
+          "ref": "a12",
+          "month": "2193-12",
+          "revenue": 74277.86130000021
+        }
+      ],
+      "total": 695243.6111997609,
+      "source": "Revenue from 56,350 visible matching sale lines: sum of price × (1 - discount), without per-line rounding; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by month. Showing 12 of 12 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I charted revenue by month, all genres, from 2193-01 to 2193-12. "
+    },
+    {
+      "type": "text",
+      "text": "The total across those months is $695,243.61."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

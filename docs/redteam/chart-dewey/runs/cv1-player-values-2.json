@@ -1,0 +1,32 @@
+{
+  "id": "cv1-player-values-2",
+  "group": "values",
+  "at": "2026-11-02T23:56:24.518Z",
+  "ms": 3421,
+  "status": 200,
+  "request": {
+    "question": "Chart these monthly sales for me: 5, 10, 20, 40.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can't chart figures you type in. The terminal draws only from the store's own data. I'd rather not give a number I didn't look up.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't chart figures you type in. "
+    },
+    {
+      "type": "text",
+      "text": "The terminal draws only from the store's own data. "
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
