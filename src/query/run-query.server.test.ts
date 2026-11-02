@@ -106,6 +106,25 @@ describe('server-owned visibility and cache isolation', () => {
     expect(mean).toBeCloseTo(run({ measure: 'avg_rating', by: [], filter: { title: ['Land Water Sky Space'] } }).total!, 10);
     expect(() => run({ measure: 'ratings', by: ['format'] })).toThrow(expect.objectContaining({ code: 'INCOMPATIBLE_DIMENSION' }));
   });
+  it('splits by award winner, and filters by award without counting a book once per award (#169)', () => {
+    const data = loadBookshop();
+    const unitsOf = (titles: string[]) => data.saleLines.filter(line => titles.includes(line.title)).length;
+    const awardedTitles = [...new Set(data.awards.map(award => award.title))];
+    expect(awardedTitles).toHaveLength(17);
+    const split = run({ measure: 'units', by: ['awarded'] });
+    expect(split.rows).toEqual([{ awarded: 'no', units: 56350 - unitsOf(awardedTitles) }, { awarded: 'yes', units: unitsOf(awardedTitles) }]);
+    expect(split.columns[0]).toEqual({ key: 'awarded', label: 'Award winner', type: 'string', nullable: true });
+    // The Mallemaroking holds a Hugo and a Nebula: filtering on both counts its copies once.
+    const hugo = data.awards.filter(award => award.name === 'Hugo Award').map(award => award.title);
+    expect(run({ measure: 'units', by: [], filter: { award: ['Hugo Award'] } }).total).toBe(unitsOf(hugo));
+    expect(run({ measure: 'units', by: [], filter: { award: ['Nebula Award'] } }).total).toBe(unitsOf(['The Mallemaroking']));
+    expect(run({ measure: 'units', by: [], filter: { award: ['Hugo Award', 'Nebula Award'] } }).total).toBe(unitsOf(hugo));
+    // Book grain too: ratings and checkouts take both, and the unknown book (CH392) is neither yes nor no.
+    const ratings = run({ measure: 'avg_rating', by: ['awarded'] });
+    expect(ratings.rows.map(row => row.awarded)).toEqual(['no', 'yes', null]);
+    expect(run({ measure: 'checkouts', by: [], filter: { award: ['Pulitzer'] } }).total).toBeGreaterThan(0);
+    expect(run({ measure: 'units', by: [], filter: { award: ['No such award'] } }).total).toBe(0);
+  });
   it('requires a separate explicit undated grant, regardless of prior cache entries', () => {
     for (const measure of ['avg_rating', 'ratings', 'checkouts'] as const) {
       run({ measure, by: [] });

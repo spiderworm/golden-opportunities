@@ -27,6 +27,8 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
   discounted: "Discounted",
   discount_rate: "Discount",
   stars: "Stars",
+  awarded: "Award winner",
+  award: "Award",
 };
 
 /** How a dimension value reads on screen: "2193-Q4" as "Q4 2193", "2193-03" as "Mar 2193". */

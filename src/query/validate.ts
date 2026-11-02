@@ -1,5 +1,5 @@
 import { QueryError } from './errors';
-import { DIMENSIONS, MEASURES, MEASURE_DIMENSIONS, QUERY_LIMITS } from './types';
+import { DIMENSIONS, FILTER_ONLY_DIMENSIONS, MEASURES, MEASURE_DIMENSIONS, QUERY_LIMITS } from './types';
 import type { Dimension, Measure, Query } from './types';
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -20,6 +20,8 @@ export function validateQuery(input: unknown): Query {
   if (!measure(input.measure)) invalid(`Measure must be one of: ${MEASURES.join(', ')}.`);
   if (!Array.isArray(input.by) || input.by.length > QUERY_LIMITS.dimensions || !input.by.every(dimension)) invalid('by must contain zero to two allowed dimensions.');
   if (new Set(input.by).size !== input.by.length) invalid('Grouping dimensions must be distinct.');
+  const filterOnly = (input.by as Dimension[]).find(d => (FILTER_ONLY_DIMENSIONS as readonly Dimension[]).includes(d));
+  if (filterOnly) invalid(`${filterOnly} can filter but not group: a book with two awards would count twice.`);
   const result: Query = { measure: input.measure, by: [...input.by] };
   if (Object.hasOwn(input, 'filter')) {
     if (!isRecord(input.filter)) invalid('filter must be an object of dimension arrays.');
