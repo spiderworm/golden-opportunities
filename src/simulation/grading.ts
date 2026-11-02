@@ -49,10 +49,12 @@ export interface MeasureInput {
   lastYear: number;
   /** The measure's 2193 quarterly average: sets the smallest goal step and the scale below last year. */
   quarterlyAverage: number;
+  /** A goal other than the usual stretch: Alma's extra stretch or a recovery goal (endless.md section 2). */
+  goal?: number;
 }
 
-export function scoreMeasure(id: MeasureId, { result, lastYear, quarterlyAverage }: MeasureInput): MeasureScore {
-  const goal = goalFor(lastYear, quarterlyAverage);
+export function scoreMeasure(id: MeasureId, { result, lastYear, quarterlyAverage, goal: set }: MeasureInput): MeasureScore {
+  const goal = set ?? goalFor(lastYear, quarterlyAverage);
   const met = result >= goal;
   const score = shownScore(rawScore(result, lastYear, goal, quarterlyAverage), met);
   return { id, result, lastYear, goal, score, grade: gradeFor(score), met, exceeds: result > goal };

@@ -95,26 +95,39 @@ const median = (values: readonly number[]) => {
 
 type Rule = Omit<Assumption, "usedByPlan"> & { usedBy: LeverId | "picks" | null };
 
+/** A later quarter's own conditions (endless.md section 8): its event's rule, and the author-night fare it sets. */
+export interface QuarterCopy {
+  year: number;
+  /** The event's assumption, in the server's words, or none in a quiet quarter. */
+  event?: string;
+  /** The author-night fare, when an event changed it. */
+  fare?: number;
+}
+
 /** Every rule, filled for a quarter. null: every plan uses the rule. "picks": a plan with a Book of the Month does. */
-function rules(v: AssumptionValues, quarter: number): Rule[] {
+function rules(v: AssumptionValues, quarter: number, later?: QuarterCopy): Rule[] {
   const q = `Q${quarter}`;
-  // In Q1 the Books of the Month run in every plan, scheduled or re-picked; from Q2 the calendar starts empty.
-  const picks = quarter === 1 ? null : "picks";
+  const year = later?.year ?? 2194;
+  // In Q1 2194 the Books of the Month run in every plan, scheduled or re-picked; from Q2 2194 the calendar starts empty.
+  const launch = quarter === 1 && year === 2194;
+  const picks = launch ? null : "picks";
+  const event: Rule[] = later?.event ? [{ id: "event", source: "assumed", usedBy: null, text: later.event }] : [];
   return [
     {
       id: "replay",
       source: "setup",
       usedBy: null,
-      text: `${q} 2194 repeats ${q} 2193: the same titles, months and weekday pattern, with small random day-to-day changes. Holding course uses the same random draws, so the comparison is fair.`,
+      text: `${q} ${year} repeats ${q} 2193: the same titles, months and weekday pattern, with small random day-to-day changes. Holding course uses the same random draws, so the comparison is fair.`,
     },
+    ...event,
     {
       id: "new-volume",
       source: "assumed",
       usedBy: null,
       text:
-        quarter === 1
+        launch
           ? `The third Inspector Ryeslton mystery sells ${RELEASE_RATE.toFixed(1)} copies a day at full price: 85% of volume 2's first-quarter rate in 2193, the series' own drop from volume 1 to volume 2. It sells three times that in its first week and twice that in its second.`
-          : `The third Inspector Ryeslton mystery keeps selling ${RELEASE_RATE.toFixed(1)} copies a day at full price through Q2, its rate after the launch weeks.`,
+          : `The third Inspector Ryeslton mystery keeps selling ${RELEASE_RATE.toFixed(1)} copies a day at full price through ${q}, its rate after the launch weeks.`,
     },
     {
       id: "new-volume-goals",
@@ -143,7 +156,7 @@ function rules(v: AssumptionValues, quarter: number): Rule[] {
       usedBy: "events",
       text: `Each author night adds between 30 and 70 orders that day, at ${q}'s average order value of ${cents(v.averageOrderValue)}.`,
     },
-    { id: "event-cost", source: "assumed", usedBy: "events", text: "Each author night costs $200." },
+    { id: "event-cost", source: "assumed", usedBy: "events", text: `Each author night costs $${later?.fare ?? 200}.` },
     {
       id: "event-happiness",
       source: "assumed",
@@ -159,13 +172,14 @@ export function assumptions(plan: Plan, v: AssumptionValues): Assumption[] {
 }
 
 /** Q2's rules: the Book of the Month rules count only for a plan with a pick. */
-export function q2Assumptions(plan: Q2Plan, v: AssumptionValues): Assumption[] {
+export function q2Assumptions(plan: Q2Plan, v: AssumptionValues, quarter = 2, later?: QuarterCopy): Assumption[] {
   const used = (usedBy: Rule["usedBy"]) =>
     usedBy === null || (usedBy === "picks" ? plan.picks.some((p) => p !== null) : usedBy !== "repick" && plan.levers.includes(usedBy));
-  return rules(v, 2).map(({ usedBy, ...rule }) => ({ ...rule, usedByPlan: used(usedBy) }));
+  return rules(v, quarter, later).map(({ usedBy, ...rule }) => ({ ...rule, usedByPlan: used(usedBy) }));
 }
 
-const Q2_MONTHS = ["April", "May", "June"];
+export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const Q2_MONTHS = MONTH_NAMES.slice(3, 6);
 
 /** One month's pick; a title nobody would have bought anyway gets its own wording (Plot). */
 function pickSentence(month: string, f: PickFacts): string {
@@ -176,11 +190,11 @@ function pickSentence(month: string, f: PickFacts): string {
 }
 
 /** Q2's "What happened": the picks as one move, then the other move; two moves end with their total. */
-export function q2Happened(facts: Q2Facts): string[] {
-  const picks = facts.picks.flatMap((f, m) => (f ? [pickSentence(Q2_MONTHS[m], f)] : []));
+export function q2Happened(facts: Q2Facts, months: readonly string[] = Q2_MONTHS): string[] {
+  const picks = facts.picks.flatMap((f, m) => (f ? [pickSentence(months[m], f)] : []));
   const others = moveSentences({ events: facts.events, sale: facts.sale, amount: facts.amount });
   const moves = picks.length ? [[...picks, `Gross profit was ${signedMoney(facts.amount)} compared with holding course.`], ...others] : others;
-  if (moves.length === 0) return ["You left the calendar empty: no Book of the Month in April, May or June."];
+  if (moves.length === 0) return [`You left the calendar empty: no Book of the Month in ${months[0]}, ${months[1]} or ${months[2]}.`];
   if (moves.length < 2) return moves.flat();
   return [
     ...moves.flatMap((sentences) => sentences.slice(0, -1)),
