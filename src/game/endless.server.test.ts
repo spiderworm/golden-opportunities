@@ -53,6 +53,10 @@ describe('quarters past Q2', { timeout: 30_000 }, () => {
     expect(result.record.map(r => r.quarter)).toEqual(['2194-Q1', '2194-Q2', '2194-Q3']);
     expect(result.record[2]!.event).toEqual({ type: record.type, params: record.params });
     expect(result.record[0]!.event).toBeNull();
+    // The season note and the goals note's stretch, from the 2193 ledger and Q3's record.
+    expect(result.season2193).toMatchObject({ quarter: expect.any(Number), before: expect.any(Number), beforeLabel: 'Q2 2193' });
+    expect(result.season2193.quarter).toBeCloseTo(274036.165, 3);
+    expect(result.goalStretch).toEqual(record.stretch ? { measure: record.stretch.measure, percent: (record.drop ?? record.stretch.percent) / 100, recoveryFrom: record.drop !== undefined ? '2194-Q2' : null } : null);
   });
 
   it('end when the panel removes the player: three strikes in any four quarters', async () => {

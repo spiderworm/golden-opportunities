@@ -2,10 +2,10 @@
 // the result loader passes this on, and maps the discovery ids to their words.
 import { runQuery } from '../query/run-query.server';
 import { gradeFor, roundHalfUp } from '../simulation/grading';
-import type { Grade, MeasureScore, Outcome } from '../simulation/types';
+import type { Grade, MeasureId, MeasureScore, Outcome } from '../simulation/types';
 import { getGameSession } from './session.server';
 import { currentQuarter, isFinished, removedQuarter } from './progress';
-import { quarterAt, quarterIndex, type QuarterId } from './quarters';
+import { quarterAt, quarterIndex, quarterNumber, type QuarterId } from './quarters';
 import { STRIKE_BELOW, strikes } from '../simulation/strikes';
 import type { DiscoveryId, GameSave, PlayedQuarter, Q2GameOutcome } from './types';
 
@@ -30,6 +30,13 @@ interface Common {
   /** True once the game is over: today after Q2; in the endless game, once the panel has removed the player. */
   canPlayAgain: boolean;
   halfYear: HalfYear | null;
+  /**
+   * The quarter's stretched goal, for the goals note: its measure, percent (a fraction) and, for a recovery goal,
+   * the quarter it fell in. Null in Q1 and Q2, and with two strikes counting. The same numbers as Decide's brief.
+   */
+  goalStretch: { measure: MeasureId; percent: number; recoveryFrom: QuarterId | null } | null;
+  /** The season note: revenue in 2193's same quarter, and in the 2193 quarter before it (Q4 2193 for a Q1). */
+  season2193: { quarter: number; before: number; beforeLabel: string };
   /** Every quarter played, oldest first: the service record (endless.md section 6). */
   record: ServiceRow[];
   /** Set once the panel has removed the player (endless.md section 7): the quarter it happened in, and its strikes. */
@@ -58,6 +65,15 @@ const eventRow = (save: GameSave, quarter: QuarterId): ServiceRow['event'] => {
   const record = save.alma?.find(r => r.quarter === quarter);
   return record ? { type: record.type, params: { ...record.params } } : null;
 };
+/** A played quarter's stretched goal, from its Alma record, as Decide's brief has it (game.server.ts briefOf). */
+export function goalStretchOf(save: GameSave, quarter: QuarterId): Common['goalStretch'] {
+  const record = save.alma?.find(r => r.quarter === quarter);
+  const s = record?.stretch;
+  if (!record || !s) return null;
+  const index = quarterIndex(quarter);
+  return { measure: s.measure, percent: (record.drop !== undefined ? Math.min(record.drop, s.percent) : s.percent) / 100,
+    recoveryFrom: record.drop !== undefined && index > 0 ? quarterAt(index - 1) : null };
+}
 export function serviceRecord(save: GameSave): ServiceRow[] {
   return save.played.map(({ period, outcome }) => ({ quarter: period, measures: outcome.reportCard.plan.measures,
     overall: { score: outcome.reportCard.plan.overall.score, grade: outcome.reportCard.plan.overall.grade },
@@ -90,6 +106,7 @@ export function getResultData(request: Request, period?: QuarterId): ResultData 
   if (!played) return null;
   const revenue = (quarter: string) => runQuery({ measure: 'revenue', by: [], filter: { quarter: [quarter] } }, queryView).rows[0]?.revenue ?? 0;
   const previous = before(played.period);
+  const seasonBefore = quarterNumber(played.period) === 1 ? '2193-Q4' : `2193-Q${quarterNumber(played.period) - 1}`;
   const lastYear = yearEarlier(played.period);
   const reference = runQuery({ measure: 'revenue', by: ['month'], filter: { quarter: [previous] } }, queryView).rows
     .map(r => ({ month: r.month ?? '', revenue: r.revenue ?? 0 }));
@@ -103,6 +120,8 @@ export function getResultData(request: Request, period?: QuarterId): ResultData 
     next: currentQuarter(save),
     canPlayAgain: isFinished(save),
     halfYear: halfYearOf(save),
+    goalStretch: goalStretchOf(save, played.period),
+    season2193: { quarter: revenue(`2193-Q${quarterNumber(played.period)}`), before: revenue(seasonBefore), beforeLabel: quarterLabel(seasonBefore) },
     record: serviceRecord(save),
     removed: removalOf(save),
   };

@@ -6,7 +6,7 @@ import { MusicDock } from "./MusicDock";
 import { navItems } from "./nav";
 import { NotificationsBell, type StationNotification } from "./NotificationsBell";
 import { formatStationDate } from "./station-date";
-import { ALERT_COPY, q2AlertCopy, type FirstQuarter } from "./alert-copy";
+import { ALERT_COPY, q2AlertCopy, type AlertCopy, type FirstQuarter } from "./alert-copy";
 import { StandingOrder } from "./StandingOrder";
 import { Transmission } from "./Transmission";
 import type { Track } from "~/platform/analytics/track";
@@ -30,7 +30,7 @@ export interface ShellProps {
    * The Commerce Office's standing order for the quarter being planned: its transmission plays once, on
    * first arrival at the station, and its strip stays until the plan is in. Q1's memo unless `quarter` says Q2.
    */
-  standingOrder?: { seen: boolean; submitted: boolean; quarter?: QuarterId | null };
+  standingOrder?: { seen: boolean; submitted: boolean; quarter?: QuarterId | null; memo?: AlertCopy | null };
   /** Q1's report card, which Q2's memo quotes. */
   q1?: FirstQuarter | null;
   /** Records that the transmission was seen, opened or put off, so it doesn't play again; settles once the shell has reloaded. */
@@ -51,7 +51,8 @@ export function Shell({ stationDate, notifications, standingOrder, q1, onAlertSe
   const [memoOpen, setMemoOpen] = useState(false);
   // Each quarter's memo (q2.md section 2): Q2's quotes Q1's report card, so it waits for it.
   const quarter = standingOrder?.quarter ?? "2194-Q1";
-  const copy = quarter === "2194-Q2" ? (q1 ? q2AlertCopy(q1) : null) : ALERT_COPY;
+  // From Q3 the server builds each quarter's memo from Alma's record (later-memo.server.ts); null until it's saved.
+  const copy = standingOrder?.memo !== undefined ? standingOrder.memo : quarter === "2194-Q2" ? (q1 ? q2AlertCopy(q1) : null) : ALERT_COPY;
   // Once per quarter per visit at most, even if recording it failed; the save keeps it to once per game.
   const arrived = useRef<string | null>(null);
   const pending = standingOrder && !standingOrder.submitted && copy !== null;
