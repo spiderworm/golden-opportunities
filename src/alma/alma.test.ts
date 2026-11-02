@@ -171,6 +171,19 @@ describe("Alma's answer", () => {
     expect(checkAnswer(answer({ reason: undefined }), [recover, recover, recover], recovering, checks).ok).toBe(true);
   });
 
+  it("can fail only with codes in FAILURES (Frank's review)", async () => {
+    const { TEXT_PROBLEMS } = await import("./text");
+    const parseFailures = ["not_json", "shape", "candidate", "reason"];
+    const textFailures = (["story", "reason", "bossLine"] as const).flatMap((f) => TEXT_PROBLEMS.map((p) => `text:${f}:${p}`));
+    for (const code of [...parseFailures, ...textFailures, "timeout"]) expect(FAILURES).toContain(code);
+    // A kind the provider doesn't list yet still makes a valid record.
+    const odd = { name: "x", ask: async () => { throw new AssistantUnavailable("new", "brand_new" as never); } };
+    const r = await chooseEvent(context, [], { seed: 1, model: odd, ...checks });
+    expect(r.failure).toBe("unavailable:other");
+    expect(isAlmaRecord(r)).toBe(true);
+    for (const kind of ["timeout", "missing", "signed_out", "broken", "other"]) expect(FAILURES).toContain(`unavailable:${kind}`);
+  });
+
   it("names a field and a problem from the fixed list when it fails", () => {
     const failed = checkAnswer(answer({ story: "Mystery orders will surge." }), [surge, surge, surge], context, checks);
     expect(failed).toEqual({ ok: false, failure: "text:story:number_or_direction" });
@@ -207,6 +220,10 @@ describe("the save's checks (Frank's validate())", () => {
     expect(isAlmaRecord({ ...record(), attempts: 99 })).toBe(false);
     expect(isAlmaRecord({ ...record(), failure: "the model said something" })).toBe(false);
     expect(isAlmaRecord({ ...record(), failure: "text:story:name" })).toBe(true);
+    // A drop belongs to a recovery goal: it has a stretch, and the server writes its reason (Frank's review).
+    expect(isAlmaRecord(record({ stretch: { measure: "happiness", percent: 20 }, drop: 14, reason: undefined }))).toBe(true);
+    expect(isAlmaRecord(record({ drop: 14 }))).toBe(false);
+    expect(isAlmaRecord(record({ stretch: null, drop: 14, reason: undefined }))).toBe(false);
   });
   it("accept a log in quarter order, one per quarter, none past the quarter being prepared", () => {
     const q3 = record(), q4 = record({ quarter: "2194-Q4" });
@@ -236,7 +253,7 @@ describe("what Alma sees", () => {
     expect(Object.keys(input.history[0])).toEqual(["quarter", "plan", "scores", "overall", "grade", "strike"]);
     expect(input.lastEvents[0]).toEqual({ quarter: "2194-Q2", type: "genre_surge", params: record().params, stretch: { measure: "culture" } });
     expect(input.candidates).toHaveLength(3);
-    expect(Object.keys(input.candidates[0])).toEqual(["candidate", "type", "params", "stretch", "reasonWanted"]);
+    expect(Object.keys(input.candidates[0])).toEqual(["candidate", "type", "params", "stretch", "fact", "reasonWanted"]);
     expect(JSON.stringify(input)).not.toContain("book club");
     expect(ALMA_RULES).not.toMatch(/\{\{/);
   });

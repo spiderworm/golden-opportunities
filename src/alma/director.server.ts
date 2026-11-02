@@ -8,7 +8,7 @@ import { AssistantUnavailable } from "~/assistant/server/provider.server";
 import { accountWords } from "./account.server";
 import { drawCandidates, recoveryOf, type Candidate, type QuarterContext } from "./candidates";
 import { almaInput, ALMA_RULES, PROMPT_VERSION, type QuarterSummary } from "./prompt";
-import type { AlmaRecord } from "./record";
+import { FAILURES, type AlmaRecord } from "./record";
 import { scriptedFlavor } from "./scripted";
 import { checkAnswer, type Flavor } from "./validate";
 
@@ -40,7 +40,11 @@ export function almaModel(env: NodeJS.ProcessEnv = process.env): AlmaModel | nul
   return claudeCodeAlma();
 }
 
-const failureOf = (error: unknown) => (error instanceof AssistantUnavailable ? `unavailable:${error.kind}` : "unavailable:other");
+/** A failed call's code, always one of FAILURES: a kind added to the provider later reads as "other" until it's listed. */
+const failureOf = (error: unknown) => {
+  const code = error instanceof AssistantUnavailable ? `unavailable:${error.kind}` : "unavailable:other";
+  return FAILURES.includes(code) ? code : "unavailable:other";
+};
 
 /**
  * Alma's turn for a quarter: the server's three candidates, Alma's pick and flavor if they pass, otherwise the

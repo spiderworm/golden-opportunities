@@ -6,6 +6,7 @@
 import type { Candidate, QuarterContext } from "./candidates";
 import type { MeasureId } from "./events";
 import { quarterMonths } from "./names";
+import { factSentence } from "./sentences";
 import { TEXT_LIMITS } from "./text";
 import { wantsReason } from "./validate";
 
@@ -28,7 +29,7 @@ export const ALMA_RULES = `You are the event director of Orbital Books, a bookst
 Each quarter the game offers you three candidate events, each already set: its type, its details and the bosses' stretch goal. Choose one, and write its flavor. The game itself writes every fact for the player: what changes, by how much, when, and the stretch's size. You write only what surrounds the facts.
 
 Write:
-- story: one or two sentences of plain prose for the memo, at most ${TEXT_LIMITS.story} characters: a cause for the event, something happening on the station. The game's fact sentence follows it.
+- story: one or two sentences of plain prose for the memo, at most ${TEXT_LIMITS.story} characters: a cause for the event, something happening on the station. The candidate's "fact" is the game's sentence that follows it: your cause must fit it.
 - reason: only when the candidate says reasonWanted is true. The bosses' reason for the stretch goal, in capitals, at most ${TEXT_LIMITS.reason} characters. Leave the key out otherwise.
 - bossLine: the bosses' line for the transmission, in capitals, at most ${TEXT_LIMITS.bossLine} characters. Only this line may mention Zoolander.
 
@@ -55,6 +56,9 @@ export function almaInput(context: QuarterContext, history: readonly QuarterSumm
       type: c.type,
       params: { ...c.params, ...(typeof c.params.month === "number" ? { month: months[c.params.month - 1] } : {}) },
       stretch: c.stretch && { measure: c.stretch.measure, recovery: !wantsReason(c, context) },
+      // The sentence the game puts after the story, so the flavor fits what happens (the live check: cheaper
+      // fares were told as a burden).
+      fact: factSentence({ quarter: context.quarter, ...c }),
       reasonWanted: wantsReason(c, context),
     })),
   });
