@@ -9,7 +9,8 @@ import { createHash } from 'node:crypto';
 import type { BookshopData, DeepReadonly, Sale } from '../bookshop/types';
 import type { SimulatedLine } from '../simulation/types';
 import { SaveError } from './store.server';
-import { linesOfTurn, type TurnEvent } from '../simulation/turn';
+import { linesOfTurn, ENGINE_VERSION, type TurnEvent } from '../simulation/turn';
+import { trackServer } from '../platform/analytics/analytics.server';
 import type { PlayedQuarter } from './types';
 
 /** A replay that doesn't match: the engine changed since `quarter`, the first quarter that no longer replays. */
@@ -82,7 +83,11 @@ export function quarterLines(saveId: string, seed: number, quarter: PlayedQuarte
   const cached = cache.get(saveId)?.quarters.get(key);
   if (cached) { entry(saveId); return cached; }
   const lines = replayLines(quarter, seed, data(), event);
-  if (lines.length !== quarter.lines.count || linesHash(lines) !== quarter.lines.hash) throw new ReplayMismatch(quarter.period);
+  if (lines.length !== quarter.lines.count || linesHash(lines) !== quarter.lines.hash) {
+    // The engine changed under a played quarter: worth knowing how often, and which quarter it reached (Plot, #205).
+    try { trackServer('save_replay_refused', { quarter: quarter.period, engine: ENGINE_VERSION }); } catch { /* Telemetry can't change the refusal. */ }
+    throw new ReplayMismatch(quarter.period);
+  }
   remember(saveId, key, lines);
   return lines;
 }

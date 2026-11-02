@@ -24,7 +24,7 @@ export const RESET_COPY = {
  * The panel, in Settings' words unless `copy` gives others: the shell's "Your save can't be replayed" screen uses it
  * with its own heading, text and button, and the same confirm step (src/shell/replay-mismatch.tsx).
  */
-export function ResetGame({ instance, copy = {} }: { instance: string | undefined; copy?: Partial<Record<"heading" | "text" | "open", string>> }) {
+export function ResetGame({ instance, copy = {}, from = "settings" }: { instance: string | undefined; copy?: Partial<Record<"heading" | "text" | "open", string>>; from?: "settings" | "replay" }) {
   const words = { ...RESET_COPY, ...copy };
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -44,14 +44,14 @@ export function ResetGame({ instance, copy = {} }: { instance: string | undefine
   function ask() {
     setFailed(false);
     setAsking(true);
-    track("settings_reset_asked");
+    track("settings_reset_asked", { from });
   }
 
   function close() {
     if (busy) return;
     returnFocus.current = true;
     setAsking(false);
-    track("settings_reset_cancelled");
+    track("settings_reset_cancelled", { from });
   }
 
   async function confirm() {

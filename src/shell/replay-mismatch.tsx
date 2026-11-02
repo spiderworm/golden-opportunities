@@ -30,6 +30,7 @@ export function ReplayMismatch({ quarter, instance }: { quarter: string; instanc
   return (
     <ResetGame
       instance={instance}
+      from="replay"
       copy={{ heading: REPLAY_MISMATCH_COPY.heading, text: REPLAY_MISMATCH_COPY.body(quarterName(quarter)), open: REPLAY_MISMATCH_COPY.start }}
     />
   );
