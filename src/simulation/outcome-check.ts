@@ -11,6 +11,18 @@ const CERTIFICATES = ["exceeds", "comeback", "weathered", "wellRounded"];
 const isMeasure = (v: unknown) => (MEASURE_IDS as readonly unknown[]).includes(v);
 const score = (v: unknown) => finite(v) && v >= 0 && v <= 100;
 const measureList = (v: unknown) => Array.isArray(v) && v.length <= 4 && v.every(isMeasure) && new Set(v).size === v.length;
+const QUARTER = /^\d{4}-Q[1-4]$/;
+/** An event as a certificate names it: a short type and a few short params. */
+const certificateEvent = (v: unknown) =>
+  record(v) && text(v.type, 40) && Object.keys(v).length === 2 && record(v.params) && Object.keys(v.params).length <= 4
+  && Object.values(v.params).every((p) => finite(p) || text(p, 40));
+/** A certificate and the fields it may carry (Comeback's quarter, Weathered the Storm's measures and event). */
+const certificate = (c: unknown) =>
+  record(c) && CERTIFICATES.includes(String(c.id)) && Object.keys(c).every((k) => ["id", "measure", "previous", "measures", "event"].includes(k))
+  && (c.measure === undefined || isMeasure(c.measure))
+  && (c.previous === undefined || (typeof c.previous === "string" && QUARTER.test(c.previous)))
+  && (c.measures === undefined || measureList(c.measures))
+  && (c.event === undefined || certificateEvent(c.event));
 
 function metrics(v: unknown): boolean {
   return record(v) && ["revenue", "units", "grossProfit"].every((k) => finite(v[k])) && ["orders", "costOfGoods", "eventCosts"].every((k) => v[k] === undefined || finite(v[k]));
@@ -35,7 +47,7 @@ function reportCard(v: unknown): boolean {
     typeof o.sacrifice === "boolean" &&
     Array.isArray(v.certificates) &&
     v.certificates.length <= 10 &&
-    v.certificates.every((c) => record(c) && CERTIFICATES.includes(String(c.id)) && (c.measure === undefined || isMeasure(c.measure)))
+    v.certificates.every(certificate)
   );
 }
 

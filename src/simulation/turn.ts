@@ -3,15 +3,15 @@
 // Pure and deterministic: a turn depends only on its quarter, seed, plan and event, and the data, so a
 // save's quarters replay exactly. Q1 and Q2 2194 are played by their own engines, unchanged.
 import type { BookshopData, DeepReadonly } from "~/bookshop/types";
-import { applyConditions, changesOrders, conditionsOf, type Conditions, type TurnEvent } from "./conditions";
+import { AGAINST, applyConditions, changesOrders, conditionsOf, type Conditions, type TurnEvent } from "./conditions";
 import { MONTH_NAMES, type QuarterCopy } from "./copy";
 import { goalFor } from "./grading";
-import { measures } from "./measures";
+import { EVENT_COST, measures } from "./measures";
 import { baseline, run, withRelease, YEAR, type QuarterNumber } from "./model";
 import { picksLines, simulatePicks, simulateQ2, type PicksQuarter } from "./q2";
 import { isQuarterName, quarterAt, quarterIndex, quarterNumber, type QuarterId } from "./quarters";
 import { EFFECT_SEEDS, historyFor, holdLevers, prepare, simulateQuarter } from "./simulate";
-import type { MeasureId, Plan, Q2Plan, Q2SimulationResult, ReportCard, SimulatedLine, SimulationResult } from "./types";
+import type { Certificate, MeasureId, Plan, Q2Plan, Q2SimulationResult, ReportCard, SimulatedLine, SimulationResult } from "./types";
 import { FORMAT_WORDS, GENRE_WORDS } from "./words";
 import { MEASURE_IDS } from "./types";
 
@@ -146,6 +146,27 @@ function checkLaunch(turn: Turn) {
   if (turn.event) throw new Error(`${turn.quarter} has no event`);
 }
 
+/**
+ * The quarter's endless certificates (endless-copy.md, after scoring.md): Comeback for meeting a recovery
+ * goal, and Weathered the Storm when every measure the event works against met its goal. Every event that
+ * works against a measure is a storm, except author fares at or under the usual $200, which make the nights
+ * no dearer, and any fare for a plan that ran no author nights, which it never touched. Certificates never
+ * change the score.
+ */
+export function endlessCertificates(card: ReportCard, turn: Turn, ranNights: boolean): Certificate[] {
+  const event = turn.event;
+  if (!event) return [];
+  const met = (id: MeasureId) => card.measures.find((m) => m.id === id)!.met;
+  const certificates: Certificate[] = [];
+  if (event.drop !== undefined && event.stretch && met(event.stretch.measure))
+    certificates.push({ id: "comeback", measure: event.stretch.measure, previous: quarterAt(quarterIndex(turn.quarter) - 1) });
+  const against = MEASURE_IDS.filter((id) => (AGAINST[event.type] ?? []).includes(id));
+  const touched = event.type !== "author_fares" || (ranNights && Number(event.params.cost) > EVENT_COST);
+  if (against.length > 0 && touched && against.every(met))
+    certificates.push({ id: "weathered", measures: against, event: { type: event.type, params: { ...event.params } } });
+  return certificates;
+}
+
 /** Plays a quarter under the plan, and under holding course from the same seed. */
 export function simulateTurn(turn: Turn, data: DeepReadonly<BookshopData>): SimulationResult | Q2SimulationResult {
   const t = quarterParts(turn.quarter);
@@ -153,7 +174,11 @@ export function simulateTurn(turn: Turn, data: DeepReadonly<BookshopData>): Simu
     checkLaunch(turn);
     return t.quarter === 1 ? simulateQuarter(turn.plan as Plan, turn.seed, data) : simulateQ2(turn.plan as Q2Plan, turn.seed, data);
   }
-  return simulatePicks(turn.plan as Q2Plan, turn.seed, data, setupOf(turn, data));
+  const result = simulatePicks(turn.plan as Q2Plan, turn.seed, data, setupOf(turn, data));
+  const { plan, holdCourse } = result.outcome.reportCard;
+  plan.certificates.push(...endlessCertificates(plan, turn, (turn.plan as Q2Plan).levers.includes("events")));
+  holdCourse.certificates.push(...endlessCertificates(holdCourse, turn, false));
+  return result;
 }
 
 /** The same lines as simulateTurn, without the report card or the anchor: for a save's replay and its hash. */
