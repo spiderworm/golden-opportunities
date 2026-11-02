@@ -16,9 +16,10 @@ import styles from "./BossBriefing.module.css";
 // width at which BossLayout keeps them, 620 px). Until then, narrower than
 // that, or if the 3D scene fails, the 2D scene shows, with the same bubbles
 // and the same focus. Only the floor swaps: the layout, and whatever the page
-// hangs in its banner (a form being filled in, its focus), stays mounted. The 3D scene's code is fetched before it swaps in, so
-// the 2D scene is replaced once, not twice; a failed fetch is tried once more,
-// and again on the next visit (not on every resize of this one).
+// hangs in its banner (a form being filled in, its focus), stays mounted.
+// The 3D scene's code is fetched before it swaps in, so the 2D scene is
+// replaced once, not twice; a failed fetch is tried once more, and again on
+// the next visit (not on every resize of this one).
 const WIDE = 620;
 let loading: Promise<ComponentType<BossScene3DProps>> | undefined;
 const loadScene3D = () =>
@@ -105,6 +106,9 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
     failed.current = true;
     setMode("2d");
   }, []);
+  // One function for the whole visit: Bosses re-runs its failure effect when this changes, and would record
+  // boss_scene_failed again.
+  const modelsFailed = useCallback(() => failed3D("models"), [failed3D]);
   return (
     <div
       ref={box}
@@ -127,7 +131,7 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
               fallback={flat}
               onError={() => failed3D("scene")}
             >
-              <Scene3D bubbles={bubbles} open={open} onSelect={select} columns={columns} reducedMotion={reducedMotion} onShown={restoreFocus} onFailed={() => failed3D("models")} />
+              <Scene3D bubbles={bubbles} open={open} onSelect={select} columns={columns} reducedMotion={reducedMotion} onShown={restoreFocus} onFailed={modelsFailed} />
             </SceneBoundary>
           ) : (
             flat
