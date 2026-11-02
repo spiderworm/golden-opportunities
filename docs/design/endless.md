@@ -166,7 +166,7 @@ The half-year review comes off Q2's result screen. Every result screen from Q2 o
 - A quarter whose overall score is **under 70** (a D or an F) is a **strike.**
 - A strike counts for **four quarters**: the quarter it was earned and the three after it.
 - A **third strike** while two others still count ends the game: the panel removes the player.
-- Q1 counts. Holding course every quarter (about 67, 66, then 62 to 66) is removed at the end of Q3 2194, in all 20 seeds. So are the sale and Q2's trap picks. Coasting is a bad job, and that's what David asked the bosses to catch ("make coasting impossible", 30 Oct).
+- Q1 counts. Holding course every quarter (about 67, 66, then 62 to 66) is removed by the end of 2194 in all 20 seeds: at Q3 in 19, and at Q4 in the seed that scored 70 in Q1. The trap picks are the same, and the sale goes at Q3 in all 20. Coasting is a bad job, and that's what David asked the bosses to catch ("make coasting impossible", 30 Oct).
 
 Why this rule, from Sim's numbers (section 8):
 - **It removes the bad jobs and spares the sensible ones.** Over five years, quiet picks plus author nights every quarter was never removed, and neither was picks only. Holding course, the sale and the trap picks go in the first year, every time. Author nights only, the weakest sensible plan, loses half its players within five years.
@@ -365,6 +365,6 @@ Nothing the player typed ever reaches Alma: no Dewey conversation, no investigat
 3. **Goals count each event's expected effect, except the stretch** (section 2). The alternative: unanchored events, with Weathered the Storm for beating them.
 4. **No piling on:** with two strikes counting, Alma may choose only a mild event (section 2). The anchored goals, not this rule, are what stop events from causing strikes.
 5. **Each quarter's discoveries come from its event,** plus "your last quarter on the record" and "your weakest measure" (section 5).
-6. **Removal is three strikes in any four quarters,** a strike being an overall score under 70 (section 7). Calibrated over five years: quiet picks plus author nights, and picks only, are never removed; holding course, the sale and the trap picks are removed at Q3 2194, every time (section 8). The alternatives are two strikes in a row (harsher: most one-move players go at Q4 2194), A (a four-quarter average) and B (any F).
+6. **Removal is three strikes in any four quarters,** a strike being an overall score under 70 (section 7). Calibrated over five years: quiet picks plus author nights, and picks only, are never removed; holding course, the sale and the trap picks are removed by the end of 2194, every time, nearly always at Q3 (section 8). The alternatives are two strikes in a row (harsher: most one-move players go at Q4 2194), A (a four-quarter average) and B (any F).
 7. **Goals don't ratchet:** every year's goals start from 2193's replay of that quarter, plus events and stretch, so a strong year doesn't raise the bar for the next (section 8). The alternatives are a full ratchet, which flattens every plan to 68 to 70 from 2195, and a half ratchet, which removes 7 of 20 good players within five years (section 8).
 8. **The service record replaces the half-year review,** with an annual review after each Q4 (section 6).
