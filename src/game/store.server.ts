@@ -4,7 +4,7 @@ import path from 'node:path';
 import { withSaveLock, SaveLockBusy } from './lock.server.ts';
 import { isQuarterOutcome } from './outcome.ts';
 import type { GameSave } from './types';
-import { QUARTERS, isQuarterId, nextQuarter, quarterMonths, quarterNumber, type QuarterId } from './quarters.ts';
+import { compareQuarters, isQuarterId, nextQuarter, playableQuarters, quarterAt, quarterMonths, quarterNumber, type QuarterId } from './quarters.ts';
 import { alertsSeenOf, currentQuarter } from './progress.ts';
 import { isAlmaLog } from '../alma/record.ts';
 import { EVIDENCE_KEYS, MAX_EVIDENCE_SCOPES, discoveriesFromBuckets, q2DiscoveriesFromBuckets, witnessScopes } from './discovery-evidence.ts';
@@ -41,18 +41,18 @@ function validate(save: GameSave, id: string): void {
     || (save.queryRevision !== undefined && (!Number.isSafeInteger(save.queryRevision) || save.queryRevision < 0 || save.queryRevision > save.revision))
     || (save.discoveryEvidence !== undefined && !validEvidence(save.discoveryEvidence))
     || (save.alertSeen !== undefined && save.alertSeen !== true)
-    || (save.alertsSeen !== undefined && (!Array.isArray(save.alertsSeen) || save.alertsSeen.length > QUARTERS.length
-      || !save.alertsSeen.every((q, i, all) => isQuarterId(q) && (i === 0 || QUARTERS.indexOf(all[i - 1]!) < QUARTERS.indexOf(q)))))
+    || (save.alertsSeen !== undefined && (!Array.isArray(save.alertsSeen) || save.alertsSeen.length > playableQuarters()
+      || !save.alertsSeen.every((q, i, all) => isQuarterId(q) && (i === 0 || compareQuarters(all[i - 1]!, q) < 0))))
     || !Array.isArray(save.discoveries) || save.discoveries.length > 6
     || new Set(save.discoveries).size !== save.discoveries.length
     || !save.discoveries.every(d => ['A', 'B', 'C', 'D', 'E', 'F'].includes(d))
-    || !Array.isArray(save.played) || save.played.length > QUARTERS.length
+    || !Array.isArray(save.played) || save.played.length > playableQuarters()
     // Alma's records reach no further than the next unplayed quarter, so none before a quarter is played.
     || (save.alma !== undefined && (!save.played.length || !isAlmaLog(save.alma, nextQuarter(save.played.at(-1)!.period))))) throw new SaveError('INVALID_SAVE');
   // Sale ids are unique across quarters, not just within one.
   const ids = new Set<string>();
   for (const [index, quarter] of save.played.entries()) {
-    if (!quarter || quarter.period !== QUARTERS[index] || typeof quarter.outcomeId !== 'string' || !/^[a-f0-9-]{36}$/.test(quarter.outcomeId)
+    if (!quarter || quarter.period !== quarterAt(index) || typeof quarter.outcomeId !== 'string' || !/^[a-f0-9-]{36}$/.test(quarter.outcomeId)
       || !isQuarterOutcome(quarter.period, quarter.outcome) || quarter.outcome.quarter !== quarter.period) throw new SaveError('INVALID_SAVE');
     // Replayed lines: a hash and a count, matching the outcome's units. The replay itself is checked on read.
     if (quarter.sales === undefined) {
@@ -211,7 +211,7 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
         save.revision++;
         // One list from here on; the old Q1 flag folds into it.
         delete save.alertSeen;
-        save.alertsSeen = QUARTERS.filter(q => q === quarter || seen.includes(q));
+        save.alertsSeen = [...new Set([...seen, quarter])].filter(isQuarterId).sort(compareQuarters);
         return publish(id, save);
       });
     },

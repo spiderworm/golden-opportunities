@@ -52,12 +52,14 @@ function pick(v: unknown, isbn: string | null): boolean {
  * is left for the game to check; the store also checks totals.plan.units
  * against the quarter's saved lines, which an outcome alone can't see.
  */
-export function isQ2Outcome(v: unknown): v is Q2Outcome {
-  if (!record(v) || !isQ2Plan(v.plan) || v.quarter !== "2194-Q2") return false;
+export function isQ2Outcome(v: unknown, quarter = "2194-Q2"): v is Q2Outcome {
+  // Every quarter after Q1 has Q2's shape (simulateTurn); its months are the quarter's own.
+  if (!record(v) || !isQ2Plan(v.plan) || v.quarter !== quarter || !/^\d{4}-Q[1-4]$/.test(quarter)) return false;
   const plan = v.plan;
   if (!record(v.totals) || !metrics(v.totals.plan) || !metrics(v.totals.holdCourse)) return false;
   if (!record(v.reportCard) || !reportCard(v.reportCard.plan) || !reportCard(v.reportCard.holdCourse)) return false;
-  const months = ["2194-04", "2194-05", "2194-06"];
+  const [year, q] = quarter.split("-Q");
+  const months = [0, 1, 2].map((i) => `${year}-${String(3 * Number(q) - 2 + i).padStart(2, "0")}`);
   if (
     !Array.isArray(v.monthly) ||
     v.monthly.length !== 3 ||

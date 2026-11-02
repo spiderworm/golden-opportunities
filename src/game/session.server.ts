@@ -10,6 +10,7 @@ import { DATA_DIR } from '../platform/analytics/instance.server';
 import { trackServer } from '../platform/analytics/analytics.server';
 import { createSaveStore, isSaveId, SaveError } from './store.server';
 import { quarterLines } from './replay.server';
+import type { TurnEvent } from '../simulation/turn';
 import type { GameSave } from './types';
 import { saveDate } from './progress';
 
@@ -42,9 +43,14 @@ export function resolveSaveId(request: Request): string {
   if (!id) throw new SaveError('MISSING_SAVE');
   saves.read(id); return id;
 }
+/** A quarter's Alma event as the engine reads it (type, params, stretch and drop), or null: Q1 and Q2 have none. */
+export function eventOf(save: GameSave, quarter: string): TurnEvent | null {
+  const record = save.alma?.find(r => r.quarter === quarter);
+  return record ? { type: record.type, params: record.params, stretch: record.stretch, ...(record.drop === undefined ? {} : { drop: record.drop }) } : null;
+}
 export function queryViewForSave(save: GameSave): QueryView {
   // Each quarter's lines, replayed and checked once per process (replay.server.ts), or as an older save stored them.
-  const sales = save.played.flatMap(q => quarterLines(save.id, save.seed, q, loadBookshop));
+  const sales = save.played.flatMap(q => quarterLines(save.id, save.seed, q, loadBookshop, eventOf(save, q.period)));
   if (!sales.length) return { ...BASELINE_VIEW, periods: [...BASELINE_VIEW.periods, ...save.played.map(q => q.period)] };
   const data = loadBookshop();
   // The new volume is generated, not in the data: the engine's records join it (src/simulation/release.ts).

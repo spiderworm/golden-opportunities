@@ -39,8 +39,12 @@ export function isOutcome(v: unknown): v is Outcome {
     && record(value) && Object.values(value).every(finite)));
 }
 const discoveryList = (v: unknown) => Array.isArray(v) && v.length <= 3 && v.every(d => ['D', 'E', 'F'].includes(d)) && new Set(v).size === v.length;
-/** The stored result for a quarter: M1's Outcome for Q1, Sim's Q2 outcome plus the game's discoveries for Q2. */
+/**
+ * The stored result for a quarter: M1's Outcome for Q1; from Q2, Q2's shape with the quarter's own months, plus
+ * the game's discoveries: D to F in Q2, none yet after it (endless.md section 5 is still to build).
+ */
 export function isQuarterOutcome(period: PlayedQuarter['period'], v: unknown): boolean {
   if (period === '2194-Q1') return isOutcome(v);
-  return isQ2Outcome(v) && discoveryList((v as { discoveries?: unknown }).discoveries);
+  const found = (v as { discoveries?: unknown } | null)?.discoveries;
+  return isQ2Outcome(v, period) && (period === '2194-Q2' ? discoveryList(found) : Array.isArray(found) && found.length === 0);
 }
