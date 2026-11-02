@@ -10,10 +10,16 @@ export const Q1_DISCOVERIES = ['A', 'B', 'C'] as const;
 export const Q2_DISCOVERIES = ['D', 'E', 'F'] as const;
 /** Q2's outcome with the discoveries the game records, as M1's Outcome has them: Q2's own only. */
 export interface Q2GameOutcome extends Q2Outcome { discoveries: Q2DiscoveryId[] }
-/** A committed quarter: its visible sale lines and the result they produced, written together. */
-export type PlayedQuarter =
-  | { period: '2194-Q1'; sales: Sale[]; outcomeId: string; outcome: Outcome }
-  | { period: '2194-Q2'; sales: Sale[]; outcomeId: string; outcome: Q2GameOutcome };
+/**
+ * A quarter's sale lines: replayed from its plan and the save's seed, and checked against the hash and count taken
+ * when it was played (replay.server.ts); or, in saves from before that, stored.
+ */
+export type QuarterLines = { lines: { hash: string; count: number }; sales?: never } | { sales: Sale[]; lines?: never };
+/** A committed quarter: its plan and result (the plan is in the outcome), and its lines, written together. */
+export type PlayedQuarter = (
+  | { period: '2194-Q1'; outcomeId: string; outcome: Outcome }
+  | { period: '2194-Q2'; outcomeId: string; outcome: Q2GameOutcome }
+) & QuarterLines;
 /** Private server persistence. Never return a save or its seed from a route. */
 export interface GameSave {
   version: 2;
