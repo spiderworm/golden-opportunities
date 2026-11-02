@@ -61,15 +61,37 @@ const REASONS: Record<MeasureId, string> = {
   culture: "THE MINISTRY HAS DECLARED THIS A SEASON OF SERIOUS READING.",
 };
 
-// One boss line per type. They name no genre, day or format, so they fit any value.
-const BOSS_LINES: Record<string, string> = {
-  genre_surge: "THE COMMERCE OFFICE HAS NOTED THE ENTHUSIASM. MR. ZOOLANDER SAYS A CROWD IS A RUNWAY NOBODY HAS WALKED YET. DO NOT WASTE IT.",
-  genre_slump: "FREE BOOKS ARE NOT OUR CONCERN. YOUR LEDGER IS OUR CONCERN. WE HAVE NO OTHER CONCERNS.",
-  quiet_days: "THE TIMETABLE IS FINAL. MR. ZOOLANDER COULD NOT TURN LEFT, AND HE ADAPTED. ADAPT.",
-  author_fares: "THE FARES ARE THE FARES. WE ASKED WHETHER AUTHORS COULD WALK. THEY CANNOT WALK IN SPACE.",
-  format_costs: "THE PRINTWORKS SENDS ITS REGRETS. WE DO NOT ACCEPT REGRETS. WE ACCEPT RECEIPTS.",
-  quiet_quarter: "NOTHING IS EXPECTED THIS QUARTER. THE PANEL WILL EXPECT SOMETHING ANYWAY. MR. ZOOLANDER CALLS THIS BLUE STEEL.",
+// Two boss lines per type, one naming Mr. Zoolander and one plain. They name no genre, day or format, so they
+// fit any value. The bosses quote him every other quarter at most, so the joke stays odd rather than constant.
+const BOSS_LINES: Record<string, { zoolander: string; plain: string }> = {
+  genre_surge: {
+    zoolander: "THE COMMERCE OFFICE HAS NOTED THE ENTHUSIASM. MR. ZOOLANDER SAYS A CROWD IS A RUNWAY NOBODY HAS WALKED YET. DO NOT WASTE IT.",
+    plain: "THE COMMERCE OFFICE HAS NOTED THE ENTHUSIASM. ENTHUSIASM IS NOT REVENUE. MAKE IT REVENUE.",
+  },
+  genre_slump: {
+    zoolander: "FREE BOOKS ARE NOT OUR CONCERN. MR. ZOOLANDER NEVER WORRIED ABOUT FREE THINGS. HE WAS TOO GOOD-LOOKING.",
+    plain: "FREE BOOKS ARE NOT OUR CONCERN. YOUR LEDGER IS OUR CONCERN. WE HAVE NO OTHER CONCERNS.",
+  },
+  quiet_days: {
+    zoolander: "THE TIMETABLE IS FINAL. MR. ZOOLANDER COULD NOT TURN LEFT, AND HE ADAPTED. ADAPT.",
+    plain: "THE TIMETABLE IS FINAL. WE DO NOT ADJUST TIMETABLES. TIMETABLES ADJUST US.",
+  },
+  author_fares: {
+    zoolander: "THE FARES ARE THE FARES. MR. ZOOLANDER ALSO TRAVELED FOR WORK. HE NEVER ASKED ABOUT FARES. BE LIKE HIM.",
+    plain: "THE FARES ARE THE FARES. WE ASKED WHETHER AUTHORS COULD WALK. THEY CANNOT WALK IN SPACE.",
+  },
+  format_costs: {
+    zoolander: "THE PRINTWORKS SENDS ITS REGRETS. MR. ZOOLANDER DOES NOT ACCEPT REGRETS. NEITHER DO WE.",
+    plain: "THE PRINTWORKS SENDS ITS REGRETS. WE DO NOT ACCEPT REGRETS. WE ACCEPT RECEIPTS.",
+  },
+  quiet_quarter: {
+    zoolander: "NOTHING IS EXPECTED THIS QUARTER. THE PANEL WILL EXPECT SOMETHING ANYWAY. MR. ZOOLANDER CALLS THIS BLUE STEEL.",
+    plain: "NOTHING IS EXPECTED THIS QUARTER. THE PANEL WILL EXPECT SOMETHING ANYWAY.",
+  },
 };
+
+/** True if last quarter's boss line quoted Mr. Zoolander, so this quarter's shouldn't. */
+const zoolanderLastQuarter = (context: QuarterContext) => /zoolander/i.test(context.previous.at(-1)?.bossLine ?? "");
 
 /** The value a story is keyed by: the candidate's genre, weekday or format, or "" for a type with none. */
 const storyKey = (candidate: Candidate) => String(candidate.params.genre ?? candidate.params.weekday ?? candidate.params.format ?? "");
@@ -79,6 +101,6 @@ export function scriptedFlavor(candidate: Candidate, context: QuarterContext): F
   return {
     story: STORIES[candidate.type][storyKey(candidate)],
     ...(wantsReason(candidate, context) && candidate.stretch ? { reason: REASONS[candidate.stretch.measure] } : {}),
-    bossLine: BOSS_LINES[candidate.type],
+    bossLine: BOSS_LINES[candidate.type][zoolanderLastQuarter(context) ? "plain" : "zoolander"],
   };
 }

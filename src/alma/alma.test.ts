@@ -279,9 +279,14 @@ describe("the scripted flavor", () => {
       for (const value of keyed ? values[keyed] : [undefined]) for (const measure of MEASURE_IDS.filter((m) => !type.against.includes(m))) {
         const params = Object.fromEntries(Object.entries(type.params).map(([name, spec]) => [name, name === keyed ? value! : spec.kind === "enum" ? spec.values[0] : spec.min]));
         const c: Candidate = { type: type.id, params, stretch: { measure, percent: 15 } };
-        const flavor = scriptedFlavor(c, ctx);
-        expect(flavor.story, `${type.id} ${value}`).toBeTruthy();
-        expect(checkAnswer(JSON.stringify({ candidate: 0, ...flavor }), [c, c, c], ctx, checks), `${type.id} ${value} ${measure}`).toMatchObject({ ok: true });
+        // Both boss lines: the one quoting Mr. Zoolander, and the plain one for the quarter after he was quoted.
+        const quoted: QuarterContext = { ...ctx, previous: [record({ bossLine: "MR. ZOOLANDER WAS QUOTED." })] };
+        for (const flavor of [scriptedFlavor(c, ctx), scriptedFlavor(c, quoted)]) {
+          expect(flavor.story, `${type.id} ${value}`).toBeTruthy();
+          expect(checkAnswer(JSON.stringify({ candidate: 0, ...flavor }), [c, c, c], ctx, checks), `${type.id} ${value} ${measure}`).toMatchObject({ ok: true });
+        }
+        expect(scriptedFlavor(c, ctx).bossLine).toMatch(/ZOOLANDER/);
+        expect(scriptedFlavor(c, quoted).bossLine).not.toMatch(/ZOOLANDER/);
       }
     }
   });
