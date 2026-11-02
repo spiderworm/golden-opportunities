@@ -6,7 +6,7 @@ import { categoryModel, categoryOption } from "./category-chart";
 
 const QUARTERS = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
 
-function result(rows: QueryResult["rows"], by: ("month" | "genre" | "quarter")[], measure: "units" | "avg_order_value" = "units"): QueryResult {
+function result(rows: QueryResult["rows"], by: ("month" | "genre" | "quarter" | "list_price" | "price_band" | "edition")[], measure: "units" | "avg_order_value" = "units"): QueryResult {
   return {
     columns: [...by.map((key) => ({ key, label: key, type: "string" as const, nullable: true })), { key: measure, label: measure, type: "number" as const, nullable: false }],
     rows,
@@ -20,6 +20,15 @@ describe("categoryModel", () => {
     const model = categoryModel(result([{ month: "2193-02", units: 5 }], ["month"]), "month", null, ["2193-01", "2193-02", "2193-03"]);
     expect(model.categories).toEqual(["2193-01", "2193-02", "2193-03"]);
     expect(model.series[0]!.values).toEqual([0, 5, 0]);
+  });
+
+  it("orders prices cheapest first, and ranks editions as it does titles", () => {
+    const prices = categoryModel(result([{ list_price: "$24.99", units: 1 }, { list_price: "$9.99", units: 2 }, { list_price: "$12.50", units: 3 }], ["list_price"]), "list_price");
+    expect(prices.categories).toEqual(["$9.99", "$12.50", "$24.99"]);
+    const bands = categoryModel(result([{ price_band: "$30 and up", units: 1 }, { price_band: "under $10", units: 2 }, { price_band: "$10 to $19.99", units: 3 }], ["price_band"]), "price_band");
+    expect(bands.categories).toEqual(["under $10", "$10 to $19.99", "$30 and up"]);
+    const editions = categoryModel(result([{ edition: "A (Paperback)", units: 1 }, { edition: "B (Hardcover)", units: 9 }], ["edition"]), "edition");
+    expect([editions.horizontal, editions.categories]).toEqual([true, ["B (Hardcover)", "A (Paperback)"]]);
   });
 
   it("leaves averages empty where nothing sold", () => {

@@ -47,7 +47,7 @@ export function formatDimensionValue(dimension: Dimension, value: string | null 
   if (value === null || value === undefined) {
     // A standalone book has no volume number; nor does the unknown book behind some ratings (Plot, #186).
     if (dimension === "volume") return "Not numbered";
-    return dimension === "title" ? "Unknown title" : "Unknown";
+    return dimension === "title" ? "Unknown title" : dimension === "edition" ? "Unknown edition" : "Unknown";
   }
   if (dimension === "quarter") {
     const match = /^(\d+)-(Q[1-4])$/.exec(value);
@@ -63,6 +63,8 @@ export function formatDimensionValue(dimension: Dimension, value: string | null 
   if (dimension === "stars") return value === "1" ? "1 star" : `${value} stars`;
   if (dimension === "awarded") return value === "yes" ? "Award winner" : value === "no" ? "No award" : value;
   if (dimension === "volume") return `Volume ${value}`;
+  // "under $10" reads as a label: "Under $10".
+  if (dimension === "price_band") return value.charAt(0).toUpperCase() + value.slice(1);
   if (dimension === "in_series") return value === "yes" ? "In a series" : value === "no" ? "Not in a series" : value;
   return value;
 }

@@ -5,7 +5,7 @@ import { FilterBar } from "./FilterBar";
 import type { FilterOptions } from "./investigation.server";
 import { shownFilters, type FilterId, type Filters } from "./state";
 
-const options: FilterOptions = { quarter: ["2193-Q4"], genre: [], format: [], publisher: [], discount_rate: [], award: ["Hugo Award", "Nebula Award"], volume: ["1", "2", "3"] };
+const options: FilterOptions = { quarter: ["2193-Q4"], genre: [], format: [], publisher: [], discount_rate: [], award: ["Hugo Award", "Nebula Award"], volume: ["1", "2", "3"], price_band: ["under $10", "$10 to $19.99", "$20 to $29.99", "$30 and up"] };
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 const html = (filters: Filters, added: FilterId[] = []) => {
   const shown = shownFilters(new URLSearchParams(added.map((id) => ["show", id])), filters);
@@ -43,6 +43,22 @@ describe("the bar (David, 2 Nov 2026)", () => {
 
   it("explains how to choose a title when none is chosen", () => {
     expect(bar({}, ["title"])).toContain("Choose a title from a chart broken down by Title.");
+  });
+});
+
+describe("prices and editions (David: \"Players should see price, yes\")", () => {
+  it("chooses price bands, and shows an exact list price from a drilldown as a chip", () => {
+    expect(bar({}, ["price"])).toContain("Price band Any price");
+    const page = html({ price_band: ["under $10"], list_price: ["$12.99"] });
+    expect(text(page)).toContain("Price band Under $10");
+    expect(page).toContain('aria-label="Other filters"');
+    expect(text(page)).toContain("List price $12.99");
+    expect(page).toContain('aria-label="Remove List price $12.99"');
+  });
+
+  it("explains how to choose an edition when none is chosen", () => {
+    expect(bar({}, ["edition"])).toContain("Choose an edition from a chart broken down by Edition.");
+    expect(bar({ edition: ["Rystwyth (Hardcover)"] })).toContain("Edition Rystwyth (Hardcover)");
   });
 });
 
