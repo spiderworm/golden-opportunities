@@ -9,6 +9,7 @@ const directory = await vi.hoisted(async () => {
 vi.mock('../platform/analytics/instance.server', () => ({ DATA_DIR: directory }));
 vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() }));
 import { loadBookshop } from '../bookshop/loader.server';
+import { trackServer } from '../platform/analytics/analytics.server';
 import { runQuery } from '../query/run-query.server';
 import { getOutcome, getQ2Candidates, resetGame, submitPlan, submitQ2Plan } from './game.server';
 import { forgetReplays, linesHash, quarterLines, replayLines } from './replay.server';
@@ -56,7 +57,8 @@ describe("a played quarter's lines (endless.md section 9, how quarters are kept)
     const save = saves.read(id);
     saves.update(id, save.revision, draft => { draft.played[1] = { ...draft.played[1]!, lines: { ...draft.played[1]!.lines!, hash: '0'.repeat(64) } } as PlayedQuarter; });
     forgetReplays();
-    expect(() => queryViewForSave(saves.read(id))).toThrow(expect.objectContaining({ code: 'REPLAY_MISMATCH' }));
+    expect(() => queryViewForSave(saves.read(id))).toThrow(expect.objectContaining({ code: 'REPLAY_MISMATCH', quarter: '2194-Q2' }));
+    expect(vi.mocked(trackServer)).toHaveBeenCalledWith('save_replay_refused', { quarter: '2194-Q2', engine: 1 });
     // Never silently rescored: the count is checked too.
     const counted = { ...saves.read(id).played[0]!, lines: { ...saves.read(id).played[0]!.lines!, count: 1 } } as PlayedQuarter;
     expect(() => quarterLines(id, save.seed, counted, loadBookshop)).toThrow(SaveError);
