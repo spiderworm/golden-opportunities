@@ -29,7 +29,7 @@ describe("the tool list", () => {
   it("leaves out what's Investigate-only until then: the ratings count and stars", () => {
     const d = describeData();
     expect(d.measures.map((m) => m.name)).not.toContain("ratings");
-    for (const dimension of ["stars", "awarded", "award"]) expect(d.dimensions).not.toContain(dimension);
+    for (const dimension of ["stars", "awarded", "award", "volume", "in_series"]) expect(d.dimensions).not.toContain(dimension);
     expect(d.measures.every((m) => !(m.dimensions as readonly string[]).includes("stars"))).toBe(true);
     expect(() => checkQuery({ measure: "ratings", by: [] })).toThrow(ToolInputError);
     expect(() => checkQuery({ measure: "revenue", by: [], filter: { stars: ["5"] } })).toThrow(ToolInputError);

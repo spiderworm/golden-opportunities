@@ -48,6 +48,10 @@ const query: Query = { measure: 'revenue', by: ['quarter'] };
   any of its book's awards is in the filter, so a book with two awards counts
   once. It can't group or sort, since a grouping by award would count *The
   Mallemaroking* (a Hugo and a Nebula) twice. Investigate-only.
+- volume: a series book's volume number (`1` to `7`); null for a standalone
+  book or the unknown one. Investigate-only.
+- in_series: `yes` if the book belongs to a series, else `no`; null for the
+  unknown book. Investigate-only.
 
 Filters are exact, case-sensitive matches. Values within one dimension are OR;
 different dimensions are AND. Each filter contains 1–50 strings of at most 200
@@ -78,9 +82,9 @@ also apply to direct `runQuery` results, not only the HTTP endpoint.
 | avg_order_value | Sum revenue / distinct OrderID | All but stars |
 | orders_per_day | Distinct OrderID / eligible calendar days | All but stars |
 | avg_discount | Arithmetic mean of the sale-line discount fractions, not percentages | All but stars |
-| avg_rating | Arithmetic mean of individual source ratings, including unknown-book ratings | genre, series, title, author, awarded, award |
-| checkouts | Sum source Number of Checkouts at book/month grain | genre, series, title, author, awarded, award, month |
-| ratings | Count individual source ratings, including unknown-book ratings. Investigate-only | genre, series, title, author, awarded, award, stars |
+| avg_rating | Arithmetic mean of individual source ratings, including unknown-book ratings | genre, series, title, author, awarded, award, volume, in_series |
+| checkouts | Sum source Number of Checkouts at book/month grain | genre, series, title, author, awarded, award, volume, in_series, month |
+| ratings | Count individual source ratings, including unknown-book ratings. Investigate-only | genre, series, title, author, awarded, award, volume, in_series, stars |
 
 Ratings/checkouts join directly to Book → Author/Info/Series, never through
 sales or editions. This avoids multiplying ratings or checkouts by sales volume
@@ -112,8 +116,8 @@ Until then it's Investigate-only: left out of the tool schemas and
 `INVALID_QUERY` ("ratings isn't available to the assistant yet."), whether it
 is the measure, a grouping, a filter or the sort. Browser queries may use it.
 
-Investigate-only now: the `ratings` measure, and the `stars`, `awarded` and
-`award` dimensions (#169).
+Investigate-only now: the `ratings` measure, and the `stars`, `awarded`,
+`award`, `volume` and `in_series` dimensions (#169).
 
 ## Visibility and access
 
