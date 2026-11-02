@@ -7,23 +7,25 @@
 
 import { loadBookshop } from "~/bookshop/loader.server";
 import { saves as gameSaves } from "~/game/session.server";
+import { isQuarterId } from "~/game/quarters";
 import { SaveError } from "~/game/store.server";
 import type { GameSave, PlayedQuarter } from "~/game/types";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { QuarterContext } from "./candidates";
 import { almaModel, chooseEvent, type AlmaModel } from "./director.server";
-import { MEASURE_IDS, type MeasureId } from "./events";
+import type { MeasureId } from "./events";
 import type { QuarterSummary } from "./prompt";
 import { quarterAfter } from "./quarters";
 import { quarterIndex, type AlmaRecord } from "./record";
 
 /** Alma's first quarter: Q1 and Q2 2194 stay as built (section 9). */
 export const FIRST_ALMA_QUARTER = "2194-Q3";
-/** A quarter that scored under this is a strike (section 7), and a strike counts for four quarters. */
+/**
+ * A quarter that scored under this is a strike (section 7). A strike counts for the quarter it was earned in and
+ * the three after it, so while the next quarter is prepared, only the last three played still count (Audit).
+ */
 const STRIKE_BELOW = 70;
-const STRIKE_QUARTERS = 4;
-/** A measure that fell by more than this, in percent, against the same quarter a year earlier gets a recovery goal. */
-const RECOVERY_DROP = 10;
+const STRIKE_QUARTERS = 3;
 
 /** What the hook needs, injectable so tests never reach the real model or the real saves. */
 export interface AlmaDeps {
@@ -31,6 +33,8 @@ export interface AlmaDeps {
   model: AlmaModel | null;
   titles: readonly string[];
   track: (name: string, props: Record<string, string | number | boolean>) => void;
+  /** Whether the game can play a quarter yet: Alma prepares only those, so no model call is spent on Q3 before it exists. */
+  playable: (quarter: string) => boolean;
 }
 
 const defaultDeps = (): AlmaDeps => ({
@@ -44,6 +48,7 @@ const defaultDeps = (): AlmaDeps => ({
       // A transport failure can't undo a quarter.
     }
   },
+  playable: isQuarterId,
 });
 
 /** The last quarter played, or null before any. */
@@ -65,22 +70,18 @@ export function summarize(quarter: PlayedQuarter): QuarterSummary {
 }
 
 /**
- * The context for the quarter after the last one played: Alma's earlier records, the strikes counting now
- * (those of the last four quarters), and a recovery goal for the measure that fell most, if one fell by more
- * than 10% against its same quarter a year earlier (the report card's `lastYear`).
+ * The context for the quarter after the last one played: Alma's earlier records, and the strikes that will
+ * count in it (those of the last three quarters played). No recovery goal yet: its baseline is the player's own
+ * same quarter a year earlier (2193's replay in 2194), not the report card's `lastYear`, which is the anchor
+ * (Frank's review). Sim's `recoveryFor` in src/simulation/turn.ts will give it, and `strikesCounting` the
+ * strikes, as one definition for Alma, the removal check and the memo; this calls them once they land.
  */
 export function contextFor(save: GameSave): QuarterContext | null {
   const last = save.played.at(-1);
   if (!last) return null;
   const quarter = quarterAfter(last.period);
   const strikes = save.played.slice(-STRIKE_QUARTERS).filter((q) => q.outcome.reportCard.plan.overall.score < STRIKE_BELOW).length;
-  let recovery: QuarterContext["recovery"];
-  for (const m of last.outcome.reportCard.plan.measures) {
-    if (!MEASURE_IDS.includes(m.id) || !(m.lastYear > 0)) continue;
-    const drop = Math.round(((m.lastYear - m.result) / m.lastYear) * 100);
-    if (drop > RECOVERY_DROP && (!recovery || drop > recovery.drop)) recovery = { measure: m.id, drop };
-  }
-  return { quarter, previous: save.alma ?? [], strikes, ...(recovery ? { recovery } : {}) };
+  return { quarter, previous: save.alma ?? [], strikes };
 }
 
 type Written = { record: AlmaRecord; kept: boolean } | null;
@@ -149,7 +150,7 @@ function record(saveId: string, context: QuarterContext, history: QuarterSummary
 export function onQuarterCommitted({ saveId, quarter, seed }: { saveId: string; quarter: string; seed: number }, deps: AlmaDeps = defaultDeps()): void {
   try {
     const next = quarterAfter(quarter);
-    if (quarterIndex(next) < quarterIndex(FIRST_ALMA_QUARTER)) return;
+    if (quarterIndex(next) < quarterIndex(FIRST_ALMA_QUARTER) || !deps.playable(next)) return;
     const save = deps.saves.read(saveId);
     const context = contextFor(save);
     if (!context || context.quarter !== next || save.alma?.some((r) => r.quarter === next)) return;
@@ -173,7 +174,7 @@ export function onQuarterCommitted({ saveId, quarter, seed }: { saveId: string; 
 export async function almaRecordFor(saveId: string, budgetMs: number, deps: AlmaDeps = defaultDeps()): Promise<AlmaRecord | null> {
   const save = deps.saves.read(saveId);
   const context = contextFor(save);
-  if (!context || quarterIndex(context.quarter) < quarterIndex(FIRST_ALMA_QUARTER)) return null;
+  if (!context || quarterIndex(context.quarter) < quarterIndex(FIRST_ALMA_QUARTER) || !deps.playable(context.quarter)) return null;
   const saved = save.alma?.find((r) => r.quarter === context.quarter);
   if (saved) return saved;
   const turn = pending.get(key(saveId, context.quarter));
