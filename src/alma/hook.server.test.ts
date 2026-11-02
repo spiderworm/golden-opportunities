@@ -26,12 +26,24 @@ afterAll(() => rmSync(directory, { recursive: true, force: true }));
 const request = (id: string) => new Request("http://localhost/decide", { method: "POST", headers: { origin: "http://localhost", cookie: "orbital_save=" + id } });
 
 describe("Alma in the game", () => {
-  it("prepares Q3 when Q2 is committed, in the background, and the real save keeps and accepts the record", async () => {
+  it("spends nothing on a quarter the game can't play yet: no turn for Q3 before it exists (Audit)", async () => {
+    const save = saves.create();
+    submitPlan(request(save.id), { levers: [] });
+    submitQ2Plan(request(save.id), { picks: [getQ2Candidates()[0]!.isbn, null, null], levers: [] });
+    expect(pendingTurn(save.id, "2194-Q3")).toBeUndefined();
+    expect(await almaRecordFor(save.id, 10)).toBeNull();
+    expect(saves.read(save.id).alma).toBeUndefined();
+  });
+
+  it("prepares the next quarter once it's playable, and the real save keeps and accepts the record", async () => {
     const save = saves.create();
     submitPlan(request(save.id), { levers: [] });
     expect(pendingTurn(save.id, "2194-Q2")).toBeUndefined(); // Q1 and Q2 stay as built
     const isbn = getQ2Candidates()[0]!.isbn;
     submitQ2Plan(request(save.id), { picks: [isbn, null, null], levers: [] });
+    // As if Q3 were built: the real save and the real analytics, with Q3 playable.
+    const real: AlmaDeps = { saves, model: null, titles: [], track: (name, props) => trackServer(name, props), playable: () => true };
+    onQuarterCommitted({ saveId: save.id, quarter: "2194-Q2", seed: saves.read(save.id).seed }, real);
     const turn = pendingTurn(save.id, "2194-Q3");
     expect(turn).toBeDefined();
     const record = await turn!;
@@ -44,7 +56,7 @@ describe("Alma in the game", () => {
     const props = vi.mocked(trackServer).mock.calls.find(([name]) => name === "alma_event_chosen")![1]!;
     expect(Object.keys(props).sort()).toEqual(["attempts", "ms", "quarter", "source", "type"]);
     // Arriving in Q3 reads it; a reload gives the same one.
-    expect(await almaRecordFor(save.id, 10)).toEqual(record);
+    expect(await almaRecordFor(save.id, 10, real)).toEqual(record);
   });
 });
 
@@ -90,7 +102,7 @@ function fakeStore(save: GameSave, { staleOnce = false } = {}) {
 const base = (over: Partial<GameSave> = {}): GameSave => ({ version: 2, id: "s".repeat(43), seed: 7, revision: 3, discoveries: [], played: [played("2194-Q1", 80), played("2194-Q2", 75)], ...over });
 const deps = (store: ReturnType<typeof fakeStore>, model: AlmaModel | null = null): AlmaDeps & { events: [string, Record<string, unknown>][] } => {
   const events: [string, Record<string, unknown>][] = [];
-  return { saves: store, model, titles: [], track: (name, props) => events.push([name, props]), events };
+  return { saves: store, model, titles: [], track: (name, props) => events.push([name, props]), playable: () => true, events };
 };
 const later = (text: string, ms: number): AlmaModel => ({ name: "sonnet", ask: () => new Promise((resolve) => setTimeout(() => resolve(text), ms)) });
 
@@ -146,21 +158,23 @@ describe("Alma's turn and the save", () => {
 });
 
 describe("the quarter's context", () => {
-  it("counts the strikes of the last four quarters", () => {
-    const save = base({ played: ["2194-Q1", "2194-Q2", "2194-Q3", "2194-Q4", "2195-Q1"].map((q, i) => played(q, [60, 80, 65, 90, 68][i]!)) });
-    expect(contextFor(save)).toMatchObject({ quarter: "2195-Q2", strikes: 2 });
+  it("counts the strikes that still count next quarter: those of the last three played (section 7, Audit)", () => {
+    const quarters = ["2194-Q1", "2194-Q2", "2194-Q3", "2194-Q4", "2195-Q1"];
+    const save = (scores: number[]) => base({ played: quarters.map((q, i) => played(q, scores[i]!)) });
+    expect(contextFor(save([60, 80, 65, 90, 68]))).toMatchObject({ quarter: "2195-Q2", strikes: 2 });
+    // A strike at N-3 (2194-Q2) counted through 2195-Q1, its fourth quarter, and no longer counts in 2195-Q2.
+    expect(contextFor(save([90, 60, 80, 90, 90]))).toMatchObject({ strikes: 0 });
+    expect(contextFor(save([90, 90, 60, 90, 90]))).toMatchObject({ strikes: 1 });
   });
 
-  it("sets a recovery goal for the measure that fell most, past 10% against the same quarter a year earlier", () => {
+  it("sets no recovery goal until Sim's recoveryFor gives the right baseline (the report card's lastYear is the anchor)", () => {
     const measures = [
       { id: "profit", result: 85, lastYear: 100, score: 60 },
       { id: "readers", result: 88, lastYear: 100, score: 70 },
       { id: "happiness", result: 95, lastYear: 100, score: 80 },
       { id: "culture", result: 100, lastYear: 100, score: 90 },
     ];
-    expect(contextFor(base({ played: [played("2194-Q1", 80), played("2194-Q2", 60, measures)] }))!.recovery).toEqual({ measure: "profit", drop: 15 });
-    const mild = measures.map((m) => ({ ...m, result: 95 }));
-    expect(contextFor(base({ played: [played("2194-Q1", 80), played("2194-Q2", 60, mild)] }))!.recovery).toBeUndefined();
+    expect(contextFor(base({ played: [played("2194-Q1", 80), played("2194-Q2", 60, measures)] }))).not.toHaveProperty("recovery");
   });
 
   it("names quarters past the built ones", () => {
