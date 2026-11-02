@@ -51,6 +51,10 @@ describe("the prompt", () => {
     expect(RULES).toMatch(/write no digits, no number words .* no \$ or %, and no direction or comparison words/);
     expect(RULES).toMatch(/no sums, differences, ratios or shares. For a difference or change, use compare_data/);
     expect(RULES).toMatch(/Decline any question about cost, margin or profit, even if they give you a cost rate/);
+    // Price (Probe's #225): a list price, by ref, with its own edition; not revenue, and not the shop's cost.
+    expect(RULES).toMatch(/A book's price is its list price, before any discount/);
+    expect(RULES).toMatch(/there is no average price/);
+    expect(RULES).toContain("{{a1.edition}} lists at {{a1.list_price}}.");
     // A monthly lookup restated as "from 2193-Q1 to 2193-Q4" lost a true sentence to the gate (q2-digit-title).
     expect(RULES).toMatch(/a lookup by month returns months, not quarters, so after one don't name a quarter or a year/);
     expect(RULES).toContain("{{a1.month}}");

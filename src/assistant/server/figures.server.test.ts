@@ -323,6 +323,11 @@ describe("prices (Probe's #225)", () => {
     expect(say("{{a2.edition}}, the hard cover, costs {{a2.list_price}}.", r)).toBe(WITHHELD);
   });
 
+  it("let an exact edition label into prose, digits and all, as titles are (#225, item 4)", () => {
+    expect(say("Heliotrope Pajamas (Paperback, 2181) sold {{a3}}.", r)).toBe("Heliotrope Pajamas (Paperback, 2181) sold $95.88.");
+    expect(say("Heliotrope Pajamas (Paperback, 2182) sold {{a3}}.", r)).toBe(WITHHELD);
+  });
+
   it("keep a price group apart from any book", () => {
     expect(say("Every title in {{b.list_price}} sold {{b.total}} units.", r)).toBe("Every title in $27.99 sold 51 units.");
     expect(say("{{a2.edition}} is among the books in {{b.list_price}}.", r)).toBe(WITHHELD);
