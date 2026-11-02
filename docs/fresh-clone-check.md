@@ -71,7 +71,7 @@ Machine: macOS, Node 24.21.0, npm 11.19.0, Claude Code installed and signed in. 
 7. **Analytics are on by default.** Each copy sends content-free events, plus an instance ID kept in `.data/instance.json`, to David's analytics endpoint. That's intended (David, October 30: "so David can tell copies apart"), but nothing tells the reviewer. `ORBITAL_ANALYTICS=off` stops the server sending, and automated browsers never send.
 8. **`npm ci` needs `cdn.sheetjs.com`.** The `xlsx` dev dependency installs from SheetJS's CDN, not npm, so a network that blocks it fails the install.
 9. **The browser tests need their browsers.** Run `npx playwright install chromium webkit` first. Firefox is disabled (see `playwright.config.ts`). The e2e run builds and serves its own copy on 127.0.0.1:5187, so it needs that port free, or `E2E_PORT`.
-10. **Ports:** `npm start` uses 3000 (or `PORT`) and fails with `EADDRINUSE` if 3000 is busy. `npm run dev` uses 5173 and moves on if it's busy, which works since #157.
+10. **Ports and address:** `npm start` uses 3000 (or `PORT`) and fails with `EADDRINUSE` if 3000 is busy. Since #167 it listens on this computer only (127.0.0.1), so a reviewer opening it from another device can't reach it. `ORBITAL_HOST` changes the address (see `docs/requirements.md` for what Dewey then needs). `npm run dev` uses 5173 and moves on if it's busy, which works since #157.
 11. **`.data/`** is made on first run in the clone's folder and holds saves, the instance ID and queued analytics. Deleting it starts over. `ORBITAL_DATA_DIR` moves it.
 
 ## README suggestions for David
@@ -86,6 +86,7 @@ The README is yours, so these are suggestions only:
 - **Data and analytics:** that `.data/` holds the saves and the instance ID; that the copy sends content-free analytics, and why; and that `ORBITAL_ANALYTICS=off` stops it.
 - **Settings**, as a short table:
   - `PORT`;
+  - `ORBITAL_HOST` (`npm start` listens on 127.0.0.1 unless it's set);
   - `ORBITAL_DATA_DIR`;
   - `ORBITAL_ANALYTICS`;
   - `ORBITAL_ASSISTANT_PROVIDER`;
