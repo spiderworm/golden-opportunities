@@ -89,6 +89,20 @@ export function AssistantPanel({
   useLayoutEffect(() => {
     if (box.current) fitToText(box.current);
   }, [question]);
+  // And whenever it's narrowed or widened (the window, the panel), since the text wraps onto more lines or fewer
+  // (Sage, #239). Only a change of width: the fit changes its height, which mustn't set it off again.
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let width = el.clientWidth;
+    const watch = new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      fitToText(el);
+    });
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []);
   const abort = useRef<AbortController | null>(null);
   const log = useRef<HTMLDivElement>(null);
   // Closing the panel stops the answer, and with it the process on the server.
