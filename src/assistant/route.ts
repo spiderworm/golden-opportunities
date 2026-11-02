@@ -2,6 +2,9 @@
 // together; the work is in server/ask.server.ts and server/availability.server.ts.
 
 import { SaveError } from "~/game/store.server";
+import { resolveSaveId, saves } from "~/game/session.server";
+import { backstoryOf, type BackstoryText } from "~/alma/backstory";
+import { catalogNames } from "~/alma/backstory.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import { getAssistant } from "./server/assistant.server.ts";
 import { ask, type ServerTrack } from "./server/ask.server.ts";
@@ -62,11 +65,22 @@ function provider(request: Request, { pins }: { pins: boolean }): AssistantProvi
   );
 }
 
-export const action = ({ request }: Route.ActionArgs) => ask(request, options => provider(request, options), track);
+/** The game's backstory, checked again as it's read, or null without a game (docs/design/backstory.md). */
+function backstory(request: Request): BackstoryText | null {
+  try {
+    return backstoryOf(saves.read(resolveSaveId(request)), catalogNames());
+  } catch {
+    return null;
+  }
+}
+
+export const action = ({ request }: Route.ActionArgs) => ask(request, options => provider(request, options), track, undefined, undefined, backstory);
 
 /** Whether the panel can offer questions: { available: true }, or the fixed offline message and why. */
-export const loader = async () => {
+export const loader = async ({ request }: Route.LoaderArgs) => {
   const availability = await assistantAvailability({ track });
-  const body = availability.state === "ready" ? { available: true } : { available: false, reason: availability.reason, message: OFFLINE, hint: OFFLINE_HINT };
+  // The greeting's backstory sentence, checked; shown as plain text, never rendered (section 6).
+  const short = backstory(request)?.short;
+  const body = { ...(availability.state === "ready" ? { available: true } : { available: false, reason: availability.reason, message: OFFLINE, hint: OFFLINE_HINT }), ...(short ? { short } : {}) };
   return Response.json(body, { headers: { "cache-control": "no-store" } });
 };
