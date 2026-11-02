@@ -2,7 +2,7 @@ import { renderToString } from "react-dom/server";
 import { createRoutesStub } from "react-router";
 import { expect, it } from "vitest";
 import type { LookupPin } from "../tools/definitions";
-import { AssistantPanel, LookupView } from "./AssistantPanel";
+import { AssistantPanel, fitToText, LookupView, sendsQuestion } from "./AssistantPanel";
 
 it("renders an empty panel on the server, without touching storage, and offers no reset until there's a conversation", () => {
   const storage = new Proxy({} as Storage, {
@@ -44,4 +44,39 @@ it("offers Pin on every lookup it can pin, only where the page takes pins, and s
   // No pin from the server (its input didn't check), or nowhere to put one: no button.
   expect(renderToString(<LookupView lookup={data} pinning={pinning} />)).not.toMatch(/<button/);
   expect(renderToString(<LookupView lookup={{ ...data, pin: table }} />)).not.toMatch(/<button/);
+});
+
+it("asks in a box that wraps what's typed, labelled and limited as before", () => {
+  const Stub = createRoutesStub([{ path: "/", Component: () => <AssistantPanel storage={{} as Storage} track={() => {}} /> }]);
+  const html = renderToString(<Stub initialEntries={["/"]} />);
+  // A textarea wraps; an input scrolled its text off the left (David, 2 Nov).
+  expect(html).toMatch(/<textarea[^>]*aria-label="Question for Dewey"[^>]*maxLength="500"[^>]*rows="1"/);
+  expect(html).not.toMatch(/<input/);
+});
+
+it("sends on Enter, and makes a new line on Shift+Enter or while an IME is composing", () => {
+  expect(sendsQuestion({ key: "Enter", shiftKey: false, isComposing: false })).toBe(true);
+  expect(sendsQuestion({ key: "Enter", shiftKey: true, isComposing: false })).toBe(false);
+  expect(sendsQuestion({ key: "Enter", shiftKey: false, isComposing: true })).toBe(false);
+  expect(sendsQuestion({ key: "a", shiftKey: false, isComposing: false })).toBe(false);
+});
+
+it("fits the box to its text, border and all, however tall, with no limit", () => {
+  // A box whose text is 600 px tall, inside 2 px of border: it measures itself at auto first, then grows.
+  const heights: string[] = [];
+  const box = {
+    scrollHeight: 600,
+    offsetHeight: 40,
+    clientHeight: 38,
+    style: {
+      set height(h: string) {
+        heights.push(h);
+      },
+      get height() {
+        return heights.at(-1) ?? "";
+      },
+    },
+  };
+  fitToText(box);
+  expect(heights).toEqual(["auto", "602px"]);
 });
