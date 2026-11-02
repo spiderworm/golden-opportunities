@@ -195,3 +195,27 @@ describe("the result's words for any quarter (endless-copy.md sections 1 and 4)"
     );
   });
 });
+
+describe("the result's later-quarter notes and certificates (endless-copy.md section 4)", () => {
+  it("end the goals note's first sentence with the stretch, or the recovery goal", () => {
+    expect(quarterCopy("2194-Q3", "Q2 2194", { measure: "culture", percent: 0.15, recoveryFrom: null }).goalsNote).toBe(
+      "Each goal is Q3 2193, adjusted for what the Council expected this quarter, plus 5%, and Culture's goal was raised 15% instead. Matching the adjusted Q3 2193 scores 70 (C−). Meeting the goal scores 100 (A+).",
+    );
+    expect(quarterCopy("2194-Q4", "Q3 2194", { measure: "happiness", percent: 0.14, recoveryFrom: "2194-Q3" }).goalsNote).toContain(
+      "plus 5%, and Happiness's goal was 14% above it, to restore its fall in Q3 2194. Matching",
+    );
+    expect(quarterCopy("2194-Q3", "Q2 2194", null).goalsNote).toContain("plus 5%. Matching the adjusted Q3 2193");
+  });
+
+  it("word Comeback and Weathered the Storm from the engine's certificate", () => {
+    expect(certificateText({ id: "comeback", measure: "readers", previous: "2194-Q3" }, "2194-Q4")).toBe(
+      "Comeback: Readers served fell in Q3 2194, and you restored it. Certificates don't change your score.",
+    );
+    expect(certificateText({ id: "weathered", measures: ["profit"], event: { type: "author_fares", params: { cost: 350 } } }, "2194-Q3")).toBe(
+      "Weathered the Storm: Profit met its goal despite author nights at $350. Certificates don't change your score.",
+    );
+    expect(
+      certificateText({ id: "weathered", measures: ["profit", "readers", "culture"], event: { type: "quiet_days", params: { weekday: "Tuesday", percent: 15 } } }, "2194-Q3"),
+    ).toBe("Weathered the Storm: Profit, Readers served and Culture met their goals despite quiet Tuesdays. Certificates don't change your score.");
+  });
+});

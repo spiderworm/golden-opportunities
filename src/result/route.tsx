@@ -8,7 +8,7 @@ import { EChart } from "~/platform/charts/EChart";
 import type { ShellHandle } from "~/shell/Shell";
 import type { Route } from "./+types/route";
 import { gradeFor, roundHalfUp } from "~/simulation/grading";
-import { nextQuarter } from "~/simulation/quarters";
+import { nextQuarter, type QuarterId } from "~/simulation/quarters";
 import { MEASURE_IDS as MEASURE_ORDER, type ReportCard as Card } from "~/simulation/types";
 import {
   administratorLine,
@@ -37,7 +37,7 @@ import {
   scoreText,
   seasonNote,
 } from "./copy";
-import { earnedDiscoveries, type EarnedDiscovery } from "./discoveries.server";
+import { earnedDiscoveries, laterDiscoveries, type EarnedDiscovery } from "./discoveries.server";
 import { OUTCOME_COLORS, outcomeOption } from "./outcome-chart";
 import { heldCourse, planSummary, type HalfYearData, type ResultData } from "./result-data";
 import styles from "./Result.module.css";
@@ -55,12 +55,14 @@ export function loader({ request }: Route.LoaderArgs): ResultData {
   const asked = new URL(request.url).searchParams.get("quarter");
   const data = getResultData(request, isQuarterId(asked) ? asked : undefined);
   if (!data) throw redirect("/decide");
-  return { ...data, discoveries: earnedDiscoveries(data.discoveries, data.quarter) };
+  // Q1 and Q2 have their own three (A to F); from Q3 on, the quarter's own offers (Frank's #221).
+  const later = data.quarter !== "2194-Q1" && data.quarter !== "2194-Q2";
+  return { ...data, discoveries: later ? laterDiscoveries(data.laterDiscoveries, data.discoveryOffers) : earnedDiscoveries(data.discoveries, data.quarter) };
 }
 
 export default function Result({ loaderData }: Route.ComponentProps) {
-  const { quarter, outcome, sameQuarterLastYear, previousQuarter, reference, referenceLabel, discoveries, next, canPlayAgain, halfYear, record } = loaderData;
-  const q = quarterCopy(quarter, referenceLabel);
+  const { quarter, outcome, sameQuarterLastYear, previousQuarter, reference, referenceLabel, discoveries, next, canPlayAgain, halfYear, record, goalStretch, season2193 } = loaderData;
+  const q = quarterCopy(quarter, referenceLabel, goalStretch);
   // The half-year review closes the game under Q2's result while the game ends there (Q1's screen, opened later,
   // gains nothing: q2.md, #139). Once the endless game goes on past Q2, the service record takes its place.
   const review = halfYear && quarter === "2194-Q2" ? halfYear : null;
@@ -108,6 +110,7 @@ export default function Result({ loaderData }: Route.ComponentProps) {
       <h2 className={styles.title}>{q.title}</h2>
 
       <ReportCard
+        quarter={quarter}
         copy={q}
         plan={outcome.reportCard.plan}
         holdCourse={outcome.reportCard.holdCourse}
@@ -138,7 +141,7 @@ export default function Result({ loaderData }: Route.ComponentProps) {
             ? seasonNote((1 - plan.revenue / previousQuarter) * 100, sameQuarterLastYear)
             : quarter === "2194-Q2"
               ? q2SeasonNote(plan.revenue, previousQuarter)
-              : laterSeasonNote(quarter, plan.revenue, previousQuarter, referenceLabel)}
+              : laterSeasonNote(quarter, plan.revenue, previousQuarter, referenceLabel, season2193)}
         </p>
       </section>
 
@@ -343,10 +346,10 @@ function LegendItem({ color, label }: { color: string; label: string }) {
  * overall score, the lowest measure's boss on it, the table with that row
  * marked, certificates, and the rest of the bosses tucked away.
  */
-function ReportCard({ copy: q, plan, holdCourse, holdingCourse, onBosses }: { copy: ReturnType<typeof quarterCopy>; plan: Card; holdCourse: Card; holdingCourse: boolean; onBosses: (open: boolean) => void }) {
+function ReportCard({ quarter, copy: q, plan, holdCourse, holdingCourse, onBosses }: { quarter: QuarterId; copy: ReturnType<typeof quarterCopy>; plan: Card; holdCourse: Card; holdingCourse: boolean; onBosses: (open: boolean) => void }) {
   const c = COPY.reportCard;
   const { overall } = plan;
-  const certificates = plan.certificates.map(certificateText).filter(Boolean);
+  const certificates = plan.certificates.map((certificate) => certificateText(certificate, quarter)).filter(Boolean);
   return (
     <section className={styles.card} aria-labelledby="report-card-heading">
       <h3 id="report-card-heading" className={styles.cardTitle}>
