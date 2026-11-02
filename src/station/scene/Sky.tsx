@@ -1,4 +1,4 @@
-import { useFrame, useLoader } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import {
   AdditiveBlending,
@@ -14,6 +14,7 @@ import {
   type Texture,
 } from "three";
 
+import { useStationTextures } from "./loading";
 import { PLANET_POSITION, PLANET_RADIUS, SUN_DIRECTION } from "./layout";
 import { kept } from "./world";
 
@@ -277,7 +278,7 @@ function Sun() {
 }
 
 export function Sky() {
-  const [day, night, starfield] = useLoader(TextureLoader, TEXTURES);
+  const [day, night, starfield] = useStationTextures(TEXTURES);
   return (
     <>
       <Nebula map={starfield!} />

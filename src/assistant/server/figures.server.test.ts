@@ -224,6 +224,14 @@ describe("titles the data returned may be named in prose, digits and all (Probe'
     expect(renderSentence(`I looked up units for ${TITLE}.`, r, 0)).toBeNull();
   });
 
+  it("a title made of number or direction words passes whole, and only whole (Probe's review of #152)", () => {
+    const r = refs(["query_data", { measure: "units", by: ["title"] }, { ref: "w", complete: true, columns: [], rows: [{ ref: "w1", title: "Zero over Twelve", units: 41 }, { ref: "w2", title: "No More Lightning", units: 9 }], total: 50, source: SOURCE }]);
+    expect(say("I looked up units for Zero over Twelve: {{w1}}.", r)).toBe("I looked up units for Zero over Twelve: 41.");
+    expect(say("No More Lightning sold {{w2}}.", r)).toBe("No More Lightning sold 9.");
+    expect(say("Zero over Twelve sold twelve.", r)).toBe(WITHHELD);
+    expect(say("No more than {{w2}}.", r)).toBe(WITHHELD);
+  });
+
   it("not a title that's only a number: it could pass for a figure", () => {
     expect(say("I looked up units for 1984: {{t2}}.", refs(byTitle))).toBe(WITHHELD);
   });
