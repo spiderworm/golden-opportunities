@@ -221,7 +221,8 @@ export class Refs {
     // Period names come from returned rows, and one-value filters the data confirmed (below); never captions.
     // Months name their year ("2193-04"), so like quarters they are period names.
     for (const row of rows) for (const key of ["quarter", "month"]) if (typeof row[key] === "string") period(row[key] as string);
-    for (const row of rows) if (typeof row.title === "string") title(row.title);
+    // An edition label is the data's string too ("Heliotrope Pajamas (Paperback, 2181)"), named in prose as a title is (Probe's #225, item 4).
+    for (const row of rows) for (const key of ["title", "edition"]) if (typeof row[key] === "string") title(row[key] as string);
     // A filter value is the model's, so it's a label only when it alone was asked for and the data had
     // something there (with several values, any one could be the one that matched).
     const filtered = new Map<string, string>();
@@ -233,8 +234,10 @@ export class Refs {
     if (quarter) period(quarter);
     const month = filtered.get("month");
     if (month) period(month);
-    const named = filtered.get("title");
-    if (named) title(named);
+    for (const key of ["title", "edition"]) {
+      const named = filtered.get(key);
+      if (named) title(named);
+    }
     this.lookups.set(out.ref, {
       seq,
       complete: out.complete === true,

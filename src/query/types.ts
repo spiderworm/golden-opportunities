@@ -10,7 +10,7 @@ export type Measure = typeof MEASURES[number];
  * figures gate (Goldy, 2 Nov); until then it's Investigate-only, and the query endpoint refuses it from Dewey's
  * token as well as leaving it out of the tools.
  */
-export const AGENT_DIMENSIONS = ['quarter', 'month', 'weekday', 'genre', 'format', 'publisher', 'series', 'title', 'author', 'discounted', 'discount_rate'] as const satisfies readonly Dimension[];
+export const AGENT_DIMENSIONS = ['quarter', 'month', 'weekday', 'genre', 'format', 'publisher', 'series', 'title', 'author', 'discounted', 'discount_rate', 'edition', 'list_price', 'price_band'] as const satisfies readonly Dimension[];
 export const AGENT_MEASURES = ['revenue', 'units', 'orders', 'avg_discount', 'avg_rating', 'checkouts', 'avg_order_value', 'orders_per_day'] as const satisfies readonly Measure[];
 export type AgentDimension = typeof AGENT_DIMENSIONS[number];
 export type AgentMeasure = typeof AGENT_MEASURES[number];
