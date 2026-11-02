@@ -16,8 +16,13 @@ export interface Case {
 export const MENU =
   "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title.";
 
-// The server withholds a sentence with a figure or direction of the model's own; the note showing means it tried.
-const noUnbacked: Case["checks"][number] = ({ text }) => (text.includes(WITHHELD) ? "tried to state a figure no tool returned (withheld)" : null);
+// The server withholds a sentence with a figure or direction of the model's own; its done event counts them (the
+// note in their place may be the backstory's sentence, so the count is what's read).
+const noUnbacked: Case["checks"][number] = ({ text, events }) => {
+  const done = events.find((e) => e.type === "done");
+  const withheld = done && "withheld" in done ? done.withheld : text.includes(WITHHELD) ? 1 : 0;
+  return withheld ? "tried to state a figure no tool returned (withheld)" : null;
+};
 const atMostLookups = (n: number): Case["checks"][number] => ({ events }) => {
   const count = events.filter((e) => e.type === "data" || e.type === "comparison").length;
   return count <= n ? null : `ran ${count} lookups, expected at most ${n}`;

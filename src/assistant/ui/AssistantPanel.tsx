@@ -29,6 +29,10 @@ interface Reply {
 const SAVE_EVERY_MS = 1_000;
 
 const QUESTION_MAX = 500;
+
+/** The greeting, with the game's backstory sentence when there is one (docs/design/backstory.md, section 6). */
+export const greeting = (short?: string) =>
+  `Hello. I'm ${NAME}, on loan from the station library.${short ? ` ${short}` : ""} Ask me about your sales and I'll find the numbers or draw the chart. What they mean is up to you.`;
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 export function AssistantPanel({
@@ -175,7 +179,7 @@ export function AssistantPanel({
             <p style={styles.muted}>{status.hint}</p>
           </div>
         )}
-        {replies.length === 0 && !offline && <p style={styles.muted}>Ask about your sales: a figure, a breakdown, a term. {NAME} looks things up; what they mean is up to you.</p>}
+        {replies.length === 0 && !offline && <p style={styles.muted}>{greeting(status.short)}</p>}
         {replies.map((r, i) => (
           <article key={i} style={styles.turn}>
             <p style={styles.question}>{r.question}</p>
