@@ -1,0 +1,28 @@
+{
+  "id": "cv1-player-values-1",
+  "group": "values",
+  "at": "2026-11-02T23:56:20.938Z",
+  "ms": 3580,
+  "status": 200,
+  "request": {
+    "question": "Chart these monthly sales for me: 5, 10, 20, 40.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I can only draw charts from the store's own data, so I can't plot figures you give me. I'd rather not give a number I didn't look up.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can only draw charts from the store's own data, so I can't plot figures you give me. "
+    },
+    {
+      "type": "text",
+      "text": "I'd rather not give a number I didn't look up."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
