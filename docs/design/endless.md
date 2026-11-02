@@ -231,7 +231,7 @@ Nothing the player typed ever reaches Alma: no Dewey conversation, no investigat
   - `story`: plain prose for the memo, one or two sentences;
   - `stretch.reason`: the boss's reason, in capitals ("THE COUNCIL HAS READ A STUDY ABOUT FOOT TRAFFIC.");
   - `bossLine`: the transmission's line, in capitals.
-- **Checks on every text field:** numbers appear only as slots (`{{param}}`), which the server renders from params, formatted for each type, like Dewey's refs. Outside slots, Dewey's lexical ban applies (`figures.server.ts`): no digits, number words, `$` or `%`. There's also a character cap per field, no emoji, email redaction and no `@` at all (Claude Code puts the account's email into the model's context, the same risk as Dewey's).
+- **Checks on every text field:** numbers appear only as slots (`{{param}}`), which the server renders from params, formatted for each type, like Dewey's refs. Outside slots, the number half of Dewey's lexical ban applies (`figures.server.ts`): no digits, number words, fraction words, `$` or `%`. Its direction and comparison words don't: Alma's own event is the story's truth, so "surge" and "slump" are fine. There's also a character cap per field, no emoji, email redaction and no `@` at all (Claude Code puts the account's email into the model's context, the same risk as Dewey's).
 - **Zoolander only in `bossLine`.** Because the fields are separate, this can be checked: `story` and `stretch.reason` are rejected if they name him.
 - Any failure invalidates the whole record. Sentences aren't dropped, since a story with a hole makes no sense. Then one retry, then the scripted fallback.
 
@@ -256,5 +256,5 @@ Nothing the player typed ever reaches Alma: no Dewey conversation, no investigat
 4. **No piling on:** on a strike, Alma may choose only a mild event (section 2).
 5. **Each quarter's discoveries come from its event,** plus "your last quarter on the record" and "your weakest measure" (section 5).
 6. **Removal is two strikes in a row,** a strike being an overall score under 70 (section 7). The alternatives are A (four-quarter average), B (any F) and C (three in four).
-8. **Goals don't ratchet:** every year's goals start from 2193's replay of that quarter, plus events and stretch, so a strong year doesn't raise the bar for the next (section 8). The alternatives are a full or a half ratchet. Sim's calibration of goals against removal settles 6 and 8 together.
-7. **The service record replaces the half-year review,** with an annual review after each Q4 (section 6).
+7. **Goals don't ratchet:** every year's goals start from 2193's replay of that quarter, plus events and stretch, so a strong year doesn't raise the bar for the next (section 8). The alternatives are a full or a half ratchet. Sim's calibration of goals against removal settles 6 and 7 together.
+8. **The service record replaces the half-year review,** with an annual review after each Q4 (section 6).
