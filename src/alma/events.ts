@@ -33,7 +33,9 @@ export const EVENT_TYPES: readonly EventType[] = [
   { id: "genre_slump", params: { genre: { kind: "enum", values: GENRES }, month, percent: { kind: "int", min: 10, max: 25, unit: "percent" } }, mild: false, against: ["profit", "readers", "culture"] },
   { id: "quiet_days", params: { weekday: { kind: "enum", values: WEEKDAYS }, percent: { kind: "int", min: 10, max: 25, unit: "percent" } }, mild: false, against: ["profit", "readers", "culture"] },
   { id: "author_fares", params: { cost: { kind: "int", min: 100, max: 400, unit: "dollars" } }, mild: true, against: ["profit"] },
-  { id: "format_costs", params: { format: { kind: "enum", values: FORMATS }, percent: { kind: "int", min: 65, max: 70, unit: "percent" } }, mild: false, against: ["profit"] },
+  // At most 69%: hardcovers at 70% take 10.1 to 11.0% off holding course's profit, past section 2's 10% bound
+  // (Sim's finding, Plot's #199); at 69% the worst is 9.88%.
+  { id: "format_costs", params: { format: { kind: "enum", values: FORMATS }, percent: { kind: "int", min: 65, max: 69, unit: "percent" } }, mild: false, against: ["profit"] },
   { id: "quiet_quarter", params: {}, mild: true, against: [], oncePer: 3 },
 ];
 

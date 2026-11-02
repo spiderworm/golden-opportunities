@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AssistantUnavailable } from "~/assistant/server/provider.server";
 import { apart, candidateProblem, drawCandidates, type Candidate, type QuarterContext } from "./candidates";
 import { almaModel, chooseEvent, type AlmaModel } from "./director.server";
-import { EVENT_TYPES, FORMATS, GENRES, MEASURE_IDS, WEEKDAYS, type MeasureId } from "./events";
+import { EVENT_TYPES, FORMATS, GENRES, MEASURE_IDS, STRETCH_PERCENT, WEEKDAYS, type MeasureId } from "./events";
 import { almaInput, ALMA_RULES, type QuarterSummary } from "./prompt";
 import { FAILURES, isAlmaLog, isAlmaRecord, type AlmaRecord } from "./record";
 import { scriptedFlavor } from "./scripted";
@@ -44,6 +44,21 @@ describe("the event types", () => {
     expect([...GENRES].sort()).toEqual([...genres].sort());
     expect([...FORMATS].sort()).toEqual([...formats].sort());
     expect(WEEKDAYS).toHaveLength(7);
+  });
+
+  it("keep section 2's limits, with format costs stopping at 69%: 70% would break the 10% bound (Sim)", () => {
+    const ranges = Object.fromEntries(EVENT_TYPES.flatMap((t) => Object.entries(t.params).flatMap(([name, spec]) => (spec.kind === "int" ? [[`${t.id}.${name}`, [spec.min, spec.max]]] : []))));
+    expect(ranges).toEqual({
+      "genre_surge.month": [1, 3],
+      "genre_surge.percent": [10, 30],
+      "genre_slump.month": [1, 3],
+      "genre_slump.percent": [10, 25],
+      "quiet_days.percent": [10, 25],
+      "author_fares.cost": [100, 400],
+      "format_costs.percent": [65, 69],
+    });
+    expect(STRETCH_PERCENT).toEqual({ min: 10, max: 20 });
+    for (let seed = 0; seed < 200; seed++) for (const c of drawCandidates(seed, context)) if (c.type === "format_costs") expect(c.params.percent).toBeLessThanOrEqual(69);
   });
 
   it("work against section 2's measures (Sim's bounds)", () => {
