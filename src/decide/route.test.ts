@@ -80,7 +80,7 @@ describe("the Decide action", () => {
 describe("the Decide action in Q2", () => {
   const A = "989-28-79-70597-8";
   const B = "989-28-654-6930-3";
-  const q2 = (body = `picks=${A}%2C%2C${B}&levers=events`) => post(body);
+  const q2 = (body = `picks=${A}%2C%2C${B}&levers=events`, quarter = "2194-Q2") => post(body.includes("picks=") ? `${body}&quarter=${quarter}` : body);
 
   beforeEach(() => {
     game.currentQuarter.mockReset().mockReturnValue("2194-Q2");
@@ -132,6 +132,19 @@ describe("the Decide action in Q2", () => {
       throw new Response("Play the first quarter first.", { status: 409 });
     });
     expect(await act(q2())).toEqual({ data: { ok: false, played: false }, status: 409 });
+  });
+
+  it("files a plan only for the quarter its form was written for (Frank and Audit, #212)", async () => {
+    // A Q2 form left open in another tab, sent once Q3 is open: Q2 was played, so to the results, and nothing is filed.
+    game.currentQuarter.mockReturnValue("2194-Q3");
+    expect(await act(q2())).toEqual({ data: { ok: false, played: true }, status: 409 });
+    expect(game.submitQ2Plan).not.toHaveBeenCalled();
+    // A form for a quarter not yet open isn't played: back to choosing.
+    game.currentQuarter.mockReturnValue("2194-Q2");
+    expect(await act(q2(undefined, "2194-Q3"))).toEqual({ data: { ok: false, played: false }, status: 409 });
+    // No quarter, or Q1's, is a malformed form.
+    expect(await act(post(`picks=${A}%2C%2C${B}&levers=events`))).toEqual({ data: { ok: false, played: false, problem: "shape" }, status: 400 });
+    expect(await act(q2(undefined, "2194-Q1"))).toEqual({ data: { ok: false, played: false, problem: "shape" }, status: 400 });
   });
 
   it("answers a save it can't read", async () => {

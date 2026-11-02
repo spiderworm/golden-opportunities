@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
-import { DECIDE_Q2_COPY as COPY, editionLabel, MONTHS, type Month } from "./q2-copy";
+import { DECIDE_Q2_COPY as COPY, editionLabel } from "./q2-copy";
 import styles from "./PickPicker.module.css";
 
 /** An edition the player can pick (Frank's loader, from Sim's q2Candidates): keyed by ISBN, since a title can have two of a format. */
@@ -15,7 +15,9 @@ export interface Candidate {
 
 export interface PickPickerProps {
   candidates: readonly Candidate[];
-  /** April, May and June: an ISBN, or null for no pick. */
+  /** The quarter's months by name: "April", "May", "June". */
+  months: readonly string[];
+  /** One for each month: an ISBN, or null for no pick. */
   picks: readonly (string | null)[];
   onPick: (month: number, isbn: string | null) => void;
   /** Tried to pick a book already picked for another month (the list refuses it). */
@@ -26,11 +28,11 @@ export interface PickPickerProps {
 const bookOf = (c: Candidate) => c.bookId ?? c.title;
 
 /**
- * The Book of the Month calendar for Q2 (q2.md section 5): one row per month, each a button showing its pick
+ * The Book of the Month calendar for a quarter (q2.md section 5): one row per month, each a button showing its pick
  * or "No pick". It opens a list over the scene, with a search field at its top, so opening it moves nothing.
  * A book picked for another month stays in the list, marked and refused, so a book can't be picked twice.
  */
-export function PickPicker({ candidates, picks, onPick, onRefused, disabled }: PickPickerProps) {
+export function PickPicker({ candidates, months, picks, onPick, onRefused, disabled }: PickPickerProps) {
   const id = useId();
   const [open, setOpen] = useState<number | null>(null);
   const byIsbn = useMemo(() => new Map(candidates.map((c) => [c.isbn, c])), [candidates]);
@@ -46,7 +48,7 @@ export function PickPicker({ candidates, picks, onPick, onRefused, disabled }: P
       <p id={`${id}-label`} className={styles.label}>
         {COPY.picks.label}
       </p>
-      {MONTHS.map((month, m) => {
+      {months.map((month, m) => {
         const pick = picks[m] ? byIsbn.get(picks[m]!) : undefined;
         return (
           <div key={month} className={styles.row} data-open={open === m || undefined}>
@@ -75,7 +77,7 @@ export function PickPicker({ candidates, picks, onPick, onRefused, disabled }: P
                 month={month}
                 candidates={candidates}
                 chosen={picks[m] ?? null}
-                taken={takenBy(picks, m, byIsbn)}
+                taken={takenBy(picks, months, m, byIsbn)}
                 onChoose={(isbn) => {
                   onPick(m, isbn);
                   close(m, true);
@@ -92,21 +94,21 @@ export function PickPicker({ candidates, picks, onPick, onRefused, disabled }: P
 }
 
 /** The books picked for the other months, and for which month: they can't be picked again. */
-function takenBy(picks: readonly (string | null)[], month: number, byIsbn: ReadonlyMap<string, Candidate>): Map<string, Month> {
-  const taken = new Map<string, Month>();
+function takenBy(picks: readonly (string | null)[], months: readonly string[], month: number, byIsbn: ReadonlyMap<string, Candidate>): Map<string, string> {
+  const taken = new Map<string, string>();
   picks.forEach((isbn, m) => {
     const c = isbn && m !== month ? byIsbn.get(isbn) : undefined;
-    if (c) taken.set(bookOf(c), MONTHS[m]!);
+    if (c) taken.set(bookOf(c), months[m]!);
   });
   return taken;
 }
 
 interface ChoicesProps {
   id: string;
-  month: Month;
+  month: string;
   candidates: readonly Candidate[];
   chosen: string | null;
-  taken: ReadonlyMap<string, Month>;
+  taken: ReadonlyMap<string, string>;
   onChoose: (isbn: string | null) => void;
   onRefused: () => void;
   onClose: (focus: boolean) => void;

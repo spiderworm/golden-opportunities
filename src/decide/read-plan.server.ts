@@ -1,6 +1,7 @@
 // Reads the Decide form at the door, as /api/query and /api/assistant read
 // theirs: same origin, a small capped body, a deadline, and nothing but the
 // fields the quarter's form sends.
+import { FIRST_QUARTER, isQuarterName, type QuarterId } from "~/simulation/quarters";
 import { isQ2Plan, planOf } from "~/simulation/plan";
 import type { Plan, Q2Plan, Q2LeverId } from "~/simulation/types";
 
@@ -16,10 +17,10 @@ export class PlanRefused extends Error {
   }
 }
 
-/** Either quarter's plan, by the fields its form sends; for a save that may have moved on since the form loaded. */
-export async function readAnyPlan(request: Request, deadlineMs = DEADLINE_MS): Promise<{ quarter: "2194-Q1"; plan: Plan } | { quarter: "2194-Q2"; plan: Q2Plan }> {
+/** The plan by the fields its form sends: Q1's moves, or a later quarter's picks; for a save that may have moved on since the form loaded. */
+export async function readAnyPlan(request: Request, deadlineMs = DEADLINE_MS): Promise<{ form: "moves"; plan: Plan } | ({ form: "picks" } & QuarterPlan)> {
   const form = await readForm(request, deadlineMs);
-  return form.has("picks") ? { quarter: "2194-Q2", plan: q2PlanFrom(form) } : { quarter: "2194-Q1", plan: planFrom(form) };
+  return form.has("picks") ? { form: "picks", ...q2PlanFrom(form) } : { form: "moves", plan: planFrom(form) };
 }
 
 /** Q1's plan in one field: `levers=repick,events`, or `levers=` to hold course. */
@@ -37,23 +38,33 @@ function planFrom(form: URLSearchParams): Plan {
   return plan;
 }
 
+/** A plan for a quarter after Q1, with the quarter its form was written for. */
+export interface QuarterPlan {
+  quarter: QuarterId;
+  plan: Q2Plan;
+}
+
 /**
- * Q2's plan in two fields (Frank's encoding): `picks` is always three slots, April to June, each an ISBN or
- * empty for no pick, and `levers` is empty, `events` or `sale`. Holding course is `picks=,,&levers=`. Its
- * shape is checked here; whether each ISBN is an edition, and no title is picked twice, is the engine's call.
+ * A later quarter's plan in three fields (Frank's encoding): `picks` is always three slots, one a month, each an
+ * ISBN or empty for no pick; `levers` is empty, `events` or `sale`; and `quarter` names the quarter the form was
+ * written for, so a form left open in another tab can't be filed for the next quarter (Frank and Audit, #212).
+ * Holding course is `picks=,,&levers=&quarter=2194-Q2`. Its shape is checked here; whether each ISBN is an edition,
+ * no title is picked twice, and the quarter is the save's, is the game's call.
  */
-export async function readQ2Plan(request: Request, deadlineMs = DEADLINE_MS): Promise<Q2Plan> {
+export async function readQ2Plan(request: Request, deadlineMs = DEADLINE_MS): Promise<QuarterPlan> {
   return q2PlanFrom(await readForm(request, deadlineMs));
 }
 
-function q2PlanFrom(form: URLSearchParams): Q2Plan {
+function q2PlanFrom(form: URLSearchParams): QuarterPlan {
   const keys = [...form.keys()].sort();
-  if (keys.length !== 2 || keys[0] !== "levers" || keys[1] !== "picks") throw new PlanRefused(400, "Send only the picks and the move.");
+  if (keys.length !== 3 || keys[0] !== "levers" || keys[1] !== "picks" || keys[2] !== "quarter") throw new PlanRefused(400, "Send only the picks, the move and the quarter.");
+  const quarter = form.get("quarter")!;
+  if (!isQuarterName(quarter) || quarter === FIRST_QUARTER) throw new PlanRefused(400, "Name a quarter after Q1 2194.");
   const picks = form.get("picks")!.split(",").map((isbn) => isbn || null);
   const lever = form.get("levers")!;
   const plan = { picks, levers: lever === "" ? [] : [lever as Q2LeverId] };
   if (!isQ2Plan(plan)) throw new PlanRefused(400, "Choose a pick or none for each month, and up to one more move.");
-  return plan;
+  return { quarter, plan };
 }
 
 /** The form's fields, once the request has passed the door: same origin, form-encoded, small, and in time. */
