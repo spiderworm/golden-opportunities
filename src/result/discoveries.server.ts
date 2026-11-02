@@ -3,6 +3,7 @@
 // in the browser's code. The result loader sends each player only what they
 // have earned, and only after the quarter has played out.
 import type { DiscoveryId } from "~/game/types";
+import type { QuarterId } from "~/simulation/quarters";
 import type { ResultQuarter } from "./copy";
 
 /** A–C are Q1's, D–F Q2's (the game's ids). Q1's discoveries stay on Q1's screen: they don't carry over. */
@@ -41,7 +42,9 @@ export interface EarnedDiscovery {
   text: string;
 }
 
-/** The quarter's three discoveries, each as found or as where to look. */
-export function earnedDiscoveries(found: readonly DiscoveryId[], quarter: ResultQuarter = "2194-Q1"): EarnedDiscovery[] {
-  return DISCOVERIES[quarter].map((d) => (found.includes(d.id) ? { id: d.id, found: true, text: d.found } : { id: d.id, found: false, text: d.notFound }));
+/** The quarter's discoveries, each as found or as where to look: Q1's and Q2's three, and none yet from Q3 on. */
+export function earnedDiscoveries(found: readonly DiscoveryId[], quarter: QuarterId = "2194-Q1"): EarnedDiscovery[] {
+  // From Q3 on, discoveries come from the quarter's event (endless.md section 5), not built yet: none show.
+  const list: (typeof Q1) | undefined = DISCOVERIES[quarter as ResultQuarter];
+  return (list ?? []).map((d) => (found.includes(d.id) ? { id: d.id, found: true, text: d.found } : { id: d.id, found: false, text: d.notFound }));
 }

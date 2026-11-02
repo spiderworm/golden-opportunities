@@ -24,8 +24,8 @@ export type { TurnEvent } from "./conditions";
  */
 export const ENGINE_VERSION = 1;
 
-/** A quarter under 70 overall is a strike (section 7). */
-export const STRIKE_BELOW = 70;
+// The removal rule lives in a plain leaf, so the save store (plain Node in its tests) can use it too.
+export { STRIKE_BELOW, removedAt, strikes } from "./strikes";
 /** An event's expected effect on holding course may be at most this share of any measure's anchor (section 8). */
 export const EVENT_BOUND = 0.1;
 /** A measure that fell by more than this share earns a recovery goal (section 2). */
@@ -191,21 +191,6 @@ export function linesOfTurn(turn: Turn, data: DeepReadonly<BookshopData>): { lin
     return { lines, doNothingLines };
   }
   return picksLines(turn.plan as Q2Plan, turn.seed, data, { ...t, conditions: conditionsOf(turn.event, historyFor(data, t.quarter, t.year)) });
-}
-
-/**
- * The strikes counting after the quarters played, oldest first (section 7). A strike counts in its own
- * quarter and the three after: "removal" counts the last four played, for the check at the end of the
- * quarter; "next" counts the last three, for the quarter being prepared (Alma's "no piling on", the memo).
- */
-export function strikes(overall: readonly number[], window: "removal" | "next"): number {
-  return overall.slice(window === "removal" ? -4 : -3).filter((score) => score < STRIKE_BELOW).length;
-}
-
-/** The index of the quarter whose third counting strike removed the player, or null. */
-export function removedAt(overall: readonly number[]): number | null {
-  for (let i = 0; i < overall.length; i++) if (strikes(overall.slice(0, i + 1), "removal") >= 3) return i;
-  return null;
 }
 
 export interface PlayedQuarter {

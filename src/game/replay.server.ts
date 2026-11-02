@@ -7,10 +7,9 @@
 
 import { createHash } from 'node:crypto';
 import type { BookshopData, DeepReadonly, Sale } from '../bookshop/types';
-import { simulateQ2 } from '../simulation/q2';
-import { simulateQuarter } from '../simulation/simulate';
 import type { SimulatedLine } from '../simulation/types';
 import { SaveError } from './store.server';
+import { linesOfTurn, type TurnEvent } from '../simulation/turn';
 import type { PlayedQuarter } from './types';
 
 /** The columns a save keeps of a simulated line: the source sales' shape. */
@@ -24,10 +23,12 @@ export function linesHash(lines: readonly Sale[]): string {
   return hash.digest('hex');
 }
 
-/** The lines a quarter's plan gives on this seed: the same call that played it. */
-export function replayLines(quarter: PlayedQuarter, seed: number, data: DeepReadonly<BookshopData>): Sale[] {
-  if (quarter.period === '2194-Q1') return visible(simulateQuarter(quarter.outcome.plan, seed, data).lines);
-  return visible(simulateQ2(quarter.outcome.plan, seed, data).lines);
+/**
+ * The lines a quarter's plan gives on this seed, under its Alma event from Q3 on: the engine's own replay path
+ * (Sim's linesOfTurn), the same lines that played it, without the report card or the anchor.
+ */
+export function replayLines(quarter: PlayedQuarter, seed: number, data: DeepReadonly<BookshopData>, event: TurnEvent | null = null): Sale[] {
+  return visible(linesOfTurn({ quarter: quarter.period, seed, plan: quarter.outcome.plan, event }, data).lines);
 }
 
 /** Replayed lines by save and quarter, least recently used out: a few dozen quarters of 8,000 to 22,000 lines. */
@@ -49,12 +50,12 @@ export function rememberLines(saveId: string, quarter: PlayedQuarter, lines: rea
  * the quarter's count and hash. A mismatch throws REPLAY_MISMATCH: the engine has changed since the quarter was
  * played, and the save can't be read by this version.
  */
-export function quarterLines(saveId: string, seed: number, quarter: PlayedQuarter, data: () => DeepReadonly<BookshopData>): readonly Sale[] {
+export function quarterLines(saveId: string, seed: number, quarter: PlayedQuarter, data: () => DeepReadonly<BookshopData>, event: TurnEvent | null = null): readonly Sale[] {
   if (quarter.sales) return quarter.sales;
   const key = keyOf(saveId, quarter);
   const cached = cache.get(key);
   if (cached) { remember(key, cached); return cached; }
-  const lines = replayLines(quarter, seed, data());
+  const lines = replayLines(quarter, seed, data(), event);
   if (lines.length !== quarter.lines.count || linesHash(lines) !== quarter.lines.hash) throw new SaveError('REPLAY_MISMATCH');
   remember(key, lines);
   return lines;

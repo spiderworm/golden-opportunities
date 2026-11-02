@@ -15,6 +15,15 @@ import type { QuarterId } from './quarters';
 import { Q1_DISCOVERIES, Q2_DISCOVERIES, type GameSave, type PlayedQuarter, type Q2GameOutcome } from './types';
 import { isLocalBrowserRequest } from '../query/access.server';
 import { onQuarterCommitted } from '../alma/hook.server';
+import { almaRecordFor } from '../alma/hook.server';
+import type { AlmaRecord } from '../alma/record';
+import { MEASURE_NAMES } from '../alma/sentences';
+import type { BossId } from '../platform/bosses/bosses';
+import { simulateTurn } from '../simulation/turn';
+import { strikes } from '../simulation/strikes';
+import type { MeasureId, Q2SimulationResult } from '../simulation/types';
+import { quarterIndex } from './quarters';
+
 
 function event(name: string, props: Record<string, string | number | boolean>) {
   try { trackServer(name, props); } catch { /* A transport failure cannot undo a committed quarter. */ }
@@ -125,6 +134,100 @@ export function submitQ2Plan(request: Request, plan: unknown): { outcomeId: stri
     return { outcomeId };
   } catch (error) {
     event('game_quarter_failed', { quarter: 'Q2', code: error instanceof SaveError ? error.code : error instanceof Response ? String(error.status) : 'INTERNAL_ERROR', durationMs: performance.now() - started });
+    return failure(error);
+  }
+}
+/** Alma's record has this long to arrive before the scripted event stands in; drawing that adds up to about 2 s (Sage). */
+export const ALMA_BUDGET_MS = 8_000;
+
+/** A later quarter's Alma record: the saved one, or Alma's turn within the budget, or the scripted event. Null in Q1 and Q2. */
+async function recordFor(save: GameSave, quarter: QuarterId): Promise<AlmaRecord | null> {
+  if (quarterIndex(quarter) < 2) return null;
+  return save.alma?.find(r => r.quarter === quarter) ?? (await almaRecordFor(save.id, ALMA_BUDGET_MS));
+}
+
+/**
+ * What Decide's brief needs to fill Plot's templates (endless-copy.md section 3): the strikes counting, the
+ * stretched boss and its measure and percent (a fraction; with the quarter it fell in for a recovery goal), a
+ * format-costs event's format and rate, an author-fares event's cost, and whether a lot is on offer. The memo's
+ * story and fact sentences stay on the memo.
+ */
+export interface QuarterBrief {
+  quarter: QuarterId;
+  candidates: ReturnType<typeof getQ2Candidates>;
+  brief: {
+    strikes: number;
+    stretch: { boss: BossId; measure: MeasureId; percent: number; line: string; recoveryFrom: QuarterId | null } | null;
+    formatCost: { format: string; percent: number } | null;
+    authorFare: number | null;
+    lot: boolean;
+  } | null;
+}
+
+/** Alma's record as the brief's numbers. `lastPlayed` is the quarter a recovery goal's measure fell in. */
+export function briefOf(record: AlmaRecord, strikesCounting: number, lastPlayed: QuarterId): NonNullable<QuarterBrief['brief']> {
+  const s = record.stretch;
+  const line = !s ? null : record.drop !== undefined ? `${MEASURE_NAMES[s.measure].toUpperCase()} FELL ${record.drop}%. RESTORE IT.` : record.reason ?? null;
+  return {
+    strikes: strikesCounting,
+    // A recovery goal's percent is the drop it restores, capped at the record's percent (the engine's goalsFor).
+    stretch: s && line ? { boss: s.measure, measure: s.measure, percent: (record.drop !== undefined ? Math.min(record.drop, s.percent) : s.percent) / 100, line,
+      recoveryFrom: record.drop !== undefined ? lastPlayed : null } : null,
+    formatCost: record.type === 'format_costs' ? { format: String(record.params.format), percent: Number(record.params.percent) / 100 } : null,
+    authorFare: record.type === 'author_fares' ? Number(record.params.cost) : null,
+    // The Orbitplace lot is tier 2 (endless.md section 2): not built yet.
+    lot: false,
+  };
+}
+
+/** The brief for the quarter being planned, from Q2 on; null in Q1, or once no quarter is left to plan. */
+export async function getQuarterBrief(request: Request): Promise<QuarterBrief | null> {
+  const save = current(request);
+  const quarter = quarterOf(save);
+  if (!quarter || quarter === '2194-Q1') return null;
+  const record = await recordFor(save, quarter);
+  const counting = strikes(save.played.map(q => q.outcome.reportCard.plan.overall.score), 'next');
+  return { quarter, candidates: getQ2Candidates(), brief: record ? briefOf(record, counting, save.played.at(-1)!.period) : null };
+}
+
+/**
+ * Any quarter after Q1, as Q2 is played: a plan the player got wrong is a 400 naming the problem; from Q3 the
+ * quarter's Alma record sets its event, and the engine plays it through simulateTurn. Q2 keeps its own path.
+ */
+export async function submitQuarterPlan(request: Request, plan: unknown, expected?: QuarterId): Promise<{ outcomeId: string }> {
+  const started = performance.now();
+  let quarter: QuarterId | null = null;
+  try {
+    refuseUnlessLocalPost(request);
+    const save = current(request);
+    quarter = quarterOf(save);
+    if (quarter === '2194-Q1') throw new Response('Play the first quarter first.', { status: 409 });
+    if (!quarter) throw alreadyPlayed();
+    // A form names the quarter it was written for: one left open from Q3, sent once Q4 is open, mustn't play Q4
+    // with July's picks. Its quarter is played already, so it's a 409, as for a repeat.
+    if (expected !== undefined && expected !== quarter) throw alreadyPlayed();
+    if (quarter === '2194-Q2') return submitQ2Plan(request, plan);
+    const data = loadBookshop();
+    const problem = q2PlanProblem(plan, data);
+    if (problem) throw Response.json({ problem }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    const { picks, levers } = plan as Q2Plan;
+    const canonical: Q2Plan = { picks: [...picks], levers: [...levers] };
+    const record = await recordFor(save, quarter);
+    if (!record) throw new SaveError('INVALID_SAVE');
+    const turnEvent = { type: record.type, params: record.params, stretch: record.stretch, ...(record.drop === undefined ? {} : { drop: record.drop }) };
+    const result = simulateTurn({ quarter, seed: save.seed, plan: canonical, event: turnEvent }, data) as Q2SimulationResult;
+    // Later quarters' own discoveries (endless.md section 5) aren't built yet.
+    const outcome: Q2GameOutcome = { ...result.outcome, discoveries: [] };
+    if (JSON.stringify(outcome.plan) !== JSON.stringify(canonical)) throw new SaveError('INVALID_SAVE');
+    const sales = visible(result.lines);
+    const outcomeId = randomUUID();
+    // The save read before Alma's wait may be stale: commit against the save as it is now.
+    commit(current(request), { period: quarter as Exclude<QuarterId, '2194-Q1'>, outcomeId, outcome }, sales);
+    event('game_quarter_committed', { quarter, leverCount: canonical.levers.length, pickCount: canonical.picks.filter(p => p !== null).length,
+      units: sales.length, durationMs: performance.now() - started });
+    return { outcomeId };
+  } catch (error) {
+    event('game_quarter_failed', { quarter: quarter ?? 'unknown', code: error instanceof SaveError ? error.code : error instanceof Response ? String(error.status) : 'INTERNAL_ERROR', durationMs: performance.now() - started });
     return failure(error);
   }
 }
