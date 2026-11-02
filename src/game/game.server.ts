@@ -25,6 +25,8 @@ function failure(error: unknown): never {
     if (error.code === 'MISSING_SAVE') throw new Response('Start a game.', { status: 401, headers: { 'Cache-Control': 'no-store' } });
     if (['SAVE_BUSY', 'STALE_SAVE'].includes(error.code)) throw new Response('Game state changed. Reload and try again.', { status: 409, headers: { 'Cache-Control': 'no-store' } });
     if (error.code === 'SAVE_CAPACITY') throw new Response('Save storage is full. Try again later.', { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    // The engine changed since a quarter was played: this version can't replay the save, and won't rescore it.
+    if (error.code === 'REPLAY_MISMATCH') throw new Response("This game was saved by an earlier version, and can't be replayed. Start over from Settings.", { status: 409, headers: { 'Cache-Control': 'no-store' } });
   }
   throw new Response('The game could not be saved.', { status: 500, headers: { 'Cache-Control': 'no-store' } });
 }

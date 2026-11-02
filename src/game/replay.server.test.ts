@@ -85,3 +85,19 @@ describe("a played quarter's lines (endless.md section 9, how quarters are kept)
     expect(() => saves.update(id, saves.read(id).revision, badHash)).toThrow(expect.objectContaining({ code: 'INVALID_SAVE' }));
   });
 });
+
+describe('a save whose replay no longer matches', () => {
+  it("still opens the shell (date, alerts, standing order) and Settings, so Reset game can be reached (Plot, #198)", async () => {
+    const { getStationState } = await import('../shell/station-state');
+    const id = played();
+    const save = saves.read(id);
+    saves.update(id, save.revision, draft => { draft.played[0] = { ...draft.played[0]!, lines: { ...draft.played[0]!.lines!, hash: 'f'.repeat(64) } } as PlayedQuarter; });
+    forgetReplays();
+    const req = request(id, 'http://localhost/settings');
+    expect(getStationState(req)).toMatchObject({ date: '2194-07-01', standingOrder: { quarter: null } });
+    // Only what needs the lines refuses, and only when it reads them.
+    const session = getGameSession(req);
+    expect(session.save.id).toBe(id);
+    expect(() => session.queryView).toThrow(expect.objectContaining({ code: 'REPLAY_MISMATCH' }));
+  });
+});
