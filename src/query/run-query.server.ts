@@ -23,8 +23,8 @@ interface Fact { dimensions: Dimensions; value: number; orderId?: string; simula
  */
 interface Aggregate { sum: number; count: number; orders: Set<string>; cellOrders: number; overlap: number }
 /**
- * Results, least recently used out, bounded by count and by their JSON's size (each result is at most
- * QUERY_LIMITS.responseBytes). A five-year save's Investigate load is 11 scans of about 340 ms each (Frank's
+ * Results, least recently used out, bounded by count and by their JSON's size with their keys' (each result is at
+ * most QUERY_LIMITS.responseBytes; a key, with every playable quarter, about 4 KB; Audit, #247). A five-year save's Investigate load is 11 scans of about 340 ms each (Frank's
  * profile, 2 Nov 2026), so a repeat view is served from here.
  */
 const CACHE_LIMITS = { entries: 512, bytes: 16 * 2 ** 20 };
@@ -234,7 +234,7 @@ export function runQuery(input: unknown, view: QueryView, track: QueryTrack = tr
     if (!result) {
       result = execute(query, view);
       const body = serializeResult(result);
-      if (key) remember(key, result, body.length);
+      if (key) remember(key, result, body.length + key.length);
     }
     emit(track, 'query_completed', { measure: query.measure, dimensionCount: query.by.length, rowCount: result.rows.length, durationMs: performance.now() - started, cacheHit });
     return structuredClone(result);
