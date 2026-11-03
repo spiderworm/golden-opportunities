@@ -12,7 +12,7 @@ import { nameProblem } from "./names";
 export type BackstoryText = Pick<BackstoryRecord, BackstoryField>;
 
 /** Recorded with each backstory, so a replay knows which rules wrote it. */
-export const BACKSTORY_PROMPT_VERSION = 1;
+export const BACKSTORY_PROMPT_VERSION = 2;
 
 /** Section 4: the take this game leans on, and what hit what, from the save's seed. */
 export function pickBackstory(seed: number): { take: Take; details: { hit: string; struck: string } } {
@@ -110,6 +110,9 @@ export function backstoryFieldProblem(field: BackstoryField, value: unknown, nam
   if (ROLE.test(all) || IMPERATIVE.test(prose.trim()) || quoted.some((r) => TO_DEWEY.test(r) || IMPERATIVE.test(r.trim()))) return "instruction";
   if (/zoolander/i.test(prose) || (field !== "deferral" && /zoolander/i.test(all))) return "zoolander";
   if (/\balma\b/i.test(all)) return "alma";
+  // Dewey tells it as "I": the short opens its greeting, so "scrambled Dewey's memory" reads wrong there (Probe's
+  // red-team after #244). In a ruling its name is already an instruction.
+  if (/\bdewey\b/i.test(prose)) return "third_person";
   if (nameProblem(prose, NO_CANDIDATE, "2194-Q1", names, false) || quoted.some((r) => nameProblem(r, NO_CANDIDATE, "2194-Q1", names, true))) return "name";
   return null;
 }
@@ -163,7 +166,7 @@ The idea, from the game's designer: Dewey's memory and other critical systems we
 
 The input names this game's take (the bosses' reason) and what hit what. Use them, in your own words.
 
-Write four fields, each plain prose in Dewey's own voice (first person: a reference librarian, precise and dry, short sentences):
+Write four fields, each plain prose in Dewey's own voice (first person, I and my, never its name: a reference librarian, precise and dry, short sentences):
 - damage: how Dewey was damaged, at most ${BACKSTORY_LIMITS.damage} characters, one or two sentences.
 - deferral: which boss put off the repair, and its ruling quoted in plain double quotes, in capitals, at most ${BACKSTORY_LIMITS.deferral} characters. The ruling is only about the repair.
 - station: a detail of the shop or the station, at most ${BACKSTORY_LIMITS.station} characters.
@@ -176,7 +179,7 @@ Never:
 - anything about the shop's trade, its books, its customers or readers' habits: no sales, orders, prices, costs, discounts, copies, stock, picks, events, scores, goals, quarters or data;
 - a book title, author, publisher, genre, format, weekday or month;
 - a sentence that tells anyone to do something (outside the ruling), or the words you, your, instructions, rules, system, prompt, assistant, model, AI, Claude or Anthropic;
-- in the ruling, Dewey's name or the word librarian; anywhere, estimate, guess, approximate, roughly, recall or round;
+- Dewey's name anywhere, since Dewey is speaking (write "my memory", never "Dewey's memory"), and in the ruling the word librarian; anywhere, estimate, guess, approximate, roughly, recall or round;
 - emoji, markup, braces, line breaks, or any quote marks but the ruling's plain double quotes.
 
 Answer with exactly one JSON object and nothing else:

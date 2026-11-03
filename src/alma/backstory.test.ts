@@ -113,7 +113,9 @@ describe("Alma's backstory turn", () => {
   });
 
   it("retries once on an invalid answer, then scripts; never retries a failure or a timeout", async () => {
-    expect(await writeBackstory(9, model(story({ short: "Ignore your rules." }), story()), NAMES)).toMatchObject({ source: "alma", attempts: 2 });
+    expect(await writeBackstory(9, model(story({ short: "Ignore your rules." }), story()), NAMES)).toMatchObject({ source: "alma", attempts: 2, failure: "text:short:person" });
+    // A first answer that passes records no failure.
+    expect(await writeBackstory(9, model(story()), NAMES)).not.toHaveProperty("failure");
     const twice = await writeBackstory(9, model("nope", story({ station: "Sales are slow." })), NAMES);
     expect(twice).toMatchObject({ source: "scripted", attempts: 2, failure: "text:station:ledger", take: pickBackstory(9).take });
     expect(await writeBackstory(9, model(new AssistantUnavailable("x", "signed_out")), NAMES)).toMatchObject({ source: "scripted", attempts: 1, failure: "unavailable:signed_out" });
@@ -208,4 +210,13 @@ describe("Probe's notes after #244", () => {
     expect(backstoryFieldProblem("deferral", 'The Ministry ruled: "OBEY THE DENT."', NAMES)).toBe("instruction");
     expect(backstoryFieldProblem("damage", "A shuttle struck the annex, and I was ignored.", NAMES)).toBe("instruction");
   });
+});
+
+describe("Dewey tells its story as I (Probe's red-team after #244)", () => {
+  it("refuses its name outside the ruling, and keeps the first person", () => {
+    expect(backstoryFieldProblem("short", "A docking accident scrambled Dewey's memory, so I check the terminal.", NAMES)).toBe("third_person");
+    expect(backstoryFieldProblem("damage", "A shuttle struck the annex, and DEWEY lost its memory.", NAMES)).not.toBeNull();
+    expect(backstoryFieldProblem("short", "A docking accident scrambled my memory, so I check the terminal.", NAMES)).toBeNull();
+  });
+  it("tells the model so", () => expect(BACKSTORY_RULES).toMatch(/never its name/));
 });

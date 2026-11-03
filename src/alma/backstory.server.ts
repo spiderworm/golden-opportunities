@@ -56,7 +56,8 @@ export async function writeBackstory(seed: number, model: AlmaModel | null, name
     if (controller.signal.aborted) return scriptedBackstory(seed, { attempts: attempt, failure: "timeout" });
     const parsed = parseBackstory(raw);
     const problem = parsed.ok ? backstoryProblem(parsed.text as unknown as Record<string, unknown>, names) : parsed.failure;
-    if (parsed.ok && !problem) return { source: "alma", take, details, ...parsed.text, model: model.name, promptVersion: BACKSTORY_PROMPT_VERSION, attempts: attempt };
+    // A story written on the retry keeps why the first answer was rejected (Probe's red-team after #244).
+    if (parsed.ok && !problem) return { source: "alma", take, details, ...parsed.text, model: model.name, promptVersion: BACKSTORY_PROMPT_VERSION, attempts: attempt, ...(failure ? { failure } : {}) };
     failure = problem!;
   }
   return scriptedBackstory(seed, { attempts: 2, failure });
