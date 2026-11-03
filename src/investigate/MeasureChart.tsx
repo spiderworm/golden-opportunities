@@ -326,19 +326,14 @@ export function MeasureChart({
           >
             Table
           </button>
-          <button
-            type="button"
+          <ReasonToggle
             className={styles.toggle}
-            aria-pressed={scatter}
-            disabled={noScatter !== null}
-            title={
-              noScatter ??
-              `Plot one measure against the other, one point per ${DIMENSION_LABELS[state.by].toLowerCase()}`
-            }
-            onClick={() => onScatter(!scatter)}
+            pressed={scatter}
+            reason={noScatter}
+            onToggle={() => onScatter(!scatter)}
           >
             Scatter plot
-          </button>
+          </ReasonToggle>
           <button
             type="button"
             className={styles.toggle}
@@ -456,7 +451,8 @@ export function MeasureChart({
       <p className={styles.source}>
         {selected.length > 0
           ? `Filtered to ${selected.map((v) => formatDimensionValue(state.by, v)).join(", ")}. Click a highlighted bar again to clear it. `
-          : result.rows.length > 0
+          : // The table's rows aren't clickable the way bars are: only the chart says to (Plot).
+            result.rows.length > 0 && !table
             ? "Click to look closer. "
             : ""}
         Source: {result.source}

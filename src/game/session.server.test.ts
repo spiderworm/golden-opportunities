@@ -94,7 +94,7 @@ describe("cookie-selected game sessions", () => {
           async () => new Response(),
         ) as Promise<Response>;
       for (let i = 0; i < 30; i++)
-        expect((await visit()).headers.get("set-cookie")).toContain("orbital_save=");
+        expect((await visit()).headers.get("set-cookie")).toMatch(/orbital_save_[0-9a-f]{8}=/);
       await expect(visit()).rejects.toMatchObject({ status: 429 });
       vi.setSystemTime(Date.now() + 60_000);
       expect((await visit()).status).toBe(200);

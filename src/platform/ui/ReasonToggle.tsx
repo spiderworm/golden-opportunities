@@ -13,8 +13,11 @@ export function ReasonToggle({
   reason,
   onToggle,
   className,
+  label,
   children,
 }: {
+  /** Its accessible name, where its text alone is ambiguous ("Table: Revenue by month"). */
+  label?: string;
   pressed: boolean;
   /** Why it can't be used now, or null when it can. */
   reason: string | null;
@@ -29,6 +32,7 @@ export function ReasonToggle({
         type="button"
         className={className}
         aria-pressed={pressed}
+        aria-label={label}
         aria-disabled={reason !== null || undefined}
         aria-describedby={reason !== null ? id : undefined}
         onClick={() => reason === null && onToggle()}

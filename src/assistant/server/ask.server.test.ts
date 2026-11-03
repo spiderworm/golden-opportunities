@@ -8,6 +8,7 @@ import {
   LOOKUP_FAILED,
   readAsk,
   Refused,
+  RESTING,
   SESSION_ENDED,
   TIMED_OUT,
   toWire,
@@ -1187,5 +1188,65 @@ describe("the station's backstory (docs/design/backstory.md)", () => {
         .join("")
         .trim(),
     ).toBe(WITHHELD);
+  });
+});
+
+describe("the daily caps (David, 3 Nov 2026)", () => {
+  it("rests past a cap: Dewey says so in his voice, no model is asked, and the event says which cap", async () => {
+    const asked: string[] = [];
+    const provider: AssistantProvider = {
+      name: "counting",
+      async *ask() {
+        asked.push("asked");
+      },
+    };
+    const tracked: [string, unknown][] = [];
+    const res = await ask(
+      post({ question: "Revenue by quarter?" }),
+      () => provider,
+      (name, props) => tracked.push([name, props]),
+      Date.now,
+      undefined,
+      () => null,
+      () => "visitor",
+    );
+    expect(res.status).toBe(200);
+    expect(await events(res)).toEqual([
+      { type: "text", text: RESTING },
+      { type: "done", withheld: 0 },
+    ]);
+    expect(asked).toEqual([]);
+    expect(tracked).toContainEqual(["assistant_capped", { who: "dewey", cap: "visitor" }]);
+    // Within the caps, the question is answered as usual.
+    const answered = await events(
+      await ask(
+        post({ question: "Revenue?" }),
+        () => fakeAssistant(),
+        () => {},
+        Date.now,
+        undefined,
+        () => null,
+        () => null,
+      ),
+    );
+    expect(answered.at(-1)).toMatchObject({ type: "done" });
+    expect(answered.some((e) => e.type === "text" && e.text.includes("circuits"))).toBe(false);
+  });
+
+  it("counts only a question that passed every check", async () => {
+    const counted: string[] = [];
+    await ask(
+      post({ question: "" }),
+      () => fakeAssistant(),
+      () => {},
+      Date.now,
+      undefined,
+      () => null,
+      () => {
+        counted.push("q");
+        return null;
+      },
+    );
+    expect(counted).toEqual([]);
   });
 });
