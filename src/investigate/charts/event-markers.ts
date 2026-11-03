@@ -66,7 +66,8 @@ export interface Marker {
 
 /**
  * The markers for a chart's categories, one per category with any events, and how many events fell on no category
- * shown (added to the result's own hidden count for the caption).
+ * shown. Those aren't drawn or mentioned (Plot, #357): the server already leaves out events outside the query's
+ * filters, so only a row limit that cut a month can put one there.
  */
 export function markersFor(
   events: readonly ChartEvent[],
@@ -108,8 +109,8 @@ export function markerCounts(markers: readonly Marker[]): Record<EventKind, numb
 export const MAX_LABELLED = 12;
 
 /**
- * The caption's lines under a marked chart (Plot), one each, or none: none in scope; some events not drawn at all (past the result's
- * cap, or off the axis); or, past MAX_LABELLED markers, events drawn without their labels.
+ * The caption's lines under a marked chart (Plot), one each, or none: none in scope; some events past the result's
+ * cap, not drawn; or, past MAX_LABELLED markers, events drawn without their labels.
  */
 export function eventsCaption(markers: readonly Marker[], hidden: number): string[] {
   const notes: string[] = [];
