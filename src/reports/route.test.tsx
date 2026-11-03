@@ -237,6 +237,16 @@ describe("Reports", () => {
       ).data,
     ).toMatchObject({ ok: true, id });
     expect(saves.read(save.id).reports![0]!.title).toBe("Weekdays");
+    // A busy save keeps the draft: a refusal to try again, not the error screen (Orbit, #284).
+    const lock = path.join(directory, "saves", save.id + ".json.lock");
+    writeFileSync(lock, "");
+    try {
+      const busy = await post({ intent: "update", id, report: JSON.stringify(report) });
+      expect(busy.init.status).toBe(409);
+      expect(busy.data).toEqual({ ok: false, reason: "busy" });
+    } finally {
+      rmSync(lock);
+    }
     expect((await post({ intent: "delete", id })).data).toMatchObject({ ok: true });
     expect(saves.read(save.id).reports).toBeUndefined();
   });

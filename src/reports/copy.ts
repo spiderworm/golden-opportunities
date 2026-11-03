@@ -88,6 +88,10 @@ export const PLAYER_COPY = {
   noCharts: "Add at least one chart.",
   /** Chart's: anything else the save refused. */
   invalid: "This report couldn't be saved. Check the title, summary and notes, and try again.",
+  /** Chart's: the save was busy (409); the draft is kept. */
+  busy: "Your report didn't save. Please save it again.",
+  /** Chart's: after removal, Add to report has nothing to offer. */
+  closed: "Reports can still be read, but no longer changed.",
   leave: {
     question: "Leave without saving your changes to this report?",
     leave: "Leave",

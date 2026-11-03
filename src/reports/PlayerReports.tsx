@@ -22,9 +22,11 @@ import styles from "./Reports.module.css";
 // works and a pin's "Add to report" can link straight in.
 
 type Draft = { title: string; summary: string; items: { spec: PinSpec; note: string }[] };
-type Answer = { ok: true; id: string; intent: string } | { ok: false; reason: RefusalReason };
+type Answer =
+  { ok: true; id: string; intent: string } | { ok: false; reason: RefusalReason | "busy" };
 
-const REFUSED: Record<RefusalReason, string> = {
+const REFUSED: Record<RefusalReason | "busy", string> = {
+  busy: COPY.busy,
   no_title: COPY.noTitle,
   no_charts: COPY.noCharts,
   full: COPY.full,

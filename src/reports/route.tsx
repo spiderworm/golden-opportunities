@@ -79,10 +79,17 @@ function reportAction(request: Request, form: FormData) {
   const change = changeFrom(form);
   if (!change) return data({ ok: false as const, reason: "invalid" as const }, { status: 400 });
   let outcome: ReportOutcome = { ok: false, reason: "invalid" };
-  writeReports(request, (save) => {
-    outcome = applyReportChange(save, change, () => crypto.randomUUID());
-    return outcome.ok ? outcome.reports : null;
-  });
+  try {
+    writeReports(request, (save) => {
+      outcome = applyReportChange(save, change, () => crypto.randomUUID());
+      return outcome.ok ? outcome.reports : null;
+    });
+  } catch (error) {
+    // A busy or changed save (409): the editor keeps the draft and asks to save again, rather than the page going
+    // to its error screen and losing it (Orbit, #284). Anything else is a real refusal.
+    if (!(error instanceof Response) || error.status !== 409) throw error;
+    return data({ ok: false as const, reason: "busy" as const }, { status: 409 });
+  }
   const done = outcome as ReportOutcome;
   return done.ok
     ? { ok: true as const, id: done.id, intent: change.intent }
