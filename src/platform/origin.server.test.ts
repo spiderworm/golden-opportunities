@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // Each test imports the gates afresh, with the setting as given: a cold import of them all takes a few seconds.
 vi.setConfig({ testTimeout: 60_000 });
 
-const PUBLIC = "https://21pqa9rxuayp.tellimgames.com";
-const HOST = "21pqa9rxuayp.tellimgames.com";
+const PUBLIC = "https://play.example.com";
+const HOST = "play.example.com";
 
 /** The modules with ORBITAL_PUBLIC_ORIGIN as given, read at start-up as the server reads it. */
 async function withOrigin(value: string | undefined) {
