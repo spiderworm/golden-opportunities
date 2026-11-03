@@ -2,7 +2,7 @@
 // bookmarked and undone with Back.
 import { yearEarlier } from "../query/last-year.ts";
 import { yearMonth } from "../query/months.ts";
-import { isRelativeQuarter, resolveQuarters } from "../query/relative.ts";
+import { isRelativeQuarter, resolveQuarter, resolveQuarters } from "../query/relative.ts";
 import { MEASURE_DIMENSIONS, type Dimension, type Measure } from "../query/types.ts";
 
 export const CHART_MEASURES = [
@@ -609,13 +609,40 @@ export function setFilter(
 }
 
 /** Adds the value to the dimension's selection, or takes it out if it's already there. */
+/**
+ * Whether a filter's value picks this one: the same value, or for a quarter, a relative quarter that's it now
+ * (src/query/relative.ts), as the chart highlights it (Audit and Chart, #379).
+ */
+function picks(
+  dimension: FilterDimension,
+  filterValue: string,
+  value: string,
+  quarters: readonly string[],
+): boolean {
+  if (filterValue === value) return true;
+  return (
+    dimension === "quarter" &&
+    isRelativeQuarter(filterValue) &&
+    resolveQuarter(filterValue, quarters) === value
+  );
+}
+
+/**
+ * A bar clicked: its value added to the filter, or taken off if the filter already picks it. A relative quarter
+ * that's the clicked quarter now counts as it, so a highlighted bar can always be clicked clear. `quarters` are the
+ * ones the player can see, to resolve relative quarters by.
+ */
 export function toggleFilterValue(
   state: InvestigateState,
   dimension: FilterDimension,
   value: string,
+  quarters: readonly string[] = [],
 ): InvestigateState {
   const current = state.filters[dimension] ?? [];
-  const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+  const chosen = current.some((v) => picks(dimension, v, value, quarters));
+  const next = chosen
+    ? current.filter((v) => !picks(dimension, v, value, quarters))
+    : [...current, value];
   return setFilter(state, dimension, next);
 }
 
@@ -686,10 +713,16 @@ export function setSeries(state: InvestigateState, choice: SeriesChoice): Invest
 
 /** Drills into one heatmap cell, or back out if it's the only cell selected. */
 /** A heatmap cell filters the screen to its row's and column's values; clicking the one already chosen clears both. */
-export function toggleCell(state: InvestigateState, row: string, col: string): InvestigateState {
+export function toggleCell(
+  state: InvestigateState,
+  row: string,
+  col: string,
+  quarters: readonly string[] = [],
+): InvestigateState {
   const { rows, cols } = state.heat;
+  // The selected cell, a relative quarter counting as the quarter it is now, is cleared rather than swapped.
   const only = (d: FilterDimension, v: string) =>
-    state.filters[d]?.length === 1 && state.filters[d]![0] === v;
+    state.filters[d]?.length === 1 && picks(d, state.filters[d]![0]!, v, quarters);
   const selected = only(rows, row) && only(cols, col);
   return setFilter(setFilter(state, rows, selected ? [] : [row]), cols, selected ? [] : [col]);
 }

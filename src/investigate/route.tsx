@@ -294,7 +294,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             update({ ...state, split: on });
           }}
           onDrill={(value) => {
-            const next = toggleFilterValue(state, state.by, value);
+            const next = toggleFilterValue(state, state.by, value, options.quarter);
             track("investigate_drilldown", {
               source: "chart",
               dimension: state.by,
@@ -333,7 +333,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           result={heatmap}
           quarters={options.quarter}
           onCell={(row, col) => {
-            const next = toggleCell(state, row, col);
+            const next = toggleCell(state, row, col, options.quarter);
             track("investigate_drilldown", {
               source: "heatmap",
               dimension: `${state.heat.rows}_${state.heat.cols}`,

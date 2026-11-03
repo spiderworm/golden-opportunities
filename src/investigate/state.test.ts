@@ -623,3 +623,31 @@ describe("the state as the quarters its relative quarters are now", () => {
     expect(resolvedState(dated, quarters)).toBe(dated);
   });
 });
+
+describe("clicking a quarter a relative quarter picks (Audit and Chart, #379)", () => {
+  const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1"];
+  const latest = { ...DEFAULT_STATE, by: "quarter" as const, filters: { quarter: ["latest"] } };
+
+  it("clears a highlighted bar, and adds one it doesn't pick", () => {
+    expect(
+      toggleFilterValue(latest, "quarter", "2194-Q1", quarters).filters.quarter,
+    ).toBeUndefined();
+    expect(toggleFilterValue(latest, "quarter", "2193-Q4", quarters).filters.quarter).toEqual([
+      "latest",
+      "2193-Q4",
+    ]);
+  });
+
+  it("clears the selected heatmap cell rather than swapping in a dated quarter", () => {
+    const cell = {
+      ...DEFAULT_STATE,
+      heat: { ...DEFAULT_STATE.heat, rows: "genre" as const, cols: "quarter" as const },
+      filters: { genre: ["Fiction"], quarter: ["latest"] },
+    };
+    const cleared = toggleCell(cell, "Fiction", "2194-Q1", quarters);
+    expect(cleared.filters.genre).toBeUndefined();
+    expect(cleared.filters.quarter).toBeUndefined();
+    // Another cell is chosen by its dated quarter, as any click is.
+    expect(toggleCell(cell, "Fiction", "2193-Q4", quarters).filters.quarter).toEqual(["2193-Q4"]);
+  });
+});
