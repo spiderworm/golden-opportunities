@@ -21,6 +21,27 @@ const spec = {
 const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
 describe("pin specs", () => {
+  it("keeps a scatter plot: two measures across one grouping that isn't time", () => {
+    const scatter = {
+      title: "Units sold against revenue, by title",
+      kind: "scatter",
+      query: { measure: "revenue", by: ["title"], filter: { genre: ["Mystery"] } },
+      also: ["units"],
+    } as const;
+    expect(parsePinSpec(copy(scatter))).toEqual(scatter);
+    // One measure, three, a breakdown over time, two breakdowns, or none: not a scatter plot.
+    expect(parsePinSpec({ ...copy(scatter), also: undefined })).toBeNull();
+    expect(parsePinSpec({ ...copy(scatter), also: ["units", "orders"] })).toBeNull();
+    for (const by of [["month"], ["weekday"], ["title", "quarter"], []])
+      expect(
+        parsePinSpec({ ...copy(scatter), query: { measure: "revenue", by } }),
+        by.join(),
+      ).toBeNull();
+    // A scatter plot and the bars of the same query are two pins.
+    const pinned = parsePinSpec(copy(scatter))!;
+    expect(pinKey(pinned)).not.toBe(pinKey({ ...pinned, kind: "bar" } as PinSpec));
+  });
+
   it("keeps a heatmap: one measure down one grid dimension and across another", () => {
     const heat = {
       title: "Units sold by genre and price band",

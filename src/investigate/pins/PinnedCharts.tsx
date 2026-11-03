@@ -12,6 +12,7 @@ import {
   nothingToDraw,
 } from "../charts/category-chart";
 import { measuresModel, measuresOption, measuresTable } from "../charts/measures-chart";
+import { scatterOption } from "../charts/scatter-chart";
 import type { ChartMeasure, Filters, HeatDimension } from "../state";
 import { heatAxis, heatModel } from "../charts/heat-model";
 import { HeatGrid, HeatScale } from "../Heatmap";
@@ -379,6 +380,8 @@ function PinBody({
   } else if (many) {
     body = table ? (
       <ResultTable result={measuresTable(many, [result, ...also])} height={CHART_HEIGHT} />
+    ) : pin.kind === "scatter" ? (
+      <EChart option={scatterOption(many)} height={CHART_HEIGHT} label={pin.title} />
     ) : (
       <>
         <Legend
