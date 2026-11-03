@@ -15,6 +15,11 @@ export interface ChartEvent {
   precision: "day" | "month" | "quarter";
   kind: EventKind;
   label: string;
+  /**
+   * With a book or edition dimension in the breakdown beside time, the group the event belongs to, by that
+   * dimension (Audit, #353): the line it marks, e.g. `{ genre: "Mystery" }`.
+   */
+  group?: Partial<Record<Dimension, string>>;
 }
 
 /**

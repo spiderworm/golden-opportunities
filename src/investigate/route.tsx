@@ -259,6 +259,10 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             track("investigate_compare_toggled", { compare });
             update({ ...state, compare });
           }}
+          onEvents={(on) => {
+            track("investigate_events_toggled", { on });
+            update({ ...state, events: on });
+          }}
           onScatter={(on) => {
             track("investigate_scatter_toggled", { on });
             update({ ...state, scatter: on });

@@ -34,6 +34,7 @@ import {
 } from "../charts/last-year";
 import { withNoise } from "../charts/evidence";
 import { formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
+import { eventsCaption, markersFor, withMarkers } from "../charts/event-markers";
 import { monthsInScope } from "../state";
 import styles from "../Investigate.module.css";
 import { fetchQuery, QueryRequestError } from "./query-client";
@@ -417,6 +418,17 @@ function PinBody({
         : null,
     [model, ghost, table, pin.kind, quarters],
   );
+  // The result's events on a time axis, as the main chart marks them (src/query/events.ts).
+  const marked = useMemo(() => {
+    if (!model || !result.events || (model.x !== "month" && model.x !== "quarter")) return null;
+    const { markers, offAxis } = markersFor(result.events.list, model.x, model.categories);
+    return { markers, hidden: result.events.hidden + offAxis };
+  }, [model, result.events]);
+  const markedOption = useMemo(
+    () => (option && marked ? withMarkers(option, marked.markers) : option),
+    [option, marked],
+  );
+  const eventsNote = marked ? eventsCaption(marked.markers.length, marked.hidden) : null;
 
   // As shares, as the main chart showed them (req_fa2e6a0dbbec): of the result's own total.
   const shares = useMemo(
@@ -524,7 +536,12 @@ function PinBody({
           label={ghost ? "Quarters" : "Series"}
         />
         <EvidenceLegend model={model} />
-        <EChart option={option} height={categoryHeight(model, CHART_HEIGHT)} label={pin.title} />
+        <EChart
+          option={markedOption!}
+          height={categoryHeight(model, CHART_HEIGHT)}
+          label={pin.title}
+        />
+        {eventsNote && <p className={styles.tableNote}>{eventsNote}</p>}
       </>
     );
   }

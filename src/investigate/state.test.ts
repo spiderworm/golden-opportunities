@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MEASURE_DIMENSIONS, MEASURES } from "~/query/types";
 import {
+  eventsBlock,
   GROUPINGS,
   heatWindow,
   lastYearBlock,
@@ -49,6 +50,7 @@ describe("investigate state", () => {
       drove: false,
       split: false,
       share: null,
+      events: true,
       filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] },
       heat: { measure: "units", rows: "weekday", cols: "month", period: "recent" },
     } as const;
@@ -200,6 +202,17 @@ describe("investigate state", () => {
     expect(
       lastYearUnshown({ filters: { quarter: ["2194-Q1"] } }, { rows: [{}], lastYear: {} }),
     ).toBeNull();
+  });
+
+  it("marks events by default, keeps events=off in the URL, and says why off a time axis", () => {
+    expect(parseState(new URLSearchParams("")).events).toBe(true);
+    const off = parseState(new URLSearchParams("events=off"));
+    expect(off.events).toBe(false);
+    expect(toSearchParams(off).toString()).toBe("events=off");
+    expect(eventsBlock({ by: "month" })).toBeNull();
+    expect(eventsBlock({ by: "quarter" })).toBeNull();
+    for (const by of ["genre", "weekday", "title"] as const)
+      expect(eventsBlock({ by })).toBe("Break down by month or quarter to mark events");
   });
 
   it("falls back to defaults for anything it doesn't know", () => {

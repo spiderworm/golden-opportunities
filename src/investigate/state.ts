@@ -175,6 +175,8 @@ export interface InvestigateState {
    * null for the figures themselves. Applies only while shareBlock allows it.
    */
   share: ShareMode | null;
+  /** Mark the result's events on a time axis (src/query/events.ts): on unless the link says `events=off`. */
+  events: boolean;
   filters: Filters;
   /** The heatmap. Its measure follows the chart's first until the player picks one (`heat=`). */
   heat: HeatState;
@@ -190,6 +192,7 @@ export const DEFAULT_STATE: InvestigateState = {
   drove: false,
   split: false,
   share: null,
+  events: true,
   filters: {},
   heat: { measure: "revenue", rows: "weekday", cols: "month", period: "recent" },
 };
@@ -431,6 +434,15 @@ export const keepsDrove = (
 export const keepsLastYear = (state: Pick<InvestigateState, "by" | "also" | "compare">) =>
   state.also.length === 0 && !state.compare && state.by !== "quarter";
 
+/**
+ * Why the chart can't mark events, or null if it can (Plot's copy, section 7): only on a time axis. A scatter plot
+ * and the waterfall never break down by month or quarter, so this one reason covers them too.
+ */
+export const eventsBlock = (state: Pick<InvestigateState, "by">): string | null =>
+  state.by === "month" || state.by === "quarter"
+    ? null
+    : "Break down by month or quarter to mark events";
+
 /** The one quarter the quarter filter picks, or null. */
 export const shownQuarter = (state: Pick<InvestigateState, "filters">): string | null =>
   state.filters.quarter?.length === 1 ? state.filters.quarter[0]! : null;
@@ -485,6 +497,7 @@ export function parseState(params: URLSearchParams): InvestigateState {
       scatter: params.get("chart") === "scatter" && scatterProblem(by, measures.also) === null,
       share: SHARE_MODES.find((m) => m === params.get("share")) ?? null,
     }),
+    events: params.get("events") !== "off",
   };
 }
 
@@ -536,6 +549,7 @@ export function toSearchParams(state: InvestigateState): URLSearchParams {
     params.set("drove", "1");
     if (state.split) params.set("split", "1");
   }
+  if (!state.events) params.set("events", "off");
   // The heatmap's measure only once it differs from the chart's, so it keeps following the chart until then.
   if (state.heat.measure !== state.measure) params.set("heat", state.heat.measure);
   if (state.heat.rows !== DEFAULT_STATE.heat.rows) params.set("heat_rows", state.heat.rows);

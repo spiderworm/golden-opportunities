@@ -38,6 +38,7 @@ import {
   withLastYear,
 } from "./charts/last-year";
 import { lastYearNoise, withNoise } from "./charts/evidence";
+import { eventsCaption, markerCounts, markersFor, withMarkers } from "./charts/event-markers";
 import { seriesColor } from "~/platform/charts/chart-theme";
 import {
   measureColor,
@@ -66,6 +67,7 @@ import {
   scatterProblem,
   shownQuarter,
   droveBlock,
+  eventsBlock,
   droveGroups,
   droveOn,
   GROUP_PLURALS,
@@ -92,6 +94,8 @@ export interface MeasureChartProps {
   onCompare: (compare: boolean) => void;
   /** The scatter plot turned on or off (scatterProblem says when it can be on). */
   onScatter: (on: boolean) => void;
+  /** Events marked on the time axis, or not. */
+  onEvents?: (on: boolean) => void;
   /** "vs. same quarter last year" switched on or off. */
   onLastYear?: (on: boolean) => void;
   /** "What drove the change": the loader's two quarters' rows, null unless it's on and allowed. */
@@ -153,6 +157,7 @@ export function MeasureChart({
   onGroup,
   onCompare,
   onScatter,
+  onEvents,
   onLastYear,
   drove = null,
   onDrove,
@@ -324,6 +329,35 @@ export function MeasureChart({
   const offShares = (to: string) => (sharesOn ? `Turn off % of total to ${to}` : null);
   const group = GROUP_PLURALS[state.by].replace(/s$/, "");
   const baseTitle = `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}`;
+  // Events on a time axis (src/query/events.ts; Plot's copy, section 7): the result's own, wherever it's charted.
+  const eventsReason = eventsBlock(state);
+  const marking = state.events && !eventsReason && !scatter && !waterfallModel && !!result.events;
+  const marked = useMemo(() => {
+    if (!marking || !result.events) return null;
+    const { markers, offAxis } = markersFor(
+      result.events.list,
+      state.by,
+      many ? many.categories : model.categories,
+    );
+    return { markers, hidden: result.events.hidden + offAxis };
+  }, [marking, result.events, state.by, many, model]);
+  const markedOption = useMemo(
+    () => (marked ? withMarkers(option, marked.markers) : option),
+    [option, marked],
+  );
+  const markedManyOption = useMemo(
+    () => (marked && manyOption && !scatter ? withMarkers(manyOption, marked.markers) : manyOption),
+    [manyOption, marked, scatter],
+  );
+  const eventsNote = marked ? eventsCaption(marked.markers.length, marked.hidden) : null;
+  useEffect(() => {
+    if (marked && !table)
+      track("investigate_markers_shown", {
+        markers: marked.markers.length,
+        hidden: marked.hidden,
+        ...markerCounts(marked.markers),
+      });
+  }, [marked, table]);
   const title = waterfallModel
     ? `What drove revenue's change, ${droveWords.then} to ${droveWords.now}, by ${DIMENSION_LABELS[state.by].toLowerCase()}`
     : scatter
@@ -454,6 +488,14 @@ export function MeasureChart({
                 hint: `Plot one measure against the other, one point per ${DIMENSION_LABELS[state.by].toLowerCase()}`,
                 onToggle: () => onScatter(!scatter),
               },
+              {
+                key: "events",
+                label: "Events",
+                on: state.events && eventsReason === null,
+                reason: eventsReason,
+                hint: "Mark releases, Book of the Month picks, your moves and station events on the timeline",
+                onToggle: () => onEvents?.(!state.events),
+              },
             ]}
           />
           <button
@@ -539,7 +581,7 @@ export function MeasureChart({
               })}
             </ul>
             <EChart
-              option={manyOption}
+              option={markedManyOption ?? manyOption}
               height={categoryHeight({
                 ...model,
                 categories: many.categories,
@@ -588,7 +630,7 @@ export function MeasureChart({
           />
           <EvidenceLegend model={model} />
           <EChart
-            option={option}
+            option={markedOption}
             height={categoryHeight(model)}
             label={`${title}. Click to look closer.`}
             onCategoryClick={drillAt}
@@ -604,6 +646,7 @@ export function MeasureChart({
             : `Show all ${model.ranked} ${state.by === "edition" ? "editions" : "titles"}`}
         </button>
       )}
+      {!table && eventsNote && <p className={styles.tableNote}>{eventsNote}</p>}
       <p className={styles.source}>
         {selected.length > 0
           ? `Filtered to ${selected.map((v) => formatDimensionValue(state.by, v)).join(", ")}. Click a highlighted bar again to clear it. `
