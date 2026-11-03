@@ -30,7 +30,11 @@ test("a tab overtaken by another tab's plan stops serving the old quarter's view
   // Tab A: revenue by quarter, as a table; then Fiction and back, so the first view comes from the cache.
   // Genre on the bar from the start: the bar shows only the filters the player added (#209).
   await page.goto("/investigate?analytics-test=1&by=quarter&show=genre");
-  await page.getByRole("button", { name: "Table", exact: true }).click();
+  // The main chart's Table: the heatmap has one too since #293, so it's found in its own card.
+  await page
+    .locator('section[aria-labelledby="measure-chart-title"]')
+    .getByRole("button", { name: "Table", exact: true })
+    .click();
   await expect(table).toContainText("Q4 2193");
   await expect(table).not.toContainText("Q1 2194");
   await genre.click();
