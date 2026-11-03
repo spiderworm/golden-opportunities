@@ -28,14 +28,15 @@ describe("the phone screen", () => {
     expect(sizeBucket(600, 960)).toBe("480-600");
   });
 
-  it("serves the boss's words, the plain fact and the scene's name before any script runs", () => {
+  it("serves the plain fact before any script runs, and no stand-in for the scene it hasn't chosen yet", () => {
     const html = renderToString(<PhoneScreen active={false} />);
-    // The still picture is what's there until a 3D scene draws, so it's the still picture's name.
-    expect(html).toContain(`role="img" aria-label="${PHONE_COPY.still}"`);
-    expect(html).toContain(PHONE_COPY.line);
     expect(html).toContain(`>${PHONE_COPY.fact}</p>`);
-    // Without the scene, the Subcommittee stands there in full, saying it already.
-    expect(html).toContain('<img src="/bosses/full/readers.webp" alt="" loading="lazy"');
-    expect(html).toMatch(/data-speaking="true"/);
+    // The boss's line is there to speak, but not yet spoken.
+    expect(html).toContain(PHONE_COPY.line);
+    expect(html).not.toMatch(/data-speaking="true"/);
+    // Nothing stands in for the scene (David, 3 Nov, AGENTS.md "Commit before you show"): no still boss, and no
+    // picture named, until the page has committed to the still boss or the 3D scene.
+    expect(html).not.toContain("/bosses/full/readers.webp");
+    expect(html).not.toContain('role="img"');
   });
 });

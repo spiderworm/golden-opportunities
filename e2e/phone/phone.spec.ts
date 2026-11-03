@@ -84,9 +84,11 @@ for (const [name, viewport] of [
         Boolean(document.createElement("canvas").getContext("webgl2")),
       );
       test.skip(!webgl, "no WebGL 2 here: the still picture has no head to place");
-      // Once the hands have the phone, the boss speaks; from then on the head stays clear of the words.
+      // Once the hands have the phone, the boss speaks: as the words appear, they're clear of its head. Measured as
+      // they appear, not later: the head shrinks as the robot turns away to look the phone over (on main as well, by
+      // ~4 s), and since the scene commits before it shows (AGENTS.md), the words appear at the grab, ~3 s in, not
+      // with the page.
       await expect(page.locator("[data-speaking]")).toHaveCount(1, { timeout: 20_000 });
-      await page.waitForTimeout(1_500);
       const head = (await page.locator("[data-head]").getAttribute("data-head"))!
         .split(",")
         .map(Number);
