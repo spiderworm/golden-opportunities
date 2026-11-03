@@ -333,6 +333,56 @@ describe("how much evidence is behind a bar (Plot, #296 and #297)", () => {
     expect(series(categoryOption(units, { quarters: QUARTERS, drill: false }))).toHaveLength(1);
   });
 
+  it("fades a line's points over too few, as it does bars (Chart, #311)", () => {
+    const line = series(
+      categoryOption(model, { kind: "line", quarters: QUARTERS, drill: false }),
+    )[0]!;
+    expect(line.data).toEqual([
+      4.1,
+      { value: 4.6, itemStyle: { opacity: 0.45 } },
+      { value: 5, itemStyle: { opacity: 0.45 } },
+    ]);
+  });
+
+  it("draws ranked horizontal bars' whiskers across, with upright caps (Chart, #311)", () => {
+    const byTitle: QueryResult = {
+      ...ratings,
+      columns: [
+        { key: "title", label: "Title", type: "string", nullable: true },
+        ratings.columns[1]!,
+      ],
+      rows: ratings.rows.map((r, i) => ({ title: `Book ${i}`, avg_rating: r.avg_rating })),
+    };
+    const ranked = categoryModel(byTitle, "title");
+    expect(ranked.horizontal).toBe(true);
+    const whiskers = series(
+      categoryOption(ranked, { quarters: QUARTERS, drill: false }),
+    )[1] as unknown as {
+      encode: unknown;
+      data: number[][];
+      renderItem: (
+        _: unknown,
+        api: { value: (d: number) => number; coord: (p: number[]) => number[] },
+      ) => { children: { shape: { x1: number; y1: number; x2: number; y2: number } }[] } | null;
+    };
+    expect(whiskers.encode).toEqual({ x: [1, 2], y: 0 });
+    // Ranked largest first: Book 2 (5.0, one rating, no range), Book 1 (4.6), Book 0 (4.1).
+    const at = ranked.categories.indexOf("Book 0");
+    const row = whiskers.data[at]!;
+    const drawn = whiskers.renderItem(null, {
+      value: (d) => row[d]!,
+      coord: ([value, category]) => [value! * 100, category! * 10],
+    })!;
+    const [bar, low, high] = drawn.children.map((c) => c.shape);
+    // Across: the whisker runs along the value axis at the category's height.
+    expect(bar).toMatchObject({ x1: row[1]! * 100, x2: row[2]! * 100, y1: at * 10, y2: at * 10 });
+    // Its caps stand upright at each end.
+    expect(low!.x1).toBe(low!.x2);
+    expect(high!.y2 - high!.y1).toBe(8);
+    const none = whiskers.data[ranked.categories.indexOf("Book 2")]!;
+    expect(whiskers.renderItem(null, { value: (d) => none[d]!, coord: (p) => p })).toBeNull();
+  });
+
   it("says when comparing quarters finds a difference within noise", () => {
     const compared: QueryResult = {
       ...result(

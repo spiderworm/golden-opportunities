@@ -2,6 +2,7 @@ import { type RouteConfig, layout } from "@react-router/dev/routes";
 
 import assistantRoutes from "./assistant/routes";
 import decideRoutes from "./decide/routes";
+import entryRoutes from "./entry/routes";
 import investigateRoutes from "./investigate/routes";
 import analyticsRoutes from "./platform/analytics/routes";
 import { queryRoutes } from "./query/routes";
@@ -26,4 +27,5 @@ export default [
   ...assistantRoutes,
   ...analyticsRoutes,
   ...shellRoutes,
+  ...entryRoutes,
 ] satisfies RouteConfig;

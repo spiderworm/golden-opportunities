@@ -5,7 +5,10 @@ const directory = await vi.hoisted(async () => {
   const { tmpdir } = await import("node:os");
   return mkdtempSync(tmpdir() + "/data-version-");
 });
-vi.mock("../platform/analytics/instance.server", () => ({ DATA_DIR: directory }));
+vi.mock("../platform/analytics/instance.server", () => ({
+  DATA_DIR: directory,
+  instanceId: () => "0123abcd-0000-4000-8000-000000000000",
+}));
 vi.mock("../platform/analytics/analytics.server", () => ({ trackServer: vi.fn() }));
 import {
   markAlertSeen,
@@ -32,7 +35,7 @@ const request = (id: string, url = "http://localhost/decide") =>
     headers: { origin: "http://localhost", cookie: "orbital_save=" + id },
   });
 const version = (id: string) => getStationState(request(id)).dataVersion;
-const idOf = (setCookie: string) => /orbital_save=([^;]+)/.exec(setCookie)![1]!;
+const idOf = (setCookie: string) => /orbital_save_[0-9a-f]{8}=([^;]+)/.exec(setCookie)![1]!;
 
 describe("a save's data version", () => {
   it("is short and opaque: a hash, never the save ID", () => {
