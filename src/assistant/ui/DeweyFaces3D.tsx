@@ -127,6 +127,8 @@ function Faces({ slots, talking, activity, onDrawn, onFailed }: DeweyFacesProps)
     camera.lookAt(...CAMERA.look);
     return { scene, camera, dewey, face: faceParts(dewey, body) };
   }, [loaded]);
+  // What faceParts made lives in this hand-built scene, outside R3F's tree, so it's freed here (Audit, #308).
+  useEffect(() => () => view?.face.dispose(), [view]);
   const { gl } = useThree();
   /** Each face's state, by turn: how far into talking and thinking (0 to 1), and the lightbulb's flare. */
   const moods = useRef(new Map<number, Mood>());
@@ -384,6 +386,15 @@ function faceParts(dewey: Group, body: Object3D) {
   dewey.add(lamp, bulb);
 
   return {
+    /** Frees the geometry, materials and textures made here. */
+    dispose() {
+      disc.dispose();
+      for (const part of [glass, dots, lamp, bulb]) {
+        const material = part.material as MeshBasicMaterial | SpriteMaterial;
+        material.map?.dispose();
+        material.dispose();
+      }
+    },
     /** Sets the parts for one face before it's drawn. */
     show(t: number, turn: number, mood: Mood, streaming: boolean) {
       const frame = screenFrame(t, turn, mood, streaming);

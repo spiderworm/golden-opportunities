@@ -39,14 +39,25 @@ export function DeweyColumn({
   className,
   children,
   track = platformTrack,
+  start,
 }: {
   className?: string;
   children: ReactNode;
   track?: typeof platformTrack;
+  /** Where it starts, before this browser's kept settings are read (for tests). */
+  start?: Saved;
 }) {
-  const [column, setColumn] = useState<Saved>({ width: COLUMN.width, folded: false });
-  // Read once in the browser: the server draws the defaults.
-  useEffect(() => setColumn(readColumn(localStorage.getItem(KEY))), []);
+  const [column, setColumn] = useState<Saved>(start ?? { width: COLUMN.width, folded: false });
+  // Read once in the browser: the server draws the defaults. Storage can refuse even a read (blocked cookies).
+  useEffect(() => {
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem(KEY);
+    } catch {
+      /* The defaults, then. */
+    }
+    setColumn(readColumn(raw));
+  }, []);
   const keep = (next: Saved) => {
     setColumn(next);
     try {
@@ -63,8 +74,17 @@ export function DeweyColumn({
   // Dragging the left edge: wider to the left, measured from where the drag began.
   const drag = useRef<{ x: number; width: number; now: number } | null>(null);
   const [dragging, setDragging] = useState(false);
-  const resized = (width: number, via: "drag" | "keys") =>
+  const resized = (width: number, via: "drag" | "keys" | "reset") =>
     track("assistant_column_resized", { width, via });
+  const release = () => {
+    if (!drag.current) return;
+    // The width it was dragged to, which a quick release can reach before the column has redrawn.
+    const width = drag.current.now;
+    drag.current = null;
+    setDragging(false);
+    keep({ ...column, width });
+    resized(width, "drag");
+  };
 
   const onKey = (e: KeyboardEvent) => {
     const by = e.key === "ArrowLeft" ? COLUMN.step : e.key === "ArrowRight" ? -COLUMN.step : null;
@@ -76,9 +96,54 @@ export function DeweyColumn({
     resized(width, "keys");
   };
 
-  if (column.folded)
-    return (
-      <aside className={className} aria-label={NAME} data-folded="">
+  const { folded } = column;
+  // One shape, folded or not: the controls change round it, but the panel keeps its place in the tree, so folding
+  // never remounts it (Audit, #308: a remount aborted the answer in flight).
+  return (
+    <aside
+      className={className}
+      aria-label={NAME}
+      data-folded={folded ? "" : undefined}
+      style={folded ? undefined : { ["--dewey-width" as string]: `${column.width}px` }}
+      data-dragging={dragging || undefined}
+    >
+      {!folded && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={`Resize ${NAME}`}
+          aria-valuemin={COLUMN.min}
+          aria-valuemax={COLUMN.max}
+          aria-valuenow={column.width}
+          tabIndex={0}
+          data-dewey-resize=""
+          style={styles.handle}
+          onKeyDown={onKey}
+          onDoubleClick={() => {
+            keep({ ...column, width: COLUMN.width });
+            resized(COLUMN.width, "reset");
+          }}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.currentTarget.setPointerCapture(e.pointerId);
+            drag.current = { x: e.clientX, width: column.width, now: column.width };
+            setDragging(true);
+          }}
+          onPointerMove={(e) => {
+            if (!drag.current) return;
+            const width = clampWidth(
+              drag.current.width + drag.current.x - e.clientX,
+              window.innerWidth,
+            );
+            drag.current.now = width;
+            setColumn((c) => ({ ...c, width }));
+          }}
+          onPointerUp={release}
+          // A drag the browser cancels (a gesture, a lost window) ends where it got to (Chart, #308).
+          onLostPointerCapture={release}
+        />
+      )}
+      {folded ? (
         <button
           type="button"
           data-dewey-unfold=""
@@ -91,69 +156,22 @@ export function DeweyColumn({
           <img src={PORTRAIT} alt="" width={40} height={40} style={styles.unfoldFace} />
           <span data-dewey-name="">{NAME}</span>
         </button>
-        {/* Kept mounted, out of sight: an answer still streaming carries on. */}
-        <div hidden>{children}</div>
-      </aside>
-    );
-
-  return (
-    <aside
-      className={className}
-      aria-label={NAME}
-      style={{ ["--dewey-width" as string]: `${column.width}px` }}
-      data-dragging={dragging || undefined}
-    >
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label={`Resize ${NAME}`}
-        aria-valuemin={COLUMN.min}
-        aria-valuemax={COLUMN.max}
-        aria-valuenow={column.width}
-        tabIndex={0}
-        data-dewey-resize=""
-        style={styles.handle}
-        onKeyDown={onKey}
-        onDoubleClick={() => {
-          keep({ ...column, width: COLUMN.width });
-          resized(COLUMN.width, "drag");
-        }}
-        onPointerDown={(e) => {
-          e.preventDefault();
-          e.currentTarget.setPointerCapture(e.pointerId);
-          drag.current = { x: e.clientX, width: column.width, now: column.width };
-          setDragging(true);
-        }}
-        onPointerMove={(e) => {
-          if (!drag.current) return;
-          const width = clampWidth(
-            drag.current.width + drag.current.x - e.clientX,
-            window.innerWidth,
-          );
-          drag.current.now = width;
-          setColumn((c) => ({ ...c, width }));
-        }}
-        onPointerUp={() => {
-          if (!drag.current) return;
-          // The width it was dragged to, which a quick release can reach before the column has redrawn.
-          const width = drag.current.now;
-          drag.current = null;
-          setDragging(false);
-          keep({ ...column, width });
-          resized(width, "drag");
-        }}
-      />
-      <button
-        type="button"
-        style={styles.fold}
-        aria-expanded={true}
-        aria-label={`Fold ${NAME} away`}
-        title={`Fold ${NAME} away`}
-        onClick={() => fold(true)}
-      >
-        {"»"}
-      </button>
-      {children}
+      ) : (
+        <button
+          type="button"
+          style={styles.fold}
+          aria-expanded={true}
+          aria-label={`Fold ${NAME} away`}
+          title={`Fold ${NAME} away`}
+          onClick={() => fold(true)}
+        >
+          {"\u00bb"}
+        </button>
+      )}
+      {/* Kept mounted while folded, out of sight: an answer still streaming carries on. */}
+      <div hidden={folded} data-dewey-panel="">
+        {children}
+      </div>
     </aside>
   );
 }
