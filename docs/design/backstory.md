@@ -14,7 +14,7 @@ Goldy drafted four takes (section 4), and David chose this (request req_163596cb
 
 ## 2. What Alma writes
 
-One JSON object, with no extra keys. Each field is plain prose in Dewey's own voice (first person), except the bosses' ruling, which is in capitals:
+One JSON object, with no extra keys. Each field is plain prose in Dewey's own voice (first person: "my memory", never "Dewey's memory", since the short opens Dewey's greeting), except the bosses' ruling, which is in capitals:
 
 | Field | What it holds | Cap |
 | --- | --- | --- |
@@ -134,7 +134,7 @@ This is the first time Alma's text reaches Dewey's prompt, so Alma's output is t
 ## 9. Privacy and analytics
 
 - **Privacy page:** add to the Alma paragraph: "At the start of each game, Alma also writes a short backstory for the station through Claude Code, under the signed-in account. It sends no game data and nothing you typed." Sage makes the edit in the build PR.
-- **Analytics:** one server event, `backstory_written`, with `source` (alma or scripted), `take`, `attempts`, `failure` (a code from the fixed list) and `durationMs`. The event never includes the text, as with every other event.
+- **Analytics:** one server event, `backstory_written`, with `source` (alma or scripted), `take`, `attempts`, `failure` (a code from the fixed list: why the model's answer wasn't used, or on a story Alma wrote on the retry, why the first answer was rejected) and `durationMs`. The event never includes the text, as with every other event.
 
 ## 10. David's decisions
 

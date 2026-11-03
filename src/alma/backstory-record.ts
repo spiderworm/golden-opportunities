@@ -15,7 +15,7 @@ export const HITS = ["a cargo shuttle", "an ore tug", "a passenger shuttle", "a 
 export const STRUCK = ["the library annex", "the docking ring", "the library module", "the reading-room airlock"] as const;
 
 /** Why a field fails: a fixed list, so no model text ever reaches a failure code or a sent event. */
-export const BACKSTORY_PROBLEMS = ["not_text", "empty", "too_long", "control", "emoji", "address", "markup", "quote", "voice", "number_or_direction", "ledger", "name", "person", "instruction", "zoolander", "alma"] as const;
+export const BACKSTORY_PROBLEMS = ["not_text", "empty", "too_long", "control", "emoji", "address", "markup", "quote", "voice", "number_or_direction", "ledger", "name", "person", "instruction", "zoolander", "alma", "third_person"] as const;
 export type BackstoryProblem = (typeof BACKSTORY_PROBLEMS)[number];
 
 /** Every failure code a backstory can record. Append only: a saved record keeps its code. */
@@ -40,7 +40,10 @@ export interface BackstoryRecord {
   promptVersion: number;
   /** Model calls made: 0 when the model wasn't asked. */
   attempts: number;
-  /** Why the model's answer wasn't used, when it wasn't: one of BACKSTORY_FAILURES. */
+  /**
+   * Why the model's answer wasn't used, when it wasn't: one of BACKSTORY_FAILURES. On Alma's story written on the
+   * retry (attempts 2), why the first answer was rejected (Probe's red-team after #244).
+   */
   failure?: string;
 }
 
