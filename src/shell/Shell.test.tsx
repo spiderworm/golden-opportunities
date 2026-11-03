@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { Shell } from "./Shell";
 
-function renderAt(path: string) {
+function renderAt(path: string, counts?: { reports?: number }) {
   const notifications = [
     {
       id: "q4-revenue-down",
@@ -18,7 +18,12 @@ function renderAt(path: string) {
     {
       path: "/",
       Component: () => (
-        <Shell stationDate="2194-01-04" notifications={notifications} track={() => {}}>
+        <Shell
+          stationDate="2194-01-04"
+          notifications={notifications}
+          track={() => {}}
+          counts={counts}
+        >
           <p>page</p>
         </Shell>
       ),
@@ -40,12 +45,14 @@ describe("Shell", () => {
     expect(html).toContain('aria-label="Notifications, 1 unread"');
   });
 
-  it("marks features still to come instead of linking them", () => {
+  it("links every feature, Reports with its count of new reports, gone at zero", () => {
     const html = renderAt("/");
-    expect(html).toContain('href="/investigate"');
-    expect(html).toContain('href="/decide"');
-    expect(html).toContain('href="/settings"');
-    expect(html).not.toContain('href="/reports"');
-    expect(html.match(/Soon/g)).toHaveLength(1);
+    for (const to of ["/investigate", "/decide", "/reports", "/settings"])
+      expect(html).toContain(`href="${to}"`);
+    expect(html).not.toContain("Soon");
+    expect(html).not.toContain("Reports, ");
+    const counted = renderAt("/", { reports: 2 });
+    expect(counted).toContain('aria-label="Reports, 2 new"');
+    expect(counted).toMatch(/>2<\/span><\/a>/);
   });
 });

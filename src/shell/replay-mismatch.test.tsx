@@ -12,6 +12,7 @@ const station: StationState = {
   alerts: [],
   standingOrder: { quarter: null, seen: true, submitted: true },
   q1: null,
+  newReports: 0,
 };
 /** A route error as React Router hands it to a boundary, for a thrown `data(...)`. Seeded data keys errors by
  * the route whose boundary shows them: the shell's, which catches its pages' errors. */

@@ -31,3 +31,11 @@ export function alertsSeenOf(save: GameSave): QuarterId[] {
   if (save.alertSeen) seen.add("2194-Q1");
   return [...seen].filter(isQuarterId).sort(compareQuarters);
 }
+/** The played quarters whose shop report the player hasn't opened yet, newest first (reports.md section 2). */
+export function newReportsOf(save: GameSave): QuarterId[] {
+  const seen = new Set<QuarterId>(save.reportsSeen ?? []);
+  return save.played
+    .map((q) => q.period)
+    .filter((q) => !seen.has(q))
+    .reverse();
+}

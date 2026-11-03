@@ -1,4 +1,4 @@
-import { alertsSeenOf, currentQuarter } from "~/game/progress";
+import { alertsSeenOf, currentQuarter, newReportsOf } from "~/game/progress";
 import { quarterIndex, type QuarterId } from "~/game/quarters";
 import { getGameSession } from "~/game/session.server";
 import { dataVersion } from "~/query/data-version.server";
@@ -30,6 +30,8 @@ export interface StationState {
    * restart, and nowhere else. Browser caches of query results key on it (src/query/data-version.server.ts).
    */
   dataVersion: string;
+  /** How many shop reports the player hasn't opened yet: the Reports nav item's badge (reports.md section 1). */
+  newReports: number;
 }
 
 export function getStationState(request: Request): StationState {
@@ -84,5 +86,6 @@ export function getStationState(request: Request): StationState {
     },
     q1: q1 ? { score: q1.score, grade: q1.grade, binding: [...q1.binding] } : null,
     dataVersion: dataVersion(save),
+    newReports: newReportsOf(save).length,
   };
 }

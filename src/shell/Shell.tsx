@@ -3,7 +3,7 @@ import { NavLink, useLocation, useMatches, useNavigate } from "react-router";
 
 import { Icon } from "./icons";
 import { MusicDock } from "./MusicDock";
-import { navItems } from "./nav";
+import { navItems, type NavCounts } from "./nav";
 import { NotificationsBell, type StationNotification } from "./NotificationsBell";
 import { formatStationDate } from "./station-date";
 import { ALERT_COPY, q2AlertCopy, type AlertCopy, type FirstQuarter } from "./alert-copy";
@@ -41,6 +41,8 @@ export interface ShellProps {
   /** Records that the transmission was seen, opened or put off, so it doesn't play again; settles once the shell has reloaded. */
   onAlertSeen?: () => Promise<void>;
   track: Track;
+  /** The nav items' badges: Reports counts its new shop reports. */
+  counts?: NavCounts;
   children: ReactNode;
 }
 
@@ -51,6 +53,7 @@ export function Shell({
   q1,
   onAlertSeen,
   track,
+  counts = {},
   children,
 }: ShellProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -147,34 +150,44 @@ export function Shell({
             </div>
             <div className={styles.menuHeading}>Main menu</div>
             <ul className={styles.menuList}>
-              {navItems.map((item) => (
-                <li key={item.label}>
-                  {item.to ? (
-                    <NavLink
-                      to={item.to}
-                      end
-                      className={({ isActive }) =>
-                        isActive ? `${styles.menuItem} ${styles.active}` : styles.menuItem
-                      }
-                      title={collapsed ? item.label : undefined}
-                      onClick={() => track("nav_selected", { item: item.label })}
-                    >
-                      <Icon name={item.icon} />
-                      <span className={styles.menuLabel}>{item.label}</span>
-                    </NavLink>
-                  ) : (
-                    <span
-                      className={`${styles.menuItem} ${styles.soon}`}
-                      aria-disabled="true"
-                      title={collapsed ? `${item.label} (coming soon)` : undefined}
-                    >
-                      <Icon name={item.icon} />
-                      <span className={styles.menuLabel}>{item.label}</span>
-                      <span className={styles.soonBadge}>Soon</span>
-                    </span>
-                  )}
-                </li>
-              ))}
+              {navItems.map((item) => {
+                const count = (item.count && counts[item.count]) || 0;
+                const label = count ? `${item.label}, ${count} new` : item.label;
+                return (
+                  <li key={item.label}>
+                    {item.to ? (
+                      <NavLink
+                        to={item.to}
+                        end
+                        className={({ isActive }) =>
+                          isActive ? `${styles.menuItem} ${styles.active}` : styles.menuItem
+                        }
+                        aria-label={count ? label : undefined}
+                        title={collapsed ? label : undefined}
+                        onClick={() => track("nav_selected", { item: item.label })}
+                      >
+                        <Icon name={item.icon} />
+                        <span className={styles.menuLabel}>{item.label}</span>
+                        {count > 0 && (
+                          <span className={styles.countBadge} aria-hidden="true">
+                            {count}
+                          </span>
+                        )}
+                      </NavLink>
+                    ) : (
+                      <span
+                        className={`${styles.menuItem} ${styles.soon}`}
+                        aria-disabled="true"
+                        title={collapsed ? `${item.label} (coming soon)` : undefined}
+                      >
+                        <Icon name={item.icon} />
+                        <span className={styles.menuLabel}>{item.label}</span>
+                        <span className={styles.soonBadge}>Soon</span>
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </nav>
           {/* Beside the menu's landmark, not in it (Chart): the music isn't navigation. */}

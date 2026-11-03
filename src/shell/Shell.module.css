@@ -150,6 +150,19 @@ a.menuItem:hover {
   font-weight: 500;
 }
 
+/* A count, as the reference's Reports item has (reports.md section 1): gone at zero. */
+.countBadge {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--color-accent);
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* Collapsed: the menu keeps only its icons. */
 .shell[data-collapsed] .menu {
   width: 72px;
@@ -160,6 +173,20 @@ a.menuItem:hover {
 .shell[data-collapsed] .menuLabel,
 .shell[data-collapsed] .soonBadge {
   visibility: hidden;
+}
+
+/* Collapsed, the count sits on its icon's corner. */
+.shell[data-collapsed] .menuItem {
+  position: relative;
+}
+
+.shell[data-collapsed] .countBadge {
+  position: absolute;
+  top: 4px;
+  left: 28px;
+  min-width: 16px;
+  padding: 1px 4px;
+  font-size: 10px;
 }
 
 .main {
