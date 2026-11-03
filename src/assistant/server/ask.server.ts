@@ -6,7 +6,7 @@ import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
 import { chartTitle, lookupPin, type ChartSpec } from "../tools/definitions.ts";
 import { acquire, arrive, ndjson } from "./assistant.server.ts";
-import { markOffline, OFFLINE, type OfflineReason } from "./availability.server.ts";
+import { markOffline, offlineCopy, type OfflineReason } from "./availability.server.ts";
 import { Refs, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
 import type { BackstoryText } from "../../alma/backstory.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
@@ -442,7 +442,7 @@ export function ask(
         message:
           e instanceof AssistantUnavailable
             ? OFFLINE_KINDS.has(e.kind)
-              ? OFFLINE
+              ? offlineCopy().message
               : e.kind === "timeout"
                 ? TIMED_OUT
                 : UNAVAILABLE

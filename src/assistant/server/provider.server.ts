@@ -25,10 +25,13 @@ export interface AssistantProvider {
 }
 
 /**
- * Why the assistant couldn't answer. "missing", "signed_out" and "broken" mean Claude Code isn't usable on this
- * machine at all (see availability.server.ts); "timeout" and "other" are this answer's.
+ * Why the assistant couldn't answer. "missing", "signed_out" and "broken" mean the engine isn't usable on this
+ * machine at all (see availability.server.ts): for Claude Code, not installed, signed out or failing to start;
+ * for the API, no key or a refused one. "timeout", "rate_limited" (the API's 429), "overloaded" (its 529) and
+ * "other" are this answer's.
  */
-export type UnavailableKind = "timeout" | "missing" | "signed_out" | "broken" | "other";
+export type UnavailableKind =
+  "timeout" | "missing" | "signed_out" | "broken" | "rate_limited" | "overloaded" | "other";
 
 /** Its message is shown to the player, so it never carries an email address (stderr and results can). */
 export class AssistantUnavailable extends Error {

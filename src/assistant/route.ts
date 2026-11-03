@@ -8,7 +8,8 @@ import { catalogNames } from "~/alma/backstory.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import { getAssistant } from "./server/assistant.server.ts";
 import { ask, type ServerTrack } from "./server/ask.server.ts";
-import { assistantAvailability, OFFLINE, OFFLINE_HINT } from "./server/availability.server.ts";
+import { assistantAvailability, offlineCopy } from "./server/availability.server.ts";
+import { anthropicAssistant } from "./server/anthropicApi.server.ts";
 import { claudeCodeAssistant, type ToolServer } from "./server/claudeCode.server.ts";
 import { fakeLookupAssistant } from "./server/fakeLookups.server.ts";
 import { queryToken } from "./server/queryToken.server.ts";
@@ -77,7 +78,16 @@ function withQueryToken(
 
 function provider(request: Request, { pins }: { pins: boolean }): AssistantProvider {
   return getAssistant(
-    () => withQueryToken(request, pins, (server) => claudeCodeAssistant({ server }), true),
+    () =>
+      process.env.ORBITAL_ASSISTANT_PROVIDER === "anthropic"
+        ? // The Claude API: our tools run in this process with this answer's token, and the key is the only probe.
+          withQueryToken(
+            request,
+            pins,
+            (server) => anthropicAssistant({ toolEnv: server.env ?? {} }),
+            false,
+          )
+        : withQueryToken(request, pins, (server) => claudeCodeAssistant({ server }), true),
     process.env,
     // No model, but real lookups through the tool server's own code (fakeLookups.server.ts).
     () => withQueryToken(request, pins, (server) => fakeLookupAssistant(server.env ?? {}), false),
@@ -104,7 +114,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   const body = {
     ...(availability.state === "ready"
       ? { available: true }
-      : { available: false, reason: availability.reason, message: OFFLINE, hint: OFFLINE_HINT }),
+      : { available: false, reason: availability.reason, ...offlineCopy() }),
     ...(short ? { short } : {}),
   };
   return Response.json(body, { headers: { "cache-control": "no-store" } });

@@ -47,6 +47,9 @@ export const FAILURES: readonly string[] = [
   ...(["story", "reason", "bossLine"] as const).flatMap((field) =>
     TEXT_PROBLEMS.map((p) => `text:${field}:${p}`),
   ),
+  // The Claude API's 429 and 529 (anthropicApi.server.ts), appended as the list requires.
+  "unavailable:rate_limited",
+  "unavailable:overloaded",
 ];
 
 const isPlain = (v: unknown): v is Record<string, unknown> =>
