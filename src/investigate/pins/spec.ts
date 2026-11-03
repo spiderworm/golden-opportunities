@@ -1,5 +1,6 @@
 // Pinned charts: what a pin holds, and checks for pins read back from storage.
 import { yearMonth } from "../../query/months.ts";
+import { shiftQuarter } from "../../query/relative.ts";
 import {
   DIMENSIONS,
   MEASURES,
@@ -17,6 +18,7 @@ import {
   droveQuarters,
   filtersExcept,
   GROUPINGS,
+  resolvedState,
   HEAT_DIMENSIONS,
   MAX_MEASURES,
   scatterProblem,
@@ -123,6 +125,10 @@ export interface WaterfallPinSpec {
   kind: "waterfall";
   waterfall: {
     by: (typeof DROVE_GROUPINGS)[number];
+    /**
+     * Its quarters: dated, then before now, or made on Latest quarter, `latest` against `latest-1` or `latest-4`, so it
+     * moves on as the game is played (Plot, #379).
+     */
     then: string;
     now: string;
     filter?: Partial<Record<Dimension, readonly string[]>>;
@@ -233,15 +239,11 @@ export function parseWaterfall(value: unknown): WaterfallPinSpec["waterfall"] | 
   if (!isObject(value) || !only(value, ["by", "then", "now", "filter", "split"])) return null;
   const { by, then, now, filter, split } = value;
   if (!(DROVE_GROUPINGS as readonly unknown[]).includes(by)) return null;
-  if (
-    typeof then !== "string" ||
-    typeof now !== "string" ||
-    !QUARTER.test(then) ||
-    !QUARTER.test(now)
-  )
-    return null;
+  if (typeof then !== "string" || typeof now !== "string") return null;
+  const moving = now === "latest" && (then === "latest-1" || then === "latest-4");
   // A change runs forward in time; "2193-Q4" < "2194-Q1" as strings, as quarters (Frank, #339).
-  if (then >= now || (split !== undefined && typeof split !== "boolean")) return null;
+  const dated = QUARTER.test(then) && QUARTER.test(now) && then < now;
+  if (!(moving || dated) || (split !== undefined && typeof split !== "boolean")) return null;
   if (isObject(filter) && ((by as string) in filter || "quarter" in filter)) return null;
   const query = parseQuery({
     measure: "revenue",
@@ -422,26 +424,37 @@ export function addPin(
 }
 
 /**
- * What drove the change as a pin, while it's on: titled as the chart is, with the chart's filters but the
- * breakdown's and the quarter's, which the waterfall names itself. Null while it's off or can't be drawn.
+ * What drove the change as a pin, while it's on, with the chart's filters but the breakdown's and the quarter's, which
+ * the waterfall names itself; `state` as the URL has it. Made on Latest quarter, it keeps the relative quarters, so it
+ * moves on as the game is played, and its title names no quarter: the card's line under it does (Plot, #379). Made on
+ * a dated quarter, it keeps that pair. Null while it's off or can't be drawn.
  */
 export function waterfallPinFor(
   state: InvestigateState,
   quarters: readonly string[],
 ): WaterfallPinSpec | null {
-  const pair = droveOn(state, quarters) ? droveQuarters(state, quarters) : null;
+  const dated = resolvedState(state, quarters);
+  const pair = droveOn(dated, quarters) ? droveQuarters(dated, quarters) : null;
   if (!pair) return null;
   const others = filtersExcept(state.filters, [state.by, "quarter"]);
+  const by = DROVE_NAMES[state.by as keyof typeof DROVE_NAMES];
+  const moving = state.filters.quarter?.length === 1 && state.filters.quarter[0] === "latest";
+  const fromQuarterBefore = pair.then === shiftQuarter(pair.now, -1);
   // "Q4 2193", as the chart names it. Written here: Dewey's tool server loads this module under plain Node, which
   // can't follow the charts' "~/" imports.
   const name = (quarter: string) => `Q${quarter.slice(-1)} ${quarter.slice(0, 4)}`;
+  const title = !moving
+    ? `What drove revenue's change, ${name(pair.then)} to ${name(pair.now)}, by ${by}`
+    : fromQuarterBefore
+      ? `What drove revenue's change into the latest quarter, by ${by}`
+      : `What drove revenue's change from a year earlier to the latest quarter, by ${by}`;
   return {
-    title: `What drove revenue's change, ${name(pair.then)} to ${name(pair.now)}, by ${DROVE_NAMES[state.by as keyof typeof DROVE_NAMES]}`,
+    title,
     kind: "waterfall",
     waterfall: {
       by: state.by as WaterfallPinSpec["waterfall"]["by"],
-      then: pair.then,
-      now: pair.now,
+      then: moving ? (fromQuarterBefore ? "latest-1" : "latest-4") : pair.then,
+      now: moving ? "latest" : pair.now,
       ...(Object.keys(others).length ? { filter: others } : {}),
       ...(state.split ? { split: true } : {}),
     },

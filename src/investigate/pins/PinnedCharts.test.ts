@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolvedLine, runPin } from "./PinnedCharts";
+import { resolvedLine, runPin, waterfallOutOfLedgers } from "./PinnedCharts";
 import { queryCache } from "~/platform/query-cache.client";
 import { QueryRequestError } from "./query-client";
 import type { Pin } from "./spec";
@@ -171,5 +171,64 @@ describe("a pin's relative quarters (Plot, section 9)", () => {
       "Quarter before latest: Q4 2193 · Latest quarter: Q1 2194",
     );
     expect(resolvedLine({ "latest-4": null })).toBe("Same quarter, a year earlier");
+  });
+});
+
+describe("a pinned waterfall made on Latest quarter (Plot, #379)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("asks for its relative quarters, and draws the quarters the server resolved them to", async () => {
+    queryCache.setVersion("v-moving");
+    const asked: string[] = [];
+    const now: Record<string, string> = { latest: "2194-Q1", "latest-1": "2193-Q4" };
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      const token = JSON.parse(init.body as string).filter.quarter[0] as string;
+      asked.push(token);
+      return new Response(
+        JSON.stringify({ ...side(now[token]!, 100), resolved: { [token]: now[token] } }),
+      );
+    });
+    const loaded = await runPin(
+      {
+        title: "What drove revenue's change into the latest quarter, by genre",
+        kind: "waterfall",
+        waterfall: { by: "genre", then: "latest-1", now: "latest" },
+      },
+      new AbortController().signal,
+    );
+    expect(asked.sort()).toEqual(["latest", "latest-1"]);
+    expect(loaded).toMatchObject({
+      kind: "waterfall",
+      rows: { then: "2193-Q4", now: "2194-Q1" },
+      resolved: { latest: "2194-Q1", "latest-1": "2193-Q4" },
+    });
+    if (loaded.kind !== "waterfall") return;
+    expect(resolvedLine(loaded.resolved!)).toBe(
+      "Latest quarter: Q1 2194 · Quarter before latest: Q4 2193",
+    );
+  });
+});
+
+describe("a moving waterfall past the ledgers (Chart, #380)", () => {
+  it("says why, in Plot's words, rather than drawing a change from nothing", () => {
+    const pin = (then: string) => ({
+      title: "t",
+      kind: "waterfall" as const,
+      waterfall: { by: "genre" as const, then, now: "latest" },
+    });
+    // A fresh save, planning Q1 2194: no year before Q4 2193.
+    const fresh = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
+    expect(waterfallOutOfLedgers(pin("latest-4"), fresh)).toBe(
+      "The ledgers start in 2193: there's no year before it",
+    );
+    expect(waterfallOutOfLedgers(pin("latest-1"), fresh)).toBeNull();
+    expect(waterfallOutOfLedgers(pin("latest-4"), [...fresh, "2194-Q1"])).toBeNull();
+    // A dated waterfall is drawn as it was pinned.
+    expect(
+      waterfallOutOfLedgers(
+        { ...pin("2193-Q3"), waterfall: { by: "genre", then: "2193-Q3", now: "2193-Q4" } },
+        fresh,
+      ),
+    ).toBeNull();
   });
 });
