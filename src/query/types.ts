@@ -1,6 +1,7 @@
 import type { DeepReadonly, SaleLine } from "../bookshop/types";
 import type { SaleCells } from "./sale-cells";
 import type { Evidence, EvidenceUnit } from "./evidence";
+import type { ChartEvent, ViewEvent } from "./events";
 
 export const DIMENSIONS = [
   "quarter",
@@ -102,6 +103,11 @@ export interface QueryView {
   /** The same facts rolled up (sale-cells.ts): a view carries its simulated sales as lines or as cells, not both. */
   simulatedCells?: SaleCells;
   /**
+   * What happened in the player's game that a time series can mark (events.ts): built by the server from the save,
+   * only for quarters played, so never a spoiler. The data version names it too, since it changes only with them.
+   */
+  events?: readonly ViewEvent[];
+  /**
    * The save's data version (data-version.server.ts), naming exactly these simulated lines: set by the server with
    * them, so results over them can be cached. Without it, a view with simulated lines is never cached.
    */
@@ -126,6 +132,11 @@ export interface QueryResult {
   total: number | null;
   /** Player-visible provenance, including fact grain, scope, and truncation. */
   source: string;
+  /**
+   * Over months or quarters: the view's events in this result's scope (events.ts), in date order, and how many
+   * more were left out past MAX_EVENTS. Absent for any other breakdown.
+   */
+  events?: { list: ChartEvent[]; hidden: number };
   /**
    * With `vs: "last_year"`: each row's figure a year earlier, in the rows' order, and the total's, with their
    * evidence (null where the figure is).

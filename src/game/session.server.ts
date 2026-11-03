@@ -12,6 +12,7 @@ import { onGameStarted } from "../alma/backstory.server";
 import { createSaveStore, isSaveId, SaveError } from "./store.server";
 import { quarterCells, ReplayMismatch } from "./replay.server";
 import { mergeCells } from "../query/sale-cells";
+import { eventsForSave } from "./events.server";
 import type { TurnEvent } from "../simulation/turn";
 import type { GameSave } from "./types";
 import { saveDate } from "./progress";
@@ -93,8 +94,17 @@ export function queryViewForSave(save: GameSave): QueryView {
   );
   const periods = [...BASELINE_VIEW.periods, ...save.played.map((q) => q.period)];
   if (!cells.lines) return { ...BASELINE_VIEW, periods };
+  // What a time series can mark, from the played quarters only (events.server.ts). It changes only with them, so
+  // the data version names it too.
+  const events = eventsForSave(save, loadBookshop());
   // The data version names these cells, so results over them can be cached (run-query.server.ts).
-  return { ...BASELINE_VIEW, periods, version: dataVersion(save), simulatedCells: cells };
+  return {
+    ...BASELINE_VIEW,
+    periods,
+    version: dataVersion(save),
+    simulatedCells: cells,
+    ...(events.length ? { events } : {}),
+  };
 }
 /**
  * The request's save, its date, and its query view. The view replays the played quarters' lines, so it's built
