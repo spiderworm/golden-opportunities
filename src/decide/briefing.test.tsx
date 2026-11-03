@@ -125,7 +125,10 @@ describe("the bosses' brief (m1-copy section 3)", () => {
     expect(at("The Station Administrator</p>")).toBeLessThan(at("<fieldset"));
     const tags = html.search(/class="[^"]*teaser/);
     expect(at("</fieldset>")).toBeLessThan(tags);
-    expect(tags).toBeLessThan(at('data-boss="overall"'));
+    // The floor commits before it shows (David, 3 Nov 2026): the server, which can't know 3D from 2D, draws no
+    // figures, only the empty status that says "Loading…" if choosing takes over 500 ms.
+    expect(tags).toBeLessThan(at('<p role="status"'));
+    expect(at('data-boss="overall"')).toBe(-1);
   });
 
   it("sets each move as a compact card: its key figure on the title line, its whole line in the page and on demand", () => {
