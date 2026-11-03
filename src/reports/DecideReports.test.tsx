@@ -82,6 +82,45 @@ describe("Reports in Decide", () => {
     expect(html).toContain("Close");
   });
 
+  it("shows the player's forecasts read-only under the lists, once a quarter is played (src/forecast)", () => {
+    const calibrated = (played: number) =>
+      renderToString(
+        <Panel
+          player={[]}
+          shop={[]}
+          quarters={[]}
+          onClose={() => {}}
+          onEdit={() => {}}
+          calibration={{
+            forecast: 0,
+            played,
+            revenue: {
+              measure: "revenue",
+              n: 0,
+              hits: 0,
+              hitRate: null,
+              bias: null,
+              sharpness: null,
+              judged: false,
+            },
+            units: {
+              measure: "units",
+              n: 0,
+              hits: 0,
+              hitRate: null,
+              bias: null,
+              sharpness: null,
+              judged: false,
+            },
+            history: [],
+          }}
+        />,
+      );
+    expect(calibrated(1)).toMatch(/<h3[^>]*>Your forecasts<\/h3>/);
+    expect(calibrated(1)).toContain("0 of 1 quarter forecast");
+    expect(calibrated(0)).not.toContain("Your forecasts");
+  });
+
   it("reads one of the player's reports: summary, charts with notes, and Edit in Reports", () => {
     const html = render({ type: "player", id: "r1" });
     expect(html).toMatch(/<h2[^>]*>The quiet picks<\/h2>/);

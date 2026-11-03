@@ -9,6 +9,8 @@ import { measureTexts, RESULT_COPY, scoreText, SERVICE_RECORD } from "~/result/c
 import { DECIDE_COPY as COPY, REPORTS_COPY } from "./copy";
 import type { PlayerReport } from "./player";
 import { ReportCharts } from "./PlayerReports";
+import { ForecastCalibration } from "./ForecastCalibration";
+import type { Calibration } from "~/forecast/forecast";
 import { useReportsData } from "./useReportsData";
 import type { ShopReport } from "./shop.server";
 import styles from "./Reports.module.css";
@@ -22,6 +24,7 @@ interface Loaded {
   reports: ShopReport[];
   player: PlayerReport[];
   quarters: string[];
+  calibration: Calibration;
 }
 
 /** One report open in the panel: the player's, by id, or a shop report, by quarter. */
@@ -59,7 +62,7 @@ export function DecideReports({
   };
 
   if (!data) return null;
-  const { player, reports, quarters } = data;
+  const { player, reports, quarters, calibration } = data;
   return (
     <>
       {player.length ? (
@@ -97,6 +100,7 @@ export function DecideReports({
             player={player}
             shop={reports}
             quarters={quarters}
+            calibration={calibration}
             onClose={() => {
               setOpen(false);
               button.current?.focus();
@@ -147,6 +151,7 @@ export function Panel({
   player,
   shop,
   quarters,
+  calibration = null,
   onClose,
   onEdit,
   onRead = () => {},
@@ -155,6 +160,8 @@ export function Panel({
   player: PlayerReport[];
   shop: ShopReport[];
   quarters: string[];
+  /** How the player's forecasts have done, read-only (src/forecast); none to show without it. */
+  calibration?: Calibration | null;
   onClose: () => void;
   /** Edit in Reports, from this control (for focus on Stay). */
   onEdit: (from: HTMLElement) => void;
@@ -251,6 +258,10 @@ export function Panel({
                 ))}
               </ul>
             </>
+          )}
+          {/* The player's forecasts, read-only, as Reports shows them (src/forecast). */}
+          {calibration && calibration.played > 0 && (
+            <ForecastCalibration calibration={calibration} heading="h3" />
           )}
         </>
       )}

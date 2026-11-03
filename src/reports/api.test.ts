@@ -11,6 +11,9 @@ const session = vi.hoisted(() => ({
 vi.mock("~/game/session.server", () => session);
 vi.mock("~/game/progress", () => ({ removedQuarter: () => null }));
 vi.mock("./shop.server", () => ({ shopReports: () => ({ reports: [], counts: { shop: 0 } }) }));
+vi.mock("~/forecast/forecast.server", () => ({
+  calibration: () => ({ forecast: 0, played: 1, history: [] }),
+}));
 
 import { loader as api } from "./api";
 import { reportsData } from "./data.server";
