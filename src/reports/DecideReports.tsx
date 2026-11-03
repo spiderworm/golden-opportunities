@@ -209,7 +209,7 @@ export function Panel({
       {report ? (
         <>
           {report.summary && <p className={styles.note}>{report.summary}</p>}
-          <ReportCharts items={report.items} quarters={quarters} />
+          <ReportCharts items={report.items} quarters={quarters} where="decide" />
           <button
             type="button"
             className={styles.linkButton}

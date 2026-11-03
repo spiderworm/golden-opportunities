@@ -34,7 +34,7 @@ import {
   type Pin,
   type PinSpec,
 } from "./spec";
-import { NO_CHART, TableToggle } from "../charts/TableToggle";
+import { noChartReason, TableToggle } from "../charts/TableToggle";
 
 const CHART_HEIGHT = 240;
 
@@ -149,12 +149,7 @@ function PinnedChart({
 }) {
   // Why it can't be a chart: known from the spec, or once it's run, too many groups for the palette.
   const [tooMany, setTooMany] = useState<number | null>(null);
-  const before = noChart(pin);
-  const why = before
-    ? NO_CHART[before]
-    : tooMany !== null
-      ? NO_CHART.tooMany(tooMany, MAX_SERIES)
-      : null;
+  const why = noChartReason(noChart(pin), tooMany, MAX_SERIES);
   return (
     <article className={`${styles.card} ${styles.pinCard}`} aria-label={pin.title}>
       <header className={styles.pinHeader}>
