@@ -769,6 +769,24 @@ const EVIDENCE_WORDS = new RegExp(
 );
 
 /**
+ * A forecast, which only the player makes (David, 3 Nov 2026: the plan's optional forecast is theirs, and Dewey
+ * never proposes one). A past figure by ref is true, but "you should expect {{a4}} next quarter" makes it a
+ * forecast, so the model's own forecasting words withhold the sentence: forecasting verbs, claims about what a
+ * result will be or should reach, and the quarter not yet played, which no lookup has data for.
+ */
+const FORECAST_WORDS = new RegExp(
+  "\\b(?:" +
+    [
+      "forecast(?:s|ed|ing)?|predict(?:s|ed|ing|ion|ions|able)?|projected|projections?|projecting",
+      "expect(?:s|ed|ing|ation|ations)?|anticipat(?:e|es|ed|ing|ion)|estimat(?:e|es|ed|ing|ion|ions)|outlook",
+      "likely to|on track|on course|next quarter(?:'s)?|the coming quarter|this coming quarter",
+      "(?:will|should|would|could|might|may|going to)(?: probably| likely)? (?:be|sell|bring|reach|make|earn|come|hit|see|land|end|total|top|get|do|net|clear|beat|match|exceed)",
+    ].join("|") +
+    ")\\b",
+  "iu",
+);
+
+/**
  * Evidence qualifies one figure: {{e1.n}} the average {{e1}}, {{f1.noise}} the change {{f1.change}}. So a sentence
  * with an evidence ref passes only if every ref in it is that same row's, or for {{e.n}} that lookup's total, and
  * at least one of them isn't evidence: two true refs mustn't make a false sentence, "Poetry rose by 200, within
@@ -824,7 +842,8 @@ export function renderSentence(
     .replace(/\bQ([1-4])\b/g, (q) => (refs.hasQuarter(q, known) ? " " : q))
     .replace(ALLOWED, " ");
   // The plain copy, as banned() reads it, so an accent can't slip a word past (Audit's review of #337).
-  if (banned(prose) || EVIDENCE_WORDS.test(plain(prose))) return null;
+  if (banned(prose) || EVIDENCE_WORDS.test(plain(prose)) || FORECAST_WORDS.test(plain(prose)))
+    return null;
   // "Yes" or "No" is itself a claim: allowed only to open a sentence that is otherwise refs ("No, {{b.to_vs_from}}.").
   const answer = /^\s*(?:yes|no)\b/i.exec(prose);
   if (answer && (count === 0 || /\p{L}/u.test(prose.slice(answer[0].length)))) return null;

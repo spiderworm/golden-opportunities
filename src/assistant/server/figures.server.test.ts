@@ -1231,3 +1231,34 @@ it("says a total's ratings all agree, as a row's (Audit, #347)", () => {
     "Overall it's 5, with no likely range, since all 12 ratings are 5 stars.",
   );
 });
+
+describe("a forecast is the player's, never Dewey's (David, 3 Nov 2026)", () => {
+  it("withholds the model's forecasting words, even around a true past figure", () => {
+    for (const sentence of [
+      "You should expect revenue near {{a4}} next quarter.",
+      "I'd forecast {{a4}}.",
+      "Revenue will be about {{a4}}.",
+      "Units should reach {{a4}} this time.",
+      "Based on {{a4}}, the projected revenue is similar.",
+      "Expect roughly {{a4}}.",
+      "Revenue is likely to repeat {{a4}}.",
+      "Sales are on track for {{a4}}.",
+      "My estimate is {{a4}}.",
+      "The coming quarter could see {{a4}}.",
+      "It will probably land near {{a4}}.",
+      "Revenue is going to be {{a4}}.",
+      "I prédict {{a4}}.",
+    ])
+      expect(say(sentence), sentence).toBe(WITHHELD);
+  });
+
+  it("still shows the data about quarters that have happened", () => {
+    for (const sentence of [
+      "I looked up revenue in {{a4.quarter}}: {{a4}}.",
+      "In {{a3.quarter}}, revenue was {{a3}}.",
+      "I'll look it up.",
+      "Here are the figures I've just looked up.",
+    ])
+      expect(say(sentence), sentence).not.toBe(WITHHELD);
+  });
+});
