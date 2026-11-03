@@ -14,6 +14,12 @@ const units = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const amount = (measure: ForecastMeasure, value: number) =>
   measure === "revenue" ? moneyText(value) : units.format(value);
 
+/** The miss as a share of what happened, whole percents; a miss that rounds to 0 is "under 1%", never "0%" (Audit, #396). */
+const percentOff = (errorPct: number) => {
+  const pct = Math.round(Math.abs(errorPct) * 100);
+  return pct === 0 ? "under 1%" : `${pct}%`;
+};
+
 /**
  * Plot's line, its percent of what actually happened (Frank's errorPct; Sim and Plot, #382): "Revenue: $162,300, above your range of $130,000 to $150,000. You expected $140,000: off by $22,300
  * (16%)." Inside: "…inside your range of…"; exactly right: "…You expected $142,300: spot on."
@@ -25,7 +31,7 @@ export function resultLine(measure: ForecastMeasure, r: MeasureResult): string {
   const off =
     r.error === 0
       ? "spot on"
-      : `off by ${amount(measure, Math.abs(r.error))}${r.errorPct === null ? "" : ` (${Math.round(Math.abs(r.errorPct) * 100)}%)`}`;
+      : `off by ${amount(measure, Math.abs(r.error))}${r.errorPct === null ? "" : ` (${percentOff(r.errorPct)})`}`;
   return `${LABELS[measure]}: ${amount(measure, r.actual)}, ${where}. You expected ${amount(measure, point)}: ${off}.`;
 }
 
