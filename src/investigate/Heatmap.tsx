@@ -5,7 +5,7 @@ import { chartTheme, heatColor } from "~/platform/charts/chart-theme";
 import { Dropdown } from "~/platform/ui/Dropdown";
 import { cellSelected, heatAxis, heatModel, type HeatModel } from "./charts/heat-model";
 import { DIMENSION_LABELS, formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "./format";
-import { CHART_MEASURES, HEAT_DIMENSIONS, HEAT_WINDOW, heatSpanFilter, heatWindow, type ChartMeasure, type Filters, type HeatDimension, type HeatState, type InvestigateState } from "./state";
+import { CHART_MEASURES, filtersExcept, HEAT_DIMENSIONS, HEAT_WINDOW, heatSpanFilter, heatWindow, type ChartMeasure, type Filters, type HeatDimension, type HeatState, type InvestigateState } from "./state";
 import styles from "./Investigate.module.css";
 
 export interface HeatmapProps {
@@ -49,9 +49,11 @@ export function Heatmap({ state, result, quarters, onCell, onHeat }: HeatmapProp
   // A long ledger's heatmap shows its last eight quarters unless the player chose every one (heatWindow); its axes
   // follow the same span as its query.
   const window = heatWindow(state, quarters);
-  const scope = window ? { ...state.filters, quarter: window } : state.filters;
+  // The axes' span, as the query's: the screen's filters but those on the heatmap's own axes, then the window.
+  const outside = filtersExcept(state.filters, [shown.rows, shown.cols]);
+  const scope = window ? { ...outside, quarter: window } : outside;
   const long = quarters.length > HEAT_WINDOW;
-  const span = heatSpanFilter(state.filters);
+  const span = heatSpanFilter(state);
   const model = useMemo(
     () => heatModel(result, shown.measure, shown.rows, heatAxis(shown.rows, result, quarters, scope), shown.cols, heatAxis(shown.cols, result, quarters, scope)),
     [result, shown.measure, shown.rows, shown.cols, quarters, state.filters, window?.join()],
