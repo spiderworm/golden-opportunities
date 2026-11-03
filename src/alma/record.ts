@@ -50,6 +50,8 @@ export const FAILURES: readonly string[] = [
   // The Claude API's 429 and 529 (anthropicApi.server.ts), appended as the list requires.
   "unavailable:rate_limited",
   "unavailable:overloaded",
+  // Not asked: a daily cap was reached (platform/usage.server.ts). Appended, as the list requires.
+  "capped",
 ];
 
 const isPlain = (v: unknown): v is Record<string, unknown> =>
