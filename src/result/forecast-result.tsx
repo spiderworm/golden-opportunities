@@ -28,12 +28,13 @@ export function resultLine(measure: ForecastMeasure, r: MeasureResult): string {
   const { point, low, high } = r.forecast;
   const range = `${amount(measure, low)} to ${amount(measure, high)}`;
   const where = `${r.where} your range of ${range}`;
-  // Spot on when the two figures shown match, whole dollars or units: a miss under 50 cents isn't "off by $0" (Sim,
-  // #396).
+  // The miss between the two figures as shown, whole dollars or units, so "spot on" and "off by" always agree with
+  // them: a miss under 50 cents isn't "off by $0" (Sim, #396 and #397).
+  const shown = Math.abs(Math.round(r.actual) - Math.round(point));
   const off =
-    amount(measure, r.actual) === amount(measure, point)
+    shown === 0
       ? "spot on"
-      : `off by ${amount(measure, Math.abs(r.error))}${r.errorPct === null ? "" : ` (${percentOff(r.errorPct)})`}`;
+      : `off by ${amount(measure, shown)}${r.errorPct === null ? "" : ` (${percentOff(r.errorPct)})`}`;
   return `${LABELS[measure]}: ${amount(measure, r.actual)}, ${where}. You expected ${amount(measure, point)}: ${off}.`;
 }
 
