@@ -39,6 +39,7 @@ import {
   toSearchParams,
   type InvestigateState,
   measuresOf,
+  heatWindow,
 } from "./state";
 import { PinnedCharts } from "./pins/PinnedCharts";
 import type { PinSpec } from "./pins/spec";
@@ -117,7 +118,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
 
   const pins = usePins(track);
   const chartPin = pinSpecFor(state);
-  const heatPin = heatPinFor(state);
+  const heatPin = heatPinFor(state, options.quarter);
 
   /** The next question, with the bar's filters kept: a filter that gets a value stays on the bar when it's cleared. */
   // Not a default parameter: React Router's route splitting (on since the clientLoader, #191) can't follow a
@@ -265,10 +266,12 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
 }
 
 /** The heatmap as a pin: the same query it runs (investigation.server.ts, heatmapQuery), drawn as a heatmap. */
-function heatPinFor(state: InvestigateState): PinSpec {
+function heatPinFor(state: InvestigateState, quarters: readonly string[]): PinSpec {
   const { measure, rows, cols } = state.heat;
-  const filter = filtersExcept(state.filters, [rows, cols]);
-  return { title: heatTitle(state.heat), kind: "heatmap", query: { measure, by: [rows, cols], ...(Object.keys(filter).length ? { filter } : {}) } };
+  // The span the card shows: past eight quarters, its window (heatWindow), so the pin is the grid the player saw.
+  const window = heatWindow(state, quarters);
+  const filter = { ...filtersExcept(state.filters, [rows, cols]), ...(window ? { quarter: window } : {}) };
+  return { title: heatTitle(state.heat, window !== null), kind: "heatmap", query: { measure, by: [rows, cols], ...(Object.keys(filter).length ? { filter } : {}) } };
 }
 
 /** The main chart as a pin: the same query it runs, so the pin shows what the player saw. */

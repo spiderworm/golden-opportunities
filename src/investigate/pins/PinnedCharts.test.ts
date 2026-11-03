@@ -3,6 +3,7 @@ import { runPin } from "./PinnedCharts";
 import { queryCache } from "~/platform/query-cache.client";
 import { QueryRequestError } from "./query-client";
 import type { Pin } from "./spec";
+import { EVIDENCE_HEADER } from "~/query/types";
 
 const comparison: Pin = { id: "c", pinnedBy: "player", title: "Revenue compared across quarter", kind: "comparison", comparison: { measure: "revenue", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: [] } };
 const side = (quarter: string, revenue: number) => ({ columns: [{ key: "quarter", label: "Quarter", type: "string", nullable: false }, { key: "revenue", label: "Revenue", type: "number", nullable: false }], rows: [{ quarter, revenue }], total: revenue, source: `Sales, ${quarter}` });
@@ -58,5 +59,22 @@ describe("running a pinned comparison", () => {
       throw new Error("asked again");
     });
     expect(await runPin(comparison, new AbortController().signal)).toMatchObject({ kind: "comparison" });
+  });
+});
+
+describe("running a pinned heatmap", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("asks as context, never evidence, while a table of the same query is evidence (Plot, #63 and #266)", async () => {
+    queryCache.setVersion("heatmap-evidence");
+    const sent: { evidence: string | null }[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      sent.push({ evidence: new Headers(init.headers).get(EVIDENCE_HEADER) });
+      return new Response(JSON.stringify(side("2193-Q4", 5)));
+    });
+    const query = { measure: "units" as const, by: ["weekday" as const, "month" as const] };
+    await runPin({ id: "h", pinnedBy: "player", title: "Units sold by weekday and month", kind: "heatmap", query }, new AbortController().signal);
+    await runPin({ id: "t", pinnedBy: "player", title: "Units by weekday and month", kind: "table", query }, new AbortController().signal);
+    expect(sent).toEqual([{ evidence: "none" }, { evidence: null }]);
   });
 });
