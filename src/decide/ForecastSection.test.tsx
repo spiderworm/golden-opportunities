@@ -41,8 +41,19 @@ describe("what the plan is sent with (Frank's fields)", () => {
     expect(forecastFields({ ...EMPTY_FORECAST, revenue: entry("1", "1", "1") })).toEqual({});
     expect(forecastFields(open())).toEqual({});
     expect(
-      forecastFields(open({ revenue: entry("$140,000", "130,000", "150000"), note: "Sale." })),
+      forecastFields(open({ revenue: entry("$140,000", "130,000", "150000"), note: "  Sale.\n " })),
     ).toEqual({ forecastRevenue: "$140000,130000,150000", forecastNote: "Sale." });
+  });
+
+  it("takes out thousands separators only: a decimal comma is refused, not read as a larger number", () => {
+    expect(
+      forecastFields(open({ revenue: entry("$1,234,567.50", "1,000,000", "2,000,000") })),
+    ).toEqual({
+      forecastRevenue: "$1234567.50,1000000,2000000",
+    });
+    const decimal = open({ revenue: entry("1234,50", "1000", "2000") });
+    expect(forecastFields(decimal)).toEqual({ forecastRevenue: "1234,50,1000,2000" });
+    expect(draftProblem(decimal, "2194-Q1")).toEqual({ field: "revenue", reason: "number" });
   });
 
   it("sends a half-filled measure as typed, so it's refused by its field rather than dropped", () => {
@@ -89,7 +100,13 @@ describe("the browser's check is the door's (Frank's forecastFromForm)", () => {
 describe("the section (Plot's copy, section 10)", () => {
   it("closed, is its heading and Add a forecast: the skip", () => {
     const html = renderToString(
-      <ForecastSection draft={EMPTY_FORECAST} onChange={() => {}} hints={hints} problem={null} />,
+      <ForecastSection
+        quarter="2194-Q1"
+        draft={EMPTY_FORECAST}
+        onChange={() => {}}
+        hints={hints}
+        problem={null}
+      />,
     );
     expect(text(html)).toBe("Your forecast (optional) Add a forecast");
     expect(html).toContain('aria-expanded="false"');
@@ -98,7 +115,13 @@ describe("the section (Plot's copy, section 10)", () => {
 
   it("open, takes an expected figure and an 80% range for each, with the hints beside them, and a note", () => {
     const html = renderToString(
-      <ForecastSection draft={open()} onChange={() => {}} hints={hints} problem={null} />,
+      <ForecastSection
+        quarter="2194-Q1"
+        draft={open()}
+        onChange={() => {}}
+        hints={hints}
+        problem={null}
+      />,
     );
     const t = text(html);
     expect(t).toContain("Remove forecast");
@@ -117,6 +140,7 @@ describe("the section (Plot's copy, section 10)", () => {
   it("says a problem by its field, and marks the field", () => {
     const html = renderToString(
       <ForecastSection
+        quarter="2194-Q1"
         draft={open({ units: entry("1", "", "") })}
         onChange={() => {}}
         hints={hints}

@@ -173,6 +173,7 @@ export function PlanQ2({
           }}
           hints={hints}
           problem={forecastProblem}
+          quarter={quarter}
         />
         <div className={styles.formFoot}>
           <div className={styles.formNotes}>
