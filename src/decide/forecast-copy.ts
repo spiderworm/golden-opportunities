@@ -42,8 +42,8 @@ export const FORECAST_COPY = {
     partial: (measure: ForecastMeasure) =>
       `Fill in all three for ${FORECAST_COPY.measures[measure].toLowerCase()}, or leave them all empty.`,
     too_long: () => "Keep the note to 500 characters.",
-    // Plot is writing the line for a note with control characters; until then, the same as the length's.
-    invalid: () => "Keep the note to plain text.",
+    // A note with control characters, as the segment and report refusals put it.
+    invalid: () => "This note can't be saved. Check it and try again.",
   },
 } as const;
 
