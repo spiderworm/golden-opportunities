@@ -1,9 +1,9 @@
 // The only module that imports ECharts' runtime. EChart loads it lazily, so the
 // route's own chunk (and the server-rendered tiles and filters) don't wait for
-// it. Register just what the charts use: bars, lines, scatter plots, and a marked line
-// (Reports' strike line at 70). Screens draw their own legends, and the heatmap
-// is an HTML grid.
-import { BarChart, LineChart, ScatterChart } from "echarts/charts";
+// it. Register just what the charts use: bars, lines, scatter plots, a marked line
+// (Reports' strike line at 70), and custom series (average rating's likely range,
+// drawn as whiskers). Screens draw their own legends, and the heatmap is an HTML grid.
+import { BarChart, CustomChart, LineChart, ScatterChart } from "echarts/charts";
 import {
   AriaComponent,
   GridComponent,
@@ -15,6 +15,7 @@ import { SVGRenderer } from "echarts/renderers";
 
 echarts.use([
   BarChart,
+  CustomChart,
   LineChart,
   ScatterChart,
   AriaComponent,

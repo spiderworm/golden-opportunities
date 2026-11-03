@@ -22,6 +22,20 @@
       "file": "public/dewey/dewey.glb",
       "sha256": "60c1c85a68f9fca55245ab3f8f9c51d27f1342cf4466d6fe72ee85dd7de389dd",
       "bytes": 286832
+    },
+    "screenFaces": {
+      "about": "His screen's faces, played on a disc over his screen by src/assistant/ui/DeweyFaces3D.tsx. David, 3 Nov: \"A 'chatting' robot screen will have an animated mouth, painted as white pixels on the screen\" and \"Using Tripo is probably the right way to get the highest quality result here\". Of three concept sheets he chose two: \"(1) Thinking is great when he's thinking, and once his message pops in after thinking, display those final frames 7-9 with it\" and \"For actual chatting, I think (2) Chatting, round LED dots is best\".",
+      "date": "2026-11-03",
+      "tool": "Tripo Studio's image generator, Nano Banana 2 (Gemini), 1:1, with research/station-assets/dewey/dewey.jpg as the reference image; free (Tripo's image allowance)",
+      "prompts": {
+        "thinking": "Animation sprite sheet for the robot in the reference image, its \"thinking\" animation: a 3 by 3 grid of nine square frames, each showing only its round curved amber screen, seen straight on, the same warm amber glass and glow as the reference, with no glasses, no body, no lamp. Everything on the screen is drawn like an old dot-matrix LED display: soft round glowing warm-white dots. Top row and middle row, frames 1 to 6: a loading spinner, a ring of glowing dots in the middle of the screen with one bright dot and a fading tail that moves one step clockwise in each frame, the eyes glancing up thoughtfully above it. Bottom row, frames 7 to 9: the idea arriving, a small dot-matrix lightbulb appearing above happy eyes, then glowing brighter with little rays, then the full bright lightbulb with rays over a delighted smile. Thin gaps of plain flat dark navy between frames. Clean, warm, friendly, high quality, no text, no letters, no numbers.",
+        "chatting": "Animation sprite sheet for the robot in the reference image: a 3 by 3 grid of nine square frames, each showing only its round curved amber screen, seen straight on, the same warm amber glass and glow as the reference, with no glasses, no body, no lamp. The face is shown on the screen like an old dot-matrix LED display: soft round glowing dots. Two kind round eyes of pale warm-white dots, and a mouth of bright white glowing dots lit on the amber glass (never a dark hole or a physical mouth). Frames for chatting, each a different mouth: 1 closed gentle smile, 2 slightly open, 3 half open, 4 wide open, 5 round O, 6 wide EE, 7 small o, 8 happy open grin, 9 closed smile. Eyes the same in every frame. Thin gaps of plain flat dark navy between frames. Clean, warm, friendly, high quality, no text, no letters, no numbers."
+      },
+      "sources": "research/station-assets/dewey/screen-thinking.webp and screen-chatting.webp: the sheets as downloaded (1024 x 1024 PNG, with David's OK), stored losslessly",
+      "processed": "research/station-assets/dewey/screen-faces.py <thinking> <chatting> public/dewey/screen-faces.png: each frame's glowing dots cut out by their blue channel, white on transparent, 18 frames of 128 px, six to a row. It reproduces this file byte for byte from the sources.",
+      "file": "public/dewey/screen-faces.png",
+      "sha256": "0b0f328e6ae466a08c47c5df9fb26a673b19dbea27a765dc3f60566ae88ff25b",
+      "bytes": 34160
     }
   }
 }

@@ -4,6 +4,7 @@ import { change, yearEarlier } from "~/query/last-year";
 import type { Dimension, LastYear, Measure, QueryResult } from "~/query/types";
 import { formatDimensionValue, formatMeasure } from "../format";
 import type { CategoryModel } from "./category-chart";
+import { noisy, rowNoisy, withNoise } from "./evidence";
 
 /** The two quarters' names: `Q1 2194` and `Q1 2193`, and in the legend, by month, the years `2194` and `2193`. */
 export function lastYearLabels(quarter: string, by: Dimension) {
@@ -52,6 +53,11 @@ function lastYearAt(result: QueryResult, x: Dimension, category: string | null):
   const i = result.rows.findIndex((r) => (r[x] ?? null) === category);
   return i < 0 ? null : (result.lastYear?.rows[i] ?? null);
 }
+/** Last year's evidence for the same row (src/query/evidence.ts). */
+function lastYearEvidenceAt(result: QueryResult, x: Dimension, category: string | null) {
+  const i = result.rows.findIndex((r) => (r[x] ?? null) === category);
+  return i < 0 ? null : (result.lastYear?.evidence.rows[i] ?? null);
+}
 
 /**
  * The chart with last year beside this year: two series, this year's quarter and last year's, over this year's
@@ -67,8 +73,18 @@ export function withLastYear(
     ...model,
     seriesBy: "quarter",
     series: [
-      { key: labels.quarter, values: model.series[0]?.values ?? [] },
-      { key: labels.before, values: lastYear.map((figure) => figure?.value ?? null) },
+      {
+        key: labels.quarter,
+        values: model.series[0]?.values ?? [],
+        ...(model.series[0]?.evidence && { evidence: model.series[0].evidence }),
+      },
+      {
+        key: labels.before,
+        values: lastYear.map((figure) => figure?.value ?? null),
+        ...(result.lastYear?.evidence && {
+          evidence: model.categories.map((c) => lastYearEvidenceAt(result, model.x, c)),
+        }),
+      },
     ],
     lastYear,
   };
@@ -79,19 +95,41 @@ export function lastYearRows(
   result: QueryResult,
   by: Dimension,
   measure: Measure,
-): { group: string; now: string; then: string; delta: string; percent: string }[] {
+): {
+  group: string;
+  now: string;
+  then: string;
+  delta: string;
+  percent: string;
+  noise: boolean;
+}[] {
   return result.rows.map((row, i) => {
     const now = (row[measure] as number | null | undefined) ?? null;
     const before = result.lastYear?.rows[i] ?? null;
     const { delta, percent } = change(now, before);
+    // Within noise goes after the change, or after Δ where there's no % (average discount) (Plot, #297).
+    const noise = rowNoisy(result, i);
+    const pct = formatPercent(measure, percent);
     return {
       group: formatDimensionValue(by, row[by] ?? null),
       now: now === null ? "None" : formatMeasure(measure, now),
       // No figure at all last year reads None (Plot, #291); a zero reads as the measure's zero.
       then:
         before === null || before.value === null ? "None" : formatMeasure(measure, before.value),
-      delta: formatDelta(measure, delta),
-      percent: formatPercent(measure, percent),
+      delta: withNoise(formatDelta(measure, delta), noise && !pct),
+      percent: withNoise(pct, noise),
+      noise,
     };
   });
+}
+
+/** Whether a chart's category is within noise of last year's, from the two series' evidence. */
+export function ghostNoisy(ghost: CategoryModel, i: number): boolean {
+  const [now, before] = ghost.series;
+  if (!now || !before) return false;
+  return noisy(
+    ghost.unit ?? null,
+    { value: now.values[i] ?? null, evidence: now.evidence?.[i] },
+    { value: before.values[i] ?? null, evidence: before.evidence?.[i] },
+  );
 }
