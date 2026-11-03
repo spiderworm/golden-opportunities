@@ -1,9 +1,13 @@
-import { PRICE_BANDS, type QueryResult } from "~/query/types";
+import { PRICE_BANDS, QUERY_LIMITS, type QueryResult } from "~/query/types";
 import { isTotal, monthsInScope, type ChartMeasure, type Filters, type HeatDimension } from "../state";
 
 export const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export interface HeatModel {
+  /** The query left groups out (its row limit), so a missing cell is unknown, not zero. */
+  cut: boolean;
+  /** In a cut result, the cells ("x,y") the terminal left out. */
+  missing: Set<string>;
   rows: (string | null)[];
   cols: (string | null)[];
   /** [colIndex, rowIndex, value] */
@@ -28,17 +32,25 @@ export function heatAxis(dimension: HeatDimension, result: QueryResult, quarters
   return values.includes(null) ? [...known, null] : known;
 }
 
-/** Every row and column value gets a cell. A total that sold nothing is zero; an average there has no value. */
+/**
+ * Every row and column value gets a cell. In a complete result, a missing total sold nothing, so it's zero. In a
+ * cut result (the row limit), a missing cell is unknown: no value, never $0 (Frank, #264: a five-year save's
+ * weekends read $0). An average with nothing sold has no value either way.
+ */
 export function heatModel(result: QueryResult, measure: ChartMeasure, rowsBy: HeatDimension, rows: readonly (string | null)[], colsBy: HeatDimension, cols: readonly (string | null)[]): HeatModel {
+  // The server says whether it left rows out; a result from before it did is judged by its row count (as #231's).
+  const cut = result.truncated === undefined ? result.rows.length >= QUERY_LIMITS.rows : result.truncated;
   const cells: HeatModel["cells"] = [];
+  const missing = new Set<string>();
   cols.forEach((col, x) =>
     rows.forEach((row, y) => {
       const found = result.rows.find((r) => (r[colsBy] ?? null) === col && (r[rowsBy] ?? null) === row);
-      cells.push([x, y, found ? (found[measure] ?? null) : isTotal(measure) ? 0 : null]);
+      if (!found && cut) missing.add(`${x},${y}`);
+      cells.push([x, y, found ? (found[measure] ?? null) : !cut && isTotal(measure) ? 0 : null]);
     }),
   );
   const values = cells.map((c) => c[2]).filter((v): v is number => v !== null);
-  return { rows: [...rows], cols: [...cols], cells, min: values.length ? Math.min(...values) : 0, max: values.length ? Math.max(...values) : 0 };
+  return { cut, missing, rows: [...rows], cols: [...cols], cells, min: values.length ? Math.min(...values) : 0, max: values.length ? Math.max(...values) : 0 };
 }
 
 /** A cell is in the selection when it matches every filter set on the heatmap's two dimensions. */
