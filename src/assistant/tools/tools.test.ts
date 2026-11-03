@@ -5,7 +5,7 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createInterface } from "node:readline";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { AGENT_DIMENSIONS, AGENT_MEASURES } from "../../query/types.ts";
+import { AGENT_DIMENSIONS, AGENT_MEASURES, type QueryColumn } from "../../query/types.ts";
 import {
   checkChart,
   checkComparison,
@@ -14,7 +14,8 @@ import {
   ToolInputError,
   TOOLS,
 } from "./definitions.ts";
-import { callTool, handle, queryEndpoint, resetRefsForTests } from "./server.ts";
+import { callTool, handle, queryEndpoint, resetRefsForTests, withEvidence } from "./server.ts";
+import { combineComparison } from "./comparison.ts";
 import { defaultQueryUrl, orbitalToolServer, toolServerPath } from "./toolServer.server.ts";
 import { toWire } from "../server/ask.server.ts";
 import { fakeLookupAssistant } from "../server/fakeLookups.server.ts";
@@ -710,5 +711,79 @@ describe("calling tools against the app", () => {
     } finally {
       child.kill();
     }
+  });
+});
+
+describe("how much evidence is behind a figure, as fields the gate renders (David, 3 Nov 2026)", () => {
+  const column = (key: string, type: "string" | "number") =>
+    ({ key, label: key, type, nullable: false }) as QueryColumn;
+  const rated = {
+    columns: [column("genre", "string"), column("avg_rating", "number")],
+    rows: [
+      { genre: "Mystery", avg_rating: 4.1 },
+      { genre: "Poetry", avg_rating: 3.5 },
+    ],
+    total: 4,
+    source: "S",
+    evidence: {
+      unit: "ratings" as const,
+      rows: [
+        { n: 212, se: 0.09 },
+        { n: 1, se: null },
+      ],
+      total: { n: 213, se: 0.08 },
+    },
+  };
+
+  it("puts n beside an average's rows and total, and average rating's likely range, never the raw evidence", () => {
+    const kept = withEvidence(rated, "avg_rating") as Record<string, unknown> & {
+      rows: Record<string, unknown>[];
+    };
+    expect(kept).not.toHaveProperty("evidence");
+    expect(kept.unit).toBe("ratings");
+    expect(kept.rows[0]).toMatchObject({ n: 212 });
+    expect(kept.rows[0]!.range_low as number).toBeLessThan(4.1);
+    expect(kept.rows[0]!.range_high as number).toBeGreaterThan(4.1);
+    // One rating: its n, and no range ("Too few ratings for a likely range").
+    expect(kept.rows[1]).toEqual({ genre: "Poetry", avg_rating: 3.5, n: 1 });
+    expect(kept).toMatchObject({ n: 213 });
+    // Every field is a plain number, so a lookup the panel keeps still checks out (conversation.ts).
+    expect(JSON.stringify(kept)).not.toMatch(/"se"/);
+  });
+
+  it("gives a sum or count no n, and drops evidence whose unit isn't the measure's", () => {
+    const units = { ...rated, evidence: { ...rated.evidence, unit: null } };
+    expect(withEvidence(units, "units")).not.toHaveProperty("unit");
+    expect((withEvidence(units, "units") as { rows: object[] }).rows[0]).not.toHaveProperty("n");
+    expect(withEvidence(rated, "avg_order_value")).not.toHaveProperty("unit");
+    const { evidence: _, ...bare } = rated;
+    expect(withEvidence(bare, "avg_rating")).not.toHaveProperty("unit");
+  });
+
+  it("flags a comparison's change within noise, or clear, or leaves it unjudged; nothing without evidence", () => {
+    const side = (value: number, n: number, se: number | null) => ({
+      columns: [column("genre", "string"), column("units", "number")],
+      rows: [{ genre: "Mystery", units: value }],
+      total: value,
+      source: "S",
+      evidence: { unit: null, rows: [{ n, se }], total: { n, se } },
+    });
+    const c = {
+      measure: "units" as const,
+      across: "quarter" as const,
+      from: "2193-Q3",
+      to: "2193-Q4",
+      by: ["genre" as const],
+    };
+    // Counts are Poisson: 100 against 104 is well within chance; 100 against 300 isn't.
+    expect(
+      combineComparison(c, side(100, 100, 10), side(104, 104, Math.sqrt(104))).total.noise,
+    ).toBe("within");
+    expect(
+      combineComparison(c, side(100, 100, 10), side(300, 300, Math.sqrt(300))).rows[0]!.noise,
+    ).toBe("clear");
+    expect(combineComparison(c, side(100, 100, null), side(104, 104, 10)).total.noise).toBeNull();
+    const { evidence: _a, ...bareA } = side(100, 100, 10);
+    expect(combineComparison(c, bareA, side(104, 104, 10)).total).not.toHaveProperty("noise");
   });
 });

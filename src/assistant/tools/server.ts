@@ -6,7 +6,8 @@
 // ORBITAL_PINS=0 removes pin_chart, for pages with nowhere to put a pin.
 
 import { createInterface } from "node:readline";
-import { QUERY_LIMITS, type QueryResult } from "../../query/types.ts";
+import { EVIDENCE_UNITS, evidenceUnit, ratingRange, type Evidence } from "../../query/evidence.ts";
+import { QUERY_LIMITS, type Measure, type QueryResult } from "../../query/types.ts";
 import { combineComparison, comparisonQueries } from "./comparison.ts";
 import {
   checkChart,
@@ -45,10 +46,37 @@ export function queryEndpoint(env: NodeJS.ProcessEnv = process.env): { url: URL;
   return { url, token };
 }
 
+/** A result as the tool server keeps it: the query's figures and source, and their evidence when it checks out. */
+export type KeptResult = Pick<QueryResult, "columns" | "rows" | "total" | "source" | "evidence">;
+
+const isEvidence = (e: unknown): e is Evidence =>
+  typeof e === "object" &&
+  e !== null &&
+  Number.isSafeInteger((e as Evidence).n) &&
+  (e as Evidence).n >= 0 &&
+  ((e as Evidence).se === null ||
+    (typeof (e as Evidence).se === "number" &&
+      Number.isFinite((e as Evidence).se) &&
+      (e as Evidence).se! >= 0));
+
+/** The result's evidence, if it's whole: one per row, a total's, and a unit that's one of the averages' (or none). */
+function checkedEvidence(evidence: unknown, rows: number): QueryResult["evidence"] | undefined {
+  if (typeof evidence !== "object" || evidence === null) return undefined;
+  const e = evidence as NonNullable<QueryResult["evidence"]>;
+  const units: readonly unknown[] = [null, ...Object.values(EVIDENCE_UNITS)];
+  return units.includes(e.unit) &&
+    Array.isArray(e.rows) &&
+    e.rows.length === rows &&
+    e.rows.every(isEvidence) &&
+    isEvidence(e.total)
+    ? { unit: e.unit, rows: e.rows, total: e.total }
+    : undefined;
+}
+
 async function runQuery(
   query: unknown,
   endpoint: { url: URL; token: string },
-): Promise<QueryResult> {
+): Promise<KeptResult> {
   const res = await fetch(endpoint.url, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${endpoint.token}` },
@@ -71,8 +99,32 @@ async function runQuery(
       `${String(error?.code ?? res.status)}: ${String(error?.message ?? "the query failed").slice(0, 300)}`,
     );
   }
-  const { columns, rows, total, source } = body as QueryResult;
-  return { columns, rows, total, source };
+  const { columns, rows, total, source, evidence } = body as QueryResult;
+  const kept = checkedEvidence(evidence, Array.isArray(rows) ? rows.length : -1);
+  return { columns, rows, total, source, ...(kept ? { evidence: kept } : {}) };
+}
+
+/**
+ * How much evidence is behind an average, as fields the figures gate renders by ref (David, 3 Nov 2026: "Show n
+ * next to averages, add error bars on average rating"): beside each row and the total, `n` (how many of `unit` it's
+ * over), and for average rating, its likely range (95%), `range_low` to `range_high`. Only averages carry them
+ * (Plot's copy, section 4). Plain numbers, so a lookup the panel keeps still checks out (conversation.ts).
+ */
+export function withEvidence(result: KeptResult, measure: Measure) {
+  const { evidence, ...rest } = result;
+  const unit = evidenceUnit(measure);
+  if (!evidence || !unit || evidence.unit !== unit) return rest;
+  const extra = (value: unknown, e: Evidence) => {
+    const range =
+      measure === "avg_rating" ? ratingRange(typeof value === "number" ? value : null, e) : null;
+    return { n: e.n, ...(range ? { range_low: range.low, range_high: range.high } : {}) };
+  };
+  return {
+    ...rest,
+    unit,
+    rows: rest.rows.map((row, i) => ({ ...row, ...extra(row[measure], evidence.rows[i]!) })),
+    ...extra(rest.total, evidence.total),
+  };
 }
 
 /**
@@ -139,13 +191,17 @@ export async function callTool(
     if (name === "query_data") {
       const query = checkQuery(args);
       const result = await runQuery(query, queryEndpoint(env));
-      return ok(withRefs(result, isComplete(result.rows.length, query.limit)));
+      return ok(
+        withRefs(withEvidence(result, query.measure), isComplete(result.rows.length, query.limit)),
+      );
     }
     if (name === "show_chart") {
       // Drawn in the chat; to the model it's a query_data lookup, refs and all.
       const { query } = checkShownChart(args);
       const result = await runQuery(query, queryEndpoint(env));
-      return ok(withRefs(result, isComplete(result.rows.length, query.limit)));
+      return ok(
+        withRefs(withEvidence(result, query.measure), isComplete(result.rows.length, query.limit)),
+      );
     }
     if (name === "compare_data") {
       const { result, sides } = await runComparison(checkComparison(args), queryEndpoint(env));

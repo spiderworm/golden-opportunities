@@ -49,6 +49,11 @@ export interface ComparisonFigures {
   percent_change: number | null;
   /** The change's direction in words, from `from` to `to`, so the assistant can't state it backwards. */
   direction: "rose" | "fell" | "unchanged" | null;
+  /**
+   * Whether the change is within noise (evidence.ts's withinNoise): "within", "clear", or null when it can't be
+   * judged (either side without evidence). A string, so a lookup the panel keeps still checks out.
+   */
+  noise?: "within" | "clear" | null;
 }
 export interface ComparisonResult {
   /** The compared values as the data returned them; null where a side matched nothing. */

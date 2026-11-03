@@ -107,7 +107,25 @@ interface Lookup {
   /** compare_data: the compared values, where the data had something on that side (null otherwise). */
   from: string | null;
   to: string | null;
+  /** query_data of an average: what its n counts ("ratings"), and the total's evidence; null for other measures. */
+  unit: Unit | null;
+  totalEvidence: Row;
 }
+
+/** What an average's n counts (query/evidence.ts's units), and one of it. */
+const UNITS = {
+  ratings: "rating",
+  orders: "order",
+  "sale lines": "sale line",
+  days: "day",
+} as const;
+type Unit = keyof typeof UNITS;
+const isUnit = (v: unknown): v is Unit => typeof v === "string" && Object.hasOwn(UNITS, v);
+/** A likely range's ends, to one decimal place as Plot's copy has them ("3.9 to 4.3 stars"). */
+const stars = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const label = (v: unknown) => (v === null || v === undefined ? "Unknown" : String(v));
@@ -302,6 +320,8 @@ export class Refs {
       filtered,
       from,
       to,
+      unit: name === "query_data" && isUnit(out.unit) ? out.unit : null,
+      totalEvidence: { n: out.n, range_low: out.range_low, range_high: out.range_high },
     });
   }
 
@@ -327,6 +347,8 @@ export class Refs {
       if (!row) return null;
       if (field && lookup.dims.includes(field)) return round ? null : label(row[field]);
       if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
+      if (field === "n" || field === "range")
+        return round ? null : this.evidence(lookup, row, field);
       // A row's figure, as {{a1}} or by its own measure's column, {{a1.revenue}} (Probe's #252 red-team); any
       // other measure's name isn't this lookup's, so it doesn't resolve.
       if (lookup.name === "query_data")
@@ -343,6 +365,8 @@ export class Refs {
     }
     if (field === "rows") return round ? null : whole.format(lookup.ordered.length);
     if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
+    if (field === "n" || field === "range")
+      return round ? null : this.evidence(lookup, lookup.totalEvidence, field);
     if (lookup.name === "query_data") {
       if (field === "total") return isNum(lookup.total) ? signed(kind, lookup.total, round) : null;
       if (field === "max" || field === "min") return this.extreme(lookup, field, round);
@@ -365,6 +389,9 @@ export class Refs {
     const kind = KINDS[lookup.measure];
     const noun = NOUNS[lookup.measure];
     const { from, to, change, percent_change: percent } = figures;
+    // A change within noise, as the data judged it: "within noise", and nothing at all for a clear change or one
+    // that can't be judged, so the model can't call a difference real or significant (Plot's copy, section 4).
+    if (field === "noise") return round || figures.noise !== "within" ? null : "within noise";
     if (field === "from" || field === "to")
       return isNum(figures[field]) ? signed(kind, figures[field] as number, round) : null;
     if (!isNum(change)) return null;
@@ -394,6 +421,26 @@ export class Refs {
       return `${where}${first}'s ${noun} was ${x} ${difference > 0 ? "higher" : "lower"} than ${second}'s`;
     }
     return null;
+  }
+
+  /**
+   * How much evidence is behind an average (David, 3 Nov 2026: "Show n next to averages"): `n`, "212 ratings" or
+   * "1 rating", and for average rating its likely range (95%), "a likely range of 3.9 to 4.3 stars". Only an average's lookup has
+   * them; anything else, or a figure without them, doesn't resolve.
+   */
+  private evidence(lookup: Lookup, figures: Row, field: "n" | "range"): string | null {
+    const { unit } = lookup;
+    if (!unit) return null;
+    if (field === "n") {
+      const n = figures.n;
+      return typeof n === "number" && Number.isSafeInteger(n) && n >= 0
+        ? `${whole.format(n)} ${n === 1 ? UNITS[unit] : unit}`
+        : null;
+    }
+    const { range_low: low, range_high: high } = figures;
+    if (lookup.measure !== "avg_rating" || !isNum(low) || !isNum(high) || low > high) return null;
+    // The phrase comes with it: "likely range" in the model's own words is withheld (EVIDENCE_WORDS).
+    return `a likely range of ${stars.format(low)} to ${stars.format(high)} stars`;
   }
 
   // Rankings are claims about every group, so they're made only over complete results; otherwise the ref
@@ -667,6 +714,15 @@ export function nextPriceContext(
  * had come back when the sentence's text arrived (the earliest stamp among its chunks). `after` is what the prices
  * shown before it hold it to; the result's `price` is the book this sentence priced, for nextPriceContext.
  */
+/**
+ * Judgments about evidence, which only the data may make (David, 3 Nov 2026: "flag a comparison when the difference
+ * is "within noise""): "within noise" comes from a comparison's ref ({{b.noise}}), how much data from {{a1.n}}, and
+ * a likely range from {{a1.range}}. In the model's own words they're withheld, as is calling a difference
+ * significant, real or a fluke, which the copy never says (Plot's copy, section 4).
+ */
+const EVIDENCE_WORDS =
+  /\b(?:noise|noisy|(?:in)?significan(?:t|tly|ce)|statistic(?:s|al|ally)?|margin of error|confidence|confident(?:ly)?|uncertain(?:ty)?|flukes?|(?:by|random|pure) chance|standard error|sample size|likely range|error bars?|(?:un)?reliable|real difference|meaningful(?:ly)?|meaningless)\b/iu;
+
 export function renderSentence(
   sentence: string,
   refs: Refs,
@@ -696,7 +752,7 @@ export function renderSentence(
     .replace(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
     .replace(/\bQ([1-4])\b/g, (q) => (refs.hasQuarter(q, known) ? " " : q))
     .replace(ALLOWED, " ");
-  if (banned(prose)) return null;
+  if (banned(prose) || EVIDENCE_WORDS.test(prose)) return null;
   // "Yes" or "No" is itself a claim: allowed only to open a sentence that is otherwise refs ("No, {{b.to_vs_from}}.").
   const answer = /^\s*(?:yes|no)\b/i.exec(prose);
   if (answer && (count === 0 || /\p{L}/u.test(prose.slice(answer[0].length)))) return null;

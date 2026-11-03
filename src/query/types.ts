@@ -137,8 +137,8 @@ export interface QueryResult {
   };
   /**
    * How many items each row's figure and the total's are over, and their standard errors, in the rows' order
-   * (evidence.ts). `unit` names what an average is over, null for other measures. Dewey's tool server keeps only
-   * columns, rows, total and source, so this doesn't reach Dewey before the figures gate does.
+   * (evidence.ts). `unit` names what an average is over, null for other measures. Dewey's tool server turns it into
+   * fields the figures gate renders by ref (withEvidence), never passing the standard errors to the model.
    */
   evidence?: { unit: EvidenceUnit | null; rows: Evidence[]; total: Evidence };
 }
