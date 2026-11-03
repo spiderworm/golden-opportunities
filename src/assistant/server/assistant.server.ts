@@ -47,8 +47,11 @@ export function getAssistant(
  */
 const MAX_PER_HOUR = 60;
 const MAX_PER_MINUTE = 30;
+/** Questions without a game have a minute cap of their own, so a loop of them can't fill the one players share. */
+const MAX_WITHOUT_GAME_PER_MINUTE = 30;
 const answered: number[] = [];
 const arrived: number[] = [];
+const arrivedWithoutGame: number[] = [];
 let busy = false;
 
 export interface Slot {
@@ -59,9 +62,21 @@ export interface Slot {
 
 /** Counts a request toward the minute cap; false once it's reached. Called for every request, first. */
 export function arrive(now = Date.now()): boolean {
-  while (arrived.length && now - arrived[0] > 60_000) arrived.shift();
-  if (arrived.length >= MAX_PER_MINUTE) return false;
-  arrived.push(now);
+  return within(arrived, MAX_PER_MINUTE, now);
+}
+
+/**
+ * Counts a question without a game toward its own minute cap, never the shared one (Audit's review of #338): a
+ * cheap loop of them, with no save cookie, would otherwise keep every player's questions refused while it ran.
+ */
+export function arriveWithoutGame(now = Date.now()): boolean {
+  return within(arrivedWithoutGame, MAX_WITHOUT_GAME_PER_MINUTE, now);
+}
+
+function within(times: number[], max: number, now: number): boolean {
+  while (times.length && now - times[0]! > 60_000) times.shift();
+  if (times.length >= max) return false;
+  times.push(now);
   return true;
 }
 
@@ -88,6 +103,7 @@ export function acquire(now = Date.now()): Slot | "busy" | "limit" {
 export const resetLimitsForTests = () => {
   answered.length = 0;
   arrived.length = 0;
+  arrivedWithoutGame.length = 0;
   busy = false;
 };
 
