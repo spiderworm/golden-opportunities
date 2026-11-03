@@ -361,6 +361,7 @@ function PlanQ1({ hints }: { hints: ForecastHints | null }) {
           }}
           hints={hints}
           problem={forecastProblem}
+          quarter={FIRST_QUARTER}
         />
         <div className={styles.formFoot}>
           <div className={styles.formNotes}>

@@ -172,6 +172,7 @@ One event to a line, under its area, so changes to different events don't collid
 - `plan_confirm_opened`
 - `plan_keep_investigating`
 - `plan_submitted` (with `reportsRead`: how many reports were chosen in Decide's panel before submitting)
+- `forecast_section_toggled` (Decide's forecast section opened or removed: the `quarter`, and `open`; never what was typed)
 - `forecast_made` (the quarter, `measures`: `revenue`, `units` or both, and `hadNote`), with `plan_submitted` when a forecast is filed with the plan. Never the figures or the note: the note is the player's own words and stays in their save.
 - `forecast_scored` (the quarter, and `revenue` and `units` as `hit` or `miss` for each forecast: whether the real figure landed inside the 80% range), once, as the quarter is played with the forecast. Never the figures.
 - `plan_reports_opened` (the quarter and the counts of the player's and the shop's reports)

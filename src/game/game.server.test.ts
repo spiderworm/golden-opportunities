@@ -195,7 +195,11 @@ describe("persisted quarter transaction", () => {
 it("runs the Decide and Result route loop against the same cookie-owned save", async () => {
   const save = saves.create();
   const args = { request: request(save.id, "GET") };
-  expect(await decideLoader(args as DecideRoute.LoaderArgs)).toEqual({ quarter: "2194-Q1" });
+  // Q1's plan, with the forecast's hints for it (src/forecast; the section on Decide's form).
+  expect(await decideLoader(args as DecideRoute.LoaderArgs)).toMatchObject({
+    quarter: "2194-Q1",
+    hints: { quarter: "2194-Q1" },
+  });
   try {
     resultLoader(args as ResultRoute.LoaderArgs);
     throw Error("Expected redirect");

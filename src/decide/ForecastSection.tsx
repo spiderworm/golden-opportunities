@@ -10,6 +10,7 @@ import {
   type ForecastProblem,
 } from "~/forecast/forecast";
 import { formatMeasure } from "~/investigate/format";
+import { track } from "~/platform/analytics/analytics.client";
 import type { QuarterId } from "~/simulation/quarters";
 import { quarterName } from "./q2-copy";
 import { FORECAST_COPY as COPY } from "./forecast-copy";
@@ -50,13 +51,25 @@ export function forecastFields(draft: ForecastDraft): Record<string, string> {
   if (!draft.open) return {};
   const fields: Record<string, string> = {};
   for (const measure of FORECAST_MEASURES) {
-    const parts = [draft[measure].point, draft[measure].low, draft[measure].high].map((t) =>
-      t.trim().replace(/,/g, ""),
+    const parts = [draft[measure].point, draft[measure].low, draft[measure].high].map(
+      withoutThousands,
     );
     if (parts.some((p) => p !== "")) fields[FORECAST_FIELDS[measure]] = parts.join(",");
   }
-  if (draft.note.trim()) fields[FORECAST_FIELDS.note] = draft.note;
+  // Trimmed as the door trims it before counting, so blank space can't carry a note past the body's cap (Frank, #393).
+  const note = draft.note.trim();
+  if (note) fields[FORECAST_FIELDS.note] = note;
   return fields;
+}
+
+/**
+ * A figure with its thousands separators taken out, "140,000" and "$1,234,567.50" alike; anything else as typed, so
+ * a comma that isn't one ("1234,50", a decimal comma) is refused as "Enter a number." rather than read as 123450
+ * (Audit, #393).
+ */
+function withoutThousands(typed: string): string {
+  const t = typed.trim();
+  return /^-?\$?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t) ? t.replace(/,/g, "") : t;
 }
 
 /**
@@ -77,7 +90,10 @@ export function ForecastSection({
   onChange,
   hints,
   problem,
+  quarter,
 }: {
+  /** The quarter being planned, for the section's events. */
+  quarter: QuarterId;
   draft: ForecastDraft;
   onChange: (draft: ForecastDraft) => void;
   /** The quarter before's and a year earlier's figures; null when the game has none to give. */
@@ -98,7 +114,10 @@ export function ForecastSection({
           type="button"
           className={styles.forecastToggle}
           aria-expanded={false}
-          onClick={() => onChange({ ...draft, open: true })}
+          onClick={() => {
+            track("forecast_section_toggled", { quarter, open: true });
+            onChange({ ...draft, open: true });
+          }}
         >
           {COPY.add}
         </button>
@@ -117,7 +136,10 @@ export function ForecastSection({
         aria-expanded={true}
         aria-controls={`${id}-body`}
         // Removing it is the skip: what was typed goes with it, so nothing half-done is filed.
-        onClick={() => onChange(EMPTY_FORECAST)}
+        onClick={() => {
+          track("forecast_section_toggled", { quarter, open: false });
+          onChange(EMPTY_FORECAST);
+        }}
       >
         {COPY.remove}
       </button>
