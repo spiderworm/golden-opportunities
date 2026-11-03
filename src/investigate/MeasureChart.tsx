@@ -319,19 +319,14 @@ export function MeasureChart({
           >
             Table
           </button>
-          <button
-            type="button"
+          <ReasonToggle
             className={styles.toggle}
-            aria-pressed={scatter}
-            disabled={noScatter !== null}
-            title={
-              noScatter ??
-              `Plot one measure against the other, one point per ${DIMENSION_LABELS[state.by].toLowerCase()}`
-            }
-            onClick={() => onScatter(!scatter)}
+            pressed={scatter}
+            reason={noScatter}
+            onToggle={() => onScatter(!scatter)}
           >
             Scatter plot
-          </button>
+          </ReasonToggle>
           <button
             type="button"
             className={styles.toggle}
