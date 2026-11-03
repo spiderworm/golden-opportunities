@@ -235,7 +235,8 @@ export function parseWaterfall(value: unknown): WaterfallPinSpec["waterfall"] | 
     !QUARTER.test(now)
   )
     return null;
-  if (then === now || (split !== undefined && typeof split !== "boolean")) return null;
+  // A change runs forward in time; "2193-Q4" < "2194-Q1" as strings, as quarters (Frank, #339).
+  if (then >= now || (split !== undefined && typeof split !== "boolean")) return null;
   if (isObject(filter) && ((by as string) in filter || "quarter" in filter)) return null;
   const query = parseQuery({
     measure: "revenue",
