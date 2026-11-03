@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { combineComparison, comparisonQueries } from "~/assistant/tools/comparison";
 import type { ComparisonResult } from "~/assistant/tools/definitions";
 import type { Dimension, Query, QueryResult } from "~/query/types";
-import { waterfall, type DroveRows, type PeriodRows } from "~/query/decompose";
+import { droveQuery, waterfall, type DroveRows, type PeriodRows } from "~/query/decompose";
 import { Waterfall } from "../charts/Waterfall";
 import { droveLabels } from "../charts/waterfall-chart";
 import { Icon } from "~/shell/icons";
@@ -122,12 +122,8 @@ export async function runPin(pin: PinSpec, signal: AbortSignal): Promise<Loaded>
     // only the groups drawn as their own bars may count, and a request can't be cut to those before it's recorded;
     // the waterfall shown on Investigate already recorded them (Plot, #335).
     const w = pin.waterfall;
-    const query = (measure: "revenue" | "units", quarter: string): Query => ({
-      measure,
-      by: [w.by],
-      filter: { ...w.filter, quarter: [quarter] },
-      limit: 200,
-    });
+    const query = (measure: "revenue" | "units", quarter: string) =>
+      droveQuery(w.by, w.filter, quarter, measure);
     const period = async (quarter: string): Promise<PeriodRows> => {
       const [revenue, units] = await Promise.all([
         fetchQuery(query("revenue", quarter), signal, { evidence: false }),
@@ -582,13 +578,20 @@ function WaterfallPinBody({
   const labels = useMemo(() => droveLabels(rows.then, rows.now), [rows]);
   const split = !!model.split && !("problem" in model.split);
   return (
-    <Waterfall
-      model={model}
-      labels={labels}
-      split={split}
-      table={table}
-      title={spec.title}
-      narrow
-    />
+    <>
+      <Waterfall
+        model={model}
+        labels={labels}
+        split={split}
+        table={table}
+        title={spec.title}
+        narrow
+      />
+      {/* Each quarter's own query, as the waterfall on Investigate says (Chart, #339). */}
+      <p className={styles.source}>
+        Source: {labels.then}: {rows.thenRows.revenue.source} {labels.now}:{" "}
+        {rows.nowRows.revenue.source}
+      </p>
+    </>
   );
 }

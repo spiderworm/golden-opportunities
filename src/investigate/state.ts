@@ -271,6 +271,13 @@ const DROVE_PLURAL: Record<(typeof DROVE_GROUPINGS)[number], string> = {
   title: "titles",
   edition: "editions",
 };
+/** A breakdown's name in a waterfall's title, "by genre": one per grouping it can break down (Chart, #339). */
+export const DROVE_NAMES: Record<(typeof DROVE_GROUPINGS)[number], string> = {
+  genre: "genre",
+  title: "title",
+  edition: "edition",
+};
+
 /** "genres", "titles" or "editions", for the toggle's words; null for a grouping it can't break down. */
 export const droveGroups = (by: Grouping): string | null =>
   (DROVE_PLURAL as Partial<Record<Grouping, string>>)[by] ?? null;

@@ -12,6 +12,7 @@ import {
   CHART_MEASURES,
   fittingMeasures,
   DROVE_GROUPINGS,
+  DROVE_NAMES,
   droveOn,
   droveQuarters,
   filtersExcept,
@@ -417,7 +418,7 @@ export function waterfallPinFor(
   // can't follow the charts' "~/" imports.
   const name = (quarter: string) => `Q${quarter.slice(-1)} ${quarter.slice(0, 4)}`;
   return {
-    title: `What drove revenue's change, ${name(pair.then)} to ${name(pair.now)}, by ${state.by}`,
+    title: `What drove revenue's change, ${name(pair.then)} to ${name(pair.now)}, by ${DROVE_NAMES[state.by as keyof typeof DROVE_NAMES]}`,
     kind: "waterfall",
     waterfall: {
       by: state.by as WaterfallPinSpec["waterfall"]["by"],

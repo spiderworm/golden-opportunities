@@ -8,7 +8,7 @@ import {
   type QueryResult,
   type QueryView,
 } from "~/query/types";
-import { waterfall, type DroveRows, type PeriodRows } from "~/query/decompose";
+import { droveQuery, waterfall, type DroveRows, type PeriodRows } from "~/query/decompose";
 import {
   DEFAULT_STATE,
   droveBlock,
@@ -144,18 +144,10 @@ function droveRows(
   if (!state.drove || droveBlock(state, view.periods)) return null;
   const pair = droveQuarters(state, view.periods)!;
   const others = filtersExcept(state.filters, [state.by, "quarter"]);
-  const rows = (quarter: string): PeriodRows => {
-    const query = (measure: Measure): Query => ({
-      measure,
-      by: [state.by],
-      filter: { ...others, quarter: [quarter] },
-      limit: 200,
-    });
-    return {
-      revenue: run(query("revenue")),
-      ...(state.split ? { units: run(query("units")) } : {}),
-    };
-  };
+  const rows = (quarter: string): PeriodRows => ({
+    revenue: run(droveQuery(state.by, others, quarter, "revenue")),
+    ...(state.split ? { units: run(droveQuery(state.by, others, quarter, "units")) } : {}),
+  });
   const thenRows = rows(pair.then);
   const nowRows = rows(pair.now);
   // The groups drawn as their own bars, exactly as the chart chooses them (the same waterfall, the same top).
@@ -165,12 +157,7 @@ function droveRows(
     [pair.now, nowRows],
   ] as const)
     shown(
-      {
-        measure: "revenue",
-        by: [state.by],
-        filter: { ...others, quarter: [quarter] },
-        limit: 200,
-      },
+      droveQuery(state.by, others, quarter, "revenue"),
       onlyRows(period.revenue, (row) => drawn.has(row[state.by] ?? null)),
     );
   return { ...pair, thenRows, nowRows };
