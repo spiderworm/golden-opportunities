@@ -24,6 +24,7 @@ import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
 import { PlanLink } from "./PlanLink";
 import { scatterTitle } from "./charts/scatter-chart";
+import { lastYearLabels } from "./charts/last-year";
 import { runQuery } from "~/query/run-query.server";
 import { recordDiscoveries, type ObservedQuery } from "~/game/discoveries.server";
 import { getGameSession } from "~/game/session.server";
@@ -50,6 +51,8 @@ import {
   measuresOf,
   heatWindow,
   scatterProblem,
+  lastYearBlock,
+  shownQuarter,
 } from "./state";
 import { PinnedCharts } from "./pins/PinnedCharts";
 import type { PinSpec } from "./pins/spec";
@@ -145,7 +148,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   const shown = chosen ?? shownFilters(searchParams, state.filters);
 
   const pins = usePins(track);
-  const chartPin = pinSpecFor(state);
+  const chartPin = pinSpecFor(state, options.quarter);
   const heatPin = heatPinFor(state, options.quarter);
 
   /** The next question, with the bar's filters kept: a filter that gets a value stays on the bar when it's cleared. */
@@ -375,12 +378,15 @@ function heatPinFor(state: InvestigateState, quarters: readonly string[]): PinSp
 }
 
 /** The main chart as a pin: the same query it runs, so the pin shows what the player saw. */
-function pinSpecFor(state: InvestigateState): PinSpec {
+function pinSpecFor(state: InvestigateState, quarters: readonly string[]): PinSpec {
   const filter = filtersExcept(state.filters, [state.by]);
+  // Pinned as shown: with last year, when the chart has it (Frank's #301), and titled so.
+  const quarter = shownQuarter(state);
+  const vs = state.lastYear && !lastYearBlock(state, quarters) && quarter;
   const scatter = state.scatter && scatterProblem(state.by, state.also) === null;
   const title = scatter
     ? scatterTitle(measuresOf(state), state.by)
-    : `${measuresLabel(measuresOf(state))} by ${DIMENSION_LABELS[state.by].toLowerCase()}${state.compare ? " and quarter" : ""}`;
+    : `${measuresLabel(measuresOf(state))} by ${DIMENSION_LABELS[state.by].toLowerCase()}${state.compare ? " and quarter" : ""}${vs ? `, vs. ${lastYearLabels(vs, state.by).then}` : ""}`;
   return {
     title,
     // Over time, several measures are lines, as on the main chart; two can be a scatter plot instead of bars.
@@ -394,6 +400,7 @@ function pinSpecFor(state: InvestigateState): PinSpec {
       measure: state.measure,
       by: state.compare ? [state.by, "quarter"] : [state.by],
       ...(Object.keys(filter).length ? { filter } : {}),
+      ...(vs ? { vs: "last_year" as const } : {}),
     },
   };
 }
