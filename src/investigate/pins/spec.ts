@@ -11,16 +11,21 @@ import {
 import {
   CHART_MEASURES,
   fittingMeasures,
+  DROVE_GROUPINGS,
+  droveOn,
+  droveQuarters,
+  filtersExcept,
   GROUPINGS,
   HEAT_DIMENSIONS,
   MAX_MEASURES,
   scatterProblem,
   type Grouping,
   type ChartMeasure,
+  type InvestigateState,
 } from "../state.ts";
 
 export const CHART_PIN_KINDS = ["bar", "line", "table", "heatmap", "scatter"] as const;
-export const PIN_KINDS = [...CHART_PIN_KINDS, "comparison"] as const;
+export const PIN_KINDS = [...CHART_PIN_KINDS, "comparison", "waterfall"] as const;
 export type PinKind = (typeof PIN_KINDS)[number];
 
 /**
@@ -45,10 +50,15 @@ export interface ChartPinSpec {
  * (NO_CHART's keys); null if it can. Too many groups is known only once it's run.
  */
 export const noChart = (spec: PinSpec): "comparison" | "figure" | null =>
-  spec.kind === "comparison" ? "comparison" : spec.query.by.length ? null : "figure";
+  spec.kind === "comparison"
+    ? "comparison"
+    : spec.kind === "waterfall" || spec.query.by.length
+      ? null
+      : "figure";
 
 /** Whether a pin shows as a table now: its toggle, or else its kind. */
-export const shownAsTable = (spec: ChartPinSpec) => spec.table ?? spec.kind === "table";
+export const shownAsTable = (spec: ChartPinSpec | WaterfallPinSpec) =>
+  spec.table ?? spec.kind === "table";
 
 /**
  * The chart a query draws: a line over months or quarters, bars for anything else (Audit, #252). One rule for
@@ -98,7 +108,26 @@ export interface ComparisonPinSpec {
   comparison: PinComparison;
 }
 
-export type PinSpec = ChartPinSpec | ComparisonPinSpec;
+/**
+ * "What drove the change" pinned (David, 3 Nov 2026): revenue's change between two quarters by genre, title or
+ * edition, with the chart's other filters, and whether it's split into price, volume and mix. Run again as its
+ * plain queries (src/query/decompose.ts) whenever it's shown.
+ */
+export interface WaterfallPinSpec {
+  title: string;
+  kind: "waterfall";
+  waterfall: {
+    by: (typeof DROVE_GROUPINGS)[number];
+    then: string;
+    now: string;
+    filter?: Partial<Record<Dimension, readonly string[]>>;
+    split?: boolean;
+  };
+  /** Shown as its table: the pin's Table toggle. Not part of pinKey. */
+  table?: boolean;
+}
+
+export type PinSpec = ChartPinSpec | ComparisonPinSpec | WaterfallPinSpec;
 
 export type Pin = PinSpec & {
   id: string;
@@ -192,8 +221,52 @@ export function parseComparison(value: unknown): PinComparison | null {
   };
 }
 
+const QUARTER = /^\d{4}-Q[1-4]$/;
+
+/** A pinned waterfall's shape: a breakdown it can be drawn by, two quarters, and the chart's filters as a query's. */
+export function parseWaterfall(value: unknown): WaterfallPinSpec["waterfall"] | null {
+  if (!isObject(value) || !only(value, ["by", "then", "now", "filter", "split"])) return null;
+  const { by, then, now, filter, split } = value;
+  if (!(DROVE_GROUPINGS as readonly unknown[]).includes(by)) return null;
+  if (
+    typeof then !== "string" ||
+    typeof now !== "string" ||
+    !QUARTER.test(then) ||
+    !QUARTER.test(now)
+  )
+    return null;
+  if (then === now || (split !== undefined && typeof split !== "boolean")) return null;
+  if (isObject(filter) && ((by as string) in filter || "quarter" in filter)) return null;
+  const query = parseQuery({
+    measure: "revenue",
+    by: [by],
+    ...(filter === undefined ? {} : { filter }),
+  });
+  if (!query) return null;
+  return {
+    by: by as WaterfallPinSpec["waterfall"]["by"],
+    then,
+    now,
+    ...(query.filter ? { filter: query.filter } : {}),
+    ...(split ? { split: true } : {}),
+  };
+}
+
 export function parsePinSpec(value: unknown): PinSpec | null {
   if (!isObject(value) || !isString(value.title, TITLE_MAX)) return null;
+  if (value.kind === "waterfall") {
+    if (!only(value, ["title", "kind", "waterfall", "table"])) return null;
+    if (value.table !== undefined && typeof value.table !== "boolean") return null;
+    const waterfall = parseWaterfall(value.waterfall);
+    return (
+      waterfall && {
+        title: value.title,
+        kind: "waterfall",
+        waterfall,
+        ...(typeof value.table === "boolean" ? { table: value.table } : {}),
+      }
+    );
+  }
   if (value.kind === "comparison") {
     if (!only(value, ["title", "kind", "comparison"])) return null;
     const comparison = parseComparison(value.comparison);
@@ -283,6 +356,10 @@ const sortedFilter = (filter: Partial<Record<Dimension, readonly string[]>> | un
 
 /** Two pins are the same when their kind and query (or comparison) match, whatever their titles and filter order. */
 export function pinKey(spec: PinSpec): string {
+  if (spec.kind === "waterfall") {
+    const w = spec.waterfall;
+    return JSON.stringify([spec.kind, w.by, w.then, w.now, sortedFilter(w.filter), !!w.split]);
+  }
   if (spec.kind === "comparison") {
     const c = spec.comparison;
     return JSON.stringify([
@@ -322,4 +399,31 @@ export function addPin(
   const key = pinKey(spec);
   const rest = pins.filter((p) => pinKey(p) !== key);
   return [{ ...spec, id, pinnedBy }, ...rest].slice(0, MAX_PINS);
+}
+
+/**
+ * What drove the change as a pin, while it's on: titled as the chart is, with the chart's filters but the
+ * breakdown's and the quarter's, which the waterfall names itself. Null while it's off or can't be drawn.
+ */
+export function waterfallPinFor(
+  state: InvestigateState,
+  quarters: readonly string[],
+): WaterfallPinSpec | null {
+  const pair = droveOn(state, quarters) ? droveQuarters(state, quarters) : null;
+  if (!pair) return null;
+  const others = filtersExcept(state.filters, [state.by, "quarter"]);
+  // "Q4 2193", as the chart names it. Written here: Dewey's tool server loads this module under plain Node, which
+  // can't follow the charts' "~/" imports.
+  const name = (quarter: string) => `Q${quarter.slice(-1)} ${quarter.slice(0, 4)}`;
+  return {
+    title: `What drove revenue's change, ${name(pair.then)} to ${name(pair.now)}, by ${state.by}`,
+    kind: "waterfall",
+    waterfall: {
+      by: state.by as WaterfallPinSpec["waterfall"]["by"],
+      then: pair.then,
+      now: pair.now,
+      ...(Object.keys(others).length ? { filter: others } : {}),
+      ...(state.split ? { split: true } : {}),
+    },
+  };
 }

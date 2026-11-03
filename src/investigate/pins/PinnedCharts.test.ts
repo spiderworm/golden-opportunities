@@ -121,3 +121,45 @@ describe("running a pinned heatmap", () => {
     expect(sent).toEqual([{ evidence: "none" }, { evidence: null }]);
   });
 });
+
+describe("running a pinned waterfall", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("runs each quarter's revenue, and units with the split, as context, never as discovery evidence", async () => {
+    const sent: { query: { measure: string; filter: { quarter: string[] } }; context: boolean }[] =
+      [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      const query = JSON.parse(init.body as string);
+      sent.push({ query, context: new Headers(init.headers).get(EVIDENCE_HEADER) === "none" });
+      const quarter = query.filter.quarter[0];
+      return new Response(
+        JSON.stringify({
+          columns: [
+            { key: "genre", label: "Genre", type: "string", nullable: true },
+            { key: query.measure, label: query.measure, type: "number", nullable: false },
+          ],
+          rows: [{ genre: "Fiction", [query.measure]: quarter === "2193-Q4" ? 100 : 120 }],
+          total: quarter === "2193-Q4" ? 100 : 120,
+          source: `Sales, ${quarter}`,
+        }),
+      );
+    });
+    const pin: Pin = {
+      id: "w",
+      pinnedBy: "player",
+      title: "What drove revenue's change, Q4 2193 to Q1 2194, by genre",
+      kind: "waterfall",
+      waterfall: { by: "genre", then: "2193-Q4", now: "2194-Q1", split: true },
+    };
+    queryCache.setVersion("v-waterfall");
+    const loaded = await runPin(pin, new AbortController().signal);
+    expect(loaded.kind).toBe("waterfall");
+    expect(sent.map((s) => [s.query.measure, s.query.filter.quarter[0]]).sort()).toEqual([
+      ["revenue", "2193-Q4"],
+      ["revenue", "2194-Q1"],
+      ["units", "2193-Q4"],
+      ["units", "2194-Q1"],
+    ]);
+    expect(sent.every((s) => s.context)).toBe(true);
+  });
+});

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Query } from "~/query/types";
+import { DEFAULT_STATE } from "../state";
 import {
   addPin,
   noChart,
@@ -9,6 +10,7 @@ import {
   parsePinSpec,
   pinKey,
   shownAsTable,
+  waterfallPinFor,
   type Pin,
   type PinSpec,
 } from "./spec";
@@ -394,5 +396,80 @@ describe("a pin by what it shows (Sage, #302; Frank, #301)", () => {
     };
     expect(parsePinSpec(spec)).toEqual(spec);
     expect(parsePinSpec({ ...spec, query: { ...spec.query, vs: "last_quarter" } })).toBeNull();
+  });
+});
+
+describe("a pinned waterfall (What drove the change)", () => {
+  const waterfall = {
+    title: "What drove revenue's change, Q4 2193 to Q1 2194, by genre",
+    kind: "waterfall",
+    waterfall: { by: "genre", then: "2193-Q4", now: "2194-Q1", filter: { format: ["Hardcover"] } },
+  } as const;
+
+  it("keeps its breakdown, its two quarters, the chart's other filters and its split", () => {
+    expect(parsePinSpec(waterfall)).toEqual(waterfall);
+    expect(
+      parsePinSpec({
+        ...waterfall,
+        waterfall: { ...waterfall.waterfall, split: true },
+        table: true,
+      }),
+    ).toEqual({
+      ...waterfall,
+      waterfall: { ...waterfall.waterfall, split: true },
+      table: true,
+    });
+    expect(noChart(parsePinSpec(waterfall)!)).toBeNull();
+  });
+
+  it("refuses one it couldn't draw", () => {
+    const bad = (patch: object) =>
+      parsePinSpec({ ...waterfall, waterfall: { ...waterfall.waterfall, ...patch } });
+    expect(bad({ by: "month" })).toBeNull();
+    expect(bad({ then: "2193-Q5" })).toBeNull();
+    expect(bad({ now: "2193-Q4" })).toBeNull();
+    // The quarters are its own, and its breakdown isn't a filter.
+    expect(bad({ filter: { quarter: ["2193-Q1"] } })).toBeNull();
+    expect(bad({ filter: { genre: ["Fiction"] } })).toBeNull();
+    expect(bad({ split: "yes" })).toBeNull();
+    expect(parsePinSpec({ ...waterfall, extra: 1 })).toBeNull();
+  });
+
+  it("is one pin whether shown as its chart or its table, and another with the split", () => {
+    const shown = parsePinSpec(waterfall)!;
+    expect(pinKey({ ...shown, table: true } as PinSpec)).toBe(pinKey(shown));
+    const split = parsePinSpec({
+      ...waterfall,
+      waterfall: { ...waterfall.waterfall, split: true },
+    })!;
+    expect(pinKey(split)).not.toBe(pinKey(shown));
+  });
+});
+
+describe("pinning What drove the change", () => {
+  it("pins the waterfall while it's on, with the chart's other filters, and nothing while it's off", () => {
+    const quarters = ["2193-Q4", "2194-Q1"];
+    const on = {
+      ...DEFAULT_STATE,
+      by: "genre" as const,
+      drove: true,
+      split: true,
+      filters: { quarter: ["2194-Q1"], format: ["Hardcover"], genre: ["Fiction"] },
+    };
+    expect(waterfallPinFor(on, quarters)).toEqual({
+      title: "What drove revenue's change, Q4 2193 to Q1 2194, by genre",
+      kind: "waterfall",
+      waterfall: {
+        by: "genre",
+        then: "2193-Q4",
+        now: "2194-Q1",
+        filter: { format: ["Hardcover"] },
+        split: true,
+      },
+    });
+    // It parses back as it was pinned.
+    expect(parsePinSpec(waterfallPinFor(on, quarters))).toEqual(waterfallPinFor(on, quarters));
+    expect(waterfallPinFor({ ...on, drove: false }, quarters)).toBeNull();
+    expect(waterfallPinFor({ ...on, filters: {} }, quarters)).toBeNull();
   });
 });

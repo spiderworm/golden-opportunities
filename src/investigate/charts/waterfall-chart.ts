@@ -178,7 +178,7 @@ export function waterfallBoxes(
 export function waterfallOption(
   w: Waterfall,
   labels: DroveLabels,
-  { split = false }: { split?: boolean } = {},
+  { split = false, narrow = false }: { split?: boolean; narrow?: boolean } = {},
 ): EChartsCoreOption {
   const bars = waterfallBars(w, labels);
   const foot = axisFoot(bars);
@@ -210,9 +210,11 @@ export function waterfallOption(
         color: chartTheme.textMuted,
         fontSize: 12,
         interval: 0,
-        // Each name in its own bar's width, cut short rather than run into the next.
-        width: 80,
+        // Each name in its own bar's width, cut short rather than run into the next; a pin's card is too narrow for
+        // that, so there they slant.
+        width: narrow ? 72 : 80,
         overflow: "truncate",
+        ...(narrow ? { rotate: 35 } : {}),
       },
     },
     yAxis: {

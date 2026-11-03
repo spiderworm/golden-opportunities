@@ -23,7 +23,10 @@ export function Waterfall({
   split,
   table,
   title,
+  narrow = false,
 }: {
+  /** In a pin's narrow card: the bars' names slant. */
+  narrow?: boolean;
   model: WaterfallModel;
   labels: DroveLabels;
   /** Whether the split is on and possible. */
@@ -31,7 +34,10 @@ export function Waterfall({
   table: boolean;
   title: string;
 }) {
-  const option = useMemo(() => waterfallOption(model, labels, { split }), [model, labels, split]);
+  const option = useMemo(
+    () => waterfallOption(model, labels, { split, narrow }),
+    [model, labels, split, narrow],
+  );
   const caption = axisCaption(axisFoot(waterfallBars(model, labels)));
   if (table) return <WaterfallTable model={model} labels={labels} split={split} />;
   return (
