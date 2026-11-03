@@ -88,6 +88,7 @@ describe("Reports in Decide", () => {
     expect(html).toContain("Weekdays carry the quarter.");
     expect(html).toContain("Revenue by quarter");
     expect(html).toContain("Down in Q4.");
+    expect(html).toMatch(/aria-pressed="false" aria-label="Table: Revenue by quarter"/);
     expect(html).toContain("Edit in Reports");
     expect(html).toContain("All reports");
     // Read-only: nothing to edit in place.

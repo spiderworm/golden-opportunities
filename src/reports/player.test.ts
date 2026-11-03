@@ -156,16 +156,28 @@ describe("a player's report", () => {
   });
 
   it("counts what an edit did, and a report's shape, without a word of it", () => {
-    const a = { spec: spec("A") };
-    const b = { spec: spec("B"), note: "why" };
-    const c = { spec: spec("C") };
+    // Charts are told apart by their query (pinKey), not their title or view.
+    const by = (d: "genre" | "format" | "publisher" | "month") => ({
+      ...spec(d),
+      query: { measure: "revenue" as const, by: [d] },
+    });
+    const a = { spec: by("genre") };
+    const b = { spec: by("format"), note: "why" };
+    const c = { spec: by("publisher") };
     const before = { title: "Old", items: [a, b, c] };
-    expect(editCounts(before, { title: "New", items: [c, a, { spec: spec("D") }] })).toEqual({
+    expect(editCounts(before, { title: "New", items: [c, a, { spec: by("month") }] })).toEqual({
       renamed: true,
       added: 1,
       removed: 1,
       moved: 2,
     });
+    // A view toggled, or a chart renamed, is neither added nor removed.
+    expect(
+      editCounts(before, {
+        title: "Old",
+        items: [{ spec: { ...a.spec, title: "Renamed", table: true } }, b, c],
+      }),
+    ).toEqual({ renamed: false, added: 0, removed: 0, moved: 0 });
     expect(editCounts(before, before)).toEqual({ renamed: false, added: 0, removed: 0, moved: 0 });
     expect(reportCounts({ title: "T", summary: "S", items: [a, b] })).toEqual({
       charts: 2,

@@ -10,7 +10,9 @@ import {
 
 import { quarterName } from "~/game/event-title";
 import { PinChart } from "~/investigate/pins/PinnedCharts";
-import { pinKey, type PinSpec } from "~/investigate/pins/spec";
+import { noChartReason, TableToggle } from "~/investigate/charts/TableToggle";
+import { MAX_SERIES } from "~/platform/charts/chart-theme";
+import { noChart, pinKey, shownAsTable, type PinSpec } from "~/investigate/pins/spec";
 import { usePins } from "~/investigate/pins/usePins";
 import { track } from "~/platform/analytics/analytics.client";
 import { PLAYER_COPY as COPY } from "./copy";
@@ -160,9 +162,12 @@ function ReportView({
 export function ReportCharts({
   items,
   quarters,
+  where = "report",
 }: {
   items: PlayerReport["items"];
   quarters: readonly string[];
+  /** Where it's read, for table_toggled: on Reports, or in Decide's panel. */
+  where?: "report" | "decide";
 }) {
   return (
     <ol className={styles.reportCharts}>
@@ -172,17 +177,62 @@ export function ReportCharts({
           className={styles.card}
           data-wide={item.spec.kind === "heatmap" || undefined}
         >
-          <h4 className={styles.cardTitle}>{item.spec.title}</h4>
-          {everyQuarter(item.spec) && <span className={styles.muted}>{COPY.everyQuarter}</span>}
-          <PinChart
+          <ToggledChart
             spec={item.spec}
             quarters={quarters}
-            onError={(code) => track("report_chart_failed", { code })}
+            onTable={(table) =>
+              track("table_toggled", { where, shown: table, kind: item.spec.kind })
+            }
           />
           {item.note && <p className={styles.note}>{item.note}</p>}
         </li>
       ))}
     </ol>
+  );
+}
+
+/**
+ * A report item's chart with its title and Table toggle (David, 3 Nov 2026), as a pin has them. Read, the view is
+ * the reader's for now, starting as the item was saved; in the editor, `table` and `onTable` keep it with the report.
+ */
+function ToggledChart({
+  spec,
+  quarters,
+  table: kept,
+  onTable,
+}: {
+  spec: PinSpec;
+  quarters: readonly string[];
+  table?: boolean;
+  onTable: (table: boolean) => void;
+}) {
+  const [local, setLocal] = useState(spec.kind !== "comparison" && shownAsTable(spec));
+  const [tooMany, setTooMany] = useState<number | null>(null);
+  const why = noChartReason(noChart(spec), tooMany, MAX_SERIES);
+  const table = why !== null || (kept ?? local);
+  return (
+    <>
+      <div className={styles.itemHeader}>
+        <h4 className={styles.cardTitle}>{spec.title}</h4>
+        <TableToggle
+          table={table}
+          label={spec.title}
+          disabledReason={why}
+          onChange={(next) => {
+            setLocal(next);
+            onTable(next);
+          }}
+        />
+      </div>
+      {everyQuarter(spec) && <span className={styles.muted}>{COPY.everyQuarter}</span>}
+      <PinChart
+        spec={spec}
+        quarters={quarters}
+        table={table}
+        onTooMany={setTooMany}
+        onError={(code) => track("report_chart_failed", { code })}
+      />
+    </>
   );
 }
 
@@ -361,8 +411,15 @@ function Editor({
             className={styles.card}
             data-wide={item.spec.kind === "heatmap" || undefined}
           >
-            <h4 className={styles.cardTitle}>{item.spec.title}</h4>
-            <PinChart spec={item.spec} quarters={quarters} onError={() => {}} />
+            {/* The view is the report's own: saved with it, so it reads as the player left it. */}
+            <ToggledChart
+              spec={item.spec}
+              quarters={quarters}
+              table={item.spec.kind !== "comparison" && shownAsTable(item.spec)}
+              onTable={(table) => {
+                if (item.spec.kind !== "comparison") setItem(i, { spec: { ...item.spec, table } });
+              }}
+            />
             <label className={styles.field}>
               <span>{COPY.note}</span>
               <textarea
