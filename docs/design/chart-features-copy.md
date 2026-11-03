@@ -252,7 +252,7 @@ David: "Named filter sets ("awarded paperbacks under $20") that can be applied t
     - `Keep the name to 60 characters.`
     - `You already have a segment called "{name}".`
     - `These filters are already saved as "{name}".`
-    - `You have {12} segments. Delete one to save another.`
+    - `You have {20} segments. Delete one to save another.` (the limit, `SEGMENT_LIMITS.segments`)
     - `This name can't be saved. Check it and try again.`
 - **The control:** `Segment`, a dropdown at the start of the filter bar. It reads `Segment: None` or `Segment: {name}`. Choosing one puts its filters on the bar, and if the player then changes a filter, it reads `Segment: {name}, edited`. When there are none, the menu says `No segments yet. Add filters, then choose Save as segment.`
 - **Managing,** from each segment's row:
