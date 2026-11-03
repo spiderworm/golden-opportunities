@@ -298,8 +298,10 @@ Sage passes the issued token as ORBITAL_QUERY_TOKEN in the MCP child's environme
 The child sends Authorization: Bearer to its configured loopback endpoint. Tokens
 never enter prompts, tool arguments/results, browser data or logs. At most four
 capabilities per save and 64 globally can be active. The server-only
-isLocalBrowserRequest helper in query/access.server.ts centralizes the local boundary:
-localhost/127.0.0.1/[::1] only, matching Origin, no cross-origin CORS access.
+isLocalBrowserRequest helper in query/access.server.ts centralizes the browser boundary:
+localhost/127.0.0.1/[::1] only, matching Origin, no cross-origin CORS access; or, when
+the server is deployed with `ORBITAL_PUBLIC_ORIGIN`, a request whose Origin is that
+origin exactly and whose Host is its host (`platform/origin.server.ts`, `docs/deploy.md`).
 
 HTTP admission is at most 60 requests/minute per local principal (browser or
 MCP), 100/minute globally, and eight active request bodies per process. Bodies

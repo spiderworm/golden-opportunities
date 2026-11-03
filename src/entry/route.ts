@@ -1,4 +1,5 @@
 import { trackServer } from "~/platform/analytics/analytics.server";
+import { servedOverHttps } from "~/platform/origin.server";
 import type { Route } from "./+types/route";
 import { ENTRY_COOKIE, ENTRY_MAX_AGE, ENTRY_VERSION, MUSIC_COOKIE } from "./cookie";
 import { entryResponse, NO_INDEX, safeReturn } from "./gate.server";
@@ -14,7 +15,8 @@ export async function action({ request }: Route.ActionArgs) {
   if (form.get("agree") !== "yes") return entryResponse(to);
   const music = form.get("music") === "on" ? "on" : "off";
   trackServer("entry_accepted", { music });
-  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  // Behind the deployed proxy request.url is http, but the page was https (platform/origin.server.ts).
+  const secure = servedOverHttps(request) ? "; Secure" : "";
   const headers = new Headers({
     Location: to,
     "Cache-Control": "no-store",

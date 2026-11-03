@@ -175,3 +175,40 @@ describe("server-owned query capabilities", () => {
     ).toBe(false);
   });
 });
+
+describe("a deployed visitor's Share play data choice on Dewey's lookups (Audit and Probe, #368)", () => {
+  it("is carried on the token, so a lookup with no browser cookie still honours it", async () => {
+    const { withSharing, visitorAllowsSharing } =
+      await import("../platform/analytics/visitor-sharing.server");
+    const { queryTokenSharing } = await import("./query-token.server");
+    const save = saves.create();
+    const off = withSharing(false, () => issue(save.id)).token;
+    const on = issue(save.id).token;
+    expect(queryTokenSharing(off)).toBe(false);
+    expect(queryTokenSharing(on)).toBe(true);
+    // The lookup itself runs with the token's choice: the query handler's events see it.
+    const seen: boolean[] = [];
+    const h = createQueryHandler({
+      run: () => {
+        seen.push(visitorAllowsSharing());
+        return { columns: [], rows: [], total: null, source: "test" };
+      },
+      track: () => {},
+    });
+    await h(request(undefined, off));
+    await h(request(undefined, on));
+    expect(seen).toEqual([false, true]);
+    // A refused lookup's failure event follows the token's choice too (Probe, #368).
+    const failed: boolean[] = [];
+    const refusing = createQueryHandler({
+      track: (event) => event === "query_request_failed" && failed.push(visitorAllowsSharing()),
+    });
+    expect((await refusing(request(undefined, off, { measure: "nonsense", by: [] }))).status).toBe(
+      400,
+    );
+    expect((await refusing(request(undefined, on, { measure: "nonsense", by: [] }))).status).toBe(
+      400,
+    );
+    expect(failed).toEqual([false, true]);
+  });
+});
