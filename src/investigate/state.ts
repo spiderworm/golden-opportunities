@@ -1,5 +1,6 @@
 // What the player is asking, kept in the URL so every view can be shared,
 // bookmarked and undone with Back.
+import { yearEarlier } from "../query/last-year.ts";
 import { yearMonth } from "../query/months.ts";
 import type { Dimension, Measure } from "../query/types.ts";
 
@@ -161,6 +162,8 @@ export interface InvestigateState {
   by: Grouping;
   /** Split each bar by quarter. Only meaningful for groupings that aren't time. */
   compare: boolean;
+  /** Beside the quarter shown, the same quarter last year (`vs=last_year`): applies only while lastYearBlock allows it. */
+  lastYear: boolean;
   filters: Filters;
   /** The heatmap. Its measure follows the chart's first until the player picks one (`heat=`). */
   heat: HeatState;
@@ -171,6 +174,7 @@ export const DEFAULT_STATE: InvestigateState = {
   also: [],
   by: "month",
   compare: false,
+  lastYear: false,
   filters: {},
   heat: { measure: "revenue", rows: "weekday", cols: "month", period: "recent" },
 };
@@ -189,6 +193,30 @@ export function canCompare(by: Grouping, also: readonly ChartMeasure[] = []): bo
     by !== "month" && by !== "quarter" && by !== "title" && by !== "edition" && also.length === 0
   );
 }
+
+/**
+ * Why the chart can't show the same quarter last year, or null if it can (Plot's copy, #291): it compares one quarter,
+ * the one the quarter filter picks, a year back, on one measure, without Compare quarters. A breakdown by quarter
+ * ignores the quarter filter, so it has no one quarter.
+ */
+export function lastYearBlock(
+  state: Pick<InvestigateState, "by" | "also" | "compare" | "filters">,
+  quarters: readonly string[],
+): string | null {
+  if (state.also.length) return "Show one measure to compare with last year";
+  if (state.compare) return "Turn off Compare quarters to compare with last year";
+  if (state.by === "quarter")
+    return "Break down by something other than quarter to compare with last year";
+  const quarter = shownQuarter(state);
+  if (!quarter) return "Filter to one quarter to compare it with last year";
+  if (!quarters.includes(yearEarlier("quarter", quarter)))
+    return "The ledgers start in 2193: there's no year before it to compare";
+  return null;
+}
+
+/** The one quarter the quarter filter picks, or null. */
+export const shownQuarter = (state: Pick<InvestigateState, "filters">): string | null =>
+  state.filters.quarter?.length === 1 ? state.filters.quarter[0]! : null;
 
 /** A list of measures cut to what fits one chart, in order: repeats, a fourth measure and a third unit dropped. */
 export function fittingMeasures(measures: readonly ChartMeasure[]): ChartMeasure[] {
@@ -222,6 +250,7 @@ export function parseState(params: URLSearchParams): InvestigateState {
     ...measures,
     by,
     compare: params.get("compare") === "quarter" && canCompare(by, measures.also),
+    lastYear: params.get("vs") === "last_year",
     filters,
     heat: readHeat(params, measures.measure),
   };
@@ -249,6 +278,7 @@ export function toSearchParams(state: InvestigateState): URLSearchParams {
   else if (state.measure !== DEFAULT_STATE.measure) params.set("measure", state.measure);
   if (state.by !== DEFAULT_STATE.by) params.set("by", state.by);
   if (state.compare && canCompare(state.by, state.also)) params.set("compare", "quarter");
+  if (state.lastYear) params.set("vs", "last_year");
   // The heatmap's measure only once it differs from the chart's, so it keeps following the chart until then.
   if (state.heat.measure !== state.measure) params.set("heat", state.heat.measure);
   if (state.heat.rows !== DEFAULT_STATE.heat.rows) params.set("heat_rows", state.heat.rows);
