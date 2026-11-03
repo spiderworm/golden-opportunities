@@ -34,7 +34,7 @@ import {
 } from "../charts/last-year";
 import { withNoise } from "../charts/evidence";
 import { formatDimensionValue, formatMeasure, MEASURE_LABELS, RELATIVE_NAMES } from "../format";
-import type { RelativeQuarter } from "~/query/relative";
+import { isRelativeQuarter, type RelativeQuarter } from "~/query/relative";
 import { eventsCaption, markersFor, withMarkers } from "../charts/event-markers";
 import { monthsInScope } from "../state";
 import styles from "../Investigate.module.css";
@@ -110,7 +110,7 @@ export function PinnedCharts({
 type Loaded =
   | { kind: "query"; result: QueryResult; also: QueryResult[] }
   | { kind: "comparison"; result: ComparisonResult }
-  | { kind: "waterfall"; rows: DroveRows };
+  | { kind: "waterfall"; rows: DroveRows; resolved?: NonNullable<QueryResult["resolved"]> };
 type Load =
   { status: "loading" } | ({ status: "ready" } & Loaded) | { status: "failed"; message: string };
 
@@ -135,7 +135,15 @@ export async function runPin(pin: PinSpec, signal: AbortSignal): Promise<Loaded>
       return { revenue, ...(units ? { units } : {}) };
     };
     const [thenRows, nowRows] = await Promise.all([period(w.then), period(w.now)]);
-    return { kind: "waterfall", rows: { then: w.then, now: w.now, thenRows, nowRows } };
+    // Made on Latest quarter, its quarters are the ones the server resolved them to now (Plot, #379).
+    const resolved = { ...nowRows.revenue.resolved, ...thenRows.revenue.resolved };
+    const dated = (quarter: string) =>
+      (isRelativeQuarter(quarter) ? resolved[quarter] : quarter) ?? quarter;
+    return {
+      kind: "waterfall",
+      rows: { then: dated(w.then), now: dated(w.now), thenRows, nowRows },
+      ...(Object.keys(resolved).length ? { resolved } : {}),
+    };
   }
   if (pin.kind !== "comparison") {
     // Several measures are a query each, as the main chart's.
@@ -275,6 +283,9 @@ export function PinChart({
       {/* A relative quarter, as the quarter it is now: "Latest quarter: Q1 2194" (Plot, section 9). */}
       {load.status === "ready" && load.kind === "query" && load.result.resolved && (
         <p className={styles.pinMeta}>{resolvedLine(load.result.resolved)}</p>
+      )}
+      {load.status === "ready" && load.kind === "waterfall" && load.resolved && (
+        <p className={styles.pinMeta}>{resolvedLine(load.resolved)}</p>
       )}
       {load.status === "ready" && spec.kind === "waterfall" && load.kind === "waterfall" && (
         <WaterfallPinBody spec={spec} rows={load.rows} table={table} />

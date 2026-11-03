@@ -422,6 +422,38 @@ describe("a pinned waterfall (What drove the change)", () => {
     expect(noChart(parsePinSpec(waterfall)!)).toBeNull();
   });
 
+  it("made on Latest quarter, keeps relative quarters so it moves on, titled without a quarter (Plot, #379)", () => {
+    const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1"];
+    const latest = {
+      ...DEFAULT_STATE,
+      by: "genre" as const,
+      drove: true,
+      filters: { quarter: ["latest"], format: ["Hardcover"] },
+    };
+    const before = waterfallPinFor(latest, quarters)!;
+    expect(before).toEqual({
+      title: "What drove revenue's change into the latest quarter, by genre",
+      kind: "waterfall",
+      waterfall: {
+        by: "genre",
+        then: "latest-1",
+        now: "latest",
+        filter: { format: ["Hardcover"] },
+      },
+    });
+    expect(parsePinSpec(before)).toEqual(before);
+    const yearAgo = waterfallPinFor({ ...latest, lastYear: true }, quarters)!;
+    expect(yearAgo.title).toBe(
+      "What drove revenue's change from a year earlier to the latest quarter, by genre",
+    );
+    expect(yearAgo.waterfall).toMatchObject({ then: "latest-4", now: "latest" });
+    expect(parsePinSpec(yearAgo)).toEqual(yearAgo);
+    // A dated quarter keeps its dated pair and title.
+    expect(waterfallPinFor({ ...latest, filters: { quarter: ["2194-Q1"] } }, quarters)?.title).toBe(
+      "What drove revenue's change, Q4 2193 to Q1 2194, by genre",
+    );
+  });
+
   it("refuses one it couldn't draw", () => {
     const bad = (patch: object) =>
       parsePinSpec({ ...waterfall, waterfall: { ...waterfall.waterfall, ...patch } });
@@ -430,6 +462,11 @@ describe("a pinned waterfall (What drove the change)", () => {
     expect(bad({ now: "2193-Q4" })).toBeNull();
     // Backwards in time.
     expect(bad({ then: "2194-Q2" })).toBeNull();
+    // Relative quarters only as latest against the quarter before or a year earlier, never mixed with dated ones.
+    expect(bad({ then: "latest", now: "latest-1" })).toBeNull();
+    expect(bad({ then: "latest-1", now: "2194-Q1" })).toBeNull();
+    expect(bad({ then: "2193-Q4", now: "latest" })).toBeNull();
+    expect(bad({ then: "latest-4", now: "latest" })).not.toBeNull();
     // The quarters are its own, and its breakdown isn't a filter.
     expect(bad({ filter: { quarter: ["2193-Q1"] } })).toBeNull();
     expect(bad({ filter: { genre: ["Fiction"] } })).toBeNull();

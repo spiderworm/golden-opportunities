@@ -173,3 +173,38 @@ describe("a pin's relative quarters (Plot, section 9)", () => {
     expect(resolvedLine({ "latest-4": null })).toBe("Same quarter, a year earlier");
   });
 });
+
+describe("a pinned waterfall made on Latest quarter (Plot, #379)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("asks for its relative quarters, and draws the quarters the server resolved them to", async () => {
+    queryCache.setVersion("v-moving");
+    const asked: string[] = [];
+    const now: Record<string, string> = { latest: "2194-Q1", "latest-1": "2193-Q4" };
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      const token = JSON.parse(init.body as string).filter.quarter[0] as string;
+      asked.push(token);
+      return new Response(
+        JSON.stringify({ ...side(now[token]!, 100), resolved: { [token]: now[token] } }),
+      );
+    });
+    const loaded = await runPin(
+      {
+        title: "What drove revenue's change into the latest quarter, by genre",
+        kind: "waterfall",
+        waterfall: { by: "genre", then: "latest-1", now: "latest" },
+      },
+      new AbortController().signal,
+    );
+    expect(asked.sort()).toEqual(["latest", "latest-1"]);
+    expect(loaded).toMatchObject({
+      kind: "waterfall",
+      rows: { then: "2193-Q4", now: "2194-Q1" },
+      resolved: { latest: "2194-Q1", "latest-1": "2193-Q4" },
+    });
+    if (loaded.kind !== "waterfall") return;
+    expect(resolvedLine(loaded.resolved!)).toBe(
+      "Latest quarter: Q1 2194 · Quarter before latest: Q4 2193",
+    );
+  });
+});
