@@ -23,7 +23,8 @@ import { HeatGrid, HeatScale } from "../Heatmap";
 import { MAX_SERIES, seriesColor } from "~/platform/charts/chart-theme";
 import { EChart } from "~/platform/charts/EChart";
 import { EvidenceLegend, Legend } from "../charts/Legend";
-import { LastYearTable, ResultTable } from "../charts/ResultTable";
+import { LastYearTable, ResultTable, ShareTable } from "../charts/ResultTable";
+import { cutNote, headline, shareHeight, shareModel, shareOption } from "../charts/share-chart";
 import {
   changeLine,
   ghostBasedOn,
@@ -417,6 +418,22 @@ function PinBody({
     [model, ghost, table, pin.kind, quarters],
   );
 
+  // As shares, as the main chart showed them (req_fa2e6a0dbbec): of the result's own total.
+  const shares = useMemo(
+    () =>
+      pin.share && model && !seriesBy && !also.length
+        ? shareModel(model, result.total, {
+            running: pin.share === "running",
+            truncated: result.truncated,
+          })
+        : null,
+    [pin.share, model, seriesBy, also.length, result],
+  );
+  const shareChart = useMemo(
+    () => (shares && !table ? shareOption(shares, { drill: false }) : null),
+    [shares, table],
+  );
+
   // Past the palette's series it reads as a table whatever the toggle says, and the toggle says why.
   const groups = !many && model && model.series.length > MAX_SERIES ? model.series.length : null;
   useEffect(() => onTooMany?.(groups), [groups]);
@@ -467,6 +484,25 @@ function PinBody({
         <span className={styles.pinMeta}>{MEASURE_LABELS[pin.query.measure]}</span>
       </div>
     );
+  } else if (shares) {
+    const top = headline(shares);
+    body = table ? (
+      <ShareTable
+        result={result}
+        by={x}
+        measure={pin.query.measure}
+        running={pin.share === "running"}
+      />
+    ) : (
+      <>
+        {top && <p className={styles.shareHeadline}>{top}</p>}
+        <EChart
+          option={shareChart!}
+          height={shareHeight(shares, CHART_HEIGHT)}
+          label={top ? `${pin.title}. ${top}` : pin.title}
+        />
+      </>
+    );
   } else if (table && labels) {
     body = <LastYearTable result={result} by={x} measure={pin.query.measure} labels={labels} />;
   } else if (table || !model || !option || model.series.length > MAX_SERIES) {
@@ -496,7 +532,10 @@ function PinBody({
   return (
     <>
       {body}
-      <p className={styles.source}>Source: {result.source}</p>
+      <p className={styles.source}>
+        Source: {result.source}
+        {shares && cutNote(shares) ? ` ${cutNote(shares)}` : ""}
+      </p>
     </>
   );
 }

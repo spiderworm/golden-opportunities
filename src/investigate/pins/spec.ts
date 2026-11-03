@@ -22,6 +22,8 @@ import {
   scatterProblem,
   type Grouping,
   type ChartMeasure,
+  type ShareMode,
+  SHARE_MODES,
   type InvestigateState,
 } from "../state.ts";
 
@@ -44,6 +46,8 @@ export interface ChartPinSpec {
    * as its table, or a table drawn as a chart (David, 3 Nov 2026). Absent, the kind decides. Not part of pinKey.
    */
   table?: boolean;
+  /** Shown as shares of its total, or largest first with the running share, as the main chart was (req_fa2e6a0dbbec). */
+  share?: ShareMode;
 }
 
 /**
@@ -275,7 +279,7 @@ export function parsePinSpec(value: unknown): PinSpec | null {
     return comparison && { title: value.title, kind: "comparison", comparison };
   }
   if (
-    !only(value, ["title", "kind", "query", "also", "table"]) ||
+    !only(value, ["title", "kind", "query", "also", "table", "share"]) ||
     (value.table !== undefined && typeof value.table !== "boolean") ||
     !CHART_PIN_KINDS.includes(value.kind as never)
   )
@@ -305,6 +309,19 @@ export function parsePinSpec(value: unknown): PinSpec | null {
     return fits
       ? { title: value.title, kind: "scatter", query, also, ...shown(value.table) }
       : null;
+  }
+  if (value.share !== undefined) {
+    // Shares are one measure's, one group to a bar: as the main chart allows them (shareBlock), less what a pin
+    // can't carry.
+    const share = SHARE_MODES.find((m) => m === value.share);
+    const fits =
+      share !== undefined &&
+      value.kind === "bar" &&
+      value.also === undefined &&
+      query.by.length === 1 &&
+      query.vs === undefined &&
+      ["revenue", "units", "orders"].includes(query.measure);
+    return fits ? { title: value.title, kind: "bar", query, share, ...shown(value.table) } : null;
   }
   if (value.also === undefined)
     return {
@@ -385,8 +402,9 @@ export function pinKey(spec: PinSpec): string {
     sortedFilter(query.filter),
     query.sort ?? null,
     query.limit ?? null,
-    // With last year, a different pin from the same chart without it.
+    // With last year, a different pin from the same chart without it; as shares, too.
     ...(query.vs ? [query.vs] : []),
+    ...(spec.share ? [`share:${spec.share}`] : []),
     ...(spec.also?.length ? [spec.also] : []),
   ]);
 }
