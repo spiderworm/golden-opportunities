@@ -11,13 +11,14 @@ const args = process.argv.slice(2);
 const afterQ1 = args.includes("--after-q1");
 const [base = "http://[::1]:5173", ...only] = args.filter((a) => a !== "--after-q1");
 
-// A new save: the station's first load sets its cookie.
-const first = await fetch(`${base}/`, { redirect: "manual" });
-const cookie = first.headers
-  .getSetCookie()
-  .map((c) => c.split(";")[0])
-  .join("; ");
-if (!cookie) throw new Error("No save cookie from the station.");
+// Past the entry page (src/entry), then a new save: the station's first load sets its cookie.
+const entry = "ob_entry=1";
+const first = await fetch(`${base}/`, {
+  redirect: "manual",
+  headers: { cookie: entry, accept: "text/html" },
+});
+const cookie = [entry, ...first.headers.getSetCookie().map((c) => c.split(";")[0])].join("; ");
+if (cookie === entry) throw new Error("No save cookie from the station.");
 if (afterQ1) {
   const played = await fetch(`${base}/decide.data`, {
     method: "POST",
