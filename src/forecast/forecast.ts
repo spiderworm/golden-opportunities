@@ -207,3 +207,108 @@ export function validForecasts(value: unknown, played: readonly QuarterId[]): va
     return checked.ok && checked.note === note;
   });
 }
+
+/** One measure's forecast against what happened. */
+export interface MeasureResult {
+  forecast: ForecastEntry;
+  actual: number;
+  /** Which side of the 80% range the real figure fell, or inside it (ends included). */
+  where: "below" | "inside" | "above";
+  /** The expected figure less the real one: above zero means the player forecast high (Plot's copy). */
+  error: number;
+  /** `error` as a share of the real figure (Sim, Plot and Chart, #384); null when the real figure is 0. */
+  errorPct: number | null;
+}
+
+/** A played quarter's forecast against what happened: the measures it forecast, and its note. */
+export interface ForecastResult {
+  quarter: QuarterId;
+  revenue?: MeasureResult;
+  units?: MeasureResult;
+  note?: string;
+}
+
+/** A measure's forecast against its real figure. */
+export function scoreEntry(forecast: ForecastEntry, actual: number): MeasureResult {
+  const error = forecast.point - actual;
+  return {
+    forecast,
+    actual,
+    where: actual < forecast.low ? "below" : actual > forecast.high ? "above" : "inside",
+    error,
+    errorPct: actual === 0 ? null : error / actual,
+  };
+}
+
+/** How well calibrated one measure's forecasts have been, over the played quarters that forecast it. */
+export interface MeasureCalibration {
+  measure: ForecastMeasure;
+  /** Quarters with this measure forecast and played. */
+  n: number;
+  /** Of those, how many landed inside the 80% range: "2 of 3 inside your range". */
+  hits: number;
+  /** hits / n; null with none. Well calibrated is about 0.8. */
+  hitRate: number | null;
+  /** The mean errorPct, leaving out quarters whose real figure was 0: above zero means forecasts ran high. */
+  bias: number | null;
+  /** The median of the range's half-width over the expected figure, leaving out an expected 0: Plot's "±7.5%". */
+  sharpness: number | null;
+  /** Enough quarters to judge: 3 or more (Plot: "Too few forecasts to judge yet"). */
+  judged: boolean;
+}
+
+/** The running calibration Reports shows: per measure, and every scored forecast for its chart. */
+export interface Calibration {
+  /** Played quarters with a forecast, and played quarters: "3 of 5 quarters forecast". */
+  forecast: number;
+  played: number;
+  revenue: MeasureCalibration;
+  units: MeasureCalibration;
+  /** Oldest first, without notes: the chart of range and expected against actual. */
+  history: ForecastResult[];
+}
+
+/** Forecasts needed before a measure's calibration is judged. */
+export const CALIBRATION_MINIMUM = 3;
+
+const mean = (values: number[]) =>
+  values.length ? values.reduce((t, v) => t + v, 0) / values.length : null;
+function median(values: number[]): number | null {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+/** One measure's calibration over scored forecasts. */
+export function calibrateMeasure(
+  measure: ForecastMeasure,
+  results: readonly ForecastResult[],
+): MeasureCalibration {
+  const scored = results.flatMap((r) => (r[measure] ? [r[measure]] : []));
+  const hits = scored.filter((s) => s.where === "inside").length;
+  return {
+    measure,
+    n: scored.length,
+    hits,
+    hitRate: scored.length ? hits / scored.length : null,
+    bias: mean(scored.flatMap((s) => (s.errorPct === null ? [] : [s.errorPct]))),
+    sharpness: median(
+      scored.flatMap((s) =>
+        s.forecast.point > 0 ? [(s.forecast.high - s.forecast.low) / 2 / s.forecast.point] : [],
+      ),
+    ),
+    judged: scored.length >= CALIBRATION_MINIMUM,
+  };
+}
+
+/** The calibration over every scored forecast, out of the quarters played. */
+export function calibrate(results: readonly ForecastResult[], played: number): Calibration {
+  return {
+    forecast: results.length,
+    played,
+    revenue: calibrateMeasure("revenue", results),
+    units: calibrateMeasure("units", results),
+    history: results.map(({ note: _, ...figures }) => figures),
+  };
+}
