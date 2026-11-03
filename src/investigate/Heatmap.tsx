@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { QueryResult } from "~/query/types";
 import { chartTheme, heatColor } from "~/platform/charts/chart-theme";
 import { Dropdown } from "~/platform/ui/Dropdown";
+import { Icon } from "~/shell/icons";
 import { cellSelected, heatAxis, heatModel, type HeatModel } from "./charts/heat-model";
 import { DIMENSION_LABELS, formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "./format";
 import { CHART_MEASURES, filtersExcept, HEAT_DIMENSIONS, HEAT_WINDOW, heatSpanFilter, heatWindow, type ChartMeasure, type Filters, type HeatDimension, type HeatState, type InvestigateState } from "./state";
@@ -15,6 +16,9 @@ export interface HeatmapProps {
   onCell: (row: string, col: string) => void;
   /** The heatmap's measure or axes changed. */
   onHeat: (heat: HeatState) => void;
+  /** Pins this heatmap to the pinned charts; `pinned` when an identical one is already there. */
+  onPin: () => void;
+  pinned: boolean;
 }
 
 /** What a heatmap says when the terminal's row limit left cells out: those cells are blank, not zero. */
@@ -34,7 +38,7 @@ export const heatTitle = (heat: HeatState, windowed = false) =>
  * The heatmap card: one measure down one dimension and across another (David, 2 Nov 2026: "the same level of
  * customization that we've given to charts"), weekday by month unless the player chooses otherwise.
  */
-export function Heatmap({ state, result, quarters, onCell, onHeat }: HeatmapProps) {
+export function Heatmap({ state, result, quarters, onCell, onHeat, onPin, pinned }: HeatmapProps) {
   // A choice shows at once, and the next one builds on it, though the URL only takes it when the navigation lands:
   // otherwise Rows then Columns, picked quickly, loses Rows (measured in heatmap.spec.ts).
   const [pending, setPending] = useState<HeatState | null>(null);
@@ -91,6 +95,9 @@ export function Heatmap({ state, result, quarters, onCell, onHeat }: HeatmapProp
               ].map((o) => ({ ...o, disabledReason: span ? PERIOD_FOLLOWS[span] : null }))}
             />
           )}
+          <button type="button" className={styles.toggle} onClick={onPin} disabled={pinned} title={pinned ? "Already pinned" : "Pin this heatmap below"}>
+            <Icon name="pin" size={14} /> {pinned ? "Pinned" : "Pin"}
+          </button>
         </div>
       </header>
       <HeatScale measure={shown.measure} model={model} />
