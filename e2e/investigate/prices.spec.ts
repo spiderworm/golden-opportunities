@@ -75,7 +75,7 @@ test("breaks down by edition as ranked bars, and an edition filter comes from th
   await page.goto("/investigate?analytics-test=1&by=edition");
   await expect(page.getByRole("heading", { name: "Revenue by edition" })).toBeVisible();
   const chart = page.locator('section[aria-labelledby="measure-chart-title"]');
-  await chart.getByRole("button", { name: /^Options/ }).click();
+  await chart.getByRole("button", { name: /^View/ }).click();
   await expect(chart.getByRole("menuitemcheckbox", { name: "Compare quarters" })).toBeDisabled();
   await page.keyboard.press("Escape");
   await expect(chart.getByRole("button", { name: /^Show all \d+ editions$/ })).toBeVisible();

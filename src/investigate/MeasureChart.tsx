@@ -380,10 +380,11 @@ export function MeasureChart({
             options={GROUPINGS.map((g) => ({ value: g, label: DIMENSION_LABELS[g] }))}
           />
           {/* The chart's modes, in one menu (David, 3 Nov 2026: "Keep the Chart/Table toggle and Pin buttons
-              inline. Create an "Options" dropdown"). One that can't be used stays in it, saying why. Plot's order: the
+              inline. Create an "Options" dropdown"), named "View" (David: "Oh YEAH "View" is spot-on"). One that can't be
+              used stays in it, saying why. Plot's order: the
               ways to compare, then (to come) the ways to show one measure, then Scatter plot, which needs two. */}
           <ToggleMenu
-            name="Options"
+            name="View"
             onOpen={() => track("chart_options_opened", { where: "investigate" })}
             toggles={[
               {
