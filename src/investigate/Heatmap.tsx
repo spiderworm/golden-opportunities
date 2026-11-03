@@ -5,7 +5,7 @@ import { chartTheme, heatColor } from "~/platform/charts/chart-theme";
 import { Dropdown } from "~/platform/ui/Dropdown";
 import { cellSelected, heatAxis, heatModel, type HeatModel } from "./charts/heat-model";
 import { DIMENSION_LABELS, formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "./format";
-import { CHART_MEASURES, HEAT_DIMENSIONS, HEAT_WINDOW, heatWindow, type ChartMeasure, type Filters, type HeatDimension, type HeatState, type InvestigateState } from "./state";
+import { CHART_MEASURES, HEAT_DIMENSIONS, HEAT_WINDOW, heatSpanFilter, heatWindow, type ChartMeasure, type Filters, type HeatDimension, type HeatState, type InvestigateState } from "./state";
 import styles from "./Investigate.module.css";
 
 export interface HeatmapProps {
@@ -21,8 +21,8 @@ export interface HeatmapProps {
 export const CUT_NOTE = "This grid is too large to show in full. Narrow it with a filter.";
 /** The same, when the player chose every quarter over a long ledger: the window is the other way out (Plot). */
 export const CUT_NOTE_ALL = "This grid is too large to show in full. Narrow it with a filter, or choose Last eight quarters.";
-/** Why Period can't be changed: the screen's own quarter filter decides the span. */
-const PERIOD_FOLLOWS = "Following the screen's quarter filter.";
+/** Why Period can't be changed: the screen's own quarter (or else month) filter decides the span (Plot). */
+const PERIOD_FOLLOWS = { quarter: "Following the screen's quarter filter.", month: "Following the screen's month filter." } as const;
 /** A cut-off cell's label (Plot, #264). */
 const CUT_CELL = "Not shown: the grid was cut off.";
 
@@ -51,6 +51,7 @@ export function Heatmap({ state, result, quarters, onCell, onHeat }: HeatmapProp
   const window = heatWindow(state, quarters);
   const scope = window ? { ...state.filters, quarter: window } : state.filters;
   const long = quarters.length > HEAT_WINDOW;
+  const span = heatSpanFilter(state.filters);
   const model = useMemo(
     () => heatModel(result, shown.measure, shown.rows, heatAxis(shown.rows, result, quarters, scope), shown.cols, heatAxis(shown.cols, result, quarters, scope)),
     [result, shown.measure, shown.rows, shown.cols, quarters, state.filters, window?.join()],
@@ -85,14 +86,14 @@ export function Heatmap({ state, result, quarters, onCell, onHeat }: HeatmapProp
               options={[
                 { value: "recent" as const, label: "Last eight quarters" },
                 { value: "all" as const, label: "Every quarter" },
-              ].map((o) => ({ ...o, disabledReason: state.filters.quarter?.length ? PERIOD_FOLLOWS : null }))}
+              ].map((o) => ({ ...o, disabledReason: span ? PERIOD_FOLLOWS[span] : null }))}
             />
           )}
         </div>
       </header>
       <HeatScale measure={shown.measure} model={model} />
       <HeatGrid model={model} measure={shown.measure} rowsBy={shown.rows} colsBy={shown.cols} filters={state.filters} label={title} onCell={onCell} />
-      {model.cut && <p className={styles.source}>{long && shown.period === "all" && !state.filters.quarter?.length ? CUT_NOTE_ALL : CUT_NOTE}</p>}
+      {model.cut && <p className={styles.source}>{long && shown.period === "all" && !span ? CUT_NOTE_ALL : CUT_NOTE}</p>}
       <p className={styles.source}>
         {`Click a cell to filter the screen to that ${DIMENSION_LABELS[shown.rows].toLowerCase()} and ${DIMENSION_LABELS[shown.cols].toLowerCase()}. Source: ${result.source}`}
       </p>
