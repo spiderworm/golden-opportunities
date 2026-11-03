@@ -41,6 +41,7 @@ import {
 import { earnedDiscoveries, laterDiscoveries, type EarnedDiscovery } from "./discoveries.server";
 import { OUTCOME_COLORS, outcomeOption } from "./outcome-chart";
 import { heldCourse, planSummary, type HalfYearData, type ResultData } from "./result-data";
+import { ServiceRecord } from "./ServiceRecord";
 import styles from "./Result.module.css";
 
 export const handle: ShellHandle = { title: "Results", standingOrder: false };
@@ -278,81 +279,6 @@ export default function Result({ loaderData }: Route.ComponentProps) {
 }
 
 /** The game's last word (q2.md section 7): each quarter's scores, the half-year score, and a new game. */
-/**
- * The service record (endless.md section 6): every quarter played, newest first, with its measures, its overall
- * (a strike marked), and its event; then the tenure and the best quarter.
- */
-function ServiceRecord({
-  record,
-  removedAt,
-}: {
-  record: ResultData["record"];
-  removedAt?: QuarterId;
-}) {
-  const c = COPY.reportCard;
-  const rows = [...record].reverse();
-  const mean = roundHalfUp(
-    record.reduce((sum, row) => sum + row.overall.score, 0) / Math.max(1, record.length),
-  );
-  const best = record.reduce(
-    (top, row) => (row.overall.score > top.overall.score ? row : top),
-    record[0]!,
-  );
-  return (
-    <section className={styles.card} aria-labelledby="service-record-heading">
-      <h3 id="service-record-heading" className={styles.cardTitle}>
-        {SERVICE_RECORD.heading}
-      </h3>
-      <div className={styles.tableWrap}>
-        <table className={styles.reportCard}>
-          <thead>
-            <tr>
-              <th scope="col">{SERVICE_RECORD.columns.quarter}</th>
-              {MEASURE_ORDER.map((id) => (
-                <th key={id} scope="col">
-                  {c.measures[id]}
-                </th>
-              ))}
-              <th scope="col">{SERVICE_RECORD.columns.overall}</th>
-              <th scope="col">{SERVICE_RECORD.columns.event}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.quarter} data-strike={row.strike || undefined}>
-                <th scope="row">{quarterName(row.quarter)}</th>
-                {MEASURE_ORDER.map((id) => {
-                  const m = row.measures.find((x) => x.id === id);
-                  return <td key={id}>{m ? scoreText(m.score, m.grade) : ""}</td>;
-                })}
-                <td>{`${scoreText(row.overall.score, row.overall.grade)}${row.strike ? SERVICE_RECORD.strike : ""}`}</td>
-                <td>{eventTitle(row.quarter, row.event)}</td>
-              </tr>
-            ))}
-          </tbody>
-          {removedAt && (
-            <tfoot>
-              <tr>
-                <td colSpan={MEASURE_ORDER.length + 3}>{REMOVAL_COPY.finalRow(removedAt)}</td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
-      </div>
-      {record.length > 0 && (
-        <>
-          <p className={styles.happened}>
-            {SERVICE_RECORD.tenure(record.length, mean, gradeFor(mean))}
-          </p>
-          <p className={styles.happened}>
-            {SERVICE_RECORD.best(best.quarter, best.overall.score, best.overall.grade)}
-          </p>
-        </>
-      )}
-    </section>
-  );
-}
-
 /**
  * Once the panel has voted (endless.md section 7): the whole board speaks, the facts are plain, and the service
  * record ends with the removal. Play again starts a new game; the ledgers stay open to look at.

@@ -32,7 +32,8 @@
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  align-items: start;
   gap: 16px;
   margin: 0;
   padding: 0;
@@ -41,7 +42,7 @@
 
 .card {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   align-content: start;
   min-width: 0;
   padding: 20px 22px;
@@ -67,4 +68,123 @@
   color: var(--color-accent-soft);
   font-size: 11px;
   font-weight: 600;
+}
+
+/* The last played quarter's report card, as tiles: overall, then the four measures (section 1). */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tile {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel);
+}
+
+/* Labels wrap rather than shorten (Readers served). */
+.tileLabel {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tileValue {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.tile > :last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* One wide chart beside the record; with one quarter played, the record takes the row. */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.row[data-single] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.summary {
+  display: grid;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.scoreLine {
+  color: var(--color-text-muted);
+}
+
+.parts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.parts dt {
+  color: var(--color-text-muted);
+}
+
+.parts dd {
+  margin: 0;
+}
+
+.plain {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A form's button that reads as the link it leads to. */
+.linkButton {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent-soft);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Investigate's breakpoint: the tiles wrap, and every card goes to one column. */
+@media (max-width: 1100px) {
+  .tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

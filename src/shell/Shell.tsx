@@ -155,36 +155,24 @@ export function Shell({
                 const label = count ? `${item.label}, ${count} new` : item.label;
                 return (
                   <li key={item.label}>
-                    {item.to ? (
-                      <NavLink
-                        to={item.to}
-                        end
-                        className={({ isActive }) =>
-                          isActive ? `${styles.menuItem} ${styles.active}` : styles.menuItem
-                        }
-                        aria-label={count ? label : undefined}
-                        title={collapsed ? label : undefined}
-                        onClick={() => track("nav_selected", { item: item.label })}
-                      >
-                        <Icon name={item.icon} />
-                        <span className={styles.menuLabel}>{item.label}</span>
-                        {count > 0 && (
-                          <span className={styles.countBadge} aria-hidden="true">
-                            {count}
-                          </span>
-                        )}
-                      </NavLink>
-                    ) : (
-                      <span
-                        className={`${styles.menuItem} ${styles.soon}`}
-                        aria-disabled="true"
-                        title={collapsed ? `${item.label} (coming soon)` : undefined}
-                      >
-                        <Icon name={item.icon} />
-                        <span className={styles.menuLabel}>{item.label}</span>
-                        <span className={styles.soonBadge}>Soon</span>
-                      </span>
-                    )}
+                    <NavLink
+                      to={item.to}
+                      end
+                      className={({ isActive }) =>
+                        isActive ? `${styles.menuItem} ${styles.active}` : styles.menuItem
+                      }
+                      aria-label={count ? label : undefined}
+                      title={collapsed ? label : undefined}
+                      onClick={() => track("nav_selected", { item: item.label })}
+                    >
+                      <Icon name={item.icon} />
+                      <span className={styles.menuLabel}>{item.label}</span>
+                      {count > 0 && (
+                        <span className={styles.countBadge} aria-hidden="true">
+                          {count}
+                        </span>
+                      )}
+                    </NavLink>
                   </li>
                 );
               })}

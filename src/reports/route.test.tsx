@@ -15,7 +15,7 @@ import { submitPlan } from "~/game/game.server";
 import { saves } from "~/game/session.server";
 import { getStationState } from "~/shell/station-state";
 import { greeting } from "./copy";
-import Reports, { loader } from "./route";
+import Reports, { action, loader } from "./route";
 import type { Route } from "./+types/route";
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 
@@ -46,33 +46,83 @@ describe("Reports", () => {
   it("says no quarter is filed before Q1 closes, and counts none new", () => {
     const save = saves.create();
     const data = loader({ request: requestFor(save.id) } as Route.LoaderArgs);
-    expect(data).toEqual({ quarters: [], newReports: 0 });
+    expect(data).toEqual({ reports: [], record: [], removedAt: null });
     expect(getStationState(requestFor(save.id)).newReports).toBe(0);
     const html = render(data);
     expect(html).toContain("No new reports.");
     expect(html).toContain("No quarter has been filed yet.");
   });
 
-  it("lists each played quarter's report, new until seen, and sends nothing of the save", () => {
+  it("builds each played quarter's report from the save, new until seen, and sends nothing of the save", () => {
     const save = saves.create();
-    submitPlan(requestFor(save.id, "POST"), { levers: [] });
+    submitPlan(requestFor(save.id, "POST"), { levers: ["events"] });
     const data = loader({ request: requestFor(save.id) } as Route.LoaderArgs);
-    expect(data).toEqual({
-      quarters: [{ quarter: "2194-Q1", label: "Q1 2194", new: true }],
-      newReports: 1,
-    });
-    expect(JSON.stringify(data)).not.toMatch(/seed|"sales"|outcomeId/);
+    const card = saves.read(save.id).played[0]!.outcome.reportCard.plan;
+    expect(data.reports).toEqual([
+      {
+        quarter: "2194-Q1",
+        new: true,
+        overall: {
+          score: card.overall.score,
+          grade: card.overall.grade,
+          binding: card.overall.binding,
+          allMet: card.overall.allMet,
+          strike: card.overall.score < 70,
+        },
+        measures: card.measures,
+        plan: { picks: null, moves: ["Weekday author nights"] },
+        event: null,
+        found: [],
+      },
+    ]);
+    expect(data.record).toHaveLength(1);
+    expect(JSON.stringify(data)).not.toMatch(/seed|"sales"|outcomeId|"lines"/);
     expect(getStationState(requestFor(save.id)).newReports).toBe(1);
+
     const html = render(data);
     expect(html).toContain("You have 1 new report.");
-    expect(html).toMatch(/Q1 2194 report<span[^>]*>New<\/span>/);
-    expect(html).toContain('href="/result?quarter=2194-Q1"');
+    // Its name reads with a space before "new" (Audit, #281).
+    expect(html).toMatch(
+      /Q1 2194 report<span[^>]*><span[^>]*>, new<\/span><span aria-hidden="true">New<\/span>/,
+    );
+    expect(html).toContain("Weekday author nights");
+    expect(html).toContain("Service record");
+    expect(html).toContain("See the full results");
+    // One quarter: no chart, the record takes the row; the tiles compare against Q1's own goals.
+    expect(html).not.toContain("Overall score by quarter");
+    expect(html).toMatch(/vs\. goal|Goal met/);
+  });
 
-    saves.update(save.id, saves.read(save.id).revision, (draft) => {
-      draft.reportsSeen = ["2194-Q1"];
-    });
-    expect(loader({ request: requestFor(save.id) } as Route.LoaderArgs).newReports).toBe(0);
+  it("marks a report seen through its action, only for a played quarter, and goes on to its results", async () => {
+    const save = saves.create();
+    submitPlan(requestFor(save.id, "POST"), { levers: [] });
+    const post = (fields: Record<string, string>) => {
+      const body = new FormData();
+      for (const [k, v] of Object.entries(fields)) body.set(k, v);
+      return action({
+        request: new Request("http://localhost/reports", {
+          method: "POST",
+          headers: { origin: "http://localhost", cookie: "orbital_save=" + save.id },
+          body,
+        }),
+      } as Route.ActionArgs);
+    };
+    for (const quarter of ["2194-Q2", "nope"])
+      await expect(post({ quarter })).rejects.toMatchObject({ status: 400 });
+    expect(saves.read(save.id).reportsSeen).toBeUndefined();
+
+    expect(await post({ quarter: "2194-Q1" })).toBeNull();
+    expect(saves.read(save.id).reportsSeen).toEqual(["2194-Q1"]);
     expect(getStationState(requestFor(save.id)).newReports).toBe(0);
+    const revision = saves.read(save.id).revision;
+    const to = (await post({ quarter: "2194-Q1", intent: "results" })) as Response;
+    expect(to.status).toBe(302);
+    expect(to.headers.get("Location")).toBe("/result?quarter=2194-Q1");
+    // Already seen: nothing written.
+    expect(saves.read(save.id).revision).toBe(revision);
+    expect(loader({ request: requestFor(save.id) } as Route.LoaderArgs).reports[0]!.new).toBe(
+      false,
+    );
   });
 
   it("refuses a save whose seen reports aren't distinct quarters in play order", () => {
