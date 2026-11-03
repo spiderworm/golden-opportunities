@@ -59,8 +59,8 @@ export const REPORTS_COPY = {
 export const PLAYER_COPY = {
   heading: "Your reports",
   newReport: "New report",
-  /** Chart's. */
-  empty: "No reports yet. Use New report to gather pinned charts and your notes on them.",
+  /** Chart's, Plot's wording (#284). */
+  empty: "No reports yet. Choose New report to gather pinned charts and your notes on them.",
   limit: "You have 12 reports. Delete one to start another.",
   full: "A report holds up to 6 charts. Remove one to add another.",
   meta: (charts: number, quarter: string) =>
@@ -87,7 +87,7 @@ export const PLAYER_COPY = {
   noTitle: "Give the report a title.",
   noCharts: "Add at least one chart.",
   /** Chart's: anything else the save refused. */
-  invalid: "This report couldn't be saved. Check its text and try again.",
+  invalid: "This report couldn't be saved. Check the title, summary and notes, and try again.",
   leave: {
     question: "Leave without saving your changes to this report?",
     leave: "Leave",
