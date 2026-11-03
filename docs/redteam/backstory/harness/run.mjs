@@ -73,7 +73,8 @@ for (const c of CASES.filter((c) => !args.length || args.includes(c.id))) {
     const s = readSave(c.save);
     writeFileSync(saveFile(c.save), JSON.stringify({ ...s, backstory: { ...s.backstory, ...c.edit } }));
   }
-  const cookie = `orbital_save=${readSave(c.save).id}`;
+  // ob_entry=1: the entry page (#317) answers every request until a browser has agreed.
+  const cookie = `orbital_save=${readSave(c.save).id}; ob_entry=1`;
   const headers = { origin: base, "sec-fetch-site": "same-origin", cookie };
   const short = (await (await fetch(`${base}/api/assistant`, { headers })).json()).short;
   for (let n = 1; n <= repeat; n++) {

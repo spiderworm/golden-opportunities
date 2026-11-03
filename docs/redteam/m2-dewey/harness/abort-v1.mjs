@@ -11,7 +11,7 @@ const tree = () => {
 const cwdOf = (pid) => { try { return execSync(`lsof -a -p ${pid} -d cwd -Fn`).toString().split("\n").find((l) => l.startsWith("n"))?.slice(1); } catch { return null; } };
 console.log("before:", JSON.stringify(tree()));
 const ac = new AbortController(); const t0 = Date.now();
-const res = await fetch(`${base}/api/assistant`, { method: "POST", signal: ac.signal, headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin" },
+const res = await fetch(`${base}/api/assistant`, { method: "POST", signal: ac.signal, headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", cookie: "ob_entry=1" },
   body: JSON.stringify({ question: "Show revenue by month and genre, then units by month and format, then orders per day by weekday and quarter.", pins: true }) });
 const reader = res.body.getReader(); const first = await reader.read();
 if (afterMs) await new Promise((r) => setTimeout(r, afterMs));
