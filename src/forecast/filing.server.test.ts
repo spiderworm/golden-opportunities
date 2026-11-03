@@ -19,6 +19,9 @@ import { action as decideAction } from "../decide/route";
 import type { Route as DecideRoute } from "../decide/+types/route";
 
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
+// Each test plays quarters for real through the engine: about 4 s alone, past the default 5 s on a loaded machine
+// (measured: 5.3 s at a load of 19).
+vi.setConfig({ testTimeout: 30_000 });
 
 const file = (id: string, body: string) =>
   decideAction({

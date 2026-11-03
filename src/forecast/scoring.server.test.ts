@@ -19,6 +19,9 @@ import type { Route as DecideRoute } from "../decide/+types/route";
 import { calibration, forecastResult } from "./forecast.server";
 
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
+// Each test plays quarters for real through the engine: about 4 s alone, past the default 5 s on a loaded machine
+// (measured: 5.3 s at a load of 19).
+vi.setConfig({ testTimeout: 30_000 });
 
 const request = (id: string, body?: string) =>
   new Request("http://localhost/decide", {
