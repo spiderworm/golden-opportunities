@@ -208,6 +208,35 @@ describe("Alma's turn and the save", () => {
     expect(d.events).toEqual([["alma_failed", { quarter: "2194-Q3" }]]);
   });
 
+  it("past a daily cap, picks the quarter's event itself without asking Alma, and says which cap (David, 3 Nov 2026)", async () => {
+    const store = fakeStore(base());
+    const asked: string[] = [];
+    const d = {
+      ...deps(store, { name: "sonnet", ask: async () => (asked.push("asked"), "{}") }),
+      usage: () => "visitor" as const,
+    };
+    onQuarterCommitted({ saveId: base().id, quarter: "2194-Q2", seed: 7 }, d);
+    await pendingTurn(base().id, "2194-Q3");
+    expect(asked).toEqual([]);
+    expect(store.save.alma).toEqual([
+      expect.objectContaining({ source: "scripted", attempts: 0, failure: "capped" }),
+    ]);
+    // The saved record passes the save's own check, its failure code included.
+    expect(d.events).toContainEqual(["assistant_capped", { who: "alma", cap: "visitor" }]);
+    expect(d.events).toContainEqual([
+      "alma_event_chosen",
+      expect.objectContaining({ failure: "capped" }),
+    ]);
+  });
+
+  it("asks for no count without a model: scripting costs nothing", async () => {
+    const counted: string[] = [];
+    const d = { ...deps(fakeStore(base())), usage: () => (counted.push("q"), null) };
+    onQuarterCommitted({ saveId: base().id, quarter: "2194-Q2", seed: 7 }, d);
+    await pendingTurn(base().id, "2194-Q3");
+    expect(counted).toEqual([]);
+  });
+
   it("writes through a stale revision: the player's own writes come first", async () => {
     const store = fakeStore(base(), { staleOnce: true });
     const d = deps(store);
