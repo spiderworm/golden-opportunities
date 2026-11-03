@@ -166,6 +166,10 @@ export interface InvestigateState {
   scatter: boolean;
   /** Beside the quarter shown, the same quarter last year (`vs=last_year`): applies only while lastYearBlock allows it. */
   lastYear: boolean;
+  /** "What drove the change": revenue's change as a waterfall by the breakdown (`drove=1`; droveBlock says when). */
+  drove: boolean;
+  /** The waterfall split into price, volume and mix (`split=1`), only with it on. */
+  split: boolean;
   filters: Filters;
   /** The heatmap. Its measure follows the chart's first until the player picks one (`heat=`). */
   heat: HeatState;
@@ -178,6 +182,8 @@ export const DEFAULT_STATE: InvestigateState = {
   compare: false,
   scatter: false,
   lastYear: false,
+  drove: false,
+  split: false,
   filters: {},
   heat: { measure: "revenue", rows: "weekday", cols: "month", period: "recent" },
 };
@@ -258,6 +264,78 @@ export function lastYearUnshown(
   return result.lastYear ? null : "Can't compare this chart with last year";
 }
 
+/** The groupings a change can be broken down by (David, 3 Nov 2026: "which genres, titles or editions"). */
+export const DROVE_GROUPINGS = ["genre", "title", "edition"] as const satisfies readonly Grouping[];
+const DROVE_PLURAL: Record<(typeof DROVE_GROUPINGS)[number], string> = {
+  genre: "genres",
+  title: "titles",
+  edition: "editions",
+};
+/** "genres", "titles" or "editions", for the toggle's words; null for a grouping it can't break down. */
+export const droveGroups = (by: Grouping): string | null =>
+  (DROVE_PLURAL as Partial<Record<Grouping, string>>)[by] ?? null;
+
+/** The quarter before ("2194-Q1" to "2193-Q4"). */
+export function quarterBefore(quarter: string): string {
+  const year = Number(quarter.slice(0, 4));
+  const q = Number(quarter.slice(-1));
+  return q === 1 ? `${year - 1}-Q4` : `${year}-Q${q - 1}`;
+}
+
+/**
+ * The two quarters "What drove the change" compares: the quarter shown, and the one before it, or the same quarter
+ * last year while that toggle is on and allowed (Plot, #328). Null without one quarter shown.
+ */
+export function droveQuarters(
+  state: Pick<InvestigateState, "by" | "also" | "compare" | "filters" | "lastYear"> & {
+    measure: Measure;
+  },
+  quarters: readonly string[],
+): { then: string; now: string } | null {
+  const now = shownQuarter(state);
+  if (!now) return null;
+  const lastYear = state.lastYear && lastYearBlock(state, quarters) === null;
+  return { then: lastYear ? yearEarlier("quarter", now) : quarterBefore(now), now };
+}
+
+/**
+ * Why revenue's change can't be broken down, or null if it can: the toggle's disabled tooltip (Plot's copy, for
+ * David's req_7a41bd439666). One measure, revenue, by genre, title or edition, without Compare quarters or a
+ * scatter plot, over one played quarter that has one before it. Every way it can't ends in a reason.
+ */
+export function droveBlock(
+  state: Pick<InvestigateState, "by" | "also" | "compare" | "scatter" | "filters" | "lastYear"> & {
+    measure: Measure;
+  },
+  quarters: readonly string[],
+): string | null {
+  if (state.also.length) return "Show one measure to see what drove its change";
+  if (state.measure !== "revenue") return "Show revenue to see what drove its change";
+  if (!droveGroups(state.by))
+    return "Break down by genre, title or edition to see what drove the change";
+  if (state.compare) return "Turn off Compare quarters to see what drove the change";
+  if (state.scatter) return "Turn off Scatter plot to see what drove the change";
+  const pair = droveQuarters(state, quarters);
+  if (!pair) return "Filter to one quarter to see what drove its change";
+  if (!quarters.includes(pair.now))
+    return `${quarterName(pair.now)} isn't in the ledgers yet: filter to a quarter that's been played`;
+  if (!quarters.includes(pair.then))
+    return pair.now === [...quarters].sort()[0]
+      ? `${quarterName(pair.now)} is the first quarter in the ledgers: there's nothing before it to compare`
+      : "Can't break down this chart's change";
+  return null;
+}
+
+/** Whether "What drove the change" stays on in the URL: as long as the chart is one it could ever break down. */
+export const keepsDrove = (
+  state: Pick<InvestigateState, "by" | "also" | "compare" | "scatter"> & { measure: Measure },
+) =>
+  state.also.length === 0 &&
+  state.measure === "revenue" &&
+  droveGroups(state.by) !== null &&
+  !state.compare &&
+  !state.scatter;
+
 /**
  * Whether the toggle stays on in the URL: not for several measures, Compare quarters or a breakdown by quarter,
  * which switch it off as several measures do Compare quarters (Audit, #301). A quarter filter that doesn't pick one
@@ -312,7 +390,25 @@ export function parseState(params: URLSearchParams): InvestigateState {
       }),
     filters,
     heat: readHeat(params, measures.measure),
+    ...readDrove(params, by, measures),
   };
+}
+
+/** `drove=1` and `split=1`, kept only where the chart could break its change down. */
+function readDrove(
+  params: URLSearchParams,
+  by: Grouping,
+  measures: { measure: ChartMeasure; also: ChartMeasure[] },
+): { drove: boolean; split: boolean } {
+  const drove =
+    params.get("drove") === "1" &&
+    keepsDrove({
+      by,
+      ...measures,
+      compare: params.get("compare") === "quarter" && canCompare(by, measures.also),
+      scatter: params.get("chart") === "scatter" && scatterProblem(by, measures.also) === null,
+    });
+  return { drove, split: drove && params.get("split") === "1" };
 }
 
 /** The heatmap from a link: `heat=`, `heat_rows=`, `heat_cols=`. Without them (every link before), weekday by month in the chart's measure. */
@@ -340,6 +436,10 @@ export function toSearchParams(state: InvestigateState): URLSearchParams {
   if (state.scatter && scatterProblem(state.by, state.also) === null)
     params.set("chart", "scatter");
   if (state.lastYear && keepsLastYear(state)) params.set("vs", "last_year");
+  if (state.drove && keepsDrove(state)) {
+    params.set("drove", "1");
+    if (state.split) params.set("split", "1");
+  }
   // The heatmap's measure only once it differs from the chart's, so it keeps following the chart until then.
   if (state.heat.measure !== state.measure) params.set("heat", state.heat.measure);
   if (state.heat.rows !== DEFAULT_STATE.heat.rows) params.set("heat_rows", state.heat.rows);

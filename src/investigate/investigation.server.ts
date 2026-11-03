@@ -8,8 +8,11 @@ import {
   type QueryResult,
   type QueryView,
 } from "~/query/types";
+import type { DroveRows, PeriodRows } from "~/query/decompose";
 import {
   DEFAULT_STATE,
+  droveBlock,
+  droveQuarters,
   filtersExcept,
   heatWindow,
   lastYearBlock,
@@ -51,6 +54,11 @@ export interface Investigation {
   /** The chart's other measures, in the order chosen: one query each, as the first. */
   also: QueryResult[];
   heatmap: QueryResult;
+  /**
+   * "What drove the change": each of the two quarters' revenue and units by the breakdown, as plain queries
+   * (src/query/decompose.ts), with the quarters; null unless it's on and droveBlock allows it.
+   */
+  drove: DroveRows | null;
   /** One title's sales by month, when the player has drilled into a single title. */
   /** One title: its sales by month, and its ratings by stars (undated, so no other filter applies to them). */
   titleView: { title: string; result: QueryResult; ratings: QueryResult } | null;
@@ -120,6 +128,34 @@ function chartQuery(
   const vs = state.lastYear && !lastYearBlock(state, quarters) ? { vs: "last_year" as const } : {};
   return { measure, by, ...withFilter(filtersExcept(state.filters, [state.by])), ...vs };
 }
+/**
+ * The waterfall's queries: revenue and units by the breakdown in each quarter, with the chart's other filters. The
+ * revenue it draws is shown, like the chart's; units only split it, so they're context. Plain queries, at the row
+ * limit's most, so a group that sold in one quarter only is still there.
+ */
+function droveRows(
+  state: InvestigateState,
+  view: QueryView,
+  rendered: (query: Query) => QueryResult,
+  run: (query: Query) => QueryResult,
+): Investigation["drove"] {
+  if (!state.drove || droveBlock(state, view.periods)) return null;
+  const pair = droveQuarters(state, view.periods)!;
+  const others = filtersExcept(state.filters, [state.by, "quarter"]);
+  const rows = (quarter: string): PeriodRows => {
+    const query = (measure: Measure): Query => ({
+      measure,
+      by: [state.by],
+      filter: { ...others, quarter: [quarter] },
+      limit: 200,
+    });
+    return {
+      revenue: rendered(query("revenue")),
+      ...(state.split ? { units: run(query("units")) } : {}),
+    };
+  };
+  return { ...pair, thenRows: rows(pair.then), nowRows: rows(pair.now) };
+}
 function heatmapQuery(state: InvestigateState, quarters: readonly string[]): Query {
   const { measure, rows, cols } = state.heat;
   // A long ledger shows its last eight quarters unless the player asks for every one (heatWindow).
@@ -178,6 +214,7 @@ export function investigate(
   const also = state.also.map((measure) => rendered(chartQuery(state, measure)));
   // Always-visible context, never discovery evidence (m1-slice section 5).
   const heatmap = run(heatmapQuery(state, view.periods));
+  const drove = droveRows(state, view, rendered, run);
 
   const title = state.filters.title?.length === 1 ? state.filters.title[0]! : null;
   const titleView = title
@@ -195,5 +232,5 @@ export function investigate(
     : null;
 
   for (const { query, result } of displayed) observe?.(query, result);
-  return { tiles, chart, also, heatmap, titleView, options };
+  return { tiles, chart, also, heatmap, drove, titleView, options };
 }

@@ -14,8 +14,11 @@ export function ReasonToggle({
   onToggle,
   className,
   label,
+  hint,
   children,
 }: {
+  /** What it does, as its tooltip while it can be used ("See which genres added to revenue and which took away"). */
+  hint?: string;
   /** Its accessible name, where its text alone is ambiguous ("Table: Revenue by month"). */
   label?: string;
   pressed: boolean;
@@ -33,6 +36,7 @@ export function ReasonToggle({
         className={className}
         aria-pressed={pressed}
         aria-label={label}
+        title={reason === null ? hint : undefined}
         aria-disabled={reason !== null || undefined}
         aria-describedby={reason !== null ? id : undefined}
         onClick={() => reason === null && onToggle()}
