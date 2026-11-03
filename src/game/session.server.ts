@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { data, type MiddlewareFunction } from "react-router";
 import { loadBookshop } from "../bookshop/loader.server";
@@ -20,9 +21,11 @@ export const saves = createSaveStore(path.join(DATA_DIR, "saves"));
  * The save cookie's name, one per copy of the app (David's bug, 3 Nov 2026: "What you found" showed nothing he'd
  * found). Browsers keep cookies by host, not port, so every copy on localhost (live on :5173, each agent's dev
  * server) shared one `orbital_save`: a visit to another copy replaced it with a save this copy doesn't hold, and the
- * next visit here silently started a new game. Named for this copy's instance ID, copies never share one.
+ * next visit here silently started a new game. Named for a hash of this copy's instance ID (so the cookie says
+ * nothing of the ID analytics sends; Sim, #320), copies never share one.
  */
-export const saveCookieName = () => `${LEGACY_COOKIE}_${instanceId().slice(0, 8)}`;
+export const saveCookieName = () =>
+  `${LEGACY_COOKIE}_${createHash("sha256").update(instanceId()).digest("hex").slice(0, 8)}`;
 /** The name every copy used before, read only while this copy's own cookie is absent, so an old game carries on. */
 const LEGACY_COOKIE = "orbital_save";
 const active = new AsyncLocalStorage<string>();
