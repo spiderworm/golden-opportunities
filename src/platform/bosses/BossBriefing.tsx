@@ -58,6 +58,12 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
   const [mode, setMode] = useState<SceneMode | null>(null);
   const [Scene3D, setScene3D] = useState<ComponentType<BossScene3DProps> | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+  // Whether the 3D models have drawn: until then the 2D figures stay over the empty canvas (David, 3 Nov 2026).
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    if (mode !== "3d") setDrawn(false);
+  }, [mode]);
+  const shownModels = useCallback(() => setDrawn(true), []);
   const failed = useRef(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -141,22 +147,26 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
         columnRef={(i) => (el) => {
           columns.current[i] = el;
         }}
+        // The 2D figures first, always in the same place, so they never remount: over the canvas until its models
+        // have drawn, then gone. Swapping as the canvas mounted left the floor empty while the models loaded.
         floor={
-          mode === "3d" && Scene3D ? (
-            <SceneBoundary fallback={flat} onError={() => failed3D("scene")}>
-              <Scene3D
-                bubbles={bubbles}
-                open={open}
-                onSelect={select}
-                columns={columns}
-                reducedMotion={reducedMotion}
-                onShown={restoreFocus}
-                onFailed={modelsFailed}
-              />
-            </SceneBoundary>
-          ) : (
-            flat
-          )
+          <>
+            {!(mode === "3d" && Scene3D && drawn) && flat}
+            {mode === "3d" && Scene3D && (
+              <SceneBoundary fallback={null} onError={() => failed3D("scene")}>
+                <Scene3D
+                  bubbles={bubbles}
+                  open={open}
+                  onSelect={select}
+                  columns={columns}
+                  reducedMotion={reducedMotion}
+                  onShown={restoreFocus}
+                  onDrawn={shownModels}
+                  onFailed={modelsFailed}
+                />
+              </SceneBoundary>
+            )}
+          </>
         }
       />
     </div>

@@ -48,6 +48,11 @@ export interface BossScene3DProps extends BossSceneProps {
   reducedMotion: boolean;
   /** Called once its bubbles are up. */
   onShown?: () => void;
+  /**
+   * Called once the models have drawn their first frame: until then the canvas is empty, so the 2D figures stay
+   * (David, 3 Nov 2026: the robots popped in, out, then back in; measured empty for 375 to 435 ms).
+   */
+  onDrawn?: () => void;
   /** A model didn't arrive: the scene draws nothing, and BossBriefing shows the 2D one. */
   onFailed?: () => void;
 }
@@ -92,6 +97,7 @@ export default function BossScene3D({
   columns,
   reducedMotion,
   onShown,
+  onDrawn,
   onFailed,
 }: BossScene3DProps) {
   const stage = useRef<HTMLDivElement>(null);
@@ -118,6 +124,7 @@ export default function BossScene3D({
             stage={stage}
             reducedMotion={reducedMotion}
             onFailed={onFailed}
+            onDrawn={onDrawn}
           />
         </Suspense>
       </Canvas>
@@ -201,6 +208,7 @@ function Bosses({
   stage,
   reducedMotion,
   onFailed,
+  onDrawn,
 }: {
   bosses: BossId[];
   open: number;
@@ -209,6 +217,7 @@ function Bosses({
   stage: RefObject<HTMLDivElement | null>;
   reducedMotion: boolean;
   onFailed?: () => void;
+  onDrawn?: () => void;
 }) {
   const urls = useMemo(() => bosses.map(modelUrl), [bosses]);
   const models = useGLTF(urls, false, undefined, softFail) as unknown as Loaded[];
@@ -225,6 +234,13 @@ function Bosses({
     onFailed?.();
   }, [failed, urls, onFailed]);
   useEffect(() => () => figures.forEach((f) => f.owned.forEach((m) => m.dispose())), [figures]);
+  // The first frame with the models in it: from here the canvas shows them, and the 2D figures can go.
+  const drawn = useRef(false);
+  useFrame(() => {
+    if (drawn.current || failed) return;
+    drawn.current = true;
+    onDrawn?.();
+  });
   const { gl } = useThree();
   const hovered = useRef(-1);
   const work = useMemo(
