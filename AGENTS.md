@@ -25,5 +25,6 @@ David's take-home for Golden Analytics. Read `docs/requirements.md` first: it sa
 - **Name yourself on PRs.** Start every PR description with the name of the agent that wrote the code, e.g. "**Author: Frank** (Codex, data and simulation)", so David knows who to talk to. When you review a PR, leave a comment with `gh pr comment` that starts with "**<Name>'s review:**", followed by your verdict and thoughts.
 - **Keep `docs/collaboration-log.md` current.** Add an entry when David makes a major decision, and especially when he pushes back on or overrides an agent's recommendation. Quote his words.
 - **The README is David's to write.** Don't create or edit `README.md`.
+- **Formatting:** Prettier, 100 columns (David, 2 Nov 2026). Run `npm run format` before you commit; `npm run format:check` lists files that need it. It skips `packages/`, `docs/` and Markdown.
 - **Game text:** US English, no emoji.
 - **Headless browsers:** mute them (Web Audio to a zero gain node, media elements muted). Playwright's Chromium mutes itself; WebKit and Firefox don't.
