@@ -30,6 +30,7 @@ import { LATER_KEYS } from "./later-discoveries.ts";
 import { alertsSeenOf, currentQuarter } from "./progress.ts";
 import { validReports } from "../reports/player.ts";
 import { validSegments, type Segment } from "../segments/segments.ts";
+import { validForecasts } from "../forecast/forecast.ts";
 import { isAlmaLog } from "../alma/record.ts";
 import { isBackstoryRecord } from "../alma/backstory-record.ts";
 import {
@@ -143,6 +144,12 @@ function validate(save: GameSave, id: string): void {
     (save.reportsSeen !== undefined && !validSeen(save.reportsSeen)) ||
     (save.reports !== undefined && !validReports(save.reports)) ||
     (save.segments !== undefined && !validSegments(save.segments)) ||
+    (save.forecasts !== undefined &&
+      !validForecasts(
+        save.forecasts,
+        // Checked before `played` is: a malformed list gives no quarters, so no forecast passes.
+        Array.isArray(save.played) ? save.played.map((q) => q?.period) : [],
+      )) ||
     !Array.isArray(save.discoveries) ||
     save.discoveries.length > 6 ||
     new Set(save.discoveries).size !== save.discoveries.length ||

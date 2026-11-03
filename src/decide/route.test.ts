@@ -40,9 +40,13 @@ describe("the Decide action", () => {
 
   it("submits the plan", async () => {
     expect(await act(post())).toEqual({ data: { ok: true }, status: 200 });
-    expect(game.submitPlan).toHaveBeenCalledWith(expect.any(Request), {
-      levers: ["repick", "events"],
-    });
+    expect(game.submitPlan).toHaveBeenCalledWith(
+      expect.any(Request),
+      {
+        levers: ["repick", "events"],
+      },
+      null,
+    );
   });
 
   it("sends a second plan to the results", async () => {
@@ -115,6 +119,7 @@ describe("the Decide action in Q2", () => {
       expect.any(Request),
       { picks: [A, null, B], levers: ["events"] },
       "2194-Q2",
+      null,
     );
     expect(game.submitPlan).not.toHaveBeenCalled();
   });
@@ -125,6 +130,7 @@ describe("the Decide action in Q2", () => {
       expect.any(Request),
       { picks: [null, null, null], levers: [] },
       "2194-Q2",
+      null,
     );
   });
 
