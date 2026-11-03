@@ -2,7 +2,7 @@
 // draws, and returns only those results to the browser.
 import { loadBookshop } from "~/bookshop/loader.server";
 import { PRICE_BANDS, type Measure, type Query, type QueryResult, type QueryView } from "~/query/types";
-import { DEFAULT_STATE, filtersExcept, TILE_MEASURES, type Filters, type InvestigateState, type TileMeasure } from "./state";
+import { DEFAULT_STATE, filtersExcept, heatWindow, TILE_MEASURES, type Filters, type InvestigateState, type TileMeasure } from "./state";
 
 export type RunQuery = (query: Query, view: QueryView) => QueryResult;
 
@@ -90,9 +90,11 @@ function chartQuery(state: InvestigateState, measure: Measure = state.measure): 
   const by = state.compare ? ([state.by, 'quarter'] as const) : ([state.by] as const);
   return { measure, by, ...withFilter(filtersExcept(state.filters, [state.by])) };
 }
-function heatmapQuery(state: InvestigateState): Query {
+function heatmapQuery(state: InvestigateState, quarters: readonly string[]): Query {
   const { measure, rows, cols } = state.heat;
-  return { measure, by: [rows, cols], ...withFilter(filtersExcept(state.filters, [rows, cols])) };
+  // A long ledger shows its last eight quarters unless the player asks for every one (heatWindow).
+  const window = heatWindow(state, quarters);
+  return { measure, by: [rows, cols], ...withFilter({ ...filtersExcept(state.filters, [rows, cols]), ...(window ? { quarter: window } : {}) }) };
 }
 
 export function investigate(state: InvestigateState, runQuery: RunQuery, view: QueryView,
@@ -127,7 +129,7 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
   // The other measures are views the player chose, so they count as shown, like any other chart.
   const also = state.also.map((measure) => rendered(chartQuery(state, measure)));
   // Always-visible context, never discovery evidence (m1-slice section 5).
-  const heatmap = run(heatmapQuery(state));
+  const heatmap = run(heatmapQuery(state, view.periods));
 
   const title = state.filters.title?.length === 1 ? state.filters.title[0]! : null;
   const titleView = title

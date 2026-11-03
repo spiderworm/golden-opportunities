@@ -19,7 +19,7 @@ const result = {
   total: 14,
   source: "S",
 };
-const heat = { measure: "units" as const, rows: "genre" as const, cols: "price_band" as const };
+const heat = { measure: "units" as const, rows: "genre" as const, cols: "price_band" as const, period: "recent" as const };
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
 describe("the heatmap (David: \"the same level of customization that we've given to charts\")", () => {
@@ -52,5 +52,25 @@ describe("the heatmap (David: \"the same level of customization that we've given
     expect(html).toContain('aria-label="Fiction, Under $10: 9"');
     // An unknown genre can't be filtered on: its cells aren't buttons.
     expect(html).toMatch(/<span class="[^"]*" data-tip="Unknown, Under \$10: 1"/);
+  });
+
+  it("offers its period only once the ledger holds more than eight quarters, and says so in its title (Plot, #264)", () => {
+    const render = (quarters: string[], extra: Partial<typeof DEFAULT_STATE> = {}) =>
+      renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat, ...extra }} result={result} quarters={quarters} onCell={() => {}} onHeat={() => {}} />);
+    const four = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
+    const ten = [...four, "2194-Q1", "2194-Q2", "2194-Q3", "2194-Q4", "2195-Q1", "2195-Q2"];
+    expect(text(render(four))).not.toContain("Period");
+    expect(render(four)).toMatch(/<h2[^>]*>Units sold by genre and price band<\/h2>/);
+    expect(text(render(ten))).toContain("Period Last eight quarters");
+    expect(render(ten)).toMatch(/<h2[^>]*>Units sold by genre and price band, last eight quarters<\/h2>/);
+    // Every quarter: no suffix. The screen's own quarter filter: no suffix, and Period says why it can't change.
+    expect(render(ten, { heat: { ...heat, period: "all" } })).toMatch(/<h2[^>]*>Units sold by genre and price band<\/h2>/);
+    const filtered = render(ten, { filters: { quarter: ["2194-Q4"] } });
+    expect(filtered).toMatch(/<h2[^>]*>Units sold by genre and price band<\/h2>/);
+    expect(text(filtered)).toMatch(/Following the screen(&#x27;|')s quarter filter\./);
+    // Cut off over every quarter of a long ledger: the note offers the window.
+    expect(text(renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat: { ...heat, period: "all" } }} result={{ ...result, truncated: true }} quarters={ten} onCell={() => {}} onHeat={() => {}} />))).toContain(
+      "Narrow it with a filter, or choose Last eight quarters.",
+    );
   });
 });
