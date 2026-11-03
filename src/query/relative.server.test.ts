@@ -44,6 +44,21 @@ describe("relative quarters at query time", () => {
     expect(run(byGenre(["latest-1"]), before).total).toBe(run(byGenre(["2193-Q3"]), before).total);
   });
 
+  it("mark the same events as the dated quarter on a time series (Frank, #378)", () => {
+    const byMonth = (quarter: string[]): Query => ({
+      measure: "revenue",
+      by: ["month"],
+      filter: { quarter },
+    });
+    const withEvents: QueryView = {
+      ...before,
+      events: [{ date: "2193-11-01", precision: "month", kind: "pick", label: "A pick" }],
+    };
+    const dated = run(byMonth(["2193-Q4"]), withEvents);
+    expect(dated.events?.list).toHaveLength(1);
+    expect(run(byMonth(["latest"]), withEvents).events).toEqual(dated.events);
+  });
+
   it("match nothing for a quarter before the ledgers, rather than every quarter", () => {
     const result = run(
       { measure: "units", by: ["genre"], filter: { quarter: ["latest-4"] } },

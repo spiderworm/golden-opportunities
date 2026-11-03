@@ -595,3 +595,14 @@ describe("what drove the change: when it can, and why not (Plot, #328)", () => {
     });
   });
 });
+
+describe("a quarter filter from a link (Frank, #378)", () => {
+  it("keeps quarters by their names and relative quarters, and drops anything else", () => {
+    expect(
+      parseState(new URLSearchParams("quarter=2194-Q1&quarter=latest&quarter=foo&quarter=Q1 2194"))
+        .filters,
+    ).toEqual({
+      quarter: ["2194-Q1", "latest"],
+    });
+  });
+});

@@ -2,6 +2,7 @@
 // bookmarked and undone with Back.
 import { yearEarlier } from "../query/last-year.ts";
 import { yearMonth } from "../query/months.ts";
+import { isRelativeQuarter } from "../query/relative.ts";
 import { MEASURE_DIMENSIONS, type Dimension, type Measure } from "../query/types.ts";
 
 export const CHART_MEASURES = [
@@ -475,7 +476,14 @@ export function readFilters(valuesOf: (dimension: FilterDimension) => readonly s
   for (const dimension of FILTER_DIMENSIONS) {
     // Links from before months had a year ("month=04") still open, as 2193's.
     const read = valuesOf(dimension).map((v) => (dimension === "month" ? yearMonth(v) : v));
-    const values = [...new Set(read)].filter((v) => v.length > 0 && v.length <= MAX_VALUE_LENGTH);
+    const values = [...new Set(read)].filter(
+      (v) =>
+        v.length > 0 &&
+        v.length <= MAX_VALUE_LENGTH &&
+        // A quarter is one by its name or a relative quarter (src/query/relative.ts): anything else, from a stale or
+        // hand-made link, is dropped, as the query would refuse it (Frank, #378).
+        (dimension !== "quarter" || /^\d{4}-Q[1-4]$/.test(v) || isRelativeQuarter(v)),
+    );
     if (values.length) filters[dimension] = values.slice(0, MAX_VALUES);
   }
   return filters;
