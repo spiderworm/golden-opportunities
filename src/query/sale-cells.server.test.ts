@@ -19,6 +19,7 @@ import {
   FILTER_ONLY_DIMENSIONS,
   type Dimension,
   type Query,
+  type QueryResult,
   type QueryView,
 } from "./types";
 
@@ -40,11 +41,29 @@ const SALES = [
 const GROUPS = DIMENSIONS.filter(
   (d) => !(FILTER_ONLY_DIMENSIONS as readonly string[]).includes(d) && d !== "stars",
 );
-/** The same query over lines and over their cells: the whole result, provenance included, must match. */
+/**
+ * Two answers to one query, over lines and over cells: the whole result, provenance included, must match. A
+ * standard error is summed in another order, so it's within a billionth, or 1e-6 where the true spread is 0.
+ */
+function expectSame(got: QueryResult, want: QueryResult, label: string) {
+  const { evidence: e1, ...a } = got;
+  const { evidence: e2, ...b } = want;
+  expect(a, label).toEqual(b);
+  const all = (e: typeof e1) => [...e!.rows, e!.total];
+  expect(e1!.unit, label).toBe(e2!.unit);
+  expect(
+    all(e1).map((e) => e.n),
+    label,
+  ).toEqual(all(e2).map((e) => e.n));
+  all(e1).forEach((e, i) => {
+    const se = all(e2)[i]!.se;
+    if (se === null) expect(e.se, label).toBeNull();
+    else expect(Math.abs(e.se! - se), label).toBeLessThanOrEqual(1e-9 * se + 1e-6);
+  });
+}
+/** The same query over lines and over their cells. */
 function same(query: Query, lines: QueryView, cells: QueryView) {
-  expect(runQuery(query, cells, quiet), JSON.stringify(query)).toEqual(
-    runQuery(query, lines, quiet),
-  );
+  expectSame(runQuery(query, cells, quiet), runQuery(query, lines, quiet), JSON.stringify(query));
 }
 const views = (view: QueryView): [QueryView, QueryView] => {
   const { simulatedSales, ...rest } = view;
@@ -176,7 +195,7 @@ describe("sale cells (docs/design/rollups.md)", () => {
         }
       };
       const check = (query: Query) =>
-        expect(runQuery(query, view, quiet), JSON.stringify(query)).toEqual(asLines(query));
+        expectSame(runQuery(query, view, quiet), asLines(query), JSON.stringify(query));
       for (const measure of SALES) {
         check({ measure, by: [] });
         for (const by of GROUPS) check({ measure, by: [by] });

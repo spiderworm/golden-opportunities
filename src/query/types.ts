@@ -126,13 +126,21 @@ export interface QueryResult {
   total: number | null;
   /** Player-visible provenance, including fact grain, scope, and truncation. */
   source: string;
-  /** With `vs: "last_year"`: each row's figure a year earlier, in the rows' order, and the total's. */
-  lastYear?: { rows: LastYear[]; total: LastYear };
   /**
-   * For an average (evidence.ts): how many items each row's figure and the total's are over, in the rows' order.
-   * Beside the rows, not in them, so Dewey's tools (which pass rows on) don't get it before the figures gate does.
+   * With `vs: "last_year"`: each row's figure a year earlier, in the rows' order, and the total's, with their
+   * evidence (null where the figure is).
    */
-  evidence?: { unit: EvidenceUnit; rows: Evidence[]; total: Evidence };
+  lastYear?: {
+    rows: LastYear[];
+    total: LastYear;
+    evidence: { rows: (Evidence | null)[]; total: Evidence | null };
+  };
+  /**
+   * How many items each row's figure and the total's are over, and their standard errors, in the rows' order
+   * (evidence.ts). `unit` names what an average is over, null for other measures. Dewey's tool server keeps only
+   * columns, rows, total and source, so this doesn't reach Dewey before the figures gate does.
+   */
+  evidence?: { unit: EvidenceUnit | null; rows: Evidence[]; total: Evidence };
 }
 
 export type QueryErrorCode =

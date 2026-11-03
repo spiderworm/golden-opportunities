@@ -135,14 +135,45 @@ use `vs` yet.
 
 ## How much evidence
 
-An average's result carries `evidence: { unit, rows, total }` (`evidence.ts`;
-David, 3 Nov 2026: "Show n next to averages"): how many items each row's figure
-and the total's are over, in the rows' order. `avg_order_value` is over orders
-(distinct, as `orders` counts them), `avg_discount` over sale lines,
-`avg_rating` over ratings and `orders_per_day` over eligible days. Other
-measures have no `evidence`. It's beside the rows, not in them, so Dewey's tools,
-which pass rows on, don't see it yet. `lowEvidence` says when an average is shown
-faded: under 30 ratings, orders or sale lines, and never for days.
+Every result carries `evidence: { unit, rows, total }` (`evidence.ts`; David,
+3 Nov 2026: "Show n next to averages, add error bars on average rating, and
+flag a comparison when the difference is "within noise""): for each row's
+figure and the total's, in the rows' order, how many items it's over (`n`) and
+its standard error (`se`, in the figure's units). It's how sure a figure is,
+not the discovery evidence of "Context, never evidence" below.
+
+- **Averages** name their `unit`: `avg_order_value` is over orders (distinct,
+  as `orders` counts them), `avg_discount` over sale lines, `avg_rating` over
+  ratings and `orders_per_day` over eligible days. Other measures' `unit` is
+  null. An average's `se` is its items' standard deviation over the root of
+  their count, null below two items. `orders_per_day`'s is its orders' root
+  over its days.
+- **Counts** (`units`, `orders`, `ratings`, `checkouts`) are taken as Poisson:
+  `se` is the count's root.
+- **Revenue** is taken as compound Poisson over its orders: `se` is the root of
+  the sum of its orders' totals squared, where a total is the order's lines in
+  the row's group. Lines in one order rise and fall together, so its variance
+  is up to 30% larger (its `se` 14% wider) than if lines were independent
+  (2193, by quarter). Cells keep
+  each order's lines per cell (`squares`, `spanningLines` in `sale-cells.ts`),
+  so it's exact for any grouping.
+- **Last year** gives its figures' evidence too: `lastYear.evidence`, null where
+  the figure is, and `{ n: 0, se: 0 }` for a count that didn't sell (`se: null`
+  for an average).
+
+`withinNoise(unit, a, b)` flags a comparison whose difference is within 95% of
+its spread: Welch's test for averages, its degrees of freedom from each side's
+`n`, and normal for counts, revenue and orders per day. So a count is within
+noise when |a − b| ≤ 1.96·√(a + b). It's null, and no flag shows, when either
+side can't be judged. `ratingRange` is an average rating's likely range: t on
+n − 1 degrees of freedom times its `se`, clipped to 1 to 5 stars, and null below
+two ratings. `lowEvidence` says when an average is shown faded: under 30
+ratings, orders or sale lines, and never for days.
+
+Dewey doesn't see any of this yet. The tool server's `runQuery`
+(`src/assistant/tools/server.ts`) keeps only `columns`, `rows`, `total` and
+`source` from a result, so `evidence` never reaches him until the figures gate
+is ready for it.
 
 ## What Dewey may use
 

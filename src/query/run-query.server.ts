@@ -63,6 +63,8 @@ interface Fact {
   weight?: number;
   cell?: number;
   orders?: number;
+  /** A cell's sum over its orders of their lines in it, squared (sale-cells.ts). */
+  squares?: number;
 }
 /**
  * Distinct orders: those of lines in a set, plus those of cells as counted, less the orders counted in more than one
@@ -74,6 +76,15 @@ interface Aggregate {
   orders: Set<string>;
   cellOrders: number;
   overlap: number;
+  /**
+   * The sum of the items' squares, for their spread (evidence.ts): discounts in basis points and ratings in stars,
+   * both whole, or for revenue and average order value, its orders' totals in dollars. Those don't stay whole: a
+   * line's revenue is up to about 6e7 millionths, so its square alone nears 2^53, and a float's rounding is far
+   * below what a 95% test can tell.
+   */
+  squares: number;
+  /** Lines' orders' revenue so far, in millionths, for their totals' squares; cells add theirs to `squares`. */
+  totals: Map<string, number>;
 }
 /**
  * Results, least recently used out, bounded by count and by their JSON's size with their keys' (each result is at
@@ -268,11 +279,25 @@ function* facts(query: Query, view: QueryView, history: SaleCells | null): Gener
     const offset = history?.cells.length ?? 0;
     history?.cells.forEach((cell, at) => {
       const fact = saleFact(cell.line, query.measure, periods, false);
-      if (fact) cells.push({ ...fact, weight: cell.lines, cell: at, orders: cell.orders });
+      if (fact)
+        cells.push({
+          ...fact,
+          weight: cell.lines,
+          cell: at,
+          orders: cell.orders,
+          squares: cell.squares,
+        });
     });
     view.simulatedCells?.cells.forEach((cell, at) => {
       const fact = saleFact(cell.line, query.measure, periods, true);
-      if (fact) cells.push({ ...fact, weight: cell.lines, cell: offset + at, orders: cell.orders });
+      if (fact)
+        cells.push({
+          ...fact,
+          weight: cell.lines,
+          cell: offset + at,
+          orders: cell.orders,
+          squares: cell.squares,
+        });
     });
     yield* cells;
   }
@@ -285,13 +310,24 @@ const aggregate = (): Aggregate => ({
   orders: new Set(),
   cellOrders: 0,
   overlap: 0,
+  squares: 0,
+  totals: new Map(),
 });
+/** Measures whose spread is their orders' totals'. */
+const byOrderTotals = (measure: Measure) => measure === "revenue" || measure === "avg_order_value";
 const orderCount = (target: Aggregate) => target.orders.size + target.cellOrders - target.overlap;
 function add(target: Aggregate, fact: Fact, measure: Measure): void {
   const weight = fact.weight ?? 1;
   target.sum += fact.value * weight;
   target.count += weight;
-  if (!["orders", "avg_order_value", "orders_per_day"].includes(measure)) return;
+  if (measure === "avg_discount" || measure === "avg_rating")
+    target.squares += fact.value * fact.value * weight;
+  if (byOrderTotals(measure)) {
+    if (fact.cell === undefined)
+      target.totals.set(fact.orderId!, (target.totals.get(fact.orderId!) ?? 0) + fact.value);
+    else target.squares += fact.squares! * (fact.value / REVENUE_UNIT) ** 2;
+  }
+  if (!["orders", "revenue", "avg_order_value", "orders_per_day"].includes(measure)) return;
   if (fact.cell === undefined) target.orders.add(fact.orderId!);
   else target.cellOrders += fact.orders!;
 }
@@ -306,11 +342,34 @@ function value(target: Aggregate, measure: Measure, days = 0): number | null {
   if (measure === "revenue") return target.sum / REVENUE_UNIT;
   return target.sum;
 }
-/** How many items an average is over (evidence.ts): orders, lines, ratings or days. */
+/**
+ * How many items a figure is over, and its standard error (evidence.ts). An average's is its items' standard
+ * deviation over the root of their count. A count is taken as Poisson, so its own root; revenue as compound
+ * Poisson over its orders, so the root of their totals' squares; orders per day as its orders' over its days.
+ */
 function evidenceOf(target: Aggregate, measure: Measure, days: number): Evidence {
-  if (measure === "avg_order_value") return { n: orderCount(target) };
-  if (measure === "orders_per_day") return { n: days };
-  return { n: target.count };
+  const orders = orderCount(target);
+  const squares =
+    target.squares + [...target.totals.values()].reduce((t, v) => t + (v / REVENUE_UNIT) ** 2, 0);
+  switch (measure) {
+    case "revenue":
+      return { n: orders, se: Math.sqrt(squares) };
+    case "orders":
+      return { n: orders, se: Math.sqrt(orders) };
+    case "orders_per_day":
+      return { n: days, se: days ? Math.sqrt(orders) / days : null };
+    case "checkouts":
+      return { n: target.sum, se: Math.sqrt(target.sum) };
+    case "units":
+    case "ratings":
+      return { n: target.count, se: Math.sqrt(target.count) };
+  }
+  const n = measure === "avg_order_value" ? orders : target.count;
+  const mean = value(target, measure);
+  if (n < 2 || mean === null) return { n, se: null };
+  const scale = measure === "avg_discount" ? DISCOUNT_UNIT ** 2 : 1;
+  const variance = Math.max(0, (squares / scale - n * mean * mean) / (n - 1));
+  return { n, se: Math.sqrt(variance / n) };
 }
 function compare(
   a: string | number | null | undefined,
@@ -345,6 +404,7 @@ function execute(query: Query, view: QueryView): QueryResult {
   let simulated = 0;
   const inTotal = new Set<number>();
   const cellGroup = new Map<number, Aggregate>();
+  const cellRevenue = new Map<number, number>();
   if (!query.by.length) groups.set("[]", { dimensions: {}, aggregate: aggregate() });
   const history = undated(query.measure) ? null : historyOf(loadBookshop());
   for (const fact of facts(query, view, history)) {
@@ -358,7 +418,10 @@ function execute(query: Query, view: QueryView): QueryResult {
       continue;
     add(total, fact, query.measure);
     if (fact.simulated) simulated += fact.weight ?? 1;
-    if (fact.cell !== undefined) inTotal.add(fact.cell);
+    if (fact.cell !== undefined) {
+      inTotal.add(fact.cell);
+      if (byOrderTotals(query.measure)) cellRevenue.set(fact.cell, fact.value);
+    }
     const values = query.by.map((dimension) => fact.dimensions[dimension] ?? null);
     values.forEach(checkLabel);
     const key = JSON.stringify(values);
@@ -379,7 +442,12 @@ function execute(query: Query, view: QueryView): QueryResult {
     ...(history?.spanning ?? []),
     ...(view.simulatedCells?.spanning ?? []).map((touched) => touched.map((at) => offset + at)),
   ];
-  for (const touched of spanning) {
+  const spanningLines = [
+    ...(history?.spanningLines ?? []),
+    ...(view.simulatedCells?.spanningLines ?? []),
+  ];
+  const spread = byOrderTotals(query.measure);
+  spanning.forEach((touched, order) => {
     const seen = new Map<Aggregate, number>();
     let visible = 0;
     for (const at of touched) {
@@ -389,6 +457,29 @@ function execute(query: Query, view: QueryView): QueryResult {
     }
     if (visible > 1) total.overlap += visible - 1;
     for (const [group, count] of seen) if (count > 1) group.overlap += count - 1;
+    if (spread && visible > 1) addCrossTerms(touched, spanningLines[order]!);
+  });
+  /**
+   * An order's total in an aggregate is the sum of its parts in the aggregate's cells. Each cell counted its own
+   * part's square, so this adds the rest of the total's square: twice the product of each pair of parts.
+   */
+  function addCrossTerms(touched: readonly number[], lines: readonly number[]) {
+    const parts = new Map<Aggregate, { sum: number; squares: number }>();
+    const part = (target: Aggregate, dollars: number) => {
+      const p = parts.get(target) ?? { sum: 0, squares: 0 };
+      p.sum += dollars;
+      p.squares += dollars * dollars;
+      parts.set(target, p);
+    };
+    touched.forEach((at, i) => {
+      const revenue = cellRevenue.get(at);
+      if (revenue === undefined) return;
+      const dollars = (revenue * lines[i]!) / REVENUE_UNIT;
+      part(total, dollars);
+      const group = cellGroup.get(at);
+      if (group) part(group, dollars);
+    });
+    for (const [target, p] of parts) target.squares += p.sum * p.sum - p.squares;
   }
   const unit = evidenceUnit(query.measure);
   const evidence = new Map<QueryRow, Evidence>();
@@ -405,7 +496,7 @@ function execute(query: Query, view: QueryView): QueryResult {
       ...group.dimensions,
       [query.measure]: value(group.aggregate, query.measure, dayCount),
     };
-    if (unit) evidence.set(row, evidenceOf(group.aggregate, query.measure, dayCount));
+    evidence.set(row, evidenceOf(group.aggregate, query.measure, dayCount));
     return row;
   });
   rows.sort((a, b) => {
@@ -467,13 +558,11 @@ function execute(query: Query, view: QueryView): QueryResult {
     rows: visibleRows,
     total: value(total, query.measure, days.length),
     source,
-    ...(unit && {
-      evidence: {
-        unit,
-        rows: visibleRows.map((row) => evidence.get(row)!),
-        total: evidenceOf(total, query.measure, days.length),
-      },
-    }),
+    evidence: {
+      unit,
+      rows: visibleRows.map((row) => evidence.get(row)!),
+      total: evidenceOf(total, query.measure, days.length),
+    },
   };
 }
 
@@ -488,8 +577,14 @@ function executeWithLastYear(query: Query, view: QueryView): QueryResult {
   // Every group last year, not just the first 200: a group cut off would read as a zero.
   const before = execute({ ...lastYearQuery(query), limit: Number.MAX_SAFE_INTEGER }, view);
   const groups = new Map(
-    before.rows.map((row) => [JSON.stringify(query.by.map((d) => row[d] ?? null)), row]),
+    before.rows.map((row, i) => [
+      JSON.stringify(query.by.map((d) => row[d] ?? null)),
+      { row, evidence: before.evidence!.rows[i]! },
+    ]),
   );
+  // A group that sold nothing last year: a count of zero is sure, an average over nothing has no spread.
+  const none: Evidence = { n: 0, se: query.measure.startsWith("avg_") ? null : 0 };
+  const evidence: (Evidence | null)[] = [];
   const figure = (row: QueryRow | undefined, missing: string | null, fallback: number | null) =>
     missing ? null : { value: row ? ((row[query.measure] as number | null) ?? null) : fallback };
   const nothing = query.measure.startsWith("avg_") ? null : 0;
@@ -498,15 +593,21 @@ function executeWithLastYear(query: Query, view: QueryView): QueryResult {
       const v = row[d] ?? null;
       return v === null ? null : yearEarlier(d, v);
     });
-    return figure(
-      groups.get(JSON.stringify(key)),
-      lastYearMissing(quartersCovered(query, view.periods, row), view.periods),
-      nothing,
-    );
+    const group = groups.get(JSON.stringify(key));
+    const missing = lastYearMissing(quartersCovered(query, view.periods, row), view.periods);
+    evidence.push(missing ? null : (group?.evidence ?? none));
+    return figure(group?.row, missing, nothing);
   });
   const missing = lastYearMissing(quartersCovered(query, view.periods), view.periods);
   const total: LastYear = missing ? null : { value: before.total };
-  return { ...result, lastYear: { rows, total } };
+  return {
+    ...result,
+    lastYear: {
+      rows,
+      total,
+      evidence: { rows: evidence, total: missing ? null : before.evidence!.total },
+    },
+  };
 }
 
 /** Fixed grammar only. Visibility always comes from trusted server state. */

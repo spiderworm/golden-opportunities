@@ -78,7 +78,11 @@ describe("a query against the same quarter last year", () => {
       { measure: "revenue", by: ["format"], filter: { quarter: ["2194-Q1"] }, vs: "last_year" },
       { ...view, periods: ["2194-Q1"] },
     );
-    expect(hidden.lastYear).toEqual({ rows: hidden.rows.map(() => null), total: null });
+    expect(hidden.lastYear).toEqual({
+      rows: hidden.rows.map(() => null),
+      total: null,
+      evidence: { rows: hidden.rows.map(() => null), total: null },
+    });
   });
 
   it("counts a group that didn't sell last year as zero, and its average as no value", () => {
@@ -89,12 +93,20 @@ describe("a query against the same quarter last year", () => {
     const filter = { quarter: ["2194-Q1"], list_price: ["$999.99"] };
     const units = run({ measure: "units", by: ["list_price"], filter, vs: "last_year" }, priced);
     expect(units.rows).toEqual([{ list_price: "$999.99", units: 1 }]);
-    expect(units.lastYear).toEqual({ rows: [{ value: 0 }], total: { value: 0 } });
+    expect(units.lastYear).toEqual({
+      rows: [{ value: 0 }],
+      total: { value: 0 },
+      evidence: { rows: [{ n: 0, se: 0 }], total: { n: 0, se: 0 } },
+    });
     const discount = run(
       { measure: "avg_discount", by: ["list_price"], filter, vs: "last_year" },
       priced,
     );
-    expect(discount.lastYear).toEqual({ rows: [{ value: null }], total: { value: null } });
+    expect(discount.lastYear).toEqual({
+      rows: [{ value: null }],
+      total: { value: null },
+      evidence: { rows: [{ n: 0, se: null }], total: { n: 0, se: null } },
+    });
   });
 
   it("finds last year's group even past the row limit", () => {
