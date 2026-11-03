@@ -58,6 +58,8 @@ ORBITAL_ASSISTANT_PROVIDER=anthropic ANTHROPIC_API_KEY=... npm run dev
   ```
 
   The game itself never opens that file: the shell reads it, and the server sees only the variable.
+
+- **The SDK's own variables:** `ANTHROPIC_BASE_URL` has no effect, since the game fixes the address. `ANTHROPIC_LOG` turns on the SDK's request logging; leave it unset, so nothing about a request is written to the server's output.
 - **The model** is `claude-sonnet-5-5`. Set `ORBITAL_ANTHROPIC_MODEL` for both, or `ORBITAL_ALMA_ANTHROPIC_MODEL` for Alma alone.
 - **Alma** follows Dewey onto the API. `ORBITAL_ALMA_PROVIDER=claude` keeps her on Claude Code, and `scripted` turns her off.
 - **Limits:** the model gets the game's data tools and nothing else, at most eight model calls an answer, and two minutes for the whole answer (Alma has thirty seconds). A rate limit (429) or an overload (529) shows as "unavailable", and a refused key as offline.
