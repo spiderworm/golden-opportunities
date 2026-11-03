@@ -608,7 +608,6 @@ export function setFilter(
   return { ...state, filters };
 }
 
-/** Adds the value to the dimension's selection, or takes it out if it's already there. */
 /**
  * Whether a filter's value picks this one: the same value, or for a quarter, a relative quarter that's it now
  * (src/query/relative.ts), as the chart highlights it (Audit and Chart, #379).
