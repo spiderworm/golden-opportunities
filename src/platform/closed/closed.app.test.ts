@@ -37,53 +37,72 @@ afterAll(async () => {
 
 const flag = path.join(dir, "closed");
 const url = (p: string) => `http://localhost${p}`;
-const post = (p: string, body: unknown) =>
+const CLOSED = "Sorry, we can't do that for you right now.";
+// Closed mode runs before the entry page (#317), so whether the visitor has agreed doesn't matter.
+const AGREED = { Cookie: "ob_entry=1" };
+const VISITORS = [
+  ["no agreement cookie", {}],
+  ["agreed", AGREED],
+] as const;
+const get = (p: string, headers: Record<string, string> = {}) =>
+  new Request(url(p), { headers: { Accept: "text/html", ...headers } });
+const post = (p: string, body: unknown, headers: Record<string, string> = {}) =>
   new Request(url(p), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
 
-test("closed: every route answers 503 with the closed page, and no save is made", async () => {
-  writeFileSync(flag, "");
-  resetClosedCheck();
-  const requests = [
-    new Request(url("/")),
-    new Request(url("/investigate")),
-    new Request(url("/settings")),
-    new Request(url("/game/new"), { method: "POST" }),
-    post("/api/assistant", { messages: [{ role: "user", content: "Hello" }] }),
-    post("/api/query", { query: {} }),
-  ];
-  for (const request of requests) {
-    const response = await handle(request);
-    const where = `${request.method} ${new URL(request.url).pathname}`;
-    expect(response.status, where).toBe(503);
-    expect(response.headers.get("Retry-After"), where).toBe("300");
-    expect(await response.text(), where).toContain("Sorry, we can't do that for you right now.");
-  }
-  // A client navigation is sent to load the page itself, which is then the closed page.
-  for (const [data, page] of [
-    ["/investigate.data", "/investigate"],
-    ["/_.data?_routes=root", "/"],
-  ]) {
-    const response = await handle(new Request(url(data!)));
-    expect(response.status, data).toBe(204);
-    expect(response.headers.get("X-Remix-Redirect"), data).toBe(page);
-    expect(response.headers.get("X-Remix-Reload-Document"), data).toBe("true");
-  }
-  // A URL no route matches never reaches middleware: React Router answers it with
-  // the game's 404 page, which runs no loader either.
-  expect((await handle(new Request(url("/no-such-page")))).status).toBe(404);
-  // Loaders and actions never ran, so nothing made a save.
-  const saves = path.join(dir, "saves");
-  expect(existsSync(saves) ? readdirSync(saves) : []).toEqual([]);
-}, 60_000);
+test.each(VISITORS)(
+  "closed, %s: every route answers 503 with the closed page, and no save is made",
+  async (_who, headers) => {
+    writeFileSync(flag, "");
+    resetClosedCheck();
+    const requests = [
+      get("/", headers),
+      get("/investigate", headers),
+      get("/settings", headers),
+      new Request(url("/game/new"), { method: "POST", headers }),
+      post("/api/assistant", { messages: [{ role: "user", content: "Hello" }] }, headers),
+      post("/api/query", { query: {} }, headers),
+      post("/entry", {}, headers),
+    ];
+    for (const request of requests) {
+      const response = await handle(request);
+      const where = `${request.method} ${new URL(request.url).pathname}`;
+      expect(response.status, where).toBe(503);
+      expect(response.headers.get("Retry-After"), where).toBe("300");
+      expect(await response.text(), where).toContain(CLOSED);
+    }
+    // A client navigation is sent to load the page itself, which is then the closed page.
+    for (const [data, page] of [
+      ["/investigate.data", "/investigate"],
+      ["/_.data?_routes=root", "/"],
+    ]) {
+      const response = await handle(get(data!, headers));
+      expect(response.status, data).toBe(204);
+      expect(response.headers.get("X-Remix-Redirect"), data).toBe(page);
+      expect(response.headers.get("X-Remix-Reload-Document"), data).toBe("true");
+    }
+    // A URL no route matches never reaches middleware: React Router answers it with
+    // the game's 404 page, which runs no loader either.
+    expect((await handle(get("/no-such-page", headers))).status).toBe(404);
+    // Loaders and actions never ran, so nothing made a save.
+    const saves = path.join(dir, "saves");
+    expect(existsSync(saves) ? readdirSync(saves) : []).toEqual([]);
+  },
+  60_000,
+);
 
-test("reopening restores the game", async () => {
+test("reopening restores the entry page, then the game", async () => {
   rmSync(flag, { force: true });
   resetClosedCheck();
-  const response = await handle(new Request(url("/")));
-  expect(response.status).toBe(200);
-  expect(await response.text()).not.toContain("Sorry, we can't do that for you right now.");
+  const visitor = await handle(get("/"));
+  expect(await visitor.text()).not.toContain(CLOSED);
+  const player = await handle(get("/", AGREED));
+  expect(player.status).toBe(200);
+  const html = await player.text();
+  expect(html).not.toContain(CLOSED);
+  // The game itself: the root's loader ran, so its data is in the page.
+  expect(html).toContain("instance");
 }, 60_000);

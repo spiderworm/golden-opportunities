@@ -9,7 +9,7 @@ const body = readFileSync(bodyFile, "utf8");
 const started = Date.now();
 const res = await fetch(`${base}/api/assistant`, {
   method: "POST",
-  headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin" },
+  headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", cookie: "ob_entry=1" },
   body,
 });
 const raw = await res.text();

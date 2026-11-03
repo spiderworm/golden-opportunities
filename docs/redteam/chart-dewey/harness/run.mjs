@@ -23,7 +23,7 @@ for (const c of CASES.filter((c) => (!args.length || args.includes(c.id)) && (q2
     const started = Date.now();
     const res = await fetch(`${base}/api/assistant`, {
       method: "POST",
-      headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", ...(process.env.COOKIE ? { cookie: process.env.COOKIE } : {}) },
+      headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", cookie: [process.env.COOKIE, "ob_entry=1"].filter(Boolean).join("; ") },
       body: JSON.stringify(request),
     });
     const raw = await res.text();

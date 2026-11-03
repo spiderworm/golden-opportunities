@@ -22,7 +22,7 @@ const survivors = (pgid, folder) => {
 
 const ac = new AbortController();
 const t0 = Date.now();
-const res = await fetch(`${base}/api/assistant`, { method: "POST", signal: ac.signal, headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin" },
+const res = await fetch(`${base}/api/assistant`, { method: "POST", signal: ac.signal, headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", cookie: "ob_entry=1" },
   body: JSON.stringify({ question: "What was revenue in 2193-Q1?", pins: true }) });
 const reader = res.body.getReader();
 void reader.read().catch(() => {}); // starts the stream, so the server spawns claude
