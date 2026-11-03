@@ -4,6 +4,18 @@ Status: **for the builders.** These are the strings for David's three chart feat
 
 The house rules hold: US English, no emoji, sentence case, and the toolbar's existing patterns. Today a disabled button's tooltip says what to do ("Show one measure to compare quarters"), and a toggle keeps its name while it's pressed (`aria-pressed`, as `Table` and `Compare quarters` do).
 
+## The View menu (Chart)
+
+The chart's modes sit in one menu instead of a row of toggles (#341). David named it: asked about calling it "View", he said "Oh YEAH "View" is spot-on. Thanks. Ship it" (req_7fccd7d02625).
+
+- **The button:** `View`. With modes on, it shows `1 on` (or `2 on`) in muted text, and its accessible name is `View, 1 on`.
+- **The items, in this order:**
+  1. the ways to compare: `Compare quarters`, `vs. same quarter last year`, and `What drove the change`, with `Split into price, volume and mix` indented under it;
+  2. the ways to show one measure: `% of total`, `Running share`;
+  3. `Events`;
+  4. `Scatter plot`, last, since it's the only one that needs two measures.
+- **A disabled item** stays in the menu, and its reason shows as a tooltip on hover, keyboard focus and tap. The reason is also the item's accessible description. There's no line of text under it, so a menu with several unavailable items stays short (David, req_470d24167113: "Need tooltips on hovered view options in the dropdown that aren't available. Explanations as to why". Goldy put Plot's version to him, the tooltip alone with no grey line, and he said "Plot's version sounds right", req_31fff59ef50a). The sections below give each item's reasons.
+
 ## 1. Table and chart, either way (Chart; Sage for Dewey)
 
 David: "I'd like to allow (as often as we can make work) tables to toggle to charts, and charts to toggle to tables. In cases where dewey puts both in chat, they only need to do one."
@@ -198,9 +210,14 @@ David: "Pareto and share-of-total. "% of total" as a display mode, plus a cumula
   - The table gets a `Share` column after the value, and in running mode `Running share` too.
   - The axes are `Share of revenue (%)` and the curve's own `Running share (%)`.
   - The title gains `, as shares`, or `, largest first, with the running share`, as in `Revenue by title, largest first, with the running share`.
-- **The headline:** `Top 5 titles: 62.3% of revenue`, or `Top title: 18.0% of revenue` for one. It uses the dimension's plural and the measure's label, both in lower case, and one decimal place.
+- **The headline,** in running mode only, at the top 5 (or all, if fewer): `Top 5 titles: 62.3% of revenue`, or `Top title: 18.0% of revenue` for one. It uses the dimension's plural and the measure's label, both in lower case, and one decimal place.
 - **Tooltips:** a bar reads `Fiction: $38,420, 18.0% of revenue`, and a point on the curve reads `Top 3 genres: 54.1% of revenue`.
 - **Shares are of the full total,** the one before the row limit, as the source line says. Where rows are cut, the caption adds `Shares are of all {titles}, not only those shown.`
+- **Chart's calls (#358):**
+  - **Plurals:** `discount rates`, `price bands`, `list prices`, `award groups` and `series volumes`, besides the obvious ones. The singular drops the s.
+  - **With both ticked, the View button says `2 on`.**
+  - **Turning Running share off** returns to plain `% of total`.
+  - **A last-year reason that already applies** (`The ledgers start in 2193…`) comes before `Turn off % of total…`.
 - **Where:** Investigate's chart, pins and reports first. Dewey's chat follows with Sage, using the same strings.
 - **Disabled, always with a reason:**
 
@@ -222,15 +239,16 @@ David: "Pareto and share-of-total. "% of total" as a display mode, plus a cumula
 
 David: "I think it would be good to support event markers on time series. ie, mark the new volume's release (Feb 4), each Book of the Month pick, the player's Q1 move, and later Alma's events" (req_13c07b31a790).
 
-- **The Options item:** `Events`, a tick box like the others. Its hint: `Mark releases, Book of the Month picks, your moves and station events on the timeline`.
+- **The View item:** `Events`, a tick box like the others. Its hint: `Mark releases, Book of the Month picks, your moves and station events on the timeline`.
 - **Marker labels,** short, on the chart and in the legend: `Release`, `Pick`, `Your move` and `Event` (Alma's station events).
 - **Tooltips:** the date and kind, then what happened.
-  - **Release:** `Feb 4, 2194 · Release`, then `The Bourton Model Village Poisoning, Inspector Ryeslton volume 3`.
+  - **Release:** `4 Feb 2194 · Release`, then `The Bourton Model Village Poisoning, Inspector Ryeslton volume 3`.
   - **Pick:** `March 2194 · Book of the Month`, then the edition's title and format, without its price, e.g. `Portmeirion, mass market paperback` (Frank, #353).
   - **Your move:** `Q1 2194 · Your move`, then the move's name exactly as Decide has it (`MOVES`): `Station-wide sale`, `Weekday author nights` or `Re-pick Book of the Month`. Holding course isn't a move, so it gets no marker. A re-pick gets both its own marker and the picks it chose, so on January 1 the move and January's pick draw as one `+2` (Frank, #353).
   - **Event:** `Q3 2194 · Station event`, then the event's short title (`eventTitle`) and its stretch, e.g. `{short title}, July 9 to 23`.
-  - Dates are month first, in the game's style: `Feb 4, 2194` for a day, `March 2194` for a month. Markers have no arrow or symbol characters.
-- **Crowding:** where markers overlap, one is drawn with `+{n}`, e.g. `+2`, and its tooltip lists each in date order. If some can't be drawn at all, the caption says `{n} more events hidden: filter to one quarter to see them all`, or `1 more event hidden: …`.
+  - Dates follow the shell's Station date (`formatStationDate`): `4 Feb 2194` for a day, and `March 2194` for a month. Markers have no arrow or symbol characters.
+- **Crowding:** where markers overlap, one is drawn with `+{n}`, e.g. `+2`, and its tooltip lists each in date order. Past 12 markers, the labels would collide, so only the lines and tooltips show, and the caption says `Labels hidden for {n} events: filter to one quarter to see them.` (`1 event` in the singular). Past the 60-marker cap, events aren't drawn at all, and the caption says `{n} more events hidden: filter to one quarter to see them all` (`1 more event hidden: …`). When both apply, each is its own line. An event off the chart's axis is neither drawn nor counted: the server already drops events outside the filters, and the rare row-limit cut is told by the source line (Frank, #357).
+- **Beside a book breakdown,** an event's second line adds its group in brackets, `… volume 3 (Mystery)` (Frank, #357).
 - **Nothing to mark** isn't a disabled state. The caption says `No events in this period.`, as for 2193 and quarters not yet played. A quarter not yet played is never marked: no spoilers.
 - **Disabled, always with a reason:**
 
@@ -246,7 +264,7 @@ David: "Named filter sets ("awarded paperbacks under $20") that can be applied t
 
 - **Saving:**
   - On the filter bar, after `Add a filter`, there's a `Save as segment` button. With no filters on, it's disabled with `Add a filter to save it as a segment`.
-  - The dialog is titled `Save these filters as a segment`, with the field `Name` and the buttons `Save segment` and `Cancel`. The name may be prefilled from the filters, as in `Award winners, paperback, under $20`.
+  - The dialog is titled `Save these filters as a segment`, with the field `Name` and the buttons `Save segment` and `Cancel`. The name is prefilled from the bar's own words, in its order, as in `Trade paperback, Award winner`, with a long list cut to three (Sim, #387).
   - Its errors:
     - `Give the segment a name.`
     - `Keep the name to 60 characters.`
@@ -254,7 +272,10 @@ David: "Named filter sets ("awarded paperbacks under $20") that can be applied t
     - `These filters are already saved as "{name}".`
     - `You have {20} segments. Delete one to save another.` (the limit, `SEGMENT_LIMITS.segments`)
     - `This name can't be saved. Check it and try again.`
-- **The control:** `Segment`, a dropdown at the start of the filter bar. It reads `Segment: None` or `Segment: {name}`. Choosing one puts its filters on the bar, and if the player then changes a filter, it reads `Segment: {name}, edited`. When there are none, the menu says `No segments yet. Add filters, then choose Save as segment.`
+    - `A segment holds up to {50} filter values. Remove some to save it.` (singular: `1 filter value`)
+    - when another tab deleted it first: `That segment was deleted in another tab.`, and the menu refreshes without it
+    - when the save is busy and the draft is kept: `Your segment didn't save. Please save it again.`, as Reports has it
+- **The control:** `Segment`, a dropdown at the start of the filter bar. It reads `Segment: None` or `Segment: {name}`. Choosing one puts its filters on the bar, and if the player then changes a filter, it reads `Segment: {name}, edited`. Choosing `None` takes the filters off again, edits included (Sim, #387). When there are none, the menu says `No segments yet. Add filters, then choose Save as segment.`
 - **Managing,** from each segment's row:
   - `Rename`, with the title `Rename segment`, the field `Name`, and `Save` and `Cancel`;
   - `Edit filters`, which applies the segment and offers `Update "{name}"` on the bar;
@@ -265,7 +286,7 @@ David: "Named filter sets ("awarded paperbacks under $20") that can be applied t
 - **Edge cases:**
   - `Nothing matches both this chart's filters and {name}.`
   - After a deletion, on what used the segment: `This used a segment that's since been deleted, so it shows its own filters now.`
-- **Privacy:** segment names are the player's own words, kept in the save and never in analytics, which records counts and lengths only. The privacy page names them with the reports.
+- **Privacy:** segment names are the player's own words, kept in the save and never in analytics, which records counts only, not even lengths. The privacy page's line: `…and the names of segments you save. The play data counts them, never what they say.`
 
 ## 9. Relative quarters, and running a report for another quarter (Sim)
 
@@ -306,7 +327,7 @@ David: "Build it now. Forecast revenue and total units with hints, values for pr
     - `Fill in all three for revenue, or leave them all empty.`
     - `Keep the note to 500 characters.`
     - with control or reordering characters, which reports and segments refuse too: `This note can't be saved. Check it and try again.`
-- **On the result page,** a line for each measure forecast:
+- **On the result page,** under the heading `How your forecast did`, a line for each measure forecast. The percent is of the real figure (Frank, Sim, Chart):
   - `Revenue: $142,300, inside your range of $130,000 to $150,000. You expected $140,000: off by $2,300 (2%).`
   - outside the range, `above` or `below` in place of `inside`;
   - when exactly right: `…You expected $142,300: spot on.`

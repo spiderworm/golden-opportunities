@@ -39,7 +39,8 @@ import { onBubbleFocused, PlayOut, sceneOf } from "./PlanParts";
 import { PlanQ2 } from "./PlanQ2";
 import { quarterName, type PlanBrief } from "./q2-copy";
 import { ForecastRefused, PlanRefused, readAnyPlan } from "./read-plan.server";
-import { forecastMeasures, type Forecast } from "~/forecast/forecast";
+import { FORECAST_MEASURES, forecastMeasures, type Forecast } from "~/forecast/forecast";
+import { forecastResult } from "~/forecast/forecast.server";
 import styles from "./Decide.module.css";
 
 export const handle: ShellHandle = { title: "Decisions", standingOrder: false, bleed: true };
@@ -117,14 +118,31 @@ export async function action({ request }: Route.ActionArgs) {
     : actionQ2(request, sent.plan, sent.quarter, sent.reportsRead, sent.forecast);
 }
 
-/** A forecast filed with a plan: which measures, and whether it had a note; never the figures or the note. */
-function trackForecast(quarter: QuarterId, forecast: Forecast | null) {
-  if (forecast)
-    trackServer("forecast_made", {
-      quarter,
-      measures: forecastMeasures(forecast).join(","),
-      hadNote: forecast.note !== undefined,
-    });
+/**
+ * A forecast filed with a plan: which measures, and whether it had a note; then, as the quarter is played with it,
+ * whether each landed inside its range. Never the figures or the note.
+ */
+function trackForecast(request: Request, quarter: QuarterId, forecast: Forecast | null) {
+  if (!forecast) return;
+  trackServer("forecast_made", {
+    quarter,
+    measures: forecastMeasures(forecast).join(","),
+    hadNote: forecast.note !== undefined,
+  });
+  // The plan is filed, so the quarter is played: its figures are in the ledgers. A failure here costs the event only.
+  let scored;
+  try {
+    scored = forecastResult(request, quarter);
+  } catch {
+    return;
+  }
+  if (!scored) return;
+  const hits: Record<string, "hit" | "miss"> = {};
+  for (const measure of FORECAST_MEASURES) {
+    const result = scored[measure];
+    if (result) hits[measure] = result.where === "inside" ? "hit" : "miss";
+  }
+  trackServer("forecast_scored", { quarter, ...hits });
 }
 
 function actionQ1(request: Request, plan: Plan, reportsRead: number, forecast: Forecast | null) {
@@ -147,7 +165,7 @@ function actionQ1(request: Request, plan: Plan, reportsRead: number, forecast: F
     // The reports chosen in Decide's panel before submitting (reports.md section 5).
     reportsRead,
   });
-  trackForecast("2194-Q1", forecast);
+  trackForecast(request, "2194-Q1", forecast);
   return { ok: true as const };
 }
 
@@ -206,7 +224,7 @@ async function actionQ2(
     picks,
     reportsRead,
   });
-  trackForecast(asked, forecast);
+  trackForecast(request, asked, forecast);
   return { ok: true as const };
 }
 
