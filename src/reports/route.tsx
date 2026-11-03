@@ -1,6 +1,7 @@
-import { Form, redirect, useFetcher } from "react-router";
+import { data, Form, redirect, useFetcher } from "react-router";
 
-import { markReportSeen } from "~/game/game.server";
+import { markReportSeen, writeReports } from "~/game/game.server";
+import { removedQuarter } from "~/game/progress";
 import { isQuarterId } from "~/game/quarters";
 import { getGameSession } from "~/game/session.server";
 import { EChart } from "~/platform/charts/EChart";
@@ -20,6 +21,8 @@ import { MEASURE_IDS, type MeasureId } from "~/simulation/types";
 import type { Route } from "./+types/route";
 import { greeting, REPORTS_COPY as COPY } from "./copy";
 import { overallOption } from "./overall-chart";
+import { applyReportChange, changeFrom, type ReportOutcome } from "./player.server";
+import { PlayerReports, NewReportButton } from "./PlayerReports";
 import { shopReports, type ShopReport } from "./shop.server";
 import resultStyles from "~/result/Result.module.css";
 import styles from "./Reports.module.css";
@@ -34,8 +37,16 @@ export function meta() {
 }
 
 export function loader({ request }: Route.LoaderArgs) {
-  const { save } = getGameSession(request);
-  return shopReports(save);
+  const { save, queryView } = getGameSession(request);
+  return {
+    ...shopReports(save),
+    // The player's reports are the save's, sent whole: they're the player's own words and pins.
+    player: save.reports ?? [],
+    // After removal, reports can still be opened, but no longer edited or made (section 2).
+    editable: removedQuarter(save) === null,
+    // The periods the player can see, for a chart's month axis, as Investigate's board has them.
+    quarters: [...queryView.periods].sort(),
+  };
 }
 
 /**
@@ -44,6 +55,9 @@ export function loader({ request }: Route.LoaderArgs) {
  */
 export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
+  const intent = form.get("intent");
+  if (intent === "create" || intent === "update" || intent === "delete")
+    return reportAction(request, form);
   const quarter = form.get("quarter");
   try {
     markReportSeen(request, quarter);
@@ -57,15 +71,36 @@ export async function action({ request }: Route.ActionArgs) {
   return null;
 }
 
+/**
+ * Creates, edits or deletes one of the player's reports: checked again here, the id the server's, written whole in
+ * one action (section 3). Answers what happened, for the editor: the report's id, or why it was refused.
+ */
+function reportAction(request: Request, form: FormData) {
+  const change = changeFrom(form);
+  if (!change) return data({ ok: false as const, reason: "invalid" as const }, { status: 400 });
+  let outcome: ReportOutcome = { ok: false, reason: "invalid" };
+  writeReports(request, (save) => {
+    outcome = applyReportChange(save, change, () => crypto.randomUUID());
+    return outcome.ok ? outcome.reports : null;
+  });
+  const done = outcome as ReportOutcome;
+  return done.ok
+    ? { ok: true as const, id: done.id, intent: change.intent }
+    : data({ ok: false as const, reason: done.reason }, { status: 400 });
+}
+
 const measureName = (id: MeasureId) => RESULT_COPY.reportCard.measures[id];
 
 export default function Reports({ loaderData }: Route.ComponentProps) {
-  const { reports, record, removedAt } = loaderData;
+  const { reports, record, removedAt, player, editable, quarters } = loaderData;
   const newReports = reports.filter((r) => r.new).length;
   const latest = reports[0];
   return (
     <div className={styles.page}>
-      <p className={styles.greeting}>{greeting(newReports)}</p>
+      <div className={styles.top}>
+        <p className={styles.greeting}>{greeting(newReports)}</p>
+        {editable && <NewReportButton count={player.length} />}
+      </div>
       <section className={styles.section} aria-labelledby="shop-reports">
         <h2 id="shop-reports" className={styles.sectionHeading}>
           {COPY.shopHeading}
@@ -104,6 +139,7 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
           </>
         )}
       </section>
+      <PlayerReports reports={player} editable={editable} quarters={quarters} />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import path from "node:path";
 import { withSaveLock, SaveLockBusy } from "./lock.server.ts";
 import { isQuarterOutcome } from "./outcome.ts";
 import type { GameSave } from "./types";
+import type { PlayerReport } from "../reports/player.ts";
 import {
   compareQuarters,
   isQuarterId,
@@ -27,6 +28,7 @@ import {
 } from "./quarters.ts";
 import { LATER_KEYS } from "./later-discoveries.ts";
 import { alertsSeenOf, currentQuarter } from "./progress.ts";
+import { validReports } from "../reports/player.ts";
 import { isAlmaLog } from "../alma/record.ts";
 import { isBackstoryRecord } from "../alma/backstory-record.ts";
 import {
@@ -138,6 +140,7 @@ function validate(save: GameSave, id: string): void {
     (save.alertSeen !== undefined && save.alertSeen !== true) ||
     (save.alertsSeen !== undefined && !validSeen(save.alertsSeen)) ||
     (save.reportsSeen !== undefined && !validSeen(save.reportsSeen)) ||
+    (save.reports !== undefined && !validReports(save.reports)) ||
     !Array.isArray(save.discoveries) ||
     save.discoveries.length > 6 ||
     new Set(save.discoveries).size !== save.discoveries.length ||
@@ -513,6 +516,24 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
         save.queryRevision = save.queryRevision ?? save.revision;
         save.revision++;
         save.reportsSeen = [...seen, quarter].sort(compareQuarters);
+        return publish(id, save);
+      });
+    },
+    /**
+     * Changes the player's reports (reports.md section 3). Not query data, so it keeps the query grant, as
+     * markAlertSeen does. `change` returns the new list, or null to leave the save as it is.
+     */
+    writeReports(id: string, change: (save: GameSave) => PlayerReport[] | null): GameSave | null {
+      return locked(() => {
+        if (existsSync(file(id) + ".lock")) throw new SaveError("SAVE_BUSY");
+        const save = readUnlocked(id);
+        const reports = change(save);
+        if (!reports) return null;
+        if (!validReports(reports)) throw new SaveError("INVALID_SAVE");
+        save.queryRevision = save.queryRevision ?? save.revision;
+        save.revision++;
+        if (reports.length) save.reports = reports;
+        else delete save.reports;
         return publish(id, save);
       });
     },

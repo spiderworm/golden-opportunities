@@ -1,7 +1,7 @@
 // What the player is asking, kept in the URL so every view can be shared,
 // bookmarked and undone with Back.
-import { yearMonth } from "~/query/months";
-import type { Dimension, Measure } from "~/query/types";
+import { yearMonth } from "../query/months.ts";
+import type { Dimension, Measure } from "../query/types.ts";
 
 export const CHART_MEASURES = [
   "revenue",

@@ -23,6 +23,7 @@ import { isLocalBrowserRequest } from "../query/access.server";
 import { onQuarterCommitted } from "../alma/hook.server";
 import { almaRecordFor } from "../alma/hook.server";
 import type { AlmaRecord } from "../alma/record";
+import type { PlayerReport } from "../reports/player";
 import { MEASURE_NAMES } from "../alma/sentences";
 import type { BossId } from "../platform/bosses/bosses";
 import { simulateTurn } from "../simulation/turn";
@@ -506,6 +507,22 @@ export function markReportSeen(request: Request, quarter: unknown): void {
         status: 400,
         headers: { "Cache-Control": "no-store" },
       });
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/**
+ * Changes the player's reports (reports.md section 3), from the Reports action. `change` gets the save and returns
+ * the new list, or null to write nothing; local same-origin POSTs only, as every write.
+ */
+export function writeReports(
+  request: Request,
+  change: (save: GameSave) => PlayerReport[] | null,
+): GameSave | null {
+  try {
+    refuseUnlessLocalPost(request);
+    return saves.writeReports(resolveSaveId(request), change);
   } catch (error) {
     return failure(error);
   }

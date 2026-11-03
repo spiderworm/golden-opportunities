@@ -1,5 +1,5 @@
 // Pinned charts: what a pin holds, and checks for pins read back from storage.
-import { yearMonth } from "~/query/months";
+import { yearMonth } from "../../query/months.ts";
 import {
   DIMENSIONS,
   MEASURES,
@@ -7,14 +7,14 @@ import {
   type Dimension,
   type Measure,
   type Query,
-} from "~/query/types";
+} from "../../query/types.ts";
 import {
   CHART_MEASURES,
   fittingMeasures,
   HEAT_DIMENSIONS,
   MAX_MEASURES,
   type ChartMeasure,
-} from "../state";
+} from "../state.ts";
 
 export const CHART_PIN_KINDS = ["bar", "line", "table", "heatmap"] as const;
 export const PIN_KINDS = [...CHART_PIN_KINDS, "comparison"] as const;

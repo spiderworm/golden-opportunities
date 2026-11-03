@@ -108,8 +108,6 @@ describe("running a pinned heatmap", () => {
     const query = { measure: "units" as const, by: ["weekday" as const, "month" as const] };
     await runPin(
       {
-        id: "h",
-        pinnedBy: "player",
         title: "Units sold by weekday and month",
         kind: "heatmap",
         query,
@@ -117,7 +115,7 @@ describe("running a pinned heatmap", () => {
       new AbortController().signal,
     );
     await runPin(
-      { id: "t", pinnedBy: "player", title: "Units by weekday and month", kind: "table", query },
+      { title: "Units by weekday and month", kind: "table", query },
       new AbortController().signal,
     );
     expect(sent).toEqual([{ evidence: "none" }, { evidence: null }]);

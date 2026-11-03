@@ -745,6 +745,13 @@
   margin-bottom: 12px;
 }
 
+.pinActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
 .pinTitle {
   margin: 0;
   font-size: 16px;
