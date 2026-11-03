@@ -76,8 +76,9 @@ export function entryProblem(measure: ForecastMeasure, entry: Entry): ForecastRe
   return null;
 }
 
+/** Counted by code point, as the server counts it (Frank's FORECAST_LIMITS.note): an emoji is one, not two. */
 export function noteProblem(note: string): ForecastReason | null {
-  return note.length > NOTE_MAX ? "too_long" : null;
+  return [...note].length > NOTE_MAX ? "too_long" : null;
 }
 
 /** The first problem in the draft, in the form's order, or null. A closed draft has none. */
@@ -230,7 +231,6 @@ export function ForecastSection({
         <span>{COPY.note}</span>
         <textarea
           rows={2}
-          maxLength={NOTE_MAX}
           placeholder={COPY.notePlaceholder}
           aria-describedby={said("note") ? problemId : undefined}
           aria-invalid={said("note") ? true : undefined}
