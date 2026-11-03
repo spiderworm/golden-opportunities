@@ -17,11 +17,21 @@ export interface Segment {
 export const SEGMENT_LIMITS = {
   segments: 20,
   name: 60,
+  /** Filter values in one segment, so a save can't grow without bound (Frank, #377). */
+  values: 50,
 } as const;
 
 /** Why a change was refused: segment_refused names it, and the browser says it in Plot's words. */
 export type SegmentRefusal =
-  "full" | "no_name" | "too_long" | "taken" | "same_filters" | "no_filters" | "missing" | "invalid";
+  | "full"
+  | "no_name"
+  | "too_long"
+  | "taken"
+  | "same_filters"
+  | "no_filters"
+  | "too_many"
+  | "missing"
+  | "invalid";
 
 /** A change the browser asks for: make one, rename it, re-save it with the current filters, or delete it. */
 export type SegmentChange =
@@ -62,6 +72,7 @@ export function checkFilters(value: unknown): { ok: true; filters: Filters } | R
   );
   if (JSON.stringify(filters) !== JSON.stringify(asSent)) return { ok: false, reason: "invalid" };
   if (!Object.keys(filters).length) return { ok: false, reason: "no_filters" };
+  if (filterCount(filters) > SEGMENT_LIMITS.values) return { ok: false, reason: "too_many" };
   return { ok: true, filters };
 }
 
