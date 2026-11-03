@@ -124,6 +124,18 @@ describe("the events a result marks", () => {
     );
   });
 
+  it("names the group an event marks beside time, and counts one whose group a limit cut (Audit, #353)", () => {
+    const result = runQuery({ measure: "revenue", by: ["genre", "month"] }, view, () => {});
+    const release = result.events!.list.find((e) => e.kind === "release");
+    expect(release?.group).toEqual({ genre: "Mystery" });
+    expect(result.events!.list.find((e) => e.kind === "move")?.group).toBeUndefined();
+    // Cut to one row, every edition's event but that group's is hidden, and counted.
+    const cut = runQuery({ measure: "revenue", by: ["genre", "month"], limit: 1 }, view, () => {});
+    const editions = events.filter((e) => e.dimensions).length;
+    const drawn = cut.events!.list.filter((e) => e.kind !== "move").length;
+    expect(cut.events!.hidden).toBe(editions - drawn);
+  });
+
   it("keeps the most relevant past the cap, and says how many it left out", () => {
     const many: ViewEvent[] = Array.from({ length: MAX_EVENTS + 5 }, (_, i) => ({
       date: `2194-0${1 + (i % 3)}-01`,

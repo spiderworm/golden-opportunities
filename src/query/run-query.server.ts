@@ -666,19 +666,23 @@ function eventsFor(query: Query, view: QueryView, result: QueryResult): QueryRes
   const months = query.filter?.month;
   const filters = Object.entries(query.filter ?? {}) as [Dimension, readonly string[]][];
   const grouped = query.by.filter((d) => EVENT_DIMENSIONS.includes(d));
+  // An event about an edition whose group a row limit cut isn't drawn, but it's counted (Audit, #353).
+  let cut = 0;
   const inScope = (event: ViewEvent) => {
     if (!quarters.has(quarterOfDate(event.date))) return false;
     if (months && event.precision !== "quarter" && !months.includes(event.date.slice(0, 7)))
       return false;
     if (!event.dimensions) return true;
     const dims = event.dimensions;
-    return (
-      filters.every(([d, values]) =>
-        d === "award"
-          ? (event.awards ?? []).some((a) => values.includes(a))
-          : !EVENT_DIMENSIONS.includes(d) || (dims[d] != null && values.includes(dims[d]!)),
-      ) && grouped.every((d) => result.rows.some((row) => row[d] === dims[d]))
+    const passes = filters.every(([d, values]) =>
+      d === "award"
+        ? (event.awards ?? []).some((a) => values.includes(a))
+        : !EVENT_DIMENSIONS.includes(d) || (dims[d] != null && values.includes(dims[d]!)),
     );
+    if (!passes) return false;
+    if (grouped.every((d) => result.rows.some((row) => row[d] === dims[d]))) return true;
+    if (result.truncated) cut++;
+    return false;
   };
   const relevant = view.events.filter(inScope);
   const kept = [...relevant]
@@ -686,8 +690,19 @@ function eventsFor(query: Query, view: QueryView, result: QueryResult): QueryRes
     .slice(0, MAX_EVENTS)
     .sort(byDate);
   return {
-    list: kept.map(({ date, precision, kind, label }) => ({ date, precision, kind, label })),
-    hidden: relevant.length - kept.length,
+    list: kept.map(({ date, precision, kind, label, dimensions }) => {
+      const group = Object.fromEntries(
+        grouped.flatMap((d) => (dimensions?.[d] != null ? [[d, dimensions[d]!]] : [])),
+      );
+      return {
+        date,
+        precision,
+        kind,
+        label,
+        ...(Object.keys(group).length ? { group } : {}),
+      };
+    }),
+    hidden: relevant.length - kept.length + cut,
   };
 }
 
