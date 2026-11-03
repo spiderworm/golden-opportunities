@@ -1,4 +1,5 @@
 import { QueryError } from "./errors";
+import { isRelativeQuarter, RELATIVE_QUARTERS } from "./relative";
 import {
   DIMENSIONS,
   FILTER_ONLY_DIMENSIONS,
@@ -62,6 +63,15 @@ export function validateQuery(input: unknown): Query {
       )
         invalid(
           `Each filter must have 1–${QUERY_LIMITS.filterValues} nonempty strings of at most ${QUERY_LIMITS.filterValueLength} characters.`,
+        );
+      // A quarter is one by its name ("2194-Q1"), or a relative quarter resolved at query time (relative.ts): the
+      // tokens are accepted here only.
+      if (
+        key === "quarter" &&
+        !(values as string[]).every((v) => /^\d{4}-Q[1-4]$/.test(v) || isRelativeQuarter(v))
+      )
+        invalid(
+          `Quarter filters are quarters like 2194-Q1, or ${RELATIVE_QUARTERS.join(", ")} (counted back from the latest quarter with sales).`,
         );
       // A month names its year ("2193-04"): a bare "04" would match nothing now that two years can be visible.
       if (key === "month" && !(values as string[]).every((v) => /^\d{4}-(0[1-9]|1[0-2])$/.test(v)))

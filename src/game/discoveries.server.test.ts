@@ -376,3 +376,32 @@ describe("Dewey's lookups count as the player's own (David, 3 Nov 2026)", () => 
     expect(parts(save.id).filter((k) => k.startsWith("a1:"))).toHaveLength(16);
   });
 });
+
+describe("relative quarters count as the quarters they are now (David, 3 Nov 2026)", () => {
+  it("record the same evidence as the dated view, through Investigate and through Dewey", async () => {
+    const parts = (id: string) =>
+      Object.values(saves.read(id).discoveryEvidence ?? {})
+        .flat()
+        .sort();
+    const dated = saves.create();
+    load(dated.id, "?by=genre&compare=quarter&quarter=2193-Q3&quarter=2193-Q4");
+    // Planning Q1 2194, the latest quarter with sales is Q4 2193.
+    const looked = saves.create();
+    load(looked.id, "?by=genre&compare=quarter&quarter=latest-1&quarter=latest");
+    const asked = saves.create();
+    const cap = issueGameQueryToken(asked.id);
+    try {
+      const query = {
+        measure: "revenue",
+        by: ["genre", "quarter"],
+        filter: { quarter: ["latest-1", "latest"] },
+      };
+      expect((await api(asked.id, query, cap.token)).status).toBe(200);
+    } finally {
+      cap.revoke();
+    }
+    expect(parts(dated.id).filter((k) => k.startsWith("a1:"))).toHaveLength(16);
+    expect(parts(looked.id)).toEqual(parts(dated.id));
+    expect(parts(asked.id)).toEqual(parts(dated.id));
+  });
+});

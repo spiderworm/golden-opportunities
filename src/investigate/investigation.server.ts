@@ -8,6 +8,7 @@ import {
   type QueryResult,
   type QueryView,
 } from "~/query/types";
+import { isRelativeQuarter, resolveQuarters } from "~/query/relative";
 import { droveQuery, waterfall, type DroveRows, type PeriodRows } from "~/query/decompose";
 import {
   DEFAULT_STATE,
@@ -194,6 +195,16 @@ export function investigate(
   view: QueryView,
   observe?: (query: Query, result: QueryResult) => void,
 ): Investigation {
+  // Relative quarters in the quarter filter, as the quarters they are now (src/query/relative.ts), so the tiles, the
+  // heatmap's window and the waterfall work from dated quarters, as the queries run.
+  if (state.filters.quarter?.some(isRelativeQuarter))
+    state = {
+      ...state,
+      filters: {
+        ...state.filters,
+        quarter: resolveQuarters(state.filters.quarter, view.periods).values,
+      },
+    };
   const displayed: { query: Query; result: QueryResult }[] = [];
   const rendered = (query: Query, defaultQuery?: Query) => {
     const result = runQuery(query, view);
