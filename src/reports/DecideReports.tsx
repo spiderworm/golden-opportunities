@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { useFetcher, useNavigate } from "react-router";
 
 import { quarterName } from "~/game/event-title";
@@ -53,31 +54,37 @@ export function DecideReports({ planStarted }: { planStarted: boolean }) {
           {COPY.none}
         </button>
       )}
-      {open && (
-        <Panel
-          player={player}
-          shop={reports}
-          quarters={quarters}
-          onClose={() => {
-            setOpen(false);
-            button.current?.focus();
-          }}
-          onEdit={toReports}
-        />
-      )}
-      {asking && (
-        <div role="alertdialog" aria-labelledby="leave-decide" className={styles.decideAsk}>
-          <p id="leave-decide">{COPY.leave.question}</p>
-          <div className={styles.actions}>
-            <button type="button" onClick={() => void navigate("/reports")}>
-              {COPY.leave.go}
-            </button>
-            <button type="button" autoFocus onClick={() => setAsking(false)}>
-              {COPY.leave.stay}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* In the page's body: the plan banner clips what's inside it, and makes a fixed panel its own (measured on
+          the build at 1440 px, where the panel was cut off at the banner's foot). */}
+      {open &&
+        createPortal(
+          <Panel
+            player={player}
+            shop={reports}
+            quarters={quarters}
+            onClose={() => {
+              setOpen(false);
+              button.current?.focus();
+            }}
+            onEdit={toReports}
+          />,
+          document.body,
+        )}
+      {asking &&
+        createPortal(
+          <div role="alertdialog" aria-labelledby="leave-decide" className={styles.decideAsk}>
+            <p id="leave-decide">{COPY.leave.question}</p>
+            <div className={styles.actions}>
+              <button type="button" onClick={() => void navigate("/reports")}>
+                {COPY.leave.go}
+              </button>
+              <button type="button" autoFocus onClick={() => setAsking(false)}>
+                {COPY.leave.stay}
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
