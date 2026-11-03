@@ -2,7 +2,7 @@
 // bookmarked and undone with Back.
 import { yearEarlier } from "../query/last-year.ts";
 import { yearMonth } from "../query/months.ts";
-import type { Dimension, Measure } from "../query/types.ts";
+import { MEASURE_DIMENSIONS, type Dimension, type Measure } from "../query/types.ts";
 
 export const CHART_MEASURES = [
   "revenue",
@@ -197,6 +197,9 @@ export function canCompare(by: Grouping, also: readonly ChartMeasure[] = []): bo
   );
 }
 
+/** "Q1 2194", as formatDimensionValue writes a quarter. */
+const quarterName = (quarter: string) => `Q${quarter.slice(-1)} ${quarter.slice(0, 4)}`;
+
 /**
  * Why the chart can't be a scatter plot, or null when it can: the toggle's disabled tooltip (Plot's copy, #291). A
  * scatter plot is two measures across one dimension (David, 3 Nov 2026), a point per group, the first measure
@@ -212,23 +215,47 @@ export function scatterProblem(by: Grouping, also: readonly ChartMeasure[]): str
 }
 
 /**
- * Why the chart can't show the same quarter last year, or null if it can (Plot's copy, #291): it compares one quarter,
- * the one the quarter filter picks, a year back, on one measure, without Compare quarters. A breakdown by quarter
- * ignores the quarter filter, so it has no one quarter.
+ * Why the chart can't show the same quarter last year, or null if it can (Plot's copy, #291, #294 and for David's
+ * req_d5257c07a9f0): it compares one quarter, the one the quarter filter picks, a year back, on one dated measure,
+ * without Compare quarters. A breakdown by quarter ignores the quarter filter, so it has no one quarter. Every way
+ * it can't ends in a reason: there's no silent refusal.
  */
 export function lastYearBlock(
-  state: Pick<InvestigateState, "by" | "also" | "compare" | "filters">,
+  state: Pick<InvestigateState, "by" | "also" | "compare" | "filters"> & { measure: Measure },
   quarters: readonly string[],
 ): string | null {
+  if (!MEASURE_DIMENSIONS[state.measure].includes("quarter"))
+    return state.measure === "checkouts"
+      ? "Checkouts aren't recorded by quarter, so there's no last year to compare"
+      : "Ratings aren't recorded by quarter, so there's no last year to compare";
   if (state.also.length) return "Show one measure to compare with last year";
   if (state.compare) return "Turn off Compare quarters to compare with last year";
   if (state.by === "quarter")
     return "Break down by something other than quarter to compare with last year";
   const quarter = shownQuarter(state);
   if (!quarter) return "Filter to one quarter to compare it with last year";
-  if (!quarters.includes(yearEarlier("quarter", quarter)))
+  // A quarter not yet played, or a stale link's.
+  if (!quarters.includes(quarter))
+    return `${quarterName(quarter)} isn't in the ledgers yet: filter to a quarter that's been played`;
+  const before = yearEarlier("quarter", quarter);
+  if (quarter.startsWith("2193-"))
     return "The ledgers start in 2193: there's no year before it to compare";
+  if (!quarters.includes(before))
+    return `${quarterName(before)} isn't in the ledgers, so there's nothing to compare`;
   return null;
+}
+
+/**
+ * Why last year can't be shown once the chart's result is back, or null if it can: nothing in the quarter matches,
+ * or (never expected: tell Plot) the server didn't send last year's figures.
+ */
+export function lastYearUnshown(
+  state: Pick<InvestigateState, "filters">,
+  result: { rows: readonly unknown[]; lastYear?: unknown },
+): string | null {
+  if (!result.rows.length)
+    return `Nothing in ${quarterName(shownQuarter(state) ?? "")} matches these filters, so there's nothing to compare`;
+  return result.lastYear ? null : "Can't compare this chart with last year";
 }
 
 /** The one quarter the quarter filter picks, or null. */
