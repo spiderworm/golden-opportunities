@@ -116,9 +116,52 @@ describe("Reports in Decide", () => {
           }}
         />,
       );
-    expect(calibrated(1)).toMatch(/<h3[^>]*>Your forecasts<\/h3>/);
+    // No reports of the player's own: the panel is titled Your forecasts, with no empty list, and the
+    // calibration under it takes no second heading (Plot, section 10).
+    expect(calibrated(1)).toMatch(/<h2[^>]*>Your forecasts<\/h2>/);
+    expect(calibrated(1)).not.toMatch(/<h3[^>]*>Your forecasts/);
+    expect(calibrated(1)).toContain('aria-label="Your forecasts"');
+    expect(calibrated(1)).not.toContain('<ul class="');
     expect(calibrated(1)).toContain("0 of 1 quarter forecast");
-    expect(calibrated(0)).not.toContain("Your forecasts");
+    expect(calibrated(0)).not.toContain("quarter forecast");
+  });
+
+  it("with reports of the player's own, lists them and puts Your forecasts under them, a level down", () => {
+    const html = renderToString(
+      <Panel
+        player={[{ id: "r1", title: "The quiet picks", items: [] } as unknown as PlayerReport]}
+        shop={[]}
+        quarters={[]}
+        onClose={() => {}}
+        onEdit={() => {}}
+        calibration={{
+          forecast: 1,
+          played: 1,
+          revenue: {
+            measure: "revenue",
+            n: 0,
+            hits: 0,
+            hitRate: null,
+            bias: null,
+            sharpness: null,
+            judged: false,
+          },
+          units: {
+            measure: "units",
+            n: 0,
+            hits: 0,
+            hitRate: null,
+            bias: null,
+            sharpness: null,
+            judged: false,
+          },
+          history: [],
+        }}
+      />,
+    );
+    expect(html).toMatch(/<h2[^>]*>Your reports<\/h2>/);
+    expect(html.indexOf("The quiet picks")).toBeLessThan(html.indexOf("Your forecasts"));
+    expect(html).toMatch(/<h3[^>]*>Your forecasts<\/h3>/);
   });
 
   it("reads one of the player's reports: summary, charts with notes, and Edit in Reports", () => {

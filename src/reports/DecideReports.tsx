@@ -63,9 +63,12 @@ export function DecideReports({
 
   if (!data) return null;
   const { player, reports, quarters, calibration } = data;
+  // Open whenever there's something in it to read: the player's reports, or a played quarter's forecast to judge
+  // (Goldy and Plot, req_6d136a2b7fb3). "No reports yet" only with neither.
+  const forecasts = calibration.forecast;
   return (
     <>
-      {player.length ? (
+      {player.length || forecasts ? (
         <button
           ref={button}
           type="button"
@@ -77,11 +80,12 @@ export function DecideReports({
                 quarter,
                 playerReports: player.length,
                 shopReports: reports.length,
+                forecasts,
               });
             setOpen(!open);
           }}
         >
-          {COPY.button(player.length)}
+          {player.length ? COPY.button(player.length) : COPY.forecasts}
         </button>
       ) : (
         <button
@@ -199,7 +203,11 @@ export function Panel({
       <header className={styles.reportHeader}>
         <h2 id="decide-reports-heading" ref={heading} tabIndex={-1} className={styles.reportTitle}>
           {report?.title ??
-            (quarter ? REPORTS_COPY.quarterReport(quarterName(quarter.quarter)) : COPY.heading)}
+            (quarter
+              ? REPORTS_COPY.quarterReport(quarterName(quarter.quarter))
+              : player.length
+                ? COPY.heading
+                : COPY.forecasts)}
         </h2>
         <div className={styles.actions}>
           {chosen && (
@@ -228,19 +236,21 @@ export function Panel({
         <ShopSummary report={quarter} />
       ) : (
         <>
-          <ul className={styles.plain}>
-            {player.map((r) => (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  className={styles.linkButton}
-                  onClick={() => setChosen({ type: "player", id: r.id })}
-                >
-                  {r.title}
-                </button>
-              </li>
-            ))}
-          </ul>
+          {player.length > 0 && (
+            <ul className={styles.plain}>
+              {player.map((r) => (
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    className={styles.linkButton}
+                    onClick={() => setChosen({ type: "player", id: r.id })}
+                  >
+                    {r.title}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {shop.length > 0 && (
             <>
               <h3 className={styles.sectionHeading}>{COPY.shopHeading}</h3>
@@ -260,8 +270,9 @@ export function Panel({
             </>
           )}
           {/* The player's forecasts, read-only, as Reports shows them (src/forecast). */}
+          {/* Under the lists, its own heading; alone, the panel's title says it (Plot, section 10). */}
           {calibration && calibration.played > 0 && (
-            <ForecastCalibration calibration={calibration} heading="h3" />
+            <ForecastCalibration calibration={calibration} heading={player.length ? "h3" : null} />
           )}
         </>
       )}

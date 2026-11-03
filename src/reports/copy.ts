@@ -110,6 +110,8 @@ export const PLAYER_COPY = {
 /** Reports in Decide (section 4): read beside the plan, never touching it. Plot's strings from #171. */
 export const DECIDE_COPY = {
   button: (n: number) => `Your reports (${n})`,
+  /** No reports of the player's own, but a played quarter's forecast to judge (Plot, section 10). */
+  forecasts: "Your forecasts",
   none: "No reports yet",
   heading: "Your reports",
   shopHeading: "Quarterly reports",
