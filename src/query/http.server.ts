@@ -7,7 +7,15 @@ import { emit, trackQuery } from "./telemetry.server";
 import { serializeResult } from "./result";
 import { EVIDENCE_HEADER, investigateOnly, QUERY_LIMITS } from "./types";
 import { DATA_VERSION_HEADER, dataVersion } from "./data-version.server";
-import type { QueryErrorCode, QueryErrorResponse, QueryTrack, QueryView } from "./types";
+import { trackServer } from "../platform/analytics/analytics.server";
+import type {
+  Query,
+  QueryErrorCode,
+  QueryErrorResponse,
+  QueryResult,
+  QueryTrack,
+  QueryView,
+} from "./types";
 
 const headers = {
   "Cache-Control": "private, no-store",
@@ -94,6 +102,25 @@ interface Options {
   track?: QueryTrack;
   now?: () => number;
 }
+/**
+ * Discovery evidence from an answered query, for the save it was asked for: the browser's (Investigate and its pins)
+ * or a Dewey session's, whose lookups count the same (David, 3 Nov 2026). A save busy with another write defers it,
+ * as Investigate's loader does: the answer is never refused for it, and a later look can still find it.
+ */
+function recordEvidence(access: QueryAccess, view: QueryView, query: Query, result: QueryResult) {
+  const source = access.kind === "agent" ? "dewey" : "investigate";
+  try {
+    recordDiscoveries(access.save, view, [{ query, result }], source);
+  } catch (error) {
+    if (!(error instanceof QueryError) || error.code !== "RATE_LIMITED") throw error;
+    try {
+      trackServer("discovery_record_deferred", { code: "SAVE_BUSY", source });
+    } catch {
+      /* Telemetry can't fail an answer. */
+    }
+  }
+}
+
 /** Local-only access model. No IPs, client IDs, tokens or request content retained. */
 export function createQueryHandler(options: Options = {}): (request: Request) => Promise<Response> {
   const run = options.run ?? runQuery;
@@ -140,7 +167,7 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
       const result = run(query, view, track);
       const body = serializeResult(result);
       if (request.headers.get(EVIDENCE_HEADER) !== "none")
-        recordDiscoveries(access.save, view, [{ query, result }]);
+        recordEvidence(access, view, query, result);
       emit(track, "query_request_completed", {
         rowCount: result.rows.length,
         durationMs: performance.now() - started,
