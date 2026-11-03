@@ -35,6 +35,7 @@ import {
   DEFAULT_STATE,
   FILTER_PARTS,
   filtersExcept,
+  resolvedState,
   onlyShownChanged,
   removeFilter,
   shownFilters,
@@ -151,6 +152,9 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   const shown = chosen ?? shownFilters(searchParams, state.filters);
 
   const pins = usePins(track);
+  // Relative quarters as the quarters they are now, for everything on screen that reasons about quarters; the URL,
+  // the filter bar and the pinned queries keep the tokens (src/query/relative.ts).
+  const dated = resolvedState(state, options.quarter);
   const chartPin = pinSpecFor(state, options.quarter);
   const heatPin = heatPinFor(state, options.quarter);
 
@@ -224,7 +228,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
         />
         <MetricTiles tiles={tiles} />
         <MeasureChart
-          state={state}
+          state={dated}
           result={chart}
           also={also}
           quarters={options.quarter}
@@ -304,7 +308,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
         />
         {titleView && (
           <TitleView
-            state={state}
+            state={dated}
             title={titleView.title}
             result={titleView.result}
             ratings={titleView.ratings}
@@ -325,7 +329,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           />
         )}
         <Heatmap
-          state={state}
+          state={dated}
           result={heatmap}
           quarters={options.quarter}
           onCell={(row, col) => {
@@ -390,7 +394,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
 function heatPinFor(state: InvestigateState, quarters: readonly string[]): PinSpec {
   const { measure, rows, cols } = state.heat;
   // The span the card shows: past eight quarters, its window (heatWindow), so the pin is the grid the player saw.
-  const window = heatWindow(state, quarters);
+  const window = heatWindow(resolvedState(state, quarters), quarters);
   const filter = {
     ...filtersExcept(state.filters, [rows, cols]),
     ...(window ? { quarter: window } : {}),
@@ -404,17 +408,19 @@ function heatPinFor(state: InvestigateState, quarters: readonly string[]): PinSp
 
 /** The main chart as a pin: the same query it runs, so the pin shows what the player saw. */
 function pinSpecFor(state: InvestigateState, quarters: readonly string[]): PinSpec {
+  // Decided on the quarters a relative quarter is now; the pinned query keeps the token, so it moves on.
+  const dated = resolvedState(state, quarters);
   // What drove the change, while it's on: pinned as the waterfall it is, not the chart under it.
-  const waterfall = waterfallPinFor(state, quarters);
+  const waterfall = waterfallPinFor(dated, quarters);
   if (waterfall) return waterfall;
   const filter = filtersExcept(state.filters, [state.by]);
   // Pinned as shown: with last year, when the chart has it (Frank's #301), and titled so.
-  const quarter = shownQuarter(state);
-  const vs = state.lastYear && !lastYearBlock(state, quarters) && quarter;
+  const quarter = shownQuarter(dated);
+  const vs = state.lastYear && !lastYearBlock(dated, quarters) && quarter;
   const scatter = state.scatter && scatterProblem(state.by, state.also) === null;
   // As shares, when the chart shows them: neither last year nor What drove the change is shown then.
   const share =
-    state.share && !shareBlock(state, { lastYear: !!vs, drove: false })
+    state.share && !shareBlock(dated, { lastYear: !!vs, drove: false })
       ? state.share === "running" && runningBlock(state.by)
         ? "total"
         : state.share

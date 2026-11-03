@@ -2,7 +2,7 @@
 // bookmarked and undone with Back.
 import { yearEarlier } from "../query/last-year.ts";
 import { yearMonth } from "../query/months.ts";
-import { isRelativeQuarter } from "../query/relative.ts";
+import { isRelativeQuarter, resolveQuarters } from "../query/relative.ts";
 import { MEASURE_DIMENSIONS, type Dimension, type Measure } from "../query/types.ts";
 
 export const CHART_MEASURES = [
@@ -443,6 +443,23 @@ export const eventsBlock = (state: Pick<InvestigateState, "by">): string | null 
   state.by === "month" || state.by === "quarter"
     ? null
     : "Break down by month or quarter to mark events";
+
+/**
+ * The state with its relative quarters as the quarters they are now (src/query/relative.ts), for everything that
+ * reasons about quarters on screen: last year's and the waterfall's reasons, months in scope, the heatmap's window.
+ * The URL, the filter bar and a pin keep the tokens, so they move on as the game is played.
+ */
+export function resolvedState<S extends Pick<InvestigateState, "filters">>(
+  state: S,
+  quarters: readonly string[],
+): S {
+  const quarter = state.filters.quarter;
+  if (!quarter?.some(isRelativeQuarter)) return state;
+  return {
+    ...state,
+    filters: { ...state.filters, quarter: resolveQuarters(quarter, quarters).values },
+  };
+}
 
 /** The one quarter the quarter filter picks, or null. */
 export const shownQuarter = (state: Pick<InvestigateState, "filters">): string | null =>

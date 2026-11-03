@@ -33,7 +33,8 @@ import {
   withLastYear,
 } from "../charts/last-year";
 import { withNoise } from "../charts/evidence";
-import { formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
+import { formatDimensionValue, formatMeasure, MEASURE_LABELS, RELATIVE_NAMES } from "../format";
+import type { RelativeQuarter } from "~/query/relative";
 import { eventsCaption, markersFor, withMarkers } from "../charts/event-markers";
 import { monthsInScope } from "../state";
 import styles from "../Investigate.module.css";
@@ -270,6 +271,10 @@ export function PinChart({
         <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
           {load.message}
         </p>
+      )}
+      {/* A relative quarter, as the quarter it is now: "Latest quarter: Q1 2194" (Plot, section 9). */}
+      {load.status === "ready" && load.kind === "query" && load.result.resolved && (
+        <p className={styles.pinMeta}>{resolvedLine(load.result.resolved)}</p>
       )}
       {load.status === "ready" && spec.kind === "waterfall" && load.kind === "waterfall" && (
         <WaterfallPinBody spec={spec} rows={load.rows} table={table} />
@@ -672,4 +677,15 @@ function WaterfallPinBody({
       </p>
     </>
   );
+}
+
+/** What each relative quarter in a pin's filter is now, as Plot words it: `Latest quarter: Q1 2194`. */
+export function resolvedLine(resolved: NonNullable<QueryResult["resolved"]>): string {
+  return (Object.entries(resolved) as [RelativeQuarter, string | null][])
+    .map(([token, quarter]) =>
+      quarter
+        ? `${RELATIVE_NAMES[token]}: ${formatDimensionValue("quarter", quarter)}`
+        : RELATIVE_NAMES[token],
+    )
+    .join(" · ");
 }

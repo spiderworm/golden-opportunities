@@ -1,4 +1,10 @@
 import type { Dimension, Measure } from "~/query/types";
+import {
+  isAvailable,
+  isRelativeQuarter,
+  resolveQuarter,
+  type RelativeQuarter,
+} from "~/query/relative";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -59,6 +65,7 @@ export function formatDimensionValue(
         : "Unknown";
   }
   if (dimension === "quarter") {
+    if (isRelativeQuarter(value)) return RELATIVE_NAMES[value];
     const match = /^(\d+)-(Q[1-4])$/.exec(value);
     return match ? `${match[2]} ${match[1]}` : value;
   }
@@ -205,4 +212,33 @@ export function change(
     measure,
   );
   return { text, direction, good: direction === "flat" || !upIsGood ? null : direction === "up" };
+}
+
+/** The relative quarters' names (Plot's copy, section 9): none says "this quarter", which is being planned. */
+export const RELATIVE_NAMES: Record<RelativeQuarter, string> = {
+  latest: "Latest quarter",
+  "latest-1": "Quarter before latest",
+  "latest-4": "Same quarter, a year earlier",
+};
+/** Their shared tooltip. */
+export const RELATIVE_HINT =
+  "Moves on as you play: always counted from the newest quarter with sales";
+
+/** A relative quarter with the quarter it is now: `Latest quarter: Q1 2194`; its name alone with nothing visible. */
+export function relativeLabel(token: RelativeQuarter, periods: readonly string[]): string {
+  const quarter = resolveQuarter(token, periods);
+  return quarter && isAvailable(quarter, periods)
+    ? `${RELATIVE_NAMES[token]}: ${formatDimensionValue("quarter", quarter)}`
+    : RELATIVE_NAMES[token];
+}
+
+/** Why a relative quarter can't be shown now, or null when it can (Plot's reasons). */
+export function relativeReason(token: RelativeQuarter, periods: readonly string[]): string | null {
+  const quarter = resolveQuarter(token, periods);
+  if (isAvailable(quarter, periods)) return null;
+  if (token === "latest-4") return "The ledgers start in 2193: there's no year before it";
+  const first = [...periods].sort()[0];
+  return first
+    ? `${formatDimensionValue("quarter", first)} is the first quarter in the ledgers: there's no quarter before it`
+    : "There are no quarters in the ledgers yet";
 }

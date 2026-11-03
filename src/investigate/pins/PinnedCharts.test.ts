@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { runPin } from "./PinnedCharts";
+import { resolvedLine, runPin } from "./PinnedCharts";
 import { queryCache } from "~/platform/query-cache.client";
 import { QueryRequestError } from "./query-client";
 import type { Pin } from "./spec";
@@ -161,5 +161,15 @@ describe("running a pinned waterfall", () => {
       ["units", "2194-Q1"],
     ]);
     expect(sent.every((s) => s.context)).toBe(true);
+  });
+});
+
+describe("a pin's relative quarters (Plot, section 9)", () => {
+  it("read as the quarters they are now, under the pin's title", () => {
+    expect(resolvedLine({ latest: "2194-Q1" })).toBe("Latest quarter: Q1 2194");
+    expect(resolvedLine({ "latest-1": "2193-Q4", latest: "2194-Q1" })).toBe(
+      "Quarter before latest: Q4 2193 · Latest quarter: Q1 2194",
+    );
+    expect(resolvedLine({ "latest-4": null })).toBe("Same quarter, a year earlier");
   });
 });
