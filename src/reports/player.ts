@@ -89,3 +89,26 @@ export function validReports(value: unknown): value is PlayerReport[] {
     return checkReport(input).ok;
   });
 }
+
+/** What an edit did, in counts only, for report_edited: never a title, note or chart's words. */
+export function editCounts(before: ReportInput, after: ReportInput) {
+  const keys = (r: ReportInput) => r.items.map((i) => JSON.stringify(i.spec));
+  const was = keys(before);
+  const now = keys(after);
+  const kept = (list: string[], other: string[]) => list.filter((k) => other.includes(k));
+  const order = kept(was, now);
+  return {
+    renamed: before.title !== after.title,
+    added: now.filter((k) => !was.includes(k)).length,
+    removed: was.filter((k) => !now.includes(k)).length,
+    // The charts in both whose place among the kept ones changed.
+    moved: kept(now, was).filter((k, i) => order[i] !== k).length,
+  };
+}
+
+/** A report's shape in counts, for its events: charts, notes written, and whether it has a summary. */
+export const reportCounts = (r: ReportInput) => ({
+  charts: r.items.length,
+  notes: r.items.filter((i) => i.note).length,
+  summary: !!r.summary,
+});

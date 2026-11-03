@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { GameSave } from "~/game/types";
-import { checkReport, REPORT_LIMITS, validReports, type PlayerReport } from "./player";
+import {
+  checkReport,
+  editCounts,
+  REPORT_LIMITS,
+  reportCounts,
+  validReports,
+  type PlayerReport,
+} from "./player";
 import { applyReportChange, changeFrom } from "./player.server";
 
 const spec = (title = "Revenue by quarter") => ({
@@ -146,5 +153,24 @@ describe("a player's report", () => {
     });
     expect(changeFrom(form({ intent: "update", report: "{}" }))).toBeNull();
     expect(changeFrom(form({ intent: "create", report: "{" }))).toBeNull();
+  });
+
+  it("counts what an edit did, and a report's shape, without a word of it", () => {
+    const a = { spec: spec("A") };
+    const b = { spec: spec("B"), note: "why" };
+    const c = { spec: spec("C") };
+    const before = { title: "Old", items: [a, b, c] };
+    expect(editCounts(before, { title: "New", items: [c, a, { spec: spec("D") }] })).toEqual({
+      renamed: true,
+      added: 1,
+      removed: 1,
+      moved: 2,
+    });
+    expect(editCounts(before, before)).toEqual({ renamed: false, added: 0, removed: 0, moved: 0 });
+    expect(reportCounts({ title: "T", summary: "S", items: [a, b] })).toEqual({
+      charts: 2,
+      notes: 1,
+      summary: true,
+    });
   });
 });

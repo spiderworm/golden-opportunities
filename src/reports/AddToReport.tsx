@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
 
 import type { Pin } from "~/investigate/pins/spec";
+import { track } from "~/platform/analytics/analytics.client";
 import { PLAYER_COPY as COPY } from "./copy";
 import { REPORT_LIMITS, type PlayerReport } from "./player";
 import styles from "./Reports.module.css";
@@ -37,6 +38,8 @@ export function AddToReport({ pin }: { pin: Pin }) {
     };
   }, [open]);
   const list = reports.data?.player ?? [];
+  const reported = (to: "existing" | "new") =>
+    track("investigate_pin_reported", { kind: pin.kind, pinnedBy: pin.pinnedBy, to });
   const atLimit = list.length >= REPORT_LIMITS.reports;
   return (
     <div className={styles.addTo}>
@@ -70,7 +73,12 @@ export function AddToReport({ pin }: { pin: Pin }) {
                         <span className={styles.visuallyHidden}>{`, ${COPY.full}`}</span>
                       </span>
                     ) : (
-                      <Link to={`/reports?edit=${r.id}&add=${pin.id}`}>{r.title}</Link>
+                      <Link
+                        to={`/reports?edit=${r.id}&add=${pin.id}`}
+                        onClick={() => reported("existing")}
+                      >
+                        {r.title}
+                      </Link>
                     )}
                   </li>
                 );
@@ -79,7 +87,9 @@ export function AddToReport({ pin }: { pin: Pin }) {
                 {atLimit ? (
                   <span className={styles.muted}>{COPY.limit}</span>
                 ) : (
-                  <Link to={`/reports?new=1&add=${pin.id}`}>{COPY.newReportFromPin}</Link>
+                  <Link to={`/reports?new=1&add=${pin.id}`} onClick={() => reported("new")}>
+                    {COPY.newReportFromPin}
+                  </Link>
                 )}
               </li>
             </ul>

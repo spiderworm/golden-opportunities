@@ -101,11 +101,11 @@ export async function action({ request }: Route.ActionArgs) {
     throw error;
   }
   return sent.form === "moves"
-    ? actionQ1(request, sent.plan)
-    : actionQ2(request, sent.plan, sent.quarter);
+    ? actionQ1(request, sent.plan, sent.reportsRead)
+    : actionQ2(request, sent.plan, sent.quarter, sent.reportsRead);
 }
 
-function actionQ1(request: Request, plan: Plan) {
+function actionQ1(request: Request, plan: Plan, reportsRead: number) {
   try {
     if (getPlan(request) || currentQuarter(request) !== "2194-Q1")
       return data({ ok: false as const, played: true }, { status: 409 });
@@ -122,6 +122,8 @@ function actionQ1(request: Request, plan: Plan) {
     quarter: "2194-Q1",
     levers: planLabel(plan.levers),
     moves: plan.levers.length,
+    // The reports chosen in Decide's panel before submitting (reports.md section 5).
+    reportsRead,
   });
   return { ok: true as const };
 }
@@ -144,7 +146,7 @@ function laterPlayed(request: Request, asked: QuarterId | null): boolean {
 
 type Q2Problem = "shape" | "unknown-edition" | "same-title";
 
-async function actionQ2(request: Request, plan: Q2Plan, asked: QuarterId) {
+async function actionQ2(request: Request, plan: Q2Plan, asked: QuarterId, reportsRead: number) {
   // A plan is filed only for the quarter its form was written for: the game refuses another quarter's with a 409
   // (Frank's submitQuarterPlan), and a form left open in another tab, sent once the save has moved on, goes to
   // the results (Frank and Audit, #212). From Q3 on, filing waits for the quarter's Alma record.
@@ -173,6 +175,7 @@ async function actionQ2(request: Request, plan: Q2Plan, asked: QuarterId) {
     levers: planLabel(plan.levers),
     moves: plan.levers.length,
     picks,
+    reportsRead,
   });
   return { ok: true as const };
 }
@@ -195,6 +198,8 @@ function PlanQ1() {
   const [tooMany, setTooMany] = useState(false);
   const [refused, setRefused] = useState(false);
   const [step, setStep] = useState<Step>("choose");
+  // The reports read in Decide's panel, by key, for plan_submitted's count.
+  const [read, setRead] = useState<ReadonlySet<string>>(new Set());
   const line = useMoreLine();
   // In LEVER_IDS order, whatever order they were ticked in.
   const plan = planOf(chosen) ?? { levers: [] };
@@ -237,7 +242,11 @@ function PlanQ1() {
       </h2>
       <p className={styles.hint}>{COPY.hint}</p>
       {/* The player's reports, read beside the plan (reports.md section 4). */}
-      <DecideReports planStarted={chosen.length > 0} />
+      <DecideReports
+        planStarted={chosen.length > 0}
+        quarter={FIRST_QUARTER}
+        onRead={(key) => setRead((r) => new Set(r).add(key))}
+      />
     </div>
   );
   const form = (
@@ -334,7 +343,10 @@ function PlanQ1() {
               autoFocus
               onClick={() => {
                 setStep("playing");
-                fetcher.submit({ levers: plan.levers.join(",") }, { method: "post" });
+                fetcher.submit(
+                  { levers: plan.levers.join(","), reportsRead: String(read.size) },
+                  { method: "post" },
+                );
               }}
             >
               {COPY.confirmSubmit}
