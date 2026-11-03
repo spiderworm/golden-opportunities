@@ -62,7 +62,8 @@ const cellsOf = (sales: readonly Sale[], data: DeepReadonly<BookshopData>) => ro
 /**
  * Replayed quarters' cells, by save, least recently used save out once the cache holds more than `limit` cells in
  * all, but never the save being read: a save's quarters stay together, so a long endless game doesn't thrash
- * (Audit, #233). A five-year save is about 30,000 cells (302,517 lines), so 600,000 is about a hundred years.
+ * (Audit, #233). A five-year save is about 30,000 cells (302,517 lines), and a view takes at most 150,000
+ * (MAX_SIMULATED_CELLS, about 24 years), so 600,000 holds four of the longest saves, some 420 MB.
  */
 let limit = 600_000;
 interface SaveCells { quarters: Map<string, SaleCells>; cells: number }
