@@ -388,3 +388,14 @@ describe("look-alike letters (Probe's review of #229)", () => {
     expect(say("I looked up units by author for Karénine's books.")).toBe("I looked up units by author for Karénine's books.");
   });
 });
+
+describe("\"look up\" (Audit's review of #244)", () => {
+  it("is allowed as looking something up, with its object or after a subject or auxiliary", () => {
+    for (const sentence of ["I looked up revenue in {{a4.quarter}}: {{a4}}.", "I’ve looked up revenue in {{a4.quarter}}: {{a4}}.", "I looked it up: {{a4}}.", "To look up revenue by quarter, ask me.", "I can look things up for you."]) {
+      expect(say(sentence), sentence).not.toBe(WITHHELD);
+    }
+  });
+  it("but never as the improvement idiom, which states a direction", () => {
+    for (const sentence of ["Sales are looking up in {{a4.quarter}}.", "Things are looking up.", "Revenue looks up in {{a4.quarter}}."]) expect(say(sentence), sentence).toBe(WITHHELD);
+  });
+});
