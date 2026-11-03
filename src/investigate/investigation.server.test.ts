@@ -231,3 +231,27 @@ it("observes only panels whose queries actually differ from their own default", 
   );
   expect(observed.map((q) => q.by)).toEqual([["month"], ["month"]]);
 });
+
+describe("vs. same quarter last year", () => {
+  const sent = (state: Partial<typeof DEFAULT_STATE>) => {
+    const queries: Query[] = [];
+    investigate(
+      { ...DEFAULT_STATE, ...state },
+      (query, v) => (queries.push(query), runQuery(query, v)),
+      { ...view, periods: [...quarters, "2194-Q1"] },
+    );
+    return queries;
+  };
+
+  it("asks the chart's query for last year only where the chart can show it", () => {
+    const on = sent({ by: "genre", lastYear: true, filters: { quarter: ["2194-Q1"] } });
+    expect(on.filter((q) => q.vs)).toEqual([
+      { measure: "revenue", by: ["genre"], filter: { quarter: ["2194-Q1"] }, vs: "last_year" },
+    ]);
+    expect(
+      sent({ by: "genre", lastYear: true, filters: { quarter: ["2193-Q4"] } }).some((q) => q.vs),
+    ).toBe(false);
+    expect(sent({ by: "genre", lastYear: true }).some((q) => q.vs)).toBe(false);
+    expect(sent({ by: "genre", filters: { quarter: ["2194-Q1"] } }).some((q) => q.vs)).toBe(false);
+  });
+});
