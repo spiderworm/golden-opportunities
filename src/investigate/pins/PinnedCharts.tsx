@@ -6,7 +6,9 @@ import type { Dimension, QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
 import { categoryHeight, categoryModel, categoryOption, legendItems, nothingToDraw } from "../charts/category-chart";
 import { measuresModel, measuresOption, measuresTable } from "../charts/measures-chart";
-import type { ChartMeasure } from "../state";
+import type { ChartMeasure, Filters, HeatDimension } from "../state";
+import { heatAxis, heatModel } from "../charts/heat-model";
+import { HeatGrid, HeatScale } from "../Heatmap";
 import { MAX_SERIES } from "~/platform/charts/chart-theme";
 import { EChart } from "~/platform/charts/EChart";
 import { Legend } from "../charts/Legend";
@@ -62,7 +64,9 @@ type Load = { status: "loading" } | ({ status: "ready" } & Loaded) | { status: "
 export async function runPin(pin: Pin, signal: AbortSignal): Promise<Loaded> {
   if (pin.kind !== "comparison") {
     // Several measures are a query each, as the main chart's.
-    const [result, ...also] = await Promise.all([pin.query.measure, ...(pin.also ?? [])].map((measure) => fetchQuery({ ...pin.query, measure }, signal)));
+    // A heatmap is context, never discovery evidence, pinned or not (Plot, #63 and #266): asked without recording.
+    const evidence = pin.kind !== "heatmap";
+    const [result, ...also] = await Promise.all([pin.query.measure, ...(pin.also ?? [])].map((measure) => fetchQuery({ ...pin.query, measure }, signal, { evidence })));
     return { kind: "query", result: result!, also };
   }
   const sides = new AbortController();
@@ -122,9 +126,36 @@ function PinnedChart({ pin, quarters, onRemove, onError }: { pin: Pin; quarters:
         (pin.kind === "comparison" ? (
           load.kind === "comparison" && <ComparisonBody pin={pin} result={load.result} />
         ) : (
-          load.kind === "query" && <PinBody pin={pin} result={load.result} also={load.also} quarters={quarters} />
+          load.kind === "query" &&
+          (pin.kind === "heatmap" ? <HeatPinBody pin={pin} result={load.result} quarters={quarters} /> : <PinBody pin={pin} result={load.result} also={load.also} quarters={quarters} />)
         ))}
     </article>
+  );
+}
+
+/** A pinned heatmap: the grid as Investigate draws it, without cells to click. */
+function HeatPinBody({ pin, result, quarters }: { pin: ChartPinSpec; result: QueryResult; quarters: readonly string[] }) {
+  const [rows, cols] = pin.query.by as [HeatDimension, HeatDimension];
+  const measure = pin.query.measure as ChartMeasure;
+  const filters = (pin.query.filter ?? {}) as Filters;
+  const model = useMemo(
+    () => heatModel(result, measure, rows, heatAxis(rows, result, quarters, filters), cols, heatAxis(cols, result, quarters, filters)),
+    [result, measure, rows, cols, quarters, pin],
+  );
+  return (
+    <>
+      {result.rows.length === 0 || nothingToDraw([{ values: model.cells.map((c) => c[2]) }], [measure]) ? (
+        <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
+          No sales match this chart.
+        </p>
+      ) : (
+        <>
+          <HeatScale measure={measure} model={model} />
+          <HeatGrid model={model} measure={measure} rowsBy={rows} colsBy={cols} label={pin.title} />
+        </>
+      )}
+      <p className={styles.source}>{`Source: ${result.source}`}</p>
+    </>
   );
 }
 
@@ -140,7 +171,7 @@ function PinBody({ pin, result, also, quarters }: { pin: ChartPinSpec; result: Q
     [result, x, seriesBy, quarters, pin],
   );
   const option = useMemo(
-    () => (model && pin.kind !== "table" ? categoryOption(model, { kind: pin.kind, quarters, drill: false }) : null),
+    () => (model && (pin.kind === "bar" || pin.kind === "line") ? categoryOption(model, { kind: pin.kind, quarters, drill: false }) : null),
     [model, pin.kind, quarters],
   );
 
