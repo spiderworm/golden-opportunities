@@ -1162,3 +1162,50 @@ describe("how much evidence is behind a figure, only by ref (David, 3 Nov 2026)"
     expect(say("Based on {{g.n}}.", r)).toBe(WITHHELD);
   });
 });
+
+describe("a likely range when every rating agrees (Plot, #343; Sim, #342)", () => {
+  const r = () => {
+    const refs = new Refs();
+    refs.addTool(
+      "query_data",
+      { measure: "avg_rating", by: ["title"] },
+      {
+        ref: "z",
+        complete: true,
+        columns: [],
+        unit: "ratings",
+        rows: [
+          { ref: "z1", title: "Quiet Picks", avg_rating: 5, n: 40, range_none: "agree" },
+          { ref: "z2", title: "Low Tide", avg_rating: 1, n: 2, range_none: "agree" },
+          { ref: "z3", title: "One Voice", avg_rating: 4, n: 1, range_none: "agree" },
+          { ref: "z4", title: "Split Mind", avg_rating: 4.5, n: 6, range_none: "agree" },
+          { ref: "z5", title: "Odd Count", avg_rating: 3, n: 3, range_low: 1.2, range_high: 4.8 },
+        ],
+        total: 4,
+        n: 52,
+        source: "S",
+      },
+    );
+    return refs;
+  };
+
+  it("says there's no likely range and why, for two ratings or more that all agree", () => {
+    expect(say("{{z1.title}} is at {{z1}}, with {{z1.range}}.", r())).toBe(
+      "Quiet Picks is at 5, with no likely range, since all 40 ratings are 5 stars.",
+    );
+    expect(say("{{z2.title}} is at {{z2}}, with {{z2.range}}.", r())).toBe(
+      "Low Tide is at 1, with no likely range, since both ratings are 1 star.",
+    );
+  });
+
+  it("withholds anything else: one rating, an average that isn't a whole star, or no word from the tool server", () => {
+    expect(say("{{z3.title}} has {{z3.range}}.", r())).toBe(WITHHELD);
+    expect(say("{{z4.title}} has {{z4.range}}.", r())).toBe(WITHHELD);
+    // A range that's merely missing (no "agree" from the tool server) proves nothing: withheld.
+    expect(say("Overall it's {{z.total}}, with {{z.range}}.", r())).toBe(WITHHELD);
+    // A real range still reads as one.
+    expect(say("{{z5.title}} has {{z5.range}}.", r())).toBe(
+      "Odd Count has a likely range of 1.2 to 4.8 stars.",
+    );
+  });
+});

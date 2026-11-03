@@ -174,7 +174,8 @@ ratings, orders or sale lines, and never for days.
 Dewey sees it only through the figures gate. The tool server
 (`src/assistant/tools/server.ts`) keeps `evidence` when it checks out and turns
 it into plain fields: for an average, `n` beside each row and the total, and
-for average rating the likely range, `range_low` to `range_high`; for a
+for average rating the likely range, `range_low` to `range_high`, or
+`range_none: "agree"` when two ratings or more all agree; for a
 comparison, `noise` (`within`, `clear` or null) on each row and the total. The
 model can cite them only by ref (`{{a1.n}}`, `{{a1.range}}`, `{{b.noise}}`), and
 its own words about evidence ("significant", "noise") are withheld.
