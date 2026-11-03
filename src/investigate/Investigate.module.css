@@ -898,3 +898,11 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* The running share's headline, under the chart's controls: "Top 5 titles: 62.3% of revenue" (Plot). */
+.shareHeadline {
+  margin: 4px 0 8px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+}

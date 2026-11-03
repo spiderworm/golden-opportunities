@@ -1,5 +1,6 @@
 import type { Dimension, Measure, QueryResult } from "~/query/types";
-import { DIMENSION_LABELS, formatDimensionValue, formatMeasure } from "../format";
+import { DIMENSION_LABELS, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
+import { formatShare } from "./share-chart";
 import { lastYearRows, type LastYearLabels } from "./last-year";
 import { BASED_ON, countOf, faded, fadedCaption, NOISE_EXPLAINED } from "./evidence";
 import styles from "../Investigate.module.css";
@@ -121,5 +122,65 @@ export function LastYearTable({
         <p className={styles.tableNote}>{fadedCaption(unit)}</p>
       )}
     </>
+  );
+}
+
+/**
+ * A result as shares (Plot, req_fa2e6a0dbbec): the group, its figure, then its Share of the total, the one before
+ * the row limit; with the running share, largest first and a Running share column too.
+ */
+export function ShareTable({
+  result,
+  by,
+  measure,
+  running,
+}: {
+  result: QueryResult;
+  by: Dimension;
+  measure: Measure;
+  running: boolean;
+}) {
+  const total = result.total ?? 0;
+  const rows = result.rows.map((row) => ({
+    group: row[by] ?? null,
+    value: row[measure] ?? 0,
+  }));
+  if (running) rows.sort((a, b) => b.value - a.value);
+  let sum = 0;
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th scope="col">{DIMENSION_LABELS[by]}</th>
+            <th scope="col" className={styles.numeric}>
+              {MEASURE_LABELS[measure]}
+            </th>
+            <th scope="col" className={styles.numeric}>
+              Share
+            </th>
+            {running && (
+              <th scope="col" className={styles.numeric}>
+                Running share
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => {
+            const share = total > 0 ? row.value / total : 0;
+            sum += share;
+            return (
+              <tr key={i}>
+                <td>{formatDimensionValue(by, row.group)}</td>
+                <td className={styles.numeric}>{formatMeasure(measure, row.value)}</td>
+                <td className={styles.numeric}>{formatShare(share)}</td>
+                {running && <td className={styles.numeric}>{formatShare(sum)}</td>}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
