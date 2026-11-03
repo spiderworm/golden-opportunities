@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { formatStationDate } from "~/shell/station-date";
 import type { ChartEvent } from "~/query/events";
 import {
   eventLines,
@@ -29,12 +30,13 @@ const move: ChartEvent = {
 };
 
 describe("event markers (Plot's copy, section 7)", () => {
-  it("writes when, month first, and the two tooltip lines", () => {
-    expect(eventWhen(release)).toBe("February 4, 2194".replace("February", "Feb"));
+  it("writes when, a day as the station date has it, and the two tooltip lines", () => {
+    // The day as the shell writes the station date, whatever style that is (David chose one for the game).
+    expect(eventWhen(release)).toBe(formatStationDate("2194-02-04"));
     expect(eventWhen(pick("03", "Portmeirion, mass market paperback"))).toBe("March 2194");
     expect(eventWhen(move)).toBe("Q1 2194");
     expect(eventLines(release)).toEqual([
-      "Feb 4, 2194 · Release",
+      `${formatStationDate("2194-02-04")} · Release`,
       "The Bourton Model Village Poisoning, Inspector Ryeslton volume 3",
     ]);
     expect(eventLines(pick("03", "Portmeirion, mass market paperback"))[0]).toBe(
@@ -102,7 +104,9 @@ describe("event markers (Plot's copy, section 7)", () => {
     };
     expect(marked.series[0]!.markLine!.data).toEqual([{ xAxis: 1, name: "Release" }]);
     expect(marked.series[1]!.markLine).toBeUndefined();
-    expect(marked.tooltip.formatter([{ dataIndex: 1 }])).toContain("Feb 4, 2194 · Release");
+    expect(marked.tooltip.formatter([{ dataIndex: 1 }])).toContain(
+      `${formatStationDate("2194-02-04")} · Release`,
+    );
     expect(marked.tooltip.formatter([{ dataIndex: 0 }])).toBe("<b>Feb</b>");
     expect(withMarkers(option, [])).toBe(option);
     // Too many to label without collisions: lines and tooltips only.
@@ -143,6 +147,6 @@ describe("markers on % of total (Audit, #357)", () => {
     ]);
     expect(
       marked.tooltip.formatter([{ dataIndex: shares.categories.indexOf("2194-02") }]),
-    ).toContain("Feb 4, 2194 · Release");
+    ).toContain(`${formatStationDate("2194-02-04")} · Release`);
   });
 });

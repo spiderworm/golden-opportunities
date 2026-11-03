@@ -6,6 +6,7 @@ import { byDate, quarterOfDate, type ChartEvent, type EventKind } from "~/query/
 import type { Dimension } from "~/query/types";
 import { chartTheme } from "~/platform/charts/chart-theme";
 import { escapeHtml } from "~/platform/charts/escape";
+import { formatStationDate } from "~/shell/station-date";
 
 /** A marker's short label (Plot): on the chart, and in the legend. */
 export const EVENT_LABELS: Record<EventKind, string> = {
@@ -33,16 +34,18 @@ const MONTHS = [
   "September",
 ].concat(["October", "November", "December"]);
 
-/** When, in the game's style, month first (Plot): `Feb 4, 2194`, `March 2194`, `Q1 2194`. */
+/**
+ * When, in the game's style: a day as the shell's station date has it (formatStationDate, the one style David chose
+ * for every date, so markers and Dewey's headings read as the date at the top of the screen), `March 2194`, `Q1 2194`.
+ */
 export function eventWhen(event: ChartEvent): string {
   const year = event.date.slice(0, 4);
-  const month = MONTHS[Number(event.date.slice(5, 7)) - 1]!;
   if (event.precision === "quarter") return `Q${quarterOfDate(event.date).slice(-1)} ${year}`;
-  if (event.precision === "month") return `${month} ${year}`;
-  return `${month.slice(0, 3)} ${Number(event.date.slice(8, 10))}, ${year}`;
+  if (event.precision === "month") return `${MONTHS[Number(event.date.slice(5, 7)) - 1]!} ${year}`;
+  return formatStationDate(event.date.slice(0, 10));
 }
 
-/** The tooltip's two lines for one event: `Feb 4, 2194 · Release`, then what happened. */
+/** The tooltip's two lines for one event: the date and kind (`… · Release`), then what happened. */
 export const eventLines = (event: ChartEvent): [string, string] => [
   `${eventWhen(event)} · ${EVENT_NAMES[event.kind]}`,
   // With a book dimension in the breakdown, the line it marks, in brackets (Audit, #353).
