@@ -30,6 +30,8 @@ export const DEFAULT_API_MODEL = "claude-sonnet-5-5";
 export const MAX_TURNS = 8;
 /** The answer's output budget per call: replies are short, and thinking counts against it. */
 const MAX_TOKENS = 16_000;
+/** The Claude API, and only it, gets the key. */
+export const API_URL = "https://api.anthropic.com";
 /** Models the server-side refusal fallback (`fallbacks: "default"`) accepts. */
 const FALLBACK_MODELS = new Set([
   "claude-sonnet-5-5",
@@ -71,7 +73,8 @@ export function apiTools(toolEnv: Record<string, string>): Anthropic.Beta.Messag
 /** The client, from ANTHROPIC_API_KEY alone; null without one. */
 export function apiClient(env: NodeJS.ProcessEnv = process.env): MessagesClient | null {
   const apiKey = env.ANTHROPIC_API_KEY?.trim();
-  return apiKey ? (new Anthropic({ apiKey }) as unknown as MessagesClient) : null;
+  // The address is fixed too, so ANTHROPIC_BASE_URL in the environment can't send the key elsewhere (Frank, #313).
+  return apiKey ? (new Anthropic({ apiKey, baseURL: API_URL }) as unknown as MessagesClient) : null;
 }
 
 /** What the player is told, by kind: the API's own message is never passed on (it could carry request detail). */
@@ -121,6 +124,8 @@ export function anthropicAssistant({
         stop.abort();
       }, timeoutMs);
       const redactor = emailRedactor();
+      /** Whether the model has written anything yet, in this answer. */
+      let said = false;
       const messages: Anthropic.Beta.Messages.BetaMessageParam[] = [
         { role: "user", content: prompt.message },
       ];
@@ -140,6 +145,8 @@ export function anthropicAssistant({
               ...(tools.length ? { tools } : {}),
               // Medium: a few lookups and a short reply; thinking stays adaptive (the model's default).
               output_config: { effort: "medium" },
+              // The rules and tools are the same on every call of the loop: cached, they cost a tenth (Frank, #313).
+              cache_control: { type: "ephemeral" },
               // A declined request is re-run on a model the API chooses, inside the same call.
               ...(FALLBACK_MODELS.has(model)
                 ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }
@@ -152,6 +159,7 @@ export function anthropicAssistant({
           try {
             for await (const event of stream) {
               if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+                said ||= event.delta.text.trim() !== "";
                 const text = redactor.push(event.delta.text);
                 if (text) yield { type: "text", text };
               }
@@ -171,6 +179,9 @@ export function anthropicAssistant({
           );
           // Done, declined, or cut off: a tool call cut off at max_tokens can hold a truncated input, so it's
           // never run. Anything else without a call ends the answer too.
+          // A refusal the fallback didn't rescue, with nothing said yet: say it couldn't answer, not nothing at all.
+          if (message.stop_reason === "refusal" && !said)
+            throw new AssistantUnavailable("The model declined to answer.", "other");
           if (message.stop_reason !== "tool_use" || calls.length === 0) break;
           const flushed = redactor.flush();
           if (flushed) yield { type: "text", text: flushed };
