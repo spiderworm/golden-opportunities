@@ -1,6 +1,7 @@
 import type { DeepReadonly, SaleLine } from "../bookshop/types";
 import type { SaleCells } from "./sale-cells";
 import type { Evidence, EvidenceUnit } from "./evidence";
+import type { RelativeQuarter } from "./relative";
 import type { ChartEvent, ViewEvent } from "./events";
 
 export const DIMENSIONS = [
@@ -137,6 +138,8 @@ export interface QueryResult {
    * more were left out past MAX_EVENTS. Absent for any other breakdown.
    */
   events?: { list: ChartEvent[]; hidden: number };
+  /** What each relative quarter in the quarter filter resolved to (relative.ts), for "Latest quarter: Q1 2194". */
+  resolved?: Partial<Record<RelativeQuarter, string | null>>;
   /**
    * With `vs: "last_year"`: each row's figure a year earlier, in the rows' order, and the total's, with their
    * evidence (null where the figure is).
