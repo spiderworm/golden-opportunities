@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { loadBookshop } from '../bookshop/loader.server';
 import type { DeepReadonly, SaleLine } from '../bookshop/types';
 import { runQuery } from './run-query.server';
-import { BASELINE_VIEW, MAX_SIMULATED_LINES, MAX_VIEW_PERIODS, validateView } from './view.server';
+import { BASELINE_VIEW, MAX_SIMULATED_CELLS, MAX_SIMULATED_LINES, MAX_VIEW_PERIODS, validateView } from './view.server';
 import type { Query, QueryView } from './types';
 
 const quiet = () => {};
@@ -212,6 +212,15 @@ describe('server-owned visibility and cache isolation', () => {
     expect(() => validateView(long)).not.toThrow();
     expect(() => validateView({ ...long, periods: [...long.periods, '2294-Q1'] })).toThrow(expect.objectContaining({ code: 'INVALID_VIEW' }));
     expect(() => validateView({ ...long, simulatedSales: Array(MAX_SIMULATED_LINES + 1).fill(line) })).toThrow(expect.objectContaining({ code: 'INVALID_VIEW' }));
+  });
+  it("bounds a save's cells by cells, not by the lines they stand for (rollups step 4)", () => {
+    const cell = { line: sale({}), lines: 10, orders: 9 };
+    // A 24-year save at the five-year save's rate (30,516 cells for 302,517 lines) fits, though its lines are far
+    // past the line cap; one cell over the bound is refused.
+    const cells = (n: number, lines: number): QueryView => ({ periods: ['2194-Q1'], includeUndated: false, simulatedCells: { cells: Array(n).fill(cell), spanning: [], lines } });
+    expect(() => validateView(cells(Math.round(24 / 5 * 30_516), Math.round(24 / 5 * 302_517)))).not.toThrow();
+    expect(() => validateView(cells(MAX_SIMULATED_CELLS, MAX_SIMULATED_LINES * 3))).not.toThrow();
+    expect(() => validateView(cells(MAX_SIMULATED_CELLS + 1, 10))).toThrow(expect.objectContaining({ code: 'INVALID_VIEW' }));
   });
 });
 
