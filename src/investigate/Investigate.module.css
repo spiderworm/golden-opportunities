@@ -322,12 +322,13 @@
   background: var(--color-panel);
 }
 
+/* The title on its own line, its controls on the line below (David, 2 Nov 2026: "move them onto two separate
+   lines"), so a long title or three measures never crowd each other. Keyboard order is the same as reading order. */
 .cardHeader {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
