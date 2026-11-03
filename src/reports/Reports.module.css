@@ -288,6 +288,11 @@
   list-style: none;
 }
 
+/* A heatmap's twelve columns need the row: at a card's width its figures run together (measured at 1440 px). */
+.reportCharts > [data-wide] {
+  grid-column: 1 / -1;
+}
+
 .field {
   display: grid;
   gap: 6px;
