@@ -218,10 +218,17 @@ export function ToggleMenu({
   // An unavailable item's reason as a tooltip beside it, on hover and on keyboard focus (David, 3 Nov 2026: "Need
   // tooltips on hovered view options in the dropdown that aren't available. Explanations as to why"). Drawn on the
   // page, not in the panel, whose scrolling would clip it; to the item's right, or its left near the screen's edge.
-  const [tip, setTip] = useState<{ i: number; rect: DOMRect } | null>(null);
-  const showTip = (i: number, el: HTMLElement) =>
-    toggles[i]?.reason ? setTip({ i, rect: el.getBoundingClientRect() }) : setTip(null);
-  const hideTip = (i: number) => setTip((t) => (t?.i === i ? null : t));
+  // A tap pins it open: on touch the pointer leaves as the finger lifts (Goldy, req_470d24167113).
+  const [tip, setTip] = useState<{ i: number; rect: DOMRect; pinned?: boolean } | null>(null);
+  const showTip = (i: number, el: HTMLElement, pinned = false) =>
+    toggles[i]?.reason
+      ? setTip((t) => ({
+          i,
+          rect: el.getBoundingClientRect(),
+          pinned: pinned || (t?.i === i && t.pinned),
+        }))
+      : setTip(null);
+  const hideTip = (i: number) => setTip((t) => (t?.i === i && !t.pinned ? null : t));
   useEffect(() => {
     if (!open) setTip(null);
   }, [open]);
@@ -320,11 +327,13 @@ export function ToggleMenu({
               className={styles.toggle}
               data-disabled={reason !== null || undefined}
               data-under={toggle.under || undefined}
-              onClick={() => reason === null && toggle.onToggle()}
+              onClick={(e) =>
+                reason === null ? toggle.onToggle() : showTip(i, e.currentTarget, true)
+              }
               onPointerEnter={(e) => showTip(i, e.currentTarget)}
               onPointerLeave={() => hideTip(i)}
               onFocus={(e) => showTip(i, e.currentTarget)}
-              onBlur={() => hideTip(i)}
+              onBlur={() => setTip((t) => (t?.i === i ? null : t))}
             >
               <span className={styles.tick} data-on={toggle.on || undefined} aria-hidden="true">
                 {toggle.on && (
@@ -342,8 +351,9 @@ export function ToggleMenu({
               </span>
               <span className={styles.toggleText}>
                 <span id={nameId}>{toggle.label}</span>
+                {/* Its reason, read as its description; seen in the tooltip beside it (Plot, #360). */}
                 {reason !== null && (
-                  <span id={whyId} className={styles.toggleWhy}>
+                  <span id={whyId} className={styles.hidden}>
                     {reason}
                   </span>
                 )}
