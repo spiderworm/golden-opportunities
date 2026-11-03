@@ -183,10 +183,14 @@
   gap: 2px;
 }
 
-.toggleWhy {
-  color: var(--color-text-subtle);
-  font-size: 12px;
-  line-height: 1.35;
+/* Read by screen readers, not shown: an unavailable item's reason, which its tooltip shows. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* An unavailable item's reason beside it (ToggleMenu's ReasonTip), as ReasonToggle's tooltip looks. */
