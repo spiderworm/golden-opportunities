@@ -8,6 +8,7 @@ import { NotificationsBell, type StationNotification } from "./NotificationsBell
 import { formatStationDate } from "./station-date";
 import { ALERT_COPY, q2AlertCopy, type AlertCopy, type FirstQuarter } from "./alert-copy";
 import { StandingOrder } from "./StandingOrder";
+import { StandingOrderShown } from "./standing-order-shown";
 import { Transmission } from "./Transmission";
 import type { Track } from "~/platform/analytics/track";
 import type { QuarterId } from "~/game/quarters";
@@ -81,6 +82,7 @@ export function Shell({
   // Once per quarter per visit at most, even if recording it failed; the save keeps it to once per game.
   const arrived = useRef<string | null>(null);
   const pending = standingOrder && !standingOrder.submitted && copy !== null;
+  const stripShown = pending && !stripHidden;
 
   useEffect(() => {
     if (!pending || standingOrder.seen || arrived.current === quarter || pathname !== "/") return;
@@ -209,15 +211,22 @@ export function Shell({
             <NotificationsBell notifications={notifications} track={track} />
           </div>
         </header>
-        {pending && !stripHidden && (
+        {stripShown && (
           <StandingOrder
             copy={copy.strip}
             onLedgers={pathname === "/investigate"}
             onReadMemo={readMemo}
             onOpenLedgers={() => track("alert_strip_clicked", { action: "ledgers", quarter })}
+            onWritePlan={
+              pathname === "/investigate"
+                ? () => track("investigate_plan_link", { to: "decide" })
+                : undefined
+            }
           />
         )}
-        <main className={styles.content}>{children}</main>
+        <main className={styles.content}>
+          <StandingOrderShown value={!!stripShown}>{children}</StandingOrderShown>
+        </main>
         {standingOrder && copy && (
           <Transmission
             open={memoOpen}

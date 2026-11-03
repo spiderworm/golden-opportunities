@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Link,
   useLocation,
   useNavigation,
   useSearchParams,
@@ -21,6 +20,7 @@ import { Heatmap, heatTitle } from "./Heatmap";
 import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
+import { PlanLink } from "./PlanLink";
 import { runQuery } from "~/query/run-query.server";
 import { recordDiscoveries, type ObservedQuery } from "~/game/discoveries.server";
 import { getGameSession } from "~/game/session.server";
@@ -155,15 +155,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   return (
     <div className={styles.layout}>
       <div className={styles.page} data-refreshing={refreshing || undefined} aria-busy={refreshing}>
-        <div className={styles.pageActions}>
-          <Link
-            to={planned ? "/result" : "/decide"}
-            className={styles.planLink}
-            onClick={() => track("investigate_plan_link", { to: planned ? "result" : "decide" })}
-          >
-            {planned ? "See the results" : "Write the plan"}
-          </Link>
-        </div>
+        <PlanLink planned={planned} />
         <FilterBar
           filters={state.filters}
           options={options}
