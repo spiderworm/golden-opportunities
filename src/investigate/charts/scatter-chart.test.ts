@@ -57,6 +57,7 @@ describe("scatter plots (Plot's copy, #291)", () => {
     expect(tip).toContain("Average discount:</span> <strong>12.0%</strong>");
     expect(option.series[0]!.label?.show ?? false).toBe(false);
     expect(option.series[0]!.data).toHaveLength(2);
+    expect((option.series[0] as { name?: string }).name).toBe("Average discount against revenue");
   });
 
   it("dims the groups not chosen once some are", () => {
