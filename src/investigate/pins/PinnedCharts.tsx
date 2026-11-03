@@ -21,7 +21,14 @@ import { MAX_SERIES, seriesColor } from "~/platform/charts/chart-theme";
 import { EChart } from "~/platform/charts/EChart";
 import { EvidenceLegend, Legend } from "../charts/Legend";
 import { LastYearTable, ResultTable } from "../charts/ResultTable";
-import { changeLine, lastYearLabels, withLastYear } from "../charts/last-year";
+import {
+  changeLine,
+  ghostBasedOn,
+  ghostNoisy,
+  lastYearLabels,
+  withLastYear,
+} from "../charts/last-year";
+import { withNoise } from "../charts/evidence";
 import { formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
 import { monthsInScope } from "../state";
 import styles from "../Investigate.module.css";
@@ -365,9 +372,18 @@ function PinBody({
               kind: drawnKind(pin),
               quarters,
               drill: false,
+              // As the main chart's tooltip (#311, #322): the change marked when it's within noise, and both years'
+              // counts behind an average (Frank, #325).
               ghost: {
-                change: (i) =>
-                  changeLine(model.measure, model.series[0]?.values[i] ?? null, ghost.lastYear[i]!),
+                change: (i) => {
+                  const line = changeLine(
+                    model.measure,
+                    model.series[0]?.values[i] ?? null,
+                    ghost.lastYear[i]!,
+                  );
+                  return line && withNoise(line, ghostNoisy(ghost, i));
+                },
+                basedOn: (i) => (labels ? ghostBasedOn(ghost, i, labels) : null),
               },
             })
           : categoryOption(model, { kind: drawnKind(pin), quarters, drill: false })
