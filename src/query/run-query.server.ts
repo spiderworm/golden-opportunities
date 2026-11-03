@@ -7,6 +7,7 @@ import { emit, trackQuery } from './telemetry.server';
 import { eligibleDays, groupDays, CALENDAR_DIMENSIONS, WEEKDAYS } from './calendar';
 import { checkLabel, serializeResult } from './result';
 import { PRICE_BANDS, QUERY_LIMITS } from './types';
+import { rollUpSales, type SaleCells } from './sale-cells';
 import type { Dimension, Measure, Query, QueryResult, QueryRow, QueryTrack, QueryView } from './types';
 
 const labels: Record<Dimension | Measure, string> = {
@@ -103,7 +104,19 @@ function saleFact(sale: DeepReadonly<SaleLine>, measure: Measure, periods: Set<s
     value: (measure === 'revenue' || measure === 'avg_order_value') ? lineRevenue(sale.listPrice, sale.discount) : measure === 'avg_discount' ? basisPoints(sale.discount) : 1,
     orderId: sale.orderId, simulated, awards: awardsOf(sale.book) };
 }
-function* facts(query: Query, view: QueryView): Generator<Fact> {
+/** 2193's sale lines, rolled up once per loaded dataset (sale-cells.ts), so a query reads cells, not 56,350 lines. */
+const historyCells = new WeakMap<object, SaleCells>();
+let historyAsLines = false;
+/** For tests: read 2193 line by line, as before the rollups, to compare the two (sale-cells.server.test.ts). */
+export function readHistoryAsLines(on: boolean) { historyAsLines = on; }
+function historyOf(data: ReturnType<typeof loadBookshop>): SaleCells | null {
+  if (historyAsLines) return null;
+  let cells = historyCells.get(data);
+  if (!cells) historyCells.set(data, (cells = rollUpSales(data.saleLines)));
+  return cells;
+}
+
+function* facts(query: Query, view: QueryView, history: SaleCells | null): Generator<Fact> {
   const cells: Fact[] = [];
   if (undated(query.measure) && !view.includeUndated) throw new QueryError('UNAVAILABLE_FACTS', 'This view does not allow the undated ratings and checkout snapshot.');
   const data = loadBookshop();
@@ -116,12 +129,18 @@ function* facts(query: Query, view: QueryView): Generator<Fact> {
     for (const checkout of data.joinedCheckouts) yield { dimensions: { ...bookDimensions(checkout.book), month: `2193-${String(checkout.month).padStart(2, '0')}` }, value: checkout.count, awards: awardsOf(checkout.book) };
   } else {
     const periods = new Set<string>(view.periods);
-    for (const sale of data.saleLines) { const fact = saleFact(sale, query.measure, periods, false); if (fact) yield fact; }
+    if (!history) for (const sale of data.saleLines) { const fact = saleFact(sale, query.measure, periods, false); if (fact) yield fact; }
     for (const sale of view.simulatedSales ?? []) { const fact = saleFact(sale, query.measure, periods, true); if (fact) yield fact; }
-    // Cells are facts for their sample line, weighted by how many lines they hold (sale-cells.ts).
+    // Cells are facts for their sample line, weighted by how many lines they hold (sale-cells.ts). 2193's come
+    // first, then the save's, numbered on from them, as execute numbers their spanning orders.
+    const offset = history?.cells.length ?? 0;
+    history?.cells.forEach((cell, at) => {
+      const fact = saleFact(cell.line, query.measure, periods, false);
+      if (fact) cells.push({ ...fact, weight: cell.lines, cell: at, orders: cell.orders });
+    });
     view.simulatedCells?.cells.forEach((cell, at) => {
       const fact = saleFact(cell.line, query.measure, periods, true);
-      if (fact) cells.push({ ...fact, weight: cell.lines, cell: at, orders: cell.orders });
+      if (fact) cells.push({ ...fact, weight: cell.lines, cell: offset + at, orders: cell.orders });
     });
     yield* cells;
   }
@@ -167,7 +186,8 @@ function execute(query: Query, view: QueryView): QueryResult {
   const inTotal = new Set<number>();
   const cellGroup = new Map<number, Aggregate>();
   if (!query.by.length) groups.set('[]', { dimensions: {}, aggregate: aggregate() });
-  for (const fact of facts(query, view)) {
+  const history = undated(query.measure) ? null : historyOf(loadBookshop());
+  for (const fact of facts(query, view, history)) {
     if (!filters.every(([dimension, values]) => {
       if (dimension === 'award') return fact.awards!.some(award => values.has(award));
       const v = fact.dimensions[dimension]; return v != null && values.has(v);
@@ -184,7 +204,9 @@ function execute(query: Query, view: QueryView): QueryResult {
     if (fact.cell !== undefined) cellGroup.set(fact.cell, group.aggregate);
   }
   // An order spanning several of an aggregate's cells was counted once in each: count it once (sale-cells.ts).
-  for (const touched of view.simulatedCells?.spanning ?? []) {
+  const offset = history?.cells.length ?? 0;
+  const spanning = [...(history?.spanning ?? []), ...(view.simulatedCells?.spanning ?? []).map(touched => touched.map(at => offset + at))];
+  for (const touched of spanning) {
     const seen = new Map<Aggregate, number>();
     let visible = 0;
     for (const at of touched) {

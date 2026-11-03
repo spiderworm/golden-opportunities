@@ -11,7 +11,7 @@ import { loadBookshop } from '../bookshop/loader.server';
 import type { DeepReadonly, SaleLine } from '../bookshop/types';
 import { submitPlan, submitQ2Plan, getQ2Candidates } from '../game/game.server';
 import { queryViewForSave, saves } from '../game/session.server';
-import { runQuery } from './run-query.server';
+import { readHistoryAsLines, runQuery } from './run-query.server';
 import { rollUpSales } from './sale-cells';
 import { DIMENSIONS, FILTER_ONLY_DIMENSIONS, type Dimension, type Query, type QueryView } from './types';
 
@@ -72,6 +72,21 @@ describe('sale cells (docs/design/rollups.md)', () => {
       const first = runQuery({ measure: 'units', by: [dimension] }, byLines, quiet).rows.find(row => row[dimension] != null)?.[dimension];
       if (typeof first !== 'string') continue;
       for (const measure of ['revenue', 'orders'] as const) same({ measure, by: ['month'], filter: { [dimension]: [first] } }, byLines, byCells);
+    }
+  });
+
+  it("give 2193's answers as its lines did: every sales measure, by every dimension, pairs and filters", { timeout: 120_000 }, () => {
+    const view = { periods: ['2193-Q1', '2193-Q2', '2193-Q3', '2193-Q4'], includeUndated: true } as QueryView;
+    const asLines = (query: Query) => { readHistoryAsLines(true); try { return runQuery(query, view, quiet); } finally { readHistoryAsLines(false); } };
+    const check = (query: Query) => expect(runQuery(query, view, quiet), JSON.stringify(query)).toEqual(asLines(query));
+    for (const measure of SALES) {
+      check({ measure, by: [] });
+      for (const by of GROUPS) check({ measure, by: [by] });
+    }
+    for (const by of GROUPS.filter(d => d !== 'weekday')) check({ measure: 'orders', by: ['weekday', by] as Dimension[] });
+    for (const dimension of GROUPS) {
+      const first = asLines({ measure: 'units', by: [dimension] }).rows.find(row => row[dimension] != null)?.[dimension];
+      if (typeof first === 'string') check({ measure: 'orders', by: ['month'], filter: { [dimension]: [first] } });
     }
   });
 });
