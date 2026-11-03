@@ -5,14 +5,14 @@ import type { Route } from "./+types/route";
 import { ENTRY_COOKIE, ENTRY_MAX_AGE, ENTRY_VERSION, MUSIC_COOKIE } from "./cookie";
 import { entryResponse, NO_INDEX, safeReturn } from "./gate.server";
 
+/** The entry form is a checkbox, a choice and a return path: well under 4 KB, which no other body needs. */
+export const MAX_ENTRY_BODY = 4_096;
+
 /**
  * POST /entry: Continue, from the entry page. With the agreement ticked, it sets the entry cookie (and, with the
  * music unticked, the one-time music choice) and goes back to the page the player asked for. Without it, the page
  * again. The checkbox's words aren't stored: the version stands for them.
  */
-/** The entry form is a checkbox, a choice and a return path: well under 4 KB, which no other body needs. */
-export const MAX_ENTRY_BODY = 4_096;
-
 export async function action({ request }: Route.ActionArgs) {
   let form: URLSearchParams;
   try {

@@ -45,16 +45,16 @@ export function loader({ request }: Route.LoaderArgs) {
 }
 
 /**
- * Marks a shop report seen: its card opened (a fetcher), or its full results asked for (a form, which goes on to
- * them). Through React Router, so the shell's loader runs again and the badge follows (Audit, #281).
- */
-/**
  * A report is at most 6 items, each a pin no larger than a query (16 KB) and a 500-character note, with an
  * 80-character title and a 1,000-character summary: about 110 KB as JSON, and three times that at worst once
  * form-encoded. 512 KB holds the largest a player can make; nothing else posts here.
  */
 export const MAX_REPORTS_BODY = 524_288;
 
+/**
+ * Marks a shop report seen: its card opened (a fetcher), or its full results asked for (a form, which goes on to
+ * them). Through React Router, so the shell's loader runs again and the badge follows (Audit, #281).
+ */
 export async function action({ request }: Route.ActionArgs) {
   let form: URLSearchParams;
   try {
