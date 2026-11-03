@@ -710,7 +710,6 @@ export function setSeries(state: InvestigateState, choice: SeriesChoice): Invest
     : setFilter(cleared, "in_series", [choice]);
 }
 
-/** Drills into one heatmap cell, or back out if it's the only cell selected. */
 /** A heatmap cell filters the screen to its row's and column's values; clicking the one already chosen clears both. */
 export function toggleCell(
   state: InvestigateState,
