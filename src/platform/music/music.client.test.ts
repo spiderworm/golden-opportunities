@@ -120,4 +120,18 @@ describe("loadMusic", () => {
     // The choice is cleared, so it applies to this start only.
     expect(page.cookie).toBe("ob_music=; Path=/; Max-Age=0; SameSite=Lax");
   });
+
+  it("starts at once, once, when the entry page was just answered with the music on", async () => {
+    const start = vi.fn();
+    createMusic.mockImplementationOnce(
+      (options) => ({ options, start, state: () => ({ song: null }) }) as never,
+    );
+    const page = { cookie: "ob_music=on" };
+    vi.stubGlobal("document", page);
+    await loadMusic(
+      respond({ songs: [{ id: "nebula-waltz", file: "nebula-waltz.mp3", title: "Nebula Waltz" }] }),
+    );
+    expect(start).toHaveBeenCalledOnce();
+    expect(page.cookie).toBe("ob_music=; Path=/; Max-Age=0; SameSite=Lax");
+  });
 });
