@@ -9,6 +9,7 @@ import { EVIDENCE_HEADER, investigateOnly, QUERY_LIMITS } from "./types";
 import { DATA_VERSION_HEADER, dataVersion } from "./data-version.server";
 import { trackServer } from "../platform/analytics/analytics.server";
 import { visitorAllowsSharing, withSharing } from "../platform/analytics/visitor-sharing.server";
+import { queryTokenSharing } from "../game/query-token.server";
 import type {
   Query,
   QueryErrorCode,
@@ -138,6 +139,10 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
   return async (request) => {
     let admitted = false;
     const started = performance.now();
+    // Whose "Share play data" choice this request's events follow: a lookup's token carries the asking visitor's,
+    // since the tool server sends no cookie; else the visitor's own (#368). Decided first, so a refusal follows it.
+    const bearer = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(request.headers.get("authorization") ?? "");
+    const sharing = bearer ? queryTokenSharing(bearer[1]!) : visitorAllowsSharing();
     try {
       if (request.method !== "POST")
         throw new QueryError("METHOD_NOT_ALLOWED", "Only POST is supported.");
@@ -169,7 +174,7 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
       const access = authorizeQuery(request);
       // Dewey's lookups come from his tool server with no browser cookie: they run with the asking visitor's
       // "Share play data" choice, carried on the token (Audit and Probe, #368).
-      const body = withSharing(access.sharing ?? visitorAllowsSharing(), () => {
+      const body = withSharing(access.sharing ?? sharing, () => {
         const view = resolveView(access);
         const result = run(query, view, track);
         const serialized = serializeResult(result);
@@ -198,10 +203,13 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
           : new QueryError("INTERNAL_ERROR", "Query could not be completed.");
       if (known.message.length > QUERY_LIMITS.errorMessageLength)
         known = new QueryError("RESULT_TOO_LARGE", "Query error output exceeds its bounds.");
-      emit(track, "query_request_failed", {
-        code: known.code,
-        durationMs: performance.now() - started,
-      });
+      const failed = known;
+      withSharing(sharing, () =>
+        emit(track, "query_request_failed", {
+          code: failed.code,
+          durationMs: performance.now() - started,
+        }),
+      );
       const response: QueryErrorResponse = {
         error: {
           code: known.code,
