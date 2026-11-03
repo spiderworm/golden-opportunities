@@ -169,11 +169,12 @@ export function ReportCharts({
   /** Where it's read, for table_toggled: on Reports, or in Decide's panel. */
   where?: "report" | "decide";
 }) {
+  const keys = itemKeys(items);
   return (
     <ol className={styles.reportCharts}>
-      {items.map((item) => (
+      {items.map((item, i) => (
         <li
-          key={pinKey(item.spec)}
+          key={keys[i]}
           className={styles.card}
           data-wide={item.spec.kind === "heatmap" || undefined}
         >
@@ -407,7 +408,7 @@ function Editor({
       <ol className={styles.reportCharts}>
         {draft.items.map((item, i) => (
           <li
-            key={pinKey(item.spec)}
+            key={itemKeys(draft.items)[i]}
             className={styles.card}
             data-wide={item.spec.kind === "heatmap" || undefined}
           >
@@ -535,4 +536,19 @@ function Editor({
 function specOf(pin: PinSpec & { id?: string; pinnedBy?: string }): PinSpec {
   const { id: _id, pinnedBy: _by, ...spec } = pin;
   return spec as PinSpec;
+}
+
+/**
+ * A key for each item: its chart (pinKey), and which of that chart it is. A report saved before a chart and its
+ * table were one pin can hold both (Audit, #314), so pinKey alone could repeat; the occurrence keeps keys unique and
+ * still stable when items move, so moving one doesn't run the others' charts again.
+ */
+export function itemKeys(items: readonly { spec: PinSpec }[]): string[] {
+  const seen = new Map<string, number>();
+  return items.map((item) => {
+    const key = pinKey(item.spec);
+    const n = seen.get(key) ?? 0;
+    seen.set(key, n + 1);
+    return `${key}#${n}`;
+  });
 }
