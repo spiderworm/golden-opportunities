@@ -81,7 +81,15 @@ export async function action({ request }: Route.ActionArgs) {
  */
 function reportAction(request: Request, form: FormData) {
   const change = changeFrom(form);
-  if (!change) return data({ ok: false as const, reason: "invalid" as const }, { status: 400 });
+  if (!change) {
+    // Counted too, as every refusal is (Audit, #287); its intent from a fixed list, never what was sent.
+    const sent = form.get("intent");
+    reportEvent(sent === "create" || sent === "update" || sent === "delete" ? sent : "other", {
+      ok: false,
+      reason: "invalid",
+    });
+    return data({ ok: false as const, reason: "invalid" as const }, { status: 400 });
+  }
   let outcome: ReportOutcome = { ok: false, reason: "invalid" };
   try {
     writeReports(request, (save) => {

@@ -47,9 +47,11 @@ export function DecideReports({
   const navigate = useNavigate();
   // The control that asked, so Stay returns focus to it (Audit, #286).
   const askedFrom = useRef<HTMLElement | null>(null);
-  const toReports = () => {
+  // The control is passed in, not read from document.activeElement: Safari doesn't focus a button on click, so
+  // that was the page's body there, and Stay left focus nowhere (measured in WebKit, e2e/reports).
+  const toReports = (from: HTMLElement) => {
     if (!planStarted) return void navigate("/reports");
-    askedFrom.current = document.activeElement as HTMLElement | null;
+    askedFrom.current = from;
     setAsking(true);
   };
   const stay = () => {
@@ -80,7 +82,11 @@ export function DecideReports({
           {COPY.button(player.length)}
         </button>
       ) : (
-        <button type="button" className={styles.decideButton} onClick={toReports}>
+        <button
+          type="button"
+          className={styles.decideButton}
+          onClick={(e) => toReports(e.currentTarget)}
+        >
           {COPY.none}
         </button>
       )}
@@ -151,7 +157,8 @@ export function Panel({
   shop: ShopReport[];
   quarters: string[];
   onClose: () => void;
-  onEdit: () => void;
+  /** Edit in Reports, from this control (for focus on Stay). */
+  onEdit: (from: HTMLElement) => void;
   /** A report was chosen to read, with its number of charts (a shop report has none). */
   onRead?: (chosen: NonNullable<Chosen>, charts: number) => void;
   initial?: Chosen;
@@ -203,7 +210,11 @@ export function Panel({
         <>
           {report.summary && <p className={styles.note}>{report.summary}</p>}
           <ReportCharts items={report.items} quarters={quarters} />
-          <button type="button" className={styles.linkButton} onClick={onEdit}>
+          <button
+            type="button"
+            className={styles.linkButton}
+            onClick={(e) => onEdit(e.currentTarget)}
+          >
             {COPY.edit}
           </button>
         </>
