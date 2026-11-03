@@ -19,22 +19,39 @@ describe("BossBubble", () => {
 
   it("sets the facts apart from the joke, as real text", () => {
     const html = renderToString(
-      <BossBubble boss="overall" facts={<p>Your plan runs from <strong>January 1 to March 31, 2194</strong>.</p>}>
+      <BossBubble
+        boss="overall"
+        facts={
+          <p>
+            Your plan runs from <strong>January 1 to March 31, 2194</strong>.
+          </p>
+        }
+      >
         ATTENTION, SHOPKEEPER.
       </BossBubble>,
     );
-    expect(html).toMatch(/<\/blockquote><div class="[^"]*facts[^"]*"><p>Your plan runs from <strong>January 1 to March 31, 2194<\/strong>\.<\/p><\/div>/);
+    expect(html).toMatch(
+      /<\/blockquote><div class="[^"]*facts[^"]*"><p>Your plan runs from <strong>January 1 to March 31, 2194<\/strong>\.<\/p><\/div>/,
+    );
     // The name comes first, so the player knows who's speaking before reading the line.
     expect(html.indexOf("The Station Administrator")).toBeLessThan(html.indexOf("ATTENTION"));
   });
 
   it("shows a decorative robot face until the boss has a portrait, and the portrait after", () => {
     expect(renderToString(<BossAvatar />)).toMatch(/^<div[^>]*aria-hidden="true"[^>]*><svg/);
-    expect(renderToString(<BossAvatar portrait="/bosses/commerce.webp" />)).toContain('<img src="/bosses/commerce.webp" alt=""');
+    expect(renderToString(<BossAvatar portrait="/bosses/commerce.webp" />)).toContain(
+      '<img src="/bosses/commerce.webp" alt=""',
+    );
   });
 
   it("has a boss for every measure and the overall score, each in its own tint", () => {
-    expect(Object.keys(BOSSES).sort()).toEqual(["culture", "happiness", "overall", "profit", "readers"]);
+    expect(Object.keys(BOSSES).sort()).toEqual([
+      "culture",
+      "happiness",
+      "overall",
+      "profit",
+      "readers",
+    ]);
     const bosses = Object.values(BOSSES);
     expect(new Set(bosses.map((b) => b.tint)).size).toBe(bosses.length);
   });
@@ -49,6 +66,8 @@ describe("BossBubble", () => {
     // The room they stand in (BossLayout's .room), at 1x and 2x.
     expect(existsSync("public/bosses/backdrop-1200.webp")).toBe(true);
     expect(existsSync("public/bosses/backdrop.webp")).toBe(true);
-    expect(renderToString(<BossBubble boss="culture">CULTURE IS EXPENSIVE.</BossBubble>)).toContain('<img src="/bosses/culture.webp" alt=""');
+    expect(renderToString(<BossBubble boss="culture">CULTURE IS EXPENSIVE.</BossBubble>)).toContain(
+      '<img src="/bosses/culture.webp" alt=""',
+    );
   });
 });

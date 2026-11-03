@@ -1,5 +1,11 @@
 import { Icon, type IconName } from "~/shell/icons";
-import { change, formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "./format";
+import {
+  change,
+  formatDimensionShort,
+  formatDimensionValue,
+  formatMeasure,
+  MEASURE_LABELS,
+} from "./format";
 import type { Tile } from "./investigation.server";
 import styles from "./Investigate.module.css";
 
@@ -23,7 +29,9 @@ export function MetricTiles({ tiles }: { tiles: Tile[] }) {
                 <Icon name={ICONS[tile.measure]} />
               </span>
               <h2 className={styles.tileLabel}>{MEASURE_LABELS[tile.measure]}</h2>
-              <span className={styles.tilePeriod}>{formatDimensionValue("quarter", tile.quarter)}</span>
+              <span className={styles.tilePeriod}>
+                {formatDimensionValue("quarter", tile.quarter)}
+              </span>
             </header>
             <div className={styles.tileBody}>
               <span className={styles.tileValue}>{formatMeasure(tile.measure, tile.value)}</span>
@@ -32,7 +40,9 @@ export function MetricTiles({ tiles }: { tiles: Tile[] }) {
               {delta ? (
                 <span className={styles.badge} data-tone={tone}>
                   {delta.text}
-                  {delta.direction !== "flat" && <Icon name={delta.direction === "up" ? "arrowUp" : "arrowDown"} size={14} />}
+                  {delta.direction !== "flat" && (
+                    <Icon name={delta.direction === "up" ? "arrowUp" : "arrowDown"} size={14} />
+                  )}
                 </span>
               ) : (
                 <span className={styles.badge} data-tone="none">
@@ -41,7 +51,11 @@ export function MetricTiles({ tiles }: { tiles: Tile[] }) {
                     : "Nothing earlier to compare"}
                 </span>
               )}
-              {delta && <span className={styles.tileCompare}>vs {formatDimensionShort("quarter", tile.previousQuarter)}</span>}
+              {delta && (
+                <span className={styles.tileCompare}>
+                  vs {formatDimensionShort("quarter", tile.previousQuarter)}
+                </span>
+              )}
             </div>
           </article>
         );

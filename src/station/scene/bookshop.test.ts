@@ -15,7 +15,11 @@ describe("Bookshop", () => {
     const stray = shop.strays[slot]!;
     expect(stray.state).toBe("carried");
     expect(shop.onShelf(stray.book)).toBe(false);
-    expect(shop.shelfCenter(stray.book).distanceTo(new Vector3(LEFT[0], 0, LEFT[1]).setY(shop.shelfCenter(stray.book).y))).toBeLessThan(1.3);
+    expect(
+      shop
+        .shelfCenter(stray.book)
+        .distanceTo(new Vector3(LEFT[0], 0, LEFT[1]).setY(shop.shelfCenter(stray.book).y)),
+    ).toBeLessThan(1.3);
   });
 
   it("sets a book down on a surface in reach, and on the floor when none is", () => {
@@ -55,7 +59,9 @@ describe("Bookshop", () => {
 
   it("holds at most MAX_STRAYS books out of place", () => {
     const shop = new Bookshop(() => 0.5);
-    const slots = Array.from({ length: MAX_STRAYS + 2 }, (_, i) => (i % 2 ? shop.take(...LEFT) : shop.take(...BACK)));
+    const slots = Array.from({ length: MAX_STRAYS + 2 }, (_, i) =>
+      i % 2 ? shop.take(...LEFT) : shop.take(...BACK),
+    );
     expect(slots.filter((s) => s >= 0)).toHaveLength(MAX_STRAYS);
   });
 
@@ -65,7 +71,8 @@ describe("Bookshop", () => {
     shop.lean(...LEFT);
     expect(shop.leaningCount).toBe(before + 1);
     const claimed = new Set<number>();
-    for (let robot = 0; robot < before + 1; robot++) claimed.add(shop.claimLean(robot, new Vector3(...LEFT, 0)));
+    for (let robot = 0; robot < before + 1; robot++)
+      claimed.add(shop.claimLean(robot, new Vector3(...LEFT, 0)));
     expect(claimed.size).toBe(before + 1);
     expect(shop.claimLean(9, new Vector3())).toBe(-1);
     for (const book of claimed) shop.straightened(book);

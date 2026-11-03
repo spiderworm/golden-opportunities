@@ -1,8 +1,22 @@
 // Turns the player's question (InvestigateState) into the queries the screen
 // draws, and returns only those results to the browser.
 import { loadBookshop } from "~/bookshop/loader.server";
-import { PRICE_BANDS, type Measure, type Query, type QueryResult, type QueryView } from "~/query/types";
-import { DEFAULT_STATE, filtersExcept, heatWindow, TILE_MEASURES, type Filters, type InvestigateState, type TileMeasure } from "./state";
+import {
+  PRICE_BANDS,
+  type Measure,
+  type Query,
+  type QueryResult,
+  type QueryView,
+} from "~/query/types";
+import {
+  DEFAULT_STATE,
+  filtersExcept,
+  heatWindow,
+  TILE_MEASURES,
+  type Filters,
+  type InvestigateState,
+  type TileMeasure,
+} from "./state";
 
 export type RunQuery = (query: Query, view: QueryView) => QueryResult;
 
@@ -50,7 +64,9 @@ function values(result: QueryResult, key: keyof FilterOptions): string[] {
 export function quarterHasMonths(quarter: string, months: readonly string[] | undefined): boolean {
   if (!months?.length) return true;
   const q = Number(quarter.slice(-1));
-  return months.some((m) => m.slice(0, 4) === quarter.slice(0, 4) && Math.ceil(Number(m.slice(5, 7)) / 3) === q);
+  return months.some(
+    (m) => m.slice(0, 4) === quarter.slice(0, 4) && Math.ceil(Number(m.slice(5, 7)) / 3) === q,
+  );
 }
 
 /**
@@ -67,7 +83,9 @@ export function buildTile(
 ): Tile {
   const selected = filters.quarter ?? [];
   const allowed = (q: string) => quarterHasMonths(q, filters.month);
-  const candidates = visibleQuarters.filter((q) => (!selected.length || selected.includes(q)) && allowed(q));
+  const candidates = visibleQuarters.filter(
+    (q) => (!selected.length || selected.includes(q)) && allowed(q),
+  );
   const quarter = candidates.at(-1) ?? null;
   const index = quarter ? visibleQuarters.indexOf(quarter) : -1;
   const before = index > 0 ? visibleQuarters[index - 1]! : null;
@@ -78,7 +96,13 @@ export function buildTile(
     // A visible quarter with no matching facts is a real zero for totals.
     return row ? (row[measure] ?? null) : measure === "avg_discount" ? null : 0;
   };
-  return { measure, quarter, previousQuarter, value: find(quarter), previous: find(previousQuarter) };
+  return {
+    measure,
+    quarter,
+    previousQuarter,
+    value: find(quarter),
+    previous: find(previousQuarter),
+  };
 }
 
 /** Spread into a query: the filter key only when there is one, never `filter: undefined`, which the engine rejects. */
@@ -87,27 +111,40 @@ function withFilter(filters: Filters): Pick<Query, "filter"> {
 }
 
 function chartQuery(state: InvestigateState, measure: Measure = state.measure): Query {
-  const by = state.compare ? ([state.by, 'quarter'] as const) : ([state.by] as const);
+  const by = state.compare ? ([state.by, "quarter"] as const) : ([state.by] as const);
   return { measure, by, ...withFilter(filtersExcept(state.filters, [state.by])) };
 }
 function heatmapQuery(state: InvestigateState, quarters: readonly string[]): Query {
   const { measure, rows, cols } = state.heat;
   // A long ledger shows its last eight quarters unless the player asks for every one (heatWindow).
   const window = heatWindow(state, quarters);
-  return { measure, by: [rows, cols], ...withFilter({ ...filtersExcept(state.filters, [rows, cols]), ...(window ? { quarter: window } : {}) }) };
+  return {
+    measure,
+    by: [rows, cols],
+    ...withFilter({
+      ...filtersExcept(state.filters, [rows, cols]),
+      ...(window ? { quarter: window } : {}),
+    }),
+  };
 }
 
-export function investigate(state: InvestigateState, runQuery: RunQuery, view: QueryView,
-  observe?: (query: Query, result: QueryResult) => void): Investigation {
+export function investigate(
+  state: InvestigateState,
+  runQuery: RunQuery,
+  view: QueryView,
+  observe?: (query: Query, result: QueryResult) => void,
+): Investigation {
   const displayed: { query: Query; result: QueryResult }[] = [];
   const rendered = (query: Query, defaultQuery?: Query) => {
     const result = runQuery(query, view);
     // A change to another panel does not make this panel's default view intentional.
-    if (!defaultQuery || JSON.stringify(query) !== JSON.stringify(defaultQuery)) displayed.push({ query, result });
+    if (!defaultQuery || JSON.stringify(query) !== JSON.stringify(defaultQuery))
+      displayed.push({ query, result });
     return result;
   };
   const run = (query: Query) => runQuery(query, view);
-  const option = (dimension: keyof FilterOptions) => values(run({ measure: "units", by: [dimension] }), dimension);
+  const option = (dimension: keyof FilterOptions) =>
+    values(run({ measure: "units", by: [dimension] }), dimension);
   const options: FilterOptions = {
     // The periods the server lets the player see, not the ones that happen to have sales.
     quarter: [...view.periods].sort(),
@@ -122,7 +159,12 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
 
   const tileFilter = withFilter(filtersExcept(state.filters, ["quarter"]));
   const tiles = TILE_MEASURES.map((measure) =>
-    buildTile(measure, run({ measure, by: ["quarter"], ...tileFilter }), options.quarter, state.filters),
+    buildTile(
+      measure,
+      run({ measure, by: ["quarter"], ...tileFilter }),
+      options.quarter,
+      state.filters,
+    ),
   );
 
   const chart = rendered(chartQuery(state), chartQuery(DEFAULT_STATE));
@@ -135,7 +177,11 @@ export function investigate(state: InvestigateState, runQuery: RunQuery, view: Q
   const titleView = title
     ? {
         title,
-        result: rendered({ measure: state.measure, by: ["month"], ...withFilter(filtersExcept(state.filters, ["month"])) }),
+        result: rendered({
+          measure: state.measure,
+          by: ["month"],
+          ...withFilter(filtersExcept(state.filters, ["month"])),
+        }),
         // The ratings aren't dated or sold, so only the title scopes them. Context, like the heatmap: not
         // discovery evidence.
         ratings: run({ measure: "ratings", by: ["stars"], filter: { title: [title] } }),

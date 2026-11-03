@@ -5,9 +5,16 @@ import { failedLoad, softFailFor } from "./soft-load";
 /** A loader whose every load fails, as R3F's shared GLTFLoader does when a fetch is cut off. */
 function failingLoader() {
   return {
-    load: vi.fn((_url: string, _onLoad: (data: unknown) => void, _onProgress?: unknown, onError?: (error: unknown) => void) => {
-      onError?.(new Error("Load failed"));
-    }),
+    load: vi.fn(
+      (
+        _url: string,
+        _onLoad: (data: unknown) => void,
+        _onProgress?: unknown,
+        onError?: (error: unknown) => void,
+      ) => {
+        onError?.(new Error("Load failed"));
+      },
+    ),
   };
 }
 

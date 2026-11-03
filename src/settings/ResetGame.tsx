@@ -24,7 +24,15 @@ export const RESET_COPY = {
  * The panel, in Settings' words unless `copy` gives others: the shell's "Your save can't be replayed" screen uses it
  * with its own heading, text and button, and the same confirm step (src/shell/replay-mismatch.tsx).
  */
-export function ResetGame({ instance, copy = {}, from = "settings" }: { instance: string | undefined; copy?: Partial<Record<"heading" | "text" | "open", string>>; from?: "settings" | "replay" }) {
+export function ResetGame({
+  instance,
+  copy = {},
+  from = "settings",
+}: {
+  instance: string | undefined;
+  copy?: Partial<Record<"heading" | "text" | "open", string>>;
+  from?: "settings" | "replay";
+}) {
   const words = { ...RESET_COPY, ...copy };
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -76,7 +84,13 @@ export function ResetGame({ instance, copy = {}, from = "settings" }: { instance
           <p className={styles.text}>{words.text}</p>
         </div>
         {!asking && (
-          <button ref={opener} type="button" className={styles.button} disabled={!instance} onClick={ask}>
+          <button
+            ref={opener}
+            type="button"
+            className={styles.button}
+            disabled={!instance}
+            onClick={ask}
+          >
             {words.open}
           </button>
         )}
@@ -97,10 +111,21 @@ export function ResetGame({ instance, copy = {}, from = "settings" }: { instance
             {RESET_COPY.question}
           </p>
           <div className={styles.actions}>
-            <button ref={cancel} type="button" className={styles.button} disabled={busy} onClick={close}>
+            <button
+              ref={cancel}
+              type="button"
+              className={styles.button}
+              disabled={busy}
+              onClick={close}
+            >
               {RESET_COPY.cancel}
             </button>
-            <button type="button" className={`${styles.button} ${styles.danger}`} disabled={busy} onClick={confirm}>
+            <button
+              type="button"
+              className={`${styles.button} ${styles.danger}`}
+              disabled={busy}
+              onClick={confirm}
+            >
               {busy ? RESET_COPY.busy : RESET_COPY.confirm}
             </button>
           </div>

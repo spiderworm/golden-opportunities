@@ -42,7 +42,18 @@ const LEAN = 0.18;
 const Z_AXIS = new Vector3(0, 0, 1);
 const Y_AXIS = new Vector3(0, 1, 0);
 const HIDDEN = new Matrix4().makeScale(0, 0, 0);
-const BOOK_COLORS = ["#7a2e3b", "#2f4f7a", "#2e6b5a", "#c08a3e", "#5b3d7a", "#d9cfb8", "#3d3a52", "#a3462f", "#4f7d8f", "#8c7a4a"];
+const BOOK_COLORS = [
+  "#7a2e3b",
+  "#2f4f7a",
+  "#2e6b5a",
+  "#c08a3e",
+  "#5b3d7a",
+  "#d9cfb8",
+  "#3d3a52",
+  "#a3462f",
+  "#4f7d8f",
+  "#8c7a4a",
+];
 
 /** Where shoppers set books down besides the floor: x, top y, z in the berth's frame. */
 export const SURFACES: [x: number, y: number, z: number][] = [
@@ -84,7 +95,9 @@ function shelfBooks(): ShelfBook[] {
           const height = 0.4 + random() * 0.22;
           const depth = 0.3 + random() * 0.08;
           const lean = random() < 0.06 ? LEAN : 0;
-          const color = new Color(BOOK_COLORS[Math.floor(random() * BOOK_COLORS.length)]!).offsetHSL(0, 0, (random() - 0.5) * 0.12);
+          const color = new Color(
+            BOOK_COLORS[Math.floor(random() * BOOK_COLORS.length)]!,
+          ).offsetHSL(0, 0, (random() - 0.5) * 0.12);
           books.push({
             unit: frame,
             local: new Vector3(x + width / 2, y + height / 2, SHELF_BACK + 0.02 + depth / 2),
@@ -142,7 +155,9 @@ export class Bookshop {
   /** A book's pose on its shelf, in the berth's frame. */
   shelfPose(i: number, out = new Matrix4()): Matrix4 {
     const b = this.books[i]!;
-    return out.copy(b.unit).multiply(scratch.m.compose(b.local, scratch.q.setFromAxisAngle(Z_AXIS, b.lean), b.size));
+    return out
+      .copy(b.unit)
+      .multiply(scratch.m.compose(b.local, scratch.q.setFromAxisAngle(Z_AXIS, b.lean), b.size));
   }
 
   /** Where a book stands on its shelf (its center), in the berth's frame. */
@@ -179,7 +194,13 @@ export class Bookshop {
     const book = reach[Math.floor(this.random() * reach.length)]!;
     this.away.add(book);
     this.writeShelf(book);
-    this.strays[slot] = { book, state: "carried", matrix: this.shelfPose(book), robot: -1, surface: -1 };
+    this.strays[slot] = {
+      book,
+      state: "carried",
+      matrix: this.shelfPose(book),
+      robot: -1,
+      surface: -1,
+    };
     this.writeStray(slot);
     return slot;
   }
@@ -194,7 +215,9 @@ export class Bookshop {
 
   /** The turn of a book lying on its cover, spine toward `heading`. */
   static flat(heading: number, out = new Quaternion()): Quaternion {
-    return out.setFromAxisAngle(Y_AXIS, heading).multiply(scratch.q.setFromAxisAngle(Z_AXIS, Math.PI / 2));
+    return out
+      .setFromAxisAngle(Y_AXIS, heading)
+      .multiply(scratch.q.setFromAxisAngle(Z_AXIS, Math.PI / 2));
   }
 
   /**

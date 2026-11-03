@@ -13,7 +13,10 @@ export const redactEmails = (s: string) => s.replace(EMAIL, REDACTED);
 export function redactDeep(value: unknown): unknown {
   if (typeof value === "string") return redactEmails(value);
   if (Array.isArray(value)) return value.map(redactDeep);
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [redactEmails(k), redactDeep(v)]));
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [redactEmails(k), redactDeep(v)]),
+    );
   return value;
 }
 
@@ -24,7 +27,8 @@ export function emailRedactor() {
     /** Returns what can safely be shown now. */
     push(chunk: string): string {
       const text = held + chunk;
-      const cut = Math.max(text.lastIndexOf(" "), text.lastIndexOf("\n"), text.lastIndexOf("\t")) + 1;
+      const cut =
+        Math.max(text.lastIndexOf(" "), text.lastIndexOf("\n"), text.lastIndexOf("\t")) + 1;
       held = text.slice(cut);
       return clean(text.slice(0, cut));
     },

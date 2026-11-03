@@ -21,7 +21,16 @@ import { Books } from "./Books";
 import { box, merged } from "./geometry";
 import { ROOM, WINDOW } from "./layout";
 import { selfLit, useModelParts } from "./models";
-import { BAYS, BOARDS, SHELF_BACK, SHELF_HALVES, SHELF_HEIGHT, SHELF_SCALE, SHELF_UNITS, type ShelfUnit } from "./shelves";
+import {
+  BAYS,
+  BOARDS,
+  SHELF_BACK,
+  SHELF_HALVES,
+  SHELF_HEIGHT,
+  SHELF_SCALE,
+  SHELF_UNITS,
+  type ShelfUnit,
+} from "./shelves";
 import { coverTexture } from "./textures";
 
 // The shop, in the berth's frame: floor at y = 0, the window wall at +z.
@@ -33,28 +42,51 @@ const HALF_W = ROOM.width / 2;
 const HALF_D = ROOM.depth / 2;
 const INSET = 0.02;
 
-const placeUnit = (unit: ShelfUnit, piece: BufferGeometry) => piece.rotateY(unit.facing).translate(unit.x, 0, unit.z);
+const placeUnit = (unit: ShelfUnit, piece: BufferGeometry) =>
+  piece.rotateY(unit.facing).translate(unit.x, 0, unit.z);
 
 function liningGeometry() {
   const plane = (w: number, h: number) => new PlaneGeometry(w, h);
   const walls = merged([
-    plane(ROOM.depth, ROOM.height).rotateY(Math.PI / 2).translate(-HALF_W + INSET, ROOM.height / 2, 0),
-    plane(ROOM.depth, ROOM.height).rotateY(-Math.PI / 2).translate(HALF_W - INSET, ROOM.height / 2, 0),
+    plane(ROOM.depth, ROOM.height)
+      .rotateY(Math.PI / 2)
+      .translate(-HALF_W + INSET, ROOM.height / 2, 0),
+    plane(ROOM.depth, ROOM.height)
+      .rotateY(-Math.PI / 2)
+      .translate(HALF_W - INSET, ROOM.height / 2, 0),
     plane(ROOM.width, ROOM.height).translate(0, ROOM.height / 2, -HALF_D + INSET),
     // The front wall's inside, around the window.
-    plane(ROOM.width, WINDOW.bottom).rotateY(Math.PI).translate(0, WINDOW.bottom / 2, HALF_D - INSET),
-    plane(ROOM.width, ROOM.height - WINDOW.top).rotateY(Math.PI).translate(0, (ROOM.height + WINDOW.top) / 2, HALF_D - INSET),
-    plane(HALF_W - WINDOW.halfWidth, ROOM.height).rotateY(Math.PI).translate(-(HALF_W + WINDOW.halfWidth) / 2, ROOM.height / 2, HALF_D - INSET),
-    plane(HALF_W - WINDOW.halfWidth, ROOM.height).rotateY(Math.PI).translate((HALF_W + WINDOW.halfWidth) / 2, ROOM.height / 2, HALF_D - INSET),
+    plane(ROOM.width, WINDOW.bottom)
+      .rotateY(Math.PI)
+      .translate(0, WINDOW.bottom / 2, HALF_D - INSET),
+    plane(ROOM.width, ROOM.height - WINDOW.top)
+      .rotateY(Math.PI)
+      .translate(0, (ROOM.height + WINDOW.top) / 2, HALF_D - INSET),
+    plane(HALF_W - WINDOW.halfWidth, ROOM.height)
+      .rotateY(Math.PI)
+      .translate(-(HALF_W + WINDOW.halfWidth) / 2, ROOM.height / 2, HALF_D - INSET),
+    plane(HALF_W - WINDOW.halfWidth, ROOM.height)
+      .rotateY(Math.PI)
+      .translate((HALF_W + WINDOW.halfWidth) / 2, ROOM.height / 2, HALF_D - INSET),
     // A baseboard and a dado rail all round.
     box(0, 0.06, -HALF_D + 0.05, ROOM.width, 0.12, 0.06),
     box(-HALF_W + 0.05, 0.06, 0, 0.06, 0.12, ROOM.depth),
     box(HALF_W - 0.05, 0.06, 0, 0.06, 0.12, ROOM.depth),
   ]);
-  const floor = plane(ROOM.width, ROOM.depth).rotateX(-Math.PI / 2).translate(0, INSET, 0);
-  const ceiling = plane(ROOM.width, ROOM.depth).rotateX(Math.PI / 2).translate(0, ROOM.height - INSET, 0);
+  const floor = plane(ROOM.width, ROOM.depth)
+    .rotateX(-Math.PI / 2)
+    .translate(0, INSET, 0);
+  const ceiling = plane(ROOM.width, ROOM.depth)
+    .rotateX(Math.PI / 2)
+    .translate(0, ROOM.height - INSET, 0);
   const panels = merged(
-    [-4.5, 0, 4.5].flatMap((x) => [-2.6, 1.6].map((z) => plane(3.2, 1.2).rotateX(Math.PI / 2).translate(x, ROOM.height - 0.05, z))),
+    [-4.5, 0, 4.5].flatMap((x) =>
+      [-2.6, 1.6].map((z) =>
+        plane(3.2, 1.2)
+          .rotateX(Math.PI / 2)
+          .translate(x, ROOM.height - 0.05, z),
+      ),
+    ),
   );
   const rug = new CircleGeometry(2.2, 48).rotateX(-Math.PI / 2).translate(-1.5, 0.03, 2.4);
   return { walls, floor, ceiling, panels, rug };
@@ -66,7 +98,13 @@ function stripsGeometry() {
   const under = [...BOARDS.slice(1), SHELF_HEIGHT - 0.02];
   for (const unit of SHELF_UNITS) {
     for (const [from, to] of BAYS) {
-      for (const y of under) strips.push(placeUnit(unit, box((from + to) / 2, y - 0.1, SHELF_BACK + 0.36, to - from, 0.025, 0.025)));
+      for (const y of under)
+        strips.push(
+          placeUnit(
+            unit,
+            box((from + to) / 2, y - 0.1, SHELF_BACK + 0.36, to - from, 0.025, 0.025),
+          ),
+        );
     }
   }
   strips.push(box(4.42, 0.92, 0, 0.03, 0.04, 3.1));
@@ -93,7 +131,12 @@ function Shelves({ material }: { material: MeshStandardMaterial }) {
     mesh.instanceMatrix.needsUpdate = true;
     mesh.computeBoundingSphere();
   }, []);
-  return <instancedMesh ref={ref} args={[geometry, material, SHELF_UNITS.length * SHELF_HALVES.length]} />;
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[geometry, material, SHELF_UNITS.length * SHELF_HALVES.length]}
+    />
+  );
 }
 
 /**
@@ -129,17 +172,33 @@ function FeaturedDisplay({ title, glow }: { title: string; glow: number }) {
   const cover = useMemo(() => coverTexture(title), [title]);
   const materials = useMemo(
     () => ({
-      cover: new MeshStandardMaterial({ map: cover, roughness: 0.5, emissive: "#ffffff", emissiveMap: cover, emissiveIntensity: 0.25 }),
+      cover: new MeshStandardMaterial({
+        map: cover,
+        roughness: 0.5,
+        emissive: "#ffffff",
+        emissiveMap: cover,
+        emissiveIntensity: 0.25,
+      }),
       pages: new MeshStandardMaterial({ color: "#efe6d2", roughness: 0.9 }),
       back: new MeshStandardMaterial({ color: "#1a1f4a", roughness: 0.6 }),
       easel: selfLit(easel.material, 0.2),
       copies: new MeshStandardMaterial({ color: "#22306e", roughness: 0.6 }),
-      beam: new MeshBasicMaterial({ color: "#a99fff", transparent: true, opacity: 0.07, blending: AdditiveBlending, depthWrite: false, side: DoubleSide }),
+      beam: new MeshBasicMaterial({
+        color: "#a99fff",
+        transparent: true,
+        opacity: 0.07,
+        blending: AdditiveBlending,
+        depthWrite: false,
+        side: DoubleSide,
+      }),
     }),
     [cover, easel],
   );
   const stack = useMemo(
-    () => merged([0, 1, 2, 3].map((i) => box(0.42, 0.93 + i * 0.1, 0.25, 0.5, 0.09, 0.72).rotateY(i * 0.12))),
+    () =>
+      merged(
+        [0, 1, 2, 3].map((i) => box(0.42, 0.93 + i * 0.1, 0.25, 0.5, 0.09, 0.72).rotateY(i * 0.12)),
+      ),
     [],
   );
   useEffect(
@@ -160,13 +219,29 @@ function FeaturedDisplay({ title, glow }: { title: string; glow: number }) {
     <group position={[-1.5, 0, 2.4]}>
       <group ref={stand}>
         <mesh
-          position={[0, EASEL.base + EASEL.ledge * EASEL.scale + FEATURED_BOOK.height / 2, EASEL.front * EASEL.scale - 0.06]}
+          position={[
+            0,
+            EASEL.base + EASEL.ledge * EASEL.scale + FEATURED_BOOK.height / 2,
+            EASEL.front * EASEL.scale - 0.06,
+          ]}
           rotation={[-0.12, 0, 0]}
-          material={[materials.pages, materials.pages, materials.pages, materials.pages, materials.cover, materials.back]}
+          material={[
+            materials.pages,
+            materials.pages,
+            materials.pages,
+            materials.pages,
+            materials.cover,
+            materials.back,
+          ]}
         >
           <boxGeometry args={[FEATURED_BOOK.width, FEATURED_BOOK.height, FEATURED_BOOK.depth]} />
         </mesh>
-        <mesh geometry={easel.geometry} material={materials.easel} position={[0, EASEL.base, 0]} scale={EASEL.scale} />
+        <mesh
+          geometry={easel.geometry}
+          material={materials.easel}
+          position={[0, EASEL.base, 0]}
+          scale={EASEL.scale}
+        />
       </group>
       <mesh geometry={stack} material={materials.copies} />
       <mesh position={[0, 3.2, 0]} material={materials.beam}>
@@ -178,7 +253,10 @@ function FeaturedDisplay({ title, glow }: { title: string; glow: number }) {
 
 /** The console on the counter; it pulses while the Commerce Office has an unread alert. */
 function Console({ alert }: { alert: boolean }) {
-  const material = useMemo(() => new MeshBasicMaterial({ color: "#6b5cff", toneMapped: false }), []);
+  const material = useMemo(
+    () => new MeshBasicMaterial({ color: "#6b5cff", toneMapped: false }),
+    [],
+  );
   useEffect(() => () => material.dispose(), [material]);
   useFrame(({ clock }) => {
     const level = alert ? 0.9 + 0.8 * (0.5 + 0.5 * Math.sin(clock.elapsedTime * 4)) : 0.6;
@@ -200,13 +278,26 @@ function Console({ alert }: { alert: boolean }) {
 /** A floor lamp by the armchairs. */
 function lampGeometry() {
   return {
-    pole: merged([new CylinderGeometry(0.03, 0.03, 1.7, 8).translate(-7.1, 0.85, 4.2), new CylinderGeometry(0.25, 0.25, 0.04, 16).translate(-7.1, 0.02, 4.2)]),
+    pole: merged([
+      new CylinderGeometry(0.03, 0.03, 1.7, 8).translate(-7.1, 0.85, 4.2),
+      new CylinderGeometry(0.25, 0.25, 0.04, 16).translate(-7.1, 0.02, 4.2),
+    ]),
     shade: new ConeGeometry(0.32, 0.36, 24, 1, true).translate(-7.1, 1.8, 4.2),
     bulb: new SphereGeometry(0.1, 12, 8).translate(-7.1, 1.7, 4.2),
   };
 }
 
-export function Interior({ title, glow, alert, shop }: { title: string; glow: number; alert: boolean; shop: Bookshop }) {
+export function Interior({
+  title,
+  glow,
+  alert,
+  shop,
+}: {
+  title: string;
+  glow: number;
+  alert: boolean;
+  shop: Bookshop;
+}) {
   const lining = useMemo(liningGeometry, []);
   const strips = useMemo(stripsGeometry, []);
   const shelfModel = useModelParts("shelf-unit");
@@ -231,7 +322,8 @@ export function Interior({ title, glow, alert, shop }: { title: string; glow: nu
   );
   useEffect(
     () => () => {
-      for (const g of [...Object.values(lining), strips, counter, ...Object.values(lamp)]) g.dispose();
+      for (const g of [...Object.values(lining), strips, counter, ...Object.values(lamp)])
+        g.dispose();
       for (const m of Object.values(materials)) m.dispose();
     },
     [lining, strips, counter, lamp, materials],
@@ -255,15 +347,39 @@ export function Interior({ title, glow, alert, shop }: { title: string; glow: nu
       <mesh geometry={strips} material={materials.strips} />
       <Books shop={shop} />
       <mesh geometry={counter} material={materials.counter} />
-      <mesh geometry={counterModel.geometry} material={materials.counterModel} position={[4.0, 0, 0]} rotation={[0, Math.PI / 2, 0]} scale={COUNTER_SCALE} />
+      <mesh
+        geometry={counterModel.geometry}
+        material={materials.counterModel}
+        position={[4.0, 0, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        scale={COUNTER_SCALE}
+      />
       <mesh geometry={lamp.pole} material={materials.lampMetal} />
       <mesh geometry={lamp.shade} material={materials.lampMetal} />
       <mesh geometry={lamp.bulb} material={materials.bulb} />
       <FeaturedDisplay title={title} glow={glow} />
       <Console alert={alert} />
-      <pointLight position={[-3.5, 4.2, -1.5]} intensity={light} distance={13} decay={1.5} color="#ffd6a6" />
-      <pointLight position={[5.6, 4.2, -0.5]} intensity={light} distance={13} decay={1.5} color="#ffd6a6" />
-      <pointLight position={[-1.5, 4.2, 3]} intensity={light * 0.9} distance={11} decay={1.5} color="#c8bfff" />
+      <pointLight
+        position={[-3.5, 4.2, -1.5]}
+        intensity={light}
+        distance={13}
+        decay={1.5}
+        color="#ffd6a6"
+      />
+      <pointLight
+        position={[5.6, 4.2, -0.5]}
+        intensity={light}
+        distance={13}
+        decay={1.5}
+        color="#ffd6a6"
+      />
+      <pointLight
+        position={[-1.5, 4.2, 3]}
+        intensity={light * 0.9}
+        distance={11}
+        decay={1.5}
+        color="#c8bfff"
+      />
     </>
   );
 }

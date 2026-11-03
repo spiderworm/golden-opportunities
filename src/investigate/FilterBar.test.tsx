@@ -5,12 +5,36 @@ import { FilterBar } from "./FilterBar";
 import type { FilterOptions } from "./investigation.server";
 import { shownFilters, type FilterId, type Filters } from "./state";
 
-const options: FilterOptions = { quarter: ["2193-Q4"], genre: [], format: [], publisher: [], discount_rate: [], award: ["Hugo Award", "Nebula Award"], volume: ["1", "2", "3"], price_band: ["under $10", "$10 to $19.99", "$20 to $29.99", "$30 and up"] };
-const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+const options: FilterOptions = {
+  quarter: ["2193-Q4"],
+  genre: [],
+  format: [],
+  publisher: [],
+  discount_rate: [],
+  award: ["Hugo Award", "Nebula Award"],
+  volume: ["1", "2", "3"],
+  price_band: ["under $10", "$10 to $19.99", "$20 to $29.99", "$30 and up"],
+};
+const text = (html: string) =>
+  html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 const html = (filters: Filters, added: FilterId[] = []) => {
   const shown = shownFilters(new URLSearchParams(added.map((id) => ["show", id])), filters);
   return renderToString(
-    <FilterBar filters={filters} options={options} shown={shown} onAdd={() => {}} onRemove={() => {}} onChange={() => {}} onDiscount={() => {}} onAward={() => {}} onSeries={() => {}} onClear={() => {}} />,
+    <FilterBar
+      filters={filters}
+      options={options}
+      shown={shown}
+      onAdd={() => {}}
+      onRemove={() => {}}
+      onChange={() => {}}
+      onDiscount={() => {}}
+      onAward={() => {}}
+      onSeries={() => {}}
+      onClear={() => {}}
+    />,
   );
 };
 const bar = (filters: Filters, added: FilterId[] = []) => text(html(filters, added));
@@ -28,7 +52,9 @@ describe("the bar (David, 2 Nov 2026)", () => {
   });
 
   it("shows a filter that has values even if it wasn't added, so nothing applies unseen", () => {
-    expect(bar({ weekday: ["Monday"], month: ["2193-12"] })).toMatch(/Month Dec 2193.*Weekday Monday/);
+    expect(bar({ weekday: ["Monday"], month: ["2193-12"] })).toMatch(
+      /Month Dec 2193.*Weekday Monday/,
+    );
   });
 
   it("gives each filter an x that names it, and lists every filter to add, checked if it's on the bar", () => {
@@ -36,7 +62,19 @@ describe("the bar (David, 2 Nov 2026)", () => {
     expect(markup).toContain('aria-label="Remove the Quarter filter"');
     expect(markup).toContain('aria-label="Remove the Genre filter"');
     const list = markup.slice(markup.indexOf("Filters on the bar"));
-    for (const name of ["Quarter", "Genre", "Format", "Publisher", "Discount", "Awards", "Series volume", "Month", "Weekday", "Title"]) expect(list).toContain(name);
+    for (const name of [
+      "Quarter",
+      "Genre",
+      "Format",
+      "Publisher",
+      "Discount",
+      "Awards",
+      "Series volume",
+      "Month",
+      "Weekday",
+      "Title",
+    ])
+      expect(list).toContain(name);
     expect((list.match(/checked=""/g) ?? []).length).toBe(2);
     expect(text(markup)).toContain("Clear filters");
   });
@@ -46,7 +84,7 @@ describe("the bar (David, 2 Nov 2026)", () => {
   });
 });
 
-describe("prices and editions (David: \"Players should see price, yes\")", () => {
+describe('prices and editions (David: "Players should see price, yes")', () => {
   it("chooses price bands, and shows an exact list price from a drilldown as a chip", () => {
     expect(bar({}, ["price"])).toContain("Price band Any price");
     const page = html({ price_band: ["under $10"], list_price: ["$12.99"] });
@@ -57,7 +95,9 @@ describe("prices and editions (David: \"Players should see price, yes\")", () =>
   });
 
   it("explains how to choose an edition when none is chosen", () => {
-    expect(bar({}, ["edition"])).toContain("Choose an edition from a chart broken down by Edition.");
+    expect(bar({}, ["edition"])).toContain(
+      "Choose an edition from a chart broken down by Edition.",
+    );
     expect(bar({ edition: ["Rystwyth (Hardcover)"] })).toContain("Edition Rystwyth (Hardcover)");
   });
 });

@@ -14,7 +14,13 @@ export interface StationNotification {
   to?: string;
 }
 
-export function NotificationsBell({ notifications, track }: { notifications: StationNotification[]; track: Track }) {
+export function NotificationsBell({
+  notifications,
+  track,
+}: {
+  notifications: StationNotification[];
+  track: Track;
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();

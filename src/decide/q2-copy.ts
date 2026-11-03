@@ -45,7 +45,11 @@ export const DECIDE_Q2_COPY = {
       boss: "culture",
       teaser: "AUTHORS REMAIN AVAILABLE.",
       line: "AUTHORS REMAIN AVAILABLE. THEIR SHUTTLE FARES HAVE NOT DECREASED. WE ASKED. WE DID BLUE STEEL. THE FARES DID NOT MOVE.",
-      facts: ["An author night costs ", { strong: "$200" }, ": the author's shuttle fare and the room."],
+      facts: [
+        "An author night costs ",
+        { strong: "$200" },
+        ": the author's shuttle fare and the room.",
+      ],
     },
     {
       boss: "happiness",
@@ -63,7 +67,13 @@ export const DECIDE_Q2_COPY = {
       boss: "readers",
       teaser: "PICK THREE BOOKS.",
       line: "PICK THREE BOOKS. THREE IS ALSO HOW MANY LOOKS MR. ZOOLANDER HAS. THEY ARE THE SAME LOOK. WE ADMIRE THIS.",
-      facts: ["Choose ", { strong: "up to three" }, " picks, one for each month, and ", { strong: "up to one" }, " more move. Choose nothing to hold course."],
+      facts: [
+        "Choose ",
+        { strong: "up to three" },
+        " picks, one for each month, and ",
+        { strong: "up to one" },
+        " more move. Choose nothing to hold course.",
+      ],
     },
   ] satisfies BriefingBubble[] as BriefingBubble[],
   movesHeading: "Your moves (up to three picks and one more)",
@@ -91,22 +101,44 @@ export const editionLabel = (e: { title: string; format: string; listPrice: numb
   `${e.title} (${e.format.toLowerCase()}), $${e.listPrice.toFixed(2)}`;
 
 /** The one more move: M1's author nights and sale, moved to Q2's dates. */
-export const Q2_MOVES = MOVES.filter((m): m is (typeof MOVES)[number] & { id: Q2LeverId } => m.id === "events" || m.id === "sale");
+export const Q2_MOVES = MOVES.filter(
+  (m): m is (typeof MOVES)[number] & { id: Q2LeverId } => m.id === "events" || m.id === "sale",
+);
 
 export { DECIDE_COPY };
 
 // From Q3 2194 on, every quarter is planned on Q2's form (docs/design/endless.md section 4), in the words of
 // docs/design/endless-copy.md section 3. Q2's own strings fall out of the same rules.
 
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 const LAST_DAY = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-const MEASURE_NAMES: Record<MeasureId, string> = { profit: "Profit", readers: "Readers served", happiness: "Happiness", culture: "Culture" };
+const MEASURE_NAMES: Record<MeasureId, string> = {
+  profit: "Profit",
+  readers: "Readers served",
+  happiness: "Happiness",
+  culture: "Culture",
+};
 
 /** A quarter's name as the screens write it: "Q3 2194". */
-export const quarterName = (quarter: QuarterId) => `Q${quarterNumber(quarter)} ${quarter.slice(0, 4)}`;
+export const quarterName = (quarter: QuarterId) =>
+  `Q${quarterNumber(quarter)} ${quarter.slice(0, 4)}`;
 
 /** The quarter's three months by name: "July", "August", "September". */
-export const monthNames = (quarter: QuarterId): string[] => quarterMonths(quarter).map((m) => MONTH_NAMES[Number(m.slice(5)) - 1]!);
+export const monthNames = (quarter: QuarterId): string[] =>
+  quarterMonths(quarter).map((m) => MONTH_NAMES[Number(m.slice(5)) - 1]!);
 
 /** It opens the sentence, so its first letter is a capital, whatever case the data gives (Plot, on #212). */
 const capitalized = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
@@ -122,7 +154,13 @@ export interface PlanBrief {
   /** Strikes counting now. */
   strikes: number;
   /** The stretched goal, and its boss's line: Alma's capitals reason, or the server's recovery line. None while two strikes count. */
-  stretch: { boss: BossId; measure: MeasureId; percent: number; line: string; recoveryFrom: QuarterId | null } | null;
+  stretch: {
+    boss: BossId;
+    measure: MeasureId;
+    percent: number;
+    line: string;
+    recoveryFrom: QuarterId | null;
+  } | null;
   /** A format-costs event: the format, as the data names it, and its cost as a share of list price. */
   formatCost: { format: string; percent: number } | null;
   /** An author-fares event: an author night's cost, in dollars. */
@@ -186,10 +224,15 @@ export const ROTATING_LINES: Record<BossId, readonly string[]> = {
 };
 
 /** A line's first sentence, its teaser (as in Q2's brief). "MR." doesn't end one: "MR. ZOOLANDER HAS READ A BOOK." */
-export const teaserOf = (line: string) => /^.*?(?<!\bMRS?|\bDR)[.!?](?=\s|$)/.exec(line)?.[0] ?? line;
+export const teaserOf = (line: string) =>
+  /^.*?(?<!\bMRS?|\bDR)[.!?](?=\s|$)/.exec(line)?.[0] ?? line;
 
 /** Each boss's facts for a quarter after Q2 (endless-copy.md section 3, "The facts under each bubble"). */
-function factsFor(boss: BossId, quarter: QuarterId, brief: PlanBrief | null): BriefingBubble["facts"] {
+function factsFor(
+  boss: BossId,
+  quarter: QuarterId,
+  brief: PlanBrief | null,
+): BriefingBubble["facts"] {
   const year = quarter.slice(0, 4);
   const months = monthNames(quarter);
   const lastMonth = Number(quarterMonths(quarter)[2]!.slice(5));
@@ -201,7 +244,13 @@ function factsFor(boss: BossId, quarter: QuarterId, brief: PlanBrief | null): Br
         ". Your score is your ",
         { strong: "lowest measure" },
         ": Profit, Readers served, Happiness or Culture.",
-        ...(brief?.strikes ? [" Strikes counting: ", { strong: String(brief.strikes) }, ". Three at once, and the panel removes you."] : []),
+        ...(brief?.strikes
+          ? [
+              " Strikes counting: ",
+              { strong: String(brief.strikes) },
+              ". Three at once, and the panel removes you.",
+            ]
+          : []),
       ];
     case "profit":
       return [
@@ -211,15 +260,38 @@ function factsFor(boss: BossId, quarter: QuarterId, brief: PlanBrief | null): Br
         { strong: "5%" },
         ". ",
         ...(brief?.formatCost
-          ? [{ strong: capitalized(FORMAT_WORDS[brief.formatCost.format] ?? brief.formatCost.format) }, " copies cost the store ", { strong: `${percentText(brief.formatCost.percent)} of their list price` }, " this quarter; other books, 60%."]
+          ? [
+              {
+                strong: capitalized(
+                  FORMAT_WORDS[brief.formatCost.format] ?? brief.formatCost.format,
+                ),
+              },
+              " copies cost the store ",
+              { strong: `${percentText(brief.formatCost.percent)} of their list price` },
+              " this quarter; other books, 60%.",
+            ]
           : ["Books cost the store ", { strong: "60% of their list price" }, "."]),
       ];
     case "culture":
       return brief?.authorFare != null
-        ? ["An author night costs ", { strong: `$${brief.authorFare}` }, " this quarter: the author's shuttle fare and the room."]
-        : ["An author night costs ", { strong: "$200" }, ": the author's shuttle fare and the room."];
+        ? [
+            "An author night costs ",
+            { strong: `$${brief.authorFare}` },
+            " this quarter: the author's shuttle fare and the room.",
+          ]
+        : [
+            "An author night costs ",
+            { strong: "$200" },
+            ": the author's shuttle fare and the room.",
+          ];
     case "happiness":
-      return ["The Book of the Month calendar for ", { strong: `${months[0]}, ${months[1]} and ${months[2]}` }, " is empty. A pick is ", { strong: "15% off" }, " for its whole month."];
+      return [
+        "The Book of the Month calendar for ",
+        { strong: `${months[0]}, ${months[1]} and ${months[2]}` },
+        " is empty. A pick is ",
+        { strong: "15% off" },
+        " for its whole month.",
+      ];
     case "readers":
       return [
         "Choose ",
@@ -238,7 +310,9 @@ function stretchFacts(stretch: NonNullable<PlanBrief["stretch"]>): BriefingBubbl
   return [
     ` Its goal for ${measure} is `,
     { strong: percentText(stretch.percent) },
-    stretch.recoveryFrom ? ` this quarter, to restore its fall in ${quarterName(stretch.recoveryFrom)}.` : " this quarter, instead of 5%.",
+    stretch.recoveryFrom
+      ? ` this quarter, to restore its fall in ${quarterName(stretch.recoveryFrom)}.`
+      : " this quarter, instead of 5%.",
   ];
 }
 
@@ -252,7 +326,12 @@ function laterBriefing(quarter: QuarterId, brief: PlanBrief | null): BriefingBub
     const stretched = brief?.stretch?.boss === bubble.boss ? brief.stretch : null;
     const line = stretched?.line ?? ROTATING_LINES[bubble.boss][place]!;
     const facts = factsFor(bubble.boss, quarter, brief);
-    return { ...bubble, teaser: teaserOf(line), line, facts: stretched ? [...facts, ...stretchFacts(stretched)] : facts };
+    return {
+      ...bubble,
+      teaser: teaserOf(line),
+      line,
+      facts: stretched ? [...facts, ...stretchFacts(stretched)] : facts,
+    };
   });
 }
 
@@ -268,6 +347,17 @@ export function planCopy(quarter: QuarterId, brief: PlanBrief | null = null) {
     playing: months.map((m) => `${m}...`),
     briefing: quarter === "2194-Q2" ? DECIDE_Q2_COPY.briefing : laterBriefing(quarter, brief),
     // With author fares, the author nights' figure and line name the fare.
-    moves: fare == null ? Q2_MOVES : Q2_MOVES.map((m) => (m.id === "events" ? { ...m, figure: `$${fare} a night`, line: m.line.replace("at $200 each.", `at $${fare} each.`) } : m)),
+    moves:
+      fare == null
+        ? Q2_MOVES
+        : Q2_MOVES.map((m) =>
+            m.id === "events"
+              ? {
+                  ...m,
+                  figure: `$${fare} a night`,
+                  line: m.line.replace("at $200 each.", `at $${fare} each.`),
+                }
+              : m,
+          ),
   };
 }

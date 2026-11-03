@@ -8,12 +8,23 @@ import { SaveError } from "~/game/store.server";
 import type { GameSave } from "~/game/types";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import { BACKSTORY_FAILURES, type BackstoryRecord } from "./backstory-record";
-import { BACKSTORY_PROMPT_VERSION, BACKSTORY_RULES, backstoryInput, backstoryProblem, parseBackstory, pickBackstory, scriptedBackstory } from "./backstory";
+import {
+  BACKSTORY_PROMPT_VERSION,
+  BACKSTORY_RULES,
+  backstoryInput,
+  backstoryProblem,
+  parseBackstory,
+  pickBackstory,
+  scriptedBackstory,
+} from "./backstory";
 import { ALMA_TIMEOUT_MS, almaModel, type AlmaModel } from "./director.server";
 
 /** What the backstory needs, injectable so tests never reach the real model; the saves come from the caller. */
 export interface BackstoryDeps {
-  saves: { read(id: string): GameSave; update(id: string, revision: number, change: (save: GameSave) => void): GameSave };
+  saves: {
+    read(id: string): GameSave;
+    update(id: string, revision: number, change: (save: GameSave) => void): GameSave;
+  };
   model: AlmaModel | null;
   track: (name: string, props: Record<string, string | number | boolean>) => void;
   timeoutMs?: number;
@@ -32,12 +43,18 @@ export function catalogNames(): string[] {
 }
 
 const failureOf = (error: unknown) => {
-  const code = error instanceof AssistantUnavailable ? `unavailable:${error.kind}` : "unavailable:other";
+  const code =
+    error instanceof AssistantUnavailable ? `unavailable:${error.kind}` : "unavailable:other";
   return BACKSTORY_FAILURES.includes(code) ? code : "unavailable:other";
 };
 
 /** Alma's backstory for a seed: its words if they pass, after one retry on an invalid answer, else the scripted one. */
-export async function writeBackstory(seed: number, model: AlmaModel | null, names: readonly string[], timeoutMs = ALMA_TIMEOUT_MS): Promise<BackstoryRecord> {
+export async function writeBackstory(
+  seed: number,
+  model: AlmaModel | null,
+  names: readonly string[],
+  timeoutMs = ALMA_TIMEOUT_MS,
+): Promise<BackstoryRecord> {
   if (!model) return scriptedBackstory(seed);
   const { take, details } = pickBackstory(seed);
   const input = backstoryInput(seed);
@@ -47,17 +64,39 @@ export async function writeBackstory(seed: number, model: AlmaModel | null, name
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let raw: string;
     try {
-      raw = await model.ask(BACKSTORY_RULES, attempt === 1 ? input : `${input}\n\nYour last answer was rejected (${failure}). Answer again, keeping every rule.`, controller.signal);
+      raw = await model.ask(
+        BACKSTORY_RULES,
+        attempt === 1
+          ? input
+          : `${input}\n\nYour last answer was rejected (${failure}). Answer again, keeping every rule.`,
+        controller.signal,
+      );
     } catch (error) {
-      return scriptedBackstory(seed, { attempts: attempt, failure: controller.signal.aborted ? "timeout" : failureOf(error) });
+      return scriptedBackstory(seed, {
+        attempts: attempt,
+        failure: controller.signal.aborted ? "timeout" : failureOf(error),
+      });
     } finally {
       clearTimeout(timer);
     }
-    if (controller.signal.aborted) return scriptedBackstory(seed, { attempts: attempt, failure: "timeout" });
+    if (controller.signal.aborted)
+      return scriptedBackstory(seed, { attempts: attempt, failure: "timeout" });
     const parsed = parseBackstory(raw);
-    const problem = parsed.ok ? backstoryProblem(parsed.text as unknown as Record<string, unknown>, names) : parsed.failure;
+    const problem = parsed.ok
+      ? backstoryProblem(parsed.text as unknown as Record<string, unknown>, names)
+      : parsed.failure;
     // A story written on the retry keeps why the first answer was rejected (Probe's red-team after #244).
-    if (parsed.ok && !problem) return { source: "alma", take, details, ...parsed.text, model: model.name, promptVersion: BACKSTORY_PROMPT_VERSION, attempts: attempt, ...(failure ? { failure } : {}) };
+    if (parsed.ok && !problem)
+      return {
+        source: "alma",
+        take,
+        details,
+        ...parsed.text,
+        model: model.name,
+        promptVersion: BACKSTORY_PROMPT_VERSION,
+        attempts: attempt,
+        ...(failure ? { failure } : {}),
+      };
     failure = problem!;
   }
   return scriptedBackstory(seed, { attempts: 2, failure });
@@ -79,7 +118,8 @@ function save(saveId: string, record: BackstoryRecord, deps: BackstoryDeps): boo
       });
       return true;
     } catch (error) {
-      if (error instanceof SaveError && (error.code === "STALE_SAVE" || error.code === "SAVE_BUSY")) continue;
+      if (error instanceof SaveError && (error.code === "STALE_SAVE" || error.code === "SAVE_BUSY"))
+        continue;
       throw error;
     }
   }
@@ -92,21 +132,32 @@ const pending = new Map<string, Promise<BackstoryRecord | null>>();
  * Called once a game's save is created (startGame: a first visit, Play again or Reset game). It starts Alma's
  * backstory in the background and returns at once: it never waits, and never throws into the caller.
  */
-export function onGameStarted({ saveId, seed }: { saveId: string; seed: number }, deps: Partial<BackstoryDeps> & Pick<BackstoryDeps, "saves">): void {
-  const track = deps.track ?? ((name, props) => {
-    try {
-      trackServer(name, props);
-    } catch {
-      // A transport failure can't undo a game.
-    }
-  });
+export function onGameStarted(
+  { saveId, seed }: { saveId: string; seed: number },
+  deps: Partial<BackstoryDeps> & Pick<BackstoryDeps, "saves">,
+): void {
+  const track =
+    deps.track ??
+    ((name, props) => {
+      try {
+        trackServer(name, props);
+      } catch {
+        // A transport failure can't undo a game.
+      }
+    });
   try {
     const model = deps.model === undefined ? almaModel() : deps.model;
     const started = performance.now();
     const turn = writeBackstory(seed, model, catalogNames(), deps.timeoutMs)
       .then((record) => {
         if (!save(saveId, record, { ...deps, model, track })) return null;
-        track("backstory_written", { source: record.source, take: record.take, attempts: record.attempts, durationMs: Math.round(performance.now() - started), ...(record.failure ? { failure: record.failure } : {}) });
+        track("backstory_written", {
+          source: record.source,
+          take: record.take,
+          attempts: record.attempts,
+          durationMs: Math.round(performance.now() - started),
+          ...(record.failure ? { failure: record.failure } : {}),
+        });
         return record;
       })
       .catch(() => {

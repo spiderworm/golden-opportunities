@@ -44,11 +44,18 @@ export function toolServerPath(moduleUrl: string | URL = import.meta.url): strin
 }
 
 /** Runs from source with this Node (native TypeScript stripping); revisit when the app is hosted. */
-export function orbitalToolServer(token: string, { pins = true, queryUrl = defaultQueryUrl() }: { pins?: boolean; queryUrl?: string } = {}): ToolServer {
+export function orbitalToolServer(
+  token: string,
+  { pins = true, queryUrl = defaultQueryUrl() }: { pins?: boolean; queryUrl?: string } = {},
+): ToolServer {
   return {
     name: SERVER_NAME,
     command: process.execPath,
     args: [toolServerPath()],
-    env: { ORBITAL_QUERY_TOKEN: token, ORBITAL_QUERY_URL: queryUrl, ORBITAL_PINS: pins ? "1" : "0" },
+    env: {
+      ORBITAL_QUERY_TOKEN: token,
+      ORBITAL_QUERY_URL: queryUrl,
+      ORBITAL_PINS: pins ? "1" : "0",
+    },
   };
 }

@@ -10,9 +10,17 @@ import { markOffline, OFFLINE, type OfflineReason } from "./availability.server.
 import { Refs, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
 import type { BackstoryText } from "../../alma/backstory.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
-import { AssistantUnavailable, type AssistantProvider, type ProviderEvent } from "./provider.server.ts";
+import {
+  AssistantUnavailable,
+  type AssistantProvider,
+  type ProviderEvent,
+} from "./provider.server.ts";
 
-export type ServerTrack = (event: string, props?: Record<string, string | number | boolean>, options?: { hold?: "agent_text" }) => void;
+export type ServerTrack = (
+  event: string,
+  props?: Record<string, string | number | boolean>,
+  options?: { hold?: "agent_text" },
+) => void;
 
 /** The most of a withheld sentence the held record keeps. */
 const WITHHELD_KEPT = 1_000;
@@ -27,7 +35,8 @@ export class Refused extends Error {
   }
 }
 
-const refuse = (status: number, message: string) => Response.json({ error: message }, { status, headers: { "cache-control": "no-store" } });
+const refuse = (status: number, message: string) =>
+  Response.json({ error: message }, { status, headers: { "cache-control": "no-store" } });
 
 export interface AskInput {
   question: string;
@@ -46,12 +55,22 @@ export function checkDoor(request: Request) {
   const url = new URL(request.url);
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   const site = request.headers.get("sec-fetch-site");
-  if (!local || request.headers.get("origin") !== url.origin || (site !== null && site !== "same-origin")) throw new Refused(403, "Same-origin requests on this machine only.");
+  if (
+    !local ||
+    request.headers.get("origin") !== url.origin ||
+    (site !== null && site !== "same-origin")
+  )
+    throw new Refused(403, "Same-origin requests on this machine only.");
   if (url.search) throw new Refused(400, "No query parameters.");
   const type = request.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
-  if (type !== "application/json" || ![null, "identity"].includes(request.headers.get("content-encoding"))) throw new Refused(415, "Send uncompressed JSON.");
+  if (
+    type !== "application/json" ||
+    ![null, "identity"].includes(request.headers.get("content-encoding"))
+  )
+    throw new Refused(415, "Send uncompressed JSON.");
   const length = request.headers.get("content-length");
-  if (length !== null && (!/^\d+$/.test(length) || Number(length) > MAX_BODY)) throw new Refused(413, "Too large.");
+  if (length !== null && (!/^\d+$/.test(length) || Number(length) > MAX_BODY))
+    throw new Refused(413, "Too large.");
 }
 
 /** Reads the body with a byte cap and a deadline, as Frank's /api/query does, then checks its shape. Throws Refused. */
@@ -84,7 +103,10 @@ export async function readAsk(request: Request, deadlineMs = 5_000): Promise<Ask
       }
     };
     const deadline = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Refused(408, "The question took too long to arrive.")), deadlineMs);
+      timer = setTimeout(
+        () => reject(new Refused(408, "The question took too long to arrive.")),
+        deadlineMs,
+      );
     });
     raw = await Promise.race([read(), deadline]);
   } finally {
@@ -98,17 +120,29 @@ export async function readAsk(request: Request, deadlineMs = 5_000): Promise<Ask
   } catch {
     throw new Refused(400, "Not JSON.");
   }
-  if (typeof body !== "object" || body === null || Array.isArray(body)) throw new Refused(400, "Send an object.");
+  if (typeof body !== "object" || body === null || Array.isArray(body))
+    throw new Refused(400, "Send an object.");
   const { question, history = [], pins = false, ...rest } = body as Record<string, unknown>;
   if (Object.keys(rest).length) throw new Refused(400, "Unknown fields.");
-  if (typeof question !== "string" || !question.trim() || question.length > LIMITS.question) throw new Refused(400, `Ask in 1 to ${LIMITS.question} characters.`);
+  if (typeof question !== "string" || !question.trim() || question.length > LIMITS.question)
+    throw new Refused(400, `Ask in 1 to ${LIMITS.question} characters.`);
   if (typeof pins !== "boolean") throw new Refused(400, "Bad pins.");
   if (!Array.isArray(history) || history.length > 20) throw new Refused(400, "Bad history.");
   const turns: Turn[] = [];
   for (const t of history) {
-    if (typeof t !== "object" || t === null || Object.keys(t).some((k) => k !== "role" && k !== "text")) throw new Refused(400, "Bad history.");
+    if (
+      typeof t !== "object" ||
+      t === null ||
+      Object.keys(t).some((k) => k !== "role" && k !== "text")
+    )
+      throw new Refused(400, "Bad history.");
     const { role, text } = t as Record<string, unknown>;
-    if ((role !== "player" && role !== "assistant") || typeof text !== "string" || text.length > 10_000) throw new Refused(400, "Bad history.");
+    if (
+      (role !== "player" && role !== "assistant") ||
+      typeof text !== "string" ||
+      text.length > 10_000
+    )
+      throw new Refused(400, "Bad history.");
     turns.push({ role, text });
   }
   return { question: question.trim(), history: turns, pins };
@@ -140,26 +174,73 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
   if (event.type === "text") return event;
   // Keyed on the query layer's error code, which the tool server puts first ("SESSION_ENDED: ..."); the rest of
   // the text is never shown.
-  if (event.isError) return { type: "lookup_failed", message: event.output.startsWith("SESSION_ENDED:") ? SESSION_ENDED : LOOKUP_FAILED };
+  if (event.isError)
+    return {
+      type: "lookup_failed",
+      message: event.output.startsWith("SESSION_ENDED:") ? SESSION_ENDED : LOOKUP_FAILED,
+    };
   let output: Record<string, unknown>;
   try {
     output = JSON.parse(event.output);
   } catch {
     return null;
   }
-  if (event.name === "query_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.source === "string") {
-    return { type: "data", columns: output.columns, rows: output.rows, total: output.total as number | null, source: output.source, ...pinFor(event) } as WireEvent;
+  if (
+    event.name === "query_data" &&
+    Array.isArray(output.columns) &&
+    Array.isArray(output.rows) &&
+    typeof output.source === "string"
+  ) {
+    return {
+      type: "data",
+      columns: output.columns,
+      rows: output.rows,
+      total: output.total as number | null,
+      source: output.source,
+      ...pinFor(event),
+    } as WireEvent;
   }
-  if (event.name === "show_chart" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.source === "string") {
+  if (
+    event.name === "show_chart" &&
+    Array.isArray(output.columns) &&
+    Array.isArray(output.rows) &&
+    typeof output.source === "string"
+  ) {
     // The chart is the model's input checked again, and titled from its query: nothing the model wrote is shown.
     const chart = lookupPin(event.name, event.input);
     if (!chart || chart.kind === "comparison") return null;
-    return { type: "chart", chart, pin: chart, columns: output.columns, rows: output.rows, total: output.total as number | null, source: output.source } as WireEvent;
+    return {
+      type: "chart",
+      chart,
+      pin: chart,
+      columns: output.columns,
+      rows: output.rows,
+      total: output.total as number | null,
+      source: output.source,
+    } as WireEvent;
   }
-  if (event.name === "compare_data" && Array.isArray(output.columns) && Array.isArray(output.rows) && typeof output.total === "object" && typeof output.source === "string") {
-    return { type: "comparison", columns: output.columns, rows: output.rows, total: output.total, source: output.source, ...pinFor(event) } as WireEvent;
+  if (
+    event.name === "compare_data" &&
+    Array.isArray(output.columns) &&
+    Array.isArray(output.rows) &&
+    typeof output.total === "object" &&
+    typeof output.source === "string"
+  ) {
+    return {
+      type: "comparison",
+      columns: output.columns,
+      rows: output.rows,
+      total: output.total,
+      source: output.source,
+      ...pinFor(event),
+    } as WireEvent;
   }
-  if (pins && event.name === "pin_chart" && output.pinned === true && typeof output.source === "string") {
+  if (
+    pins &&
+    event.name === "pin_chart" &&
+    output.pinned === true &&
+    typeof output.source === "string"
+  ) {
     return { type: "pin", chart: output.chart as ChartSpec, source: output.source };
   }
   return null;
@@ -171,7 +252,14 @@ export type ProviderFor = (options: { pins: boolean }) => AssistantProvider;
 /** The game's backstory for this request, checked (src/alma/backstory.ts), or null without a game. */
 export type BackstoryFor = (request: Request) => BackstoryText | null;
 
-export function ask(request: Request, providerFor: ProviderFor, track: ServerTrack, now: () => number = Date.now, deadlineMs?: number, backstoryFor: BackstoryFor = () => null): Promise<Response> {
+export function ask(
+  request: Request,
+  providerFor: ProviderFor,
+  track: ServerTrack,
+  now: () => number = Date.now,
+  deadlineMs?: number,
+  backstoryFor: BackstoryFor = () => null,
+): Promise<Response> {
   return (async () => {
     const refused = (e: unknown) => {
       if (!(e instanceof Refused)) throw e;
@@ -193,7 +281,12 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     const slot = acquire(now());
     if (typeof slot === "string") {
       track("assistant_limited", { reason: slot });
-      return refuse(429, slot === "busy" ? `${ASSISTANT_NAME} is answering another question.` : "That's enough questions for this hour.");
+      return refuse(
+        429,
+        slot === "busy"
+          ? `${ASSISTANT_NAME} is answering another question.`
+          : "That's enough questions for this hour.",
+      );
     }
     let input: AskInput;
     try {
@@ -205,18 +298,36 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     slot.charge();
     const provider = providerFor({ pins: input.pins });
     const started = now();
-    const stats = { lookups: 0, failedLookups: 0, comparisons: 0, charts: 0, pins: 0, chars: 0, withheld: 0, figures: 0 };
+    const stats = {
+      lookups: 0,
+      failedLookups: 0,
+      comparisons: 0,
+      charts: 0,
+      pins: 0,
+      chars: 0,
+      withheld: 0,
+      figures: 0,
+    };
     let outcome = "aborted";
     const nonce = randomBytes(6).toString("hex");
     const backstory = backstoryFor(request);
-    const prompt = buildPrompt(input.question, input.history, { pins: input.pins, ...(backstory ? { backstory } : {}) }, nonce);
+    const prompt = buildPrompt(
+      input.question,
+      input.history,
+      { pins: input.pins, ...(backstory ? { backstory } : {}) },
+      nonce,
+    );
     // The withheld note (docs/design/backstory.md, section 6): the backstory's short sentence the first time in a
     // conversation, then the plain line. The history is the browser's, so an edited one changes only which.
-    const noted = input.history.some((t) => t.role !== "player" && (t.text.includes(WITHHELD) || (backstory !== null && t.text.includes(backstory.short))));
+    const noted = input.history.some(
+      (t) =>
+        t.role !== "player" &&
+        (t.text.includes(WITHHELD) || (backstory !== null && t.text.includes(backstory.short))),
+    );
     const note = backstory && !noted ? backstory.short : WITHHELD;
     // The fence code is no secret worth keeping (it's new for every answer), but nothing has a reason to show
     // it (P4): it's cut from every string sent to the browser.
-    const hide = <T,>(value: T) => scrubDeep(value, nonce);
+    const hide = <T>(value: T) => scrubDeep(value, nonce);
     // Figures come only by ref from this answer's successful lookups; a sentence with a figure or direction of
     // the model's own is withheld (figures.server.ts).
     const refs = new Refs();
@@ -225,7 +336,16 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
     const gate = sentenceGate(
       refs,
       hide,
-      (sentence) => track("assistant_sentence_withheld", { text: sentence.slice(0, WITHHELD_KEPT), chars: sentence.length, kind: questionKind(input.question) }, { hold: "agent_text" }),
+      (sentence) =>
+        track(
+          "assistant_sentence_withheld",
+          {
+            text: sentence.slice(0, WITHHELD_KEPT),
+            chars: sentence.length,
+            kind: questionKind(input.question),
+          },
+          { hold: "agent_text" },
+        ),
       note,
     );
     let last = "";
@@ -239,7 +359,13 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
               if (!event.isError) {
                 try {
                   // A chart's lookup is a query_data lookup to the figures gate: the same refs, cited the same way.
-                  refs.addTool(event.name === "show_chart" ? "query_data" : event.name, event.input && typeof event.input === "object" ? ((event.input as { query?: unknown }).query ?? event.input) : event.input, JSON.parse(event.output));
+                  refs.addTool(
+                    event.name === "show_chart" ? "query_data" : event.name,
+                    event.input && typeof event.input === "object"
+                      ? ((event.input as { query?: unknown }).query ?? event.input)
+                      : event.input,
+                    JSON.parse(event.output),
+                  );
                 } catch {
                   // Not JSON: nothing measured.
                 }
@@ -249,7 +375,8 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
             if (!wire) continue;
             if (wire.type === "text") {
               // Text before and after a tool call arrives as one run ("...by quarter.I didn't..."): break it.
-              const resumed = afterTool && last && !/\s$/.test(last) && !/^\s/.test(wire.text) ? "\n\n" : "";
+              const resumed =
+                afterTool && last && !/\s$/.test(last) && !/^\s/.test(wire.text) ? "\n\n" : "";
               afterTool = false;
               last = wire.text || last;
               stats.chars += wire.text.length;
@@ -269,9 +396,17 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
             if (wire.type === "comparison") {
               stats.comparisons++;
               // Its column headings are the values the model compared: shown only where the data had something.
-              const ref = (JSON.parse((event as { output: string }).output) as { ref?: unknown }).ref;
+              const ref = (JSON.parse((event as { output: string }).output) as { ref?: unknown })
+                .ref;
               const sides = typeof ref === "string" ? refs.compared(ref) : null;
-              yield hide({ ...wire, columns: wire.columns.map((c) => (c.key === "from" || c.key === "to" ? { ...c, label: sides?.[c.key] ?? (c.key === "from" ? "First" : "Second") } : c)) });
+              yield hide({
+                ...wire,
+                columns: wire.columns.map((c) =>
+                  c.key === "from" || c.key === "to"
+                    ? { ...c, label: sides?.[c.key] ?? (c.key === "from" ? "First" : "Second") }
+                    : c,
+                ),
+              });
               continue;
             }
             if (wire.type === "lookup_failed") stats.failedLookups++;
@@ -284,16 +419,35 @@ export function ask(request: Request, providerFor: ProviderFor, track: ServerTra
         } catch (e) {
           outcome = e instanceof AssistantUnavailable ? "unavailable" : "failed";
           // Remember it, so the panel says so before the next question (and the event says why).
-          if (e instanceof AssistantUnavailable && OFFLINE_KINDS.has(e.kind)) markOffline(e.kind as OfflineReason, track);
+          if (e instanceof AssistantUnavailable && OFFLINE_KINDS.has(e.kind))
+            markOffline(e.kind as OfflineReason, track);
           throw e;
         } finally {
           slot.release();
           stats.withheld = gate.withheld;
           stats.figures = gate.rendered;
-          track("assistant_answered", { outcome, provider: provider.name, kind: questionKind(input.question), questionChars: input.question.length, turns: input.history.length, durationMs: now() - started, ...stats });
+          track("assistant_answered", {
+            outcome,
+            provider: provider.name,
+            kind: questionKind(input.question),
+            questionChars: input.question.length,
+            turns: input.history.length,
+            durationMs: now() - started,
+            ...stats,
+          });
         }
       },
-      (e) => ({ type: "error", message: e instanceof AssistantUnavailable ? (OFFLINE_KINDS.has(e.kind) ? OFFLINE : e.kind === "timeout" ? TIMED_OUT : UNAVAILABLE) : FAILED }),
+      (e) => ({
+        type: "error",
+        message:
+          e instanceof AssistantUnavailable
+            ? OFFLINE_KINDS.has(e.kind)
+              ? OFFLINE
+              : e.kind === "timeout"
+                ? TIMED_OUT
+                : UNAVAILABLE
+            : FAILED,
+      }),
       request,
     );
   })();

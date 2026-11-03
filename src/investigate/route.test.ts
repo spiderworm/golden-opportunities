@@ -5,7 +5,12 @@ import { QueryError } from "~/query/errors";
 const record = vi.hoisted(() => ({ busy: false }));
 vi.mock("~/game/session.server", async () => {
   const { BASELINE_VIEW } = await import("~/query/view.server");
-  return { getGameSession: () => ({ save: { id: "a".repeat(43), played: [], discoveries: [] }, queryView: BASELINE_VIEW }) };
+  return {
+    getGameSession: () => ({
+      save: { id: "a".repeat(43), played: [], discoveries: [] },
+      queryView: BASELINE_VIEW,
+    }),
+  };
 });
 vi.mock("~/game/progress", () => ({ currentQuarter: () => "2194-Q1" }));
 vi.mock("~/game/discoveries.server", () => ({
@@ -16,7 +21,8 @@ vi.mock("~/game/discoveries.server", () => ({
 vi.mock("~/platform/analytics/analytics.server", () => ({ trackServer: vi.fn() }));
 
 const { loader, shouldRevalidate } = await import("./route");
-const load = (search = "") => loader({ request: new Request(`http://localhost/investigate${search}`) } as never);
+const load = (search = "") =>
+  loader({ request: new Request(`http://localhost/investigate${search}`) } as never);
 
 describe("Investigate's loader, for the browser's cache", () => {
   it("names the data version it computed the view under, and whether it recorded the view's evidence", () => {
@@ -36,7 +42,13 @@ describe("Investigate's loader, for the browser's cache", () => {
 describe("when Investigate looks again", () => {
   const at = (search: string) => new URL(`http://localhost/investigate${search}`);
   const args = (formAction?: string, from = "?by=genre", to = from) =>
-    ({ formAction, formMethod: formAction ? "POST" : undefined, currentUrl: at(from), nextUrl: at(to), defaultShouldRevalidate: true }) as never;
+    ({
+      formAction,
+      formMethod: formAction ? "POST" : undefined,
+      currentUrl: at(from),
+      nextUrl: at(to),
+      defaultShouldRevalidate: true,
+    }) as never;
 
   it("doesn't, for the memo's seen mark, which changes no data", () => {
     expect(shouldRevalidate(args("/alert/seen"))).toBe(false);
@@ -50,6 +62,10 @@ describe("when Investigate looks again", () => {
 
   it("doesn't, when only the filter bar changed (#209), and does when a filter's values did", () => {
     expect(shouldRevalidate(args(undefined, "?by=genre", "?by=genre&show=genre"))).toBe(false);
-    expect(shouldRevalidate(args(undefined, "?by=genre&show=genre", "?by=genre&show=genre&genre=Fiction"))).toBe(true);
+    expect(
+      shouldRevalidate(
+        args(undefined, "?by=genre&show=genre", "?by=genre&show=genre&genre=Fiction"),
+      ),
+    ).toBe(true);
   });
 });

@@ -85,20 +85,40 @@ const COPIES: [number, number][] = [
 ];
 
 /** The 3D bosses on BossLayout's floor, under the columns it gives them. */
-export default function BossScene3D({ bubbles, open, onSelect, columns, reducedMotion, onShown, onFailed }: BossScene3DProps) {
+export default function BossScene3D({
+  bubbles,
+  open,
+  onSelect,
+  columns,
+  reducedMotion,
+  onShown,
+  onFailed,
+}: BossScene3DProps) {
   const stage = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => onShown?.(), [onShown]);
   // The same list while the bubbles are, so the robots are made once.
   const bosses = useMemo(() => bubbles.map((b) => b.boss), [bubbles]);
   return (
     <div ref={stage} className={styles.stage} aria-hidden="true">
-      <Canvas dpr={[1, 1.75]} camera={{ fov: FOV, near: 0.1, far: 30, position: [0, 0.6, 2.35] }} gl={{ antialias: true, alpha: true }}>
+      <Canvas
+        dpr={[1, 1.75]}
+        camera={{ fov: FOV, near: 0.1, far: 30, position: [0, 0.6, 2.35] }}
+        gl={{ antialias: true, alpha: true }}
+      >
         <CameraFit stage={stage} />
         <hemisphereLight args={["#c9d0ff", "#2a2140", 1.1]} />
         <directionalLight position={[1.5, 3, 4]} intensity={1.6} color="#fff3e2" />
         {/* The models load here, inside the canvas: the bubbles are up already. */}
         <Suspense fallback={null}>
-          <Bosses bosses={bosses} open={open} onSelect={onSelect} columns={columns} stage={stage} reducedMotion={reducedMotion} onFailed={onFailed} />
+          <Bosses
+            bosses={bosses}
+            open={open}
+            onSelect={onSelect}
+            columns={columns}
+            stage={stage}
+            reducedMotion={reducedMotion}
+            onFailed={onFailed}
+          />
         </Suspense>
       </Canvas>
     </div>
@@ -113,7 +133,10 @@ export default function BossScene3D({ bubbles, open, onSelect, columns, reducedM
 function CameraFit({ stage }: { stage: RefObject<HTMLDivElement | null> }) {
   const { camera, size } = useThree();
   useLayoutEffect(() => {
-    const headroom = parseFloat(stage.current ? getComputedStyle(stage.current).getPropertyValue("--robot-headroom") : "") || 12;
+    const headroom =
+      parseFloat(
+        stage.current ? getComputedStyle(stage.current).getPropertyValue("--robot-headroom") : "",
+      ) || 12;
     const fit = fitCamera(size.height, headroom);
     camera.position.set(0, fit.height, fit.distance);
     camera.rotation.set(-PITCH, 0, 0);
@@ -132,7 +155,6 @@ const EDGE = 8;
     The open boss grows a little into the headroom, as its 2D cutout does. */
 const TALLEST = 1;
 
-
 /**
  * Where the camera stands (height and distance from the robots' line, at a fixed pitch) so that, in a
  * floor `height` px tall, the floor line (y = 0) sits FEET px above the bottom and TALLEST sits
@@ -142,7 +164,8 @@ const TALLEST = 1;
  */
 export function fitCamera(height: number, headroom: number) {
   const t = Math.tan(MathUtils.degToRad(FOV / 2));
-  const along = (ndc: number) => (ndc * t * Math.cos(PITCH) - Math.sin(PITCH)) / (Math.cos(PITCH) + ndc * t * Math.sin(PITCH));
+  const along = (ndc: number) =>
+    (ndc * t * Math.cos(PITCH) - Math.sin(PITCH)) / (Math.cos(PITCH) + ndc * t * Math.sin(PITCH));
   const tall = height - FEET - Math.min(headroom, height * 0.4);
   const bottom = along(-1 + (2 * FEET) / height);
   const top = along(1 - (2 * (height - FEET - tall)) / height);
@@ -191,7 +214,8 @@ function Bosses({
   const models = useGLTF(urls, false, undefined, softFail) as unknown as Loaded[];
   const failed = models.some(failedLoad);
   const figures = useMemo(
-    () => (failed ? [] : bosses.map((boss, i) => makeFigure(boss, models[i] as Exclude<Loaded, Failed>))),
+    () =>
+      failed ? [] : bosses.map((boss, i) => makeFigure(boss, models[i] as Exclude<Loaded, Failed>)),
     [bosses, models, failed],
   );
   // Forgotten, so the next visit to Decide loads them afresh rather than failing again from the cache.
@@ -204,7 +228,14 @@ function Bosses({
   const { gl } = useThree();
   const hovered = useRef(-1);
   const work = useMemo(
-    () => ({ ray: new Raycaster(), ndc: new Vector2(), plane: new Plane(new Vector3(0, 0, 1), 0), at: new Vector3(), screen: new Vector3(), placed: "" }),
+    () => ({
+      ray: new Raycaster(),
+      ndc: new Vector2(),
+      plane: new Plane(new Vector3(0, 0, 1), 0),
+      at: new Vector3(),
+      screen: new Vector3(),
+      placed: "",
+    }),
     [],
   );
   const glow = useRef<Group>(null);
@@ -212,7 +243,16 @@ function Bosses({
   const light = useRef<PointLight>(null);
   const ringGeometry = useMemo(() => new RingGeometry(0.2, 0.34, 48).rotateX(-Math.PI / 2), []);
   const rings = useMemo(
-    () => [0.55, 0.22].map((opacity) => new MeshBasicMaterial({ transparent: true, opacity, blending: AdditiveBlending, depthWrite: false })),
+    () =>
+      [0.55, 0.22].map(
+        (opacity) =>
+          new MeshBasicMaterial({
+            transparent: true,
+            opacity,
+            blending: AdditiveBlending,
+            depthWrite: false,
+          }),
+      ),
     [],
   );
   useEffect(
@@ -264,7 +304,14 @@ function Bosses({
             place(scale);
             let [from, to] = extent(f.points, x, scale, camera, box.width, work);
             for (const c of f.copies) {
-              const [l, r] = extent(c.points, x + (c.unit.position.x - c.x) * scale, scale, camera, box.width, work);
+              const [l, r] = extent(
+                c.points,
+                x + (c.unit.position.x - c.x) * scale,
+                scale,
+                camera,
+                box.width,
+                work,
+              );
               from = Math.min(from, l);
               to = Math.max(to, r);
             }
@@ -294,7 +341,10 @@ function Bosses({
       }
       // Where it stands on the page, for anyone checking that nobody moved.
       work.screen.set(root.position.x, 0, 0).project(camera);
-      placed.push(Math.round(((work.screen.x + 1) / 2) * box.width), Math.round(((1 - work.screen.y) / 2) * box.height));
+      placed.push(
+        Math.round(((work.screen.x + 1) / 2) * box.width),
+        Math.round(((1 - work.screen.y) / 2) * box.height),
+      );
       // The open boss leans in, a little bigger, where it stands; the rest stand easy.
       const lean = focused ? LEAN : 0;
       const ease = reducedMotion ? 1 : Math.min(1, delta * 6);
@@ -311,12 +361,15 @@ function Bosses({
     });
     const where = placed.join(",");
     const across = spans.join(",");
-    if (stage.current && stage.current.dataset.spans !== across) stage.current.dataset.spans = across;
-    if (stage.current && stage.current.dataset.openSpan !== opened) stage.current.dataset.openSpan = opened;
+    if (stage.current && stage.current.dataset.spans !== across)
+      stage.current.dataset.spans = across;
+    if (stage.current && stage.current.dataset.openSpan !== opened)
+      stage.current.dataset.openSpan = opened;
     // And how high the tallest stands (px from the stage's top), for the layout and the tests.
     work.screen.set(0, TALLEST, 0).project(camera);
     const tallest = String(Math.round(((1 - work.screen.y) / 2) * box.height));
-    if (stage.current && stage.current.dataset.tallest !== tallest) stage.current.dataset.tallest = tallest;
+    if (stage.current && stage.current.dataset.tallest !== tallest)
+      stage.current.dataset.tallest = tallest;
     if (where !== work.placed && stage.current) {
       work.placed = where;
       stage.current.dataset.robots = where;
@@ -386,7 +439,14 @@ function play(f: Figure, to: AnimationAction, still: boolean) {
 }
 
 /** Where a boss, standing at `x` at `scale`, reaches on the page: [left, right], px. */
-function extent(points: Vector3[], x: number, scale: number, camera: Camera, width: number, work: { screen: Vector3 }): [number, number] {
+function extent(
+  points: Vector3[],
+  x: number,
+  scale: number,
+  camera: Camera,
+  width: number,
+  work: { screen: Vector3 },
+): [number, number] {
   let from = Infinity;
   let to = -Infinity;
   for (const p of points) {
@@ -406,7 +466,11 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
     const bounds = new Box3().setFromObject(body);
     const scale = height / (bounds.max.y - bounds.min.y);
     body.scale.setScalar(scale);
-    body.position.set(-((bounds.min.x + bounds.max.x) / 2) * scale, hover - bounds.min.y * scale, -((bounds.min.z + bounds.max.z) / 2) * scale);
+    body.position.set(
+      -((bounds.min.x + bounds.max.x) / 2) * scale,
+      hover - bounds.min.y * scale,
+      -((bounds.min.z + bounds.max.z) / 2) * scale,
+    );
     body.traverse((o) => (o.frustumCulled = false));
     return body;
   };
@@ -459,7 +523,19 @@ function makeFigure(boss: BossId, model: { scene: Group; animations: AnimationCl
     }
   }
   owned.push(hitGeometry);
-  return { root, mixers, actions, playing: actions?.idle ?? null, owned, points: surface(front), copies, rest: 1, open: 1, spans: { rest: [0, 0], open: [0, 0] }, sizedFor: "" };
+  return {
+    root,
+    mixers,
+    actions,
+    playing: actions?.idle ?? null,
+    owned,
+    points: surface(front),
+    copies,
+    rest: 1,
+    open: 1,
+    spans: { rest: [0, 0], open: [0, 0] },
+    sizedFor: "",
+  };
 }
 
 /** Up to a few hundred points from each of a unit's meshes, as it stands at rest, in its figure's space. */
@@ -471,7 +547,8 @@ function surface(unit: Object3D): Vector3[] {
     const position = o.geometry.getAttribute("position");
     if (!position) return;
     const every = Math.max(1, Math.ceil(position.count / 400));
-    for (let i = 0; i < position.count; i += every) points.push(new Vector3().fromBufferAttribute(position, i).applyMatrix4(o.matrixWorld));
+    for (let i = 0; i < position.count; i += every)
+      points.push(new Vector3().fromBufferAttribute(position, i).applyMatrix4(o.matrixWorld));
   });
   return points;
 }
@@ -483,7 +560,9 @@ function faint(object: Object3D): Material[] {
   object.traverse((o) => {
     const mesh = o as Mesh;
     if (!mesh.isMesh) return;
-    const material = (mesh.material as Material & { color?: Color }).clone() as Material & { color?: Color };
+    const material = (mesh.material as Material & { color?: Color }).clone() as Material & {
+      color?: Color;
+    };
     material.transparent = true;
     material.opacity = 0.3;
     material.depthWrite = false;
@@ -494,4 +573,5 @@ function faint(object: Object3D): Material[] {
   return made;
 }
 
-for (const boss of Object.keys(MODELS) as BossId[]) useGLTF.preload(modelUrl(boss), false, undefined, softFail);
+for (const boss of Object.keys(MODELS) as BossId[])
+  useGLTF.preload(modelUrl(boss), false, undefined, softFail);

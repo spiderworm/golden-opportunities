@@ -37,8 +37,10 @@
   border: 1px solid rgb(255 255 255 / 0.14);
   border-radius: 6px;
   background:
-    linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%) right 13px center / 5px 5px no-repeat,
-    linear-gradient(-45deg, transparent 50%, var(--color-text-muted) 50%) right 9px center / 5px 5px no-repeat,
+    linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%) right 13px center / 5px 5px
+      no-repeat,
+    linear-gradient(-45deg, transparent 50%, var(--color-text-muted) 50%) right 9px center / 5px 5px
+      no-repeat,
     rgb(255 255 255 / 0.03);
   color: var(--color-text);
   font: inherit;

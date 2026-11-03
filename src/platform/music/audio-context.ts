@@ -15,9 +15,13 @@ export function musicContext(): AudioContext | null {
     // A browser may not count the first touch as leave to play: try again on the next ones.
     const resume = () => {
       if (!context || context.state !== "suspended") return stop();
-      void context.resume().then(() => context?.state === "running" && stop(), () => {});
+      void context.resume().then(
+        () => context?.state === "running" && stop(),
+        () => {},
+      );
     };
-    const stop = () => ["pointerup", "keydown"].forEach((g) => removeEventListener(g, resume, true));
+    const stop = () =>
+      ["pointerup", "keydown"].forEach((g) => removeEventListener(g, resume, true));
     ["pointerup", "keydown"].forEach((g) => addEventListener(g, resume, true));
     resume();
   }

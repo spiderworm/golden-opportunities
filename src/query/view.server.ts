@@ -1,14 +1,16 @@
-import { QueryError } from './errors';
-import { isRecord } from './validate';
-import type { QueryView } from './types';
+import { QueryError } from "./errors";
+import { isRecord } from "./validate";
+import type { QueryView } from "./types";
 
 export const BASELINE_VIEW: QueryView = Object.freeze({
-  periods: Object.freeze(['2193-Q1', '2193-Q2', '2193-Q3', '2193-Q4'] as const),
+  periods: Object.freeze(["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"] as const),
   includeUndated: true,
 });
 
 /** Replace with a trusted save/session resolver when that feature lands. */
-export function resolveQueryView(): QueryView { return BASELINE_VIEW; }
+export function resolveQueryView(): QueryView {
+  return BASELINE_VIEW;
+}
 
 /**
  * Most periods a view may allow: 2193's four and every quarter the game can play (400, game/quarters.ts).
@@ -30,14 +32,33 @@ export const MAX_SIMULATED_LINES = 600_000;
 export const MAX_SIMULATED_CELLS = 150_000;
 
 export function validateView(view: QueryView): void {
-  if (!isRecord(view) || Object.keys(view).some(key => !['periods', 'includeUndated', 'simulatedSales', 'simulatedCells', 'version'].includes(key))
-    || !Array.isArray(view.periods) || view.periods.length > MAX_VIEW_PERIODS
-    || !view.periods.every(period => typeof period === 'string' && /^[1-9]\d{3}-Q[1-4]$/.test(period))
-    || new Set(view.periods).size !== view.periods.length || typeof view.includeUndated !== 'boolean'
-    || (view.simulatedSales !== undefined && (!Array.isArray(view.simulatedSales) || view.simulatedSales.length > MAX_SIMULATED_LINES))
-    || (view.simulatedCells !== undefined && (view.simulatedSales !== undefined || !isRecord(view.simulatedCells) || !Array.isArray(view.simulatedCells.cells)
-      || !Array.isArray(view.simulatedCells.spanning) || view.simulatedCells.cells.length > MAX_SIMULATED_CELLS))
-    || (view.version !== undefined && (typeof view.version !== 'string' || !/^[0-9a-f]{16}$/.test(view.version)))) {
-    throw new QueryError('INVALID_VIEW', 'The server view must declare unique allowed periods and undated access within supported bounds.');
+  if (
+    !isRecord(view) ||
+    Object.keys(view).some(
+      (key) =>
+        !["periods", "includeUndated", "simulatedSales", "simulatedCells", "version"].includes(key),
+    ) ||
+    !Array.isArray(view.periods) ||
+    view.periods.length > MAX_VIEW_PERIODS ||
+    !view.periods.every(
+      (period) => typeof period === "string" && /^[1-9]\d{3}-Q[1-4]$/.test(period),
+    ) ||
+    new Set(view.periods).size !== view.periods.length ||
+    typeof view.includeUndated !== "boolean" ||
+    (view.simulatedSales !== undefined &&
+      (!Array.isArray(view.simulatedSales) || view.simulatedSales.length > MAX_SIMULATED_LINES)) ||
+    (view.simulatedCells !== undefined &&
+      (view.simulatedSales !== undefined ||
+        !isRecord(view.simulatedCells) ||
+        !Array.isArray(view.simulatedCells.cells) ||
+        !Array.isArray(view.simulatedCells.spanning) ||
+        view.simulatedCells.cells.length > MAX_SIMULATED_CELLS)) ||
+    (view.version !== undefined &&
+      (typeof view.version !== "string" || !/^[0-9a-f]{16}$/.test(view.version)))
+  ) {
+    throw new QueryError(
+      "INVALID_VIEW",
+      "The server view must declare unique allowed periods and undated access within supported bounds.",
+    );
   }
 }

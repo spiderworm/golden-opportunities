@@ -14,7 +14,9 @@ describe("a query that is context, never evidence (Plot, #266)", () => {
     const sent: (string | null)[] = [];
     vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
       sent.push(new Headers(init.headers).get(EVIDENCE_HEADER));
-      return new Response(JSON.stringify(answer), { headers: { [DATA_VERSION_HEADER]: "v-context" } });
+      return new Response(JSON.stringify(answer), {
+        headers: { [DATA_VERSION_HEADER]: "v-context" },
+      });
     });
     await fetchQuery(query, undefined, { evidence: false });
     // The same query as evidence (a table or chart pin) still asks the server, which records it.

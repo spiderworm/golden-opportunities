@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import { revalidateAbovePage } from "./revalidate";
 
 const args = (from: string, to: string, formMethod?: string) =>
-  ({ currentUrl: new URL(from, "http://localhost"), nextUrl: new URL(to, "http://localhost"), formMethod, defaultShouldRevalidate: true }) as never;
+  ({
+    currentUrl: new URL(from, "http://localhost"),
+    nextUrl: new URL(to, "http://localhost"),
+    formMethod,
+    defaultShouldRevalidate: true,
+  }) as never;
 
 describe("the loaders above a page", () => {
   it("don't run again for a new question on the same page", () => {
@@ -17,6 +22,8 @@ describe("the loaders above a page", () => {
   });
 
   it("run when the shell asks to look again (the same URL), so an overtaken tab learns the new version", () => {
-    expect(revalidateAbovePage(args("/investigate?genre=Fiction", "/investigate?genre=Fiction"))).toBe(true);
+    expect(
+      revalidateAbovePage(args("/investigate?genre=Fiction", "/investigate?genre=Fiction")),
+    ).toBe(true);
   });
 });

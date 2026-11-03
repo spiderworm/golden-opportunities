@@ -31,19 +31,43 @@ interface ProbeOptions {
   timeoutMs?: number;
 }
 
-function run(command: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs: number): Promise<{ code: number | string | null; stdout: string }> {
+function run(
+  command: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  timeoutMs: number,
+): Promise<{ code: number | string | null; stdout: string }> {
   return new Promise((resolve) => {
-    execFile(command, args, { env, timeout: timeoutMs, maxBuffer: 64 * 1024, windowsHide: true }, (error, stdout) => {
-      const out = String(stdout ?? "");
-      if (!error) return resolve({ code: 0, stdout: out });
-      const e = error as { code?: unknown; killed?: boolean };
-      resolve({ code: e.code === "ENOENT" ? "ENOENT" : e.killed ? "TIMEOUT" : typeof e.code === "number" ? e.code : 1, stdout: out });
-    });
+    execFile(
+      command,
+      args,
+      { env, timeout: timeoutMs, maxBuffer: 64 * 1024, windowsHide: true },
+      (error, stdout) => {
+        const out = String(stdout ?? "");
+        if (!error) return resolve({ code: 0, stdout: out });
+        const e = error as { code?: unknown; killed?: boolean };
+        resolve({
+          code:
+            e.code === "ENOENT"
+              ? "ENOENT"
+              : e.killed
+                ? "TIMEOUT"
+                : typeof e.code === "number"
+                  ? e.code
+                  : 1,
+          stdout: out,
+        });
+      },
+    );
   });
 }
 
 /** Asks Claude Code whether it's there and signed in. Never throws. */
-export async function probeAssistant({ env = process.env, command = claudeCommand(env), timeoutMs = PROBE_TIMEOUT_MS }: ProbeOptions = {}): Promise<Availability> {
+export async function probeAssistant({
+  env = process.env,
+  command = claudeCommand(env),
+  timeoutMs = PROBE_TIMEOUT_MS,
+}: ProbeOptions = {}): Promise<Availability> {
   const spawnEnv = minimalEnv(env);
   const status = await run(command, ["auth", "status", "--json"], spawnEnv, timeoutMs);
   if (status.code === "ENOENT") return { state: "offline", reason: "missing" };
@@ -74,10 +98,23 @@ function report(result: Availability, track?: AvailabilityTrack, when = "probe")
  * Dewey's availability, probed once and cached. Under the fake provider (tests, or trying the panel without
  * Claude Code) it's always ready, since nothing is spawned.
  */
-export function assistantAvailability({ env = process.env, track, now = Date.now(), probe = probeAssistant }: { env?: NodeJS.ProcessEnv; track?: AvailabilityTrack; now?: number; probe?: (o: ProbeOptions) => Promise<Availability> } = {}): Promise<Availability> {
-  if (env.ORBITAL_ASSISTANT_PROVIDER === "fake" || env.VITEST) return Promise.resolve({ state: "ready" });
+export function assistantAvailability({
+  env = process.env,
+  track,
+  now = Date.now(),
+  probe = probeAssistant,
+}: {
+  env?: NodeJS.ProcessEnv;
+  track?: AvailabilityTrack;
+  now?: number;
+  probe?: (o: ProbeOptions) => Promise<Availability>;
+} = {}): Promise<Availability> {
+  if (env.ORBITAL_ASSISTANT_PROVIDER === "fake" || env.VITEST)
+    return Promise.resolve({ state: "ready" });
   if (cached) {
-    const stale = cached.result.then((r) => r.state === "offline" && now - cached!.at > OFFLINE_RECHECK_MS);
+    const stale = cached.result.then(
+      (r) => r.state === "offline" && now - cached!.at > OFFLINE_RECHECK_MS,
+    );
     return stale.then((s) => (s ? fresh() : cached!.result));
   }
   return fresh();

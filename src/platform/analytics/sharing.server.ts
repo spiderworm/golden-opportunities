@@ -18,7 +18,10 @@ type Answer = { status: number; body: { on: boolean } | { error: string } };
  * on any other site, including one that rebinds its DNS to 127.0.0.1, sends
  * its own Origin and is refused.
  */
-export async function setSharingFromRequest(request: Request, apply = (on: boolean) => serverAnalytics().setSharing(on)): Promise<Answer> {
+export async function setSharingFromRequest(
+  request: Request,
+  apply = (on: boolean) => serverAnalytics().setSharing(on),
+): Promise<Answer> {
   if (request.method !== "POST") return { status: 405, body: { error: "POST only" } };
   const origin = request.headers.get("origin");
   let host: string;
@@ -27,8 +30,10 @@ export async function setSharingFromRequest(request: Request, apply = (on: boole
   } catch {
     return { status: 403, body: { error: "same-origin requests only" } };
   }
-  if (!LOOPBACK.has(host) || origin !== new URL(request.url).origin) return { status: 403, body: { error: "same-origin requests only" } };
-  if (!(request.headers.get("content-type") ?? "").startsWith("application/json")) return { status: 415, body: { error: "JSON only" } };
+  if (!LOOPBACK.has(host) || origin !== new URL(request.url).origin)
+    return { status: 403, body: { error: "same-origin requests only" } };
+  if (!(request.headers.get("content-type") ?? "").startsWith("application/json"))
+    return { status: 415, body: { error: "JSON only" } };
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_BODY_BYTES) return { status: 413, body: { error: "too large" } };
   // Admission before the body is read: a flood can't tie the server up reading bodies.
@@ -42,12 +47,19 @@ export async function setSharingFromRequest(request: Request, apply = (on: boole
   let on: unknown;
   try {
     const parsed = JSON.parse(text);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || Object.keys(parsed).join() !== "on") throw 0;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      Object.keys(parsed).join() !== "on"
+    )
+      throw 0;
     on = parsed.on;
   } catch {
     on = undefined;
   }
-  if (typeof on !== "boolean") return { status: 400, body: { error: 'expected {"on": true|false}' } };
+  if (typeof on !== "boolean")
+    return { status: 400, body: { error: 'expected {"on": true|false}' } };
   apply(on);
   return { status: 200, body: { on } };
 }
@@ -58,13 +70,19 @@ export function resetAdmission() {
 }
 
 /** The body as text; null once it passes the cap, "timeout" past the deadline. Never buffers more than the cap. */
-async function readCapped(request: Request, cap: number, deadlineMs: number): Promise<string | null | "timeout"> {
+async function readCapped(
+  request: Request,
+  cap: number,
+  deadlineMs: number,
+): Promise<string | null | "timeout"> {
   if (!request.body) return "";
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<"timeout">((resolve) => (timer = setTimeout(() => resolve("timeout"), deadlineMs)));
+  const deadline = new Promise<"timeout">(
+    (resolve) => (timer = setTimeout(() => resolve("timeout"), deadlineMs)),
+  );
   for (;;) {
     const next = await Promise.race([reader.read(), deadline]);
     if (next === "timeout") {

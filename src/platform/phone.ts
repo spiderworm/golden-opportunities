@@ -3,7 +3,8 @@
 // gets the game, and so does a desktop window dragged narrow (its pointer is
 // fine). Decided in the browser, never from the user agent. The phone screen
 // (src/phone) shows itself on one instead of the game.
-export const PHONE_QUERY = "(pointer: coarse) and (max-width: 600px), (pointer: coarse) and (max-height: 600px)";
+export const PHONE_QUERY =
+  "(pointer: coarse) and (max-width: 600px), (pointer: coarse) and (max-height: 600px)";
 
 /** Whether this is a phone; false on the server. */
 export function isPhoneScreen(): boolean {

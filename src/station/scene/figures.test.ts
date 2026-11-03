@@ -1,4 +1,12 @@
-import { AnimationClip, AnimationMixer, Bone, Group, Quaternion, QuaternionKeyframeTrack, Vector3 } from "three";
+import {
+  AnimationClip,
+  AnimationMixer,
+  Bone,
+  Group,
+  Quaternion,
+  QuaternionKeyframeTrack,
+  Vector3,
+} from "three";
 import { describe, expect, it } from "vitest";
 
 import { setWalking, startIdling, type Figure } from "./figures";
@@ -13,15 +21,24 @@ function figure(): { figure: Figure; arm: Bone } {
   arm.name = "arm";
   root.add(arm);
   const clip = (name: string, pose: Quaternion) =>
-    new AnimationClip(name, 2, [new QuaternionKeyframeTrack("arm.quaternion", [0, 2], [...pose.toArray(), ...pose.toArray()])]);
+    new AnimationClip(name, 2, [
+      new QuaternionKeyframeTrack("arm.quaternion", [0, 2], [...pose.toArray(), ...pose.toArray()]),
+    ]);
   const mixer = new AnimationMixer(root);
   return {
-    figure: { root, mixer, idle: mixer.clipAction(clip("idle", DOWN)), walk: mixer.clipAction(clip("walk", SWING)), walking: false },
+    figure: {
+      root,
+      mixer,
+      idle: mixer.clipAction(clip("idle", DOWN)),
+      walk: mixer.clipAction(clip("walk", SWING)),
+      walking: false,
+    },
     arm,
   };
 }
 
-const posedLike = (arm: Bone, pose: Quaternion) => expect(arm.quaternion.angleTo(pose)).toBeLessThan(1e-3);
+const posedLike = (arm: Bone, pose: Quaternion) =>
+  expect(arm.quaternion.angleTo(pose)).toBeLessThan(1e-3);
 
 describe("startIdling", () => {
   it("poses each figure in its idle before the first frame", () => {

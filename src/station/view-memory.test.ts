@@ -4,7 +4,10 @@ import { FIRST_VIEW, rememberedView, rememberView } from "./view-memory";
 
 const memoryStorage = () => {
   const items = new Map<string, string>();
-  return { getItem: (k: string) => items.get(k) ?? null, setItem: (k: string, v: string) => void items.set(k, v) };
+  return {
+    getItem: (k: string) => items.get(k) ?? null,
+    setItem: (k: string, v: string) => void items.set(k, v),
+  };
 };
 
 describe("station view memory", () => {
@@ -24,8 +27,23 @@ describe("station view memory", () => {
   it("treats missing, blocked or stale storage as a first visit", () => {
     expect(rememberedView(() => undefined)).toBe("inside");
     expect(rememberedView(() => ({ getItem: () => "upstairs" }))).toBe("inside");
-    expect(rememberedView(() => ({ getItem: () => { throw new Error("blocked"); } }))).toBe("inside");
-    expect(() => rememberView(() => ({ setItem: () => { throw new Error("full"); } }), "outside")).not.toThrow();
+    expect(
+      rememberedView(() => ({
+        getItem: () => {
+          throw new Error("blocked");
+        },
+      })),
+    ).toBe("inside");
+    expect(() =>
+      rememberView(
+        () => ({
+          setItem: () => {
+            throw new Error("full");
+          },
+        }),
+        "outside",
+      ),
+    ).not.toThrow();
   });
 
   it("falls back when merely reaching for storage throws", () => {

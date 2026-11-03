@@ -3,12 +3,25 @@ import { describe, expect, it } from "vitest";
 
 import { Dropdown } from "./Dropdown";
 
-const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+const text = (html: string) =>
+  html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 describe("the shared dropdown", () => {
   it("in single mode, names its choice and offers radios in one labelled group", () => {
     const html = renderToString(
-      <Dropdown mode="single" name="Break down by" value="genre" onChange={() => {}} options={[{ value: "month", label: "Month" }, { value: "genre", label: "Genre" }]} />,
+      <Dropdown
+        mode="single"
+        name="Break down by"
+        value="genre"
+        onChange={() => {}}
+        options={[
+          { value: "month", label: "Month" },
+          { value: "genre", label: "Genre" },
+        ]}
+      />,
     );
     expect(text(html)).toContain("Break down by Genre");
     expect(html.match(/type="radio"/g)).toHaveLength(2);

@@ -1,5 +1,15 @@
-import { DATA_VERSION_HEADER, queryCache, queryKey, type Loaded } from "~/platform/query-cache.client";
-import { EVIDENCE_HEADER, type Query, type QueryErrorResponse, type QueryResult } from "~/query/types";
+import {
+  DATA_VERSION_HEADER,
+  queryCache,
+  queryKey,
+  type Loaded,
+} from "~/platform/query-cache.client";
+import {
+  EVIDENCE_HEADER,
+  type Query,
+  type QueryErrorResponse,
+  type QueryResult,
+} from "~/query/types";
 
 export class QueryRequestError extends Error {
   readonly code: string;
@@ -20,14 +30,25 @@ export class QueryRequestError extends Error {
  * `evidence: false` is for a view that's context, never evidence (a pinned heatmap, Plot, #266): the server answers
  * without recording it. Its answers are kept apart, so the same query shown as evidence still reaches the server.
  */
-export function fetchQuery(query: Query, signal?: AbortSignal, { evidence = true }: { evidence?: boolean } = {}): Promise<QueryResult> {
-  return queryCache.load(`${evidence ? "query" : "context"}:${queryKey(query)}`, () => postQuery(query, evidence), signal);
+export function fetchQuery(
+  query: Query,
+  signal?: AbortSignal,
+  { evidence = true }: { evidence?: boolean } = {},
+): Promise<QueryResult> {
+  return queryCache.load(
+    `${evidence ? "query" : "context"}:${queryKey(query)}`,
+    () => postQuery(query, evidence),
+    signal,
+  );
 }
 
 async function postQuery(query: Query, evidence: boolean): Promise<Loaded<QueryResult>> {
   const response = await fetch("/api/query", {
     method: "POST",
-    headers: { "content-type": "application/json", ...(evidence ? {} : { [EVIDENCE_HEADER]: "none" }) },
+    headers: {
+      "content-type": "application/json",
+      ...(evidence ? {} : { [EVIDENCE_HEADER]: "none" }),
+    },
     body: JSON.stringify(query),
   });
   const text = await response.text().catch(() => "");
@@ -39,8 +60,15 @@ async function postQuery(query: Query, evidence: boolean): Promise<Loaded<QueryR
   }
   if (!response.ok) {
     const error = (body as QueryErrorResponse | null)?.error;
-    throw new QueryRequestError(error?.code ?? `HTTP_${response.status}`, error?.message ?? "The query didn't run.");
+    throw new QueryRequestError(
+      error?.code ?? `HTTP_${response.status}`,
+      error?.message ?? "The query didn't run.",
+    );
   }
   // Kept only under the version the server says it computed this for; no header, nothing kept.
-  return { value: body as QueryResult, bytes: text.length, version: response.headers.get(DATA_VERSION_HEADER) };
+  return {
+    value: body as QueryResult,
+    bytes: text.length,
+    version: response.headers.get(DATA_VERSION_HEADER),
+  };
 }

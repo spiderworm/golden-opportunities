@@ -1,6 +1,12 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef, type RefObject } from "react";
-import { CatmullRomCurve3, Vector3, type DirectionalLight, type Group, type PerspectiveCamera } from "three";
+import {
+  CatmullRomCurve3,
+  Vector3,
+  type DirectionalLight,
+  type Group,
+  type PerspectiveCamera,
+} from "three";
 
 import {
   easeInOutCubic,
@@ -71,14 +77,21 @@ export function CameraRig({
     const t = clock.elapsedTime;
     const { points, curve, look, windowCenter, inside, sway, right } = work;
     // Outside, the home point drifts a little so the view never freezes.
-    points[0]!.copy(OUTSIDE_EYE).add(sway.set(Math.sin(t * 0.07) * 12, Math.sin(t * 0.05) * 6, Math.cos(t * 0.06) * 8));
-    GLIDE_STATION_POINTS.forEach((local, i) => points[i + 1]!.copy(local).applyMatrix4(frame.matrixWorld));
+    points[0]!
+      .copy(OUTSIDE_EYE)
+      .add(sway.set(Math.sin(t * 0.07) * 12, Math.sin(t * 0.05) * 6, Math.cos(t * 0.06) * 8));
+    GLIDE_STATION_POINTS.forEach((local, i) =>
+      points[i + 1]!.copy(local).applyMatrix4(frame.matrixWorld),
+    );
     curve.points = points;
     camera.position.copy(curve.getPoint(u));
 
     windowCenter.copy(WINDOW_CENTER).applyMatrix4(frame.matrixWorld);
     inside.copy(INSIDE_LOOK).applyMatrix4(frame.matrixWorld);
-    look.copy(OUTSIDE_LOOK).lerp(windowCenter, smoothstep(0.1, 0.45, u)).lerp(inside, smoothstep(0.5, 0.68, u));
+    look
+      .copy(OUTSIDE_LOOK)
+      .lerp(windowCenter, smoothstep(0.1, 0.45, u))
+      .lerp(inside, smoothstep(0.5, 0.68, u));
     // A little parallax from the pointer, more of it outside. It shifts the
     // look target along the screen's right, not the world's x, which faces
     // away from the camera outside and turns with the station inside.

@@ -33,7 +33,8 @@ export function textProblem(field: TextField, text: unknown, rules: TextRules): 
   if (/[\p{Cc}\p{Cf}\p{Default_Ignorable_Code_Point}]/u.test(text)) return "control";
   if (/\p{Extended_Pictographic}/u.test(text)) return "emoji";
   // Claude Code puts the account's email in the model's context; no address, placeholder or @ may reach a player.
-  if (text.includes("@") || text.includes(REDACTED) || redactEmails(text) !== text) return "address";
+  if (text.includes("@") || text.includes(REDACTED) || redactEmails(text) !== text)
+    return "address";
   if (text.includes("{{") || text.includes("}}")) return "slot";
   if (hasBannedWord(text)) return "number_or_direction";
   const capitals = field !== "story";

@@ -1,6 +1,13 @@
 import { gameSessionMiddleware } from "~/game/session.server";
 import { useEffect, useRef, type ReactNode } from "react";
-import { Outlet, isRouteErrorResponse, useFetcher, useLocation, useRevalidator, useRouteLoaderData } from "react-router";
+import {
+  Outlet,
+  isRouteErrorResponse,
+  useFetcher,
+  useLocation,
+  useRevalidator,
+  useRouteLoaderData,
+} from "react-router";
 
 import type { Route } from "./+types/layout";
 import type { loader as rootLoader } from "../root";
@@ -27,7 +34,9 @@ function Frame({ station, children }: { station: StationState; children: ReactNo
       notifications={station.alerts}
       standingOrder={station.standingOrder}
       q1={station.q1}
-      onAlertSeen={() => seen.submit(null, { method: "post", action: "/alert/seen" }).catch(() => {})}
+      onAlertSeen={() =>
+        seen.submit(null, { method: "post", action: "/alert/seen" }).catch(() => {})
+      }
       track={track}
     >
       {children}
@@ -93,8 +102,14 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     <ReplayMismatch quarter={quarter} instance={root?.instance} />
   ) : (
     <main>
-      <h1>{isRouteErrorResponse(error) && error.status === 404 ? "Not found" : "Something went wrong"}</h1>
-      <p>{isRouteErrorResponse(error) && error.status === 404 ? "The requested page could not be found." : "An unexpected error occurred."}</p>
+      <h1>
+        {isRouteErrorResponse(error) && error.status === 404 ? "Not found" : "Something went wrong"}
+      </h1>
+      <p>
+        {isRouteErrorResponse(error) && error.status === 404
+          ? "The requested page could not be found."
+          : "An unexpected error occurred."}
+      </p>
     </main>
   );
   return station ? <Frame station={station}>{content}</Frame> : content;

@@ -36,12 +36,38 @@ export function BossAvatar({ portrait }: { portrait?: string }) {
         <img src={portrait} alt="" width={64} height={64} loading="lazy" />
       ) : (
         <svg viewBox="0 0 64 64" width="64" height="64" className={styles.face}>
-          <line x1="32" y1="6" x2="32" y2="15" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+          <line
+            x1="32"
+            y1="6"
+            x2="32"
+            y2="15"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
           <circle cx="32" cy="6" r="3.5" fill="currentColor" />
-          <rect x="11" y="15" width="42" height="36" rx="10" fill="currentColor" opacity="0.22" stroke="currentColor" strokeWidth="3" />
+          <rect
+            x="11"
+            y="15"
+            width="42"
+            height="36"
+            rx="10"
+            fill="currentColor"
+            opacity="0.22"
+            stroke="currentColor"
+            strokeWidth="3"
+          />
           <rect x="20" y="26" width="8" height="8" rx="2" fill="currentColor" />
           <rect x="36" y="26" width="8" height="8" rx="2" fill="currentColor" />
-          <line x1="23" y1="42" x2="41" y2="42" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+          <line
+            x1="23"
+            y1="42"
+            x2="41"
+            y2="42"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
           <rect x="5" y="27" width="6" height="12" rx="2" fill="currentColor" />
           <rect x="53" y="27" width="6" height="12" rx="2" fill="currentColor" />
         </svg>

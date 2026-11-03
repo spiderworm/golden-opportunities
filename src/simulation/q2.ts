@@ -5,12 +5,37 @@ import type { BookshopData, DeepReadonly } from "~/bookshop/types";
 import { applyConditions, type Conditions } from "./conditions";
 import { MONTH_NAMES, q2Assumptions, q2Happened, type QuarterCopy } from "./copy";
 import { ledger } from "./measures";
-import { baseline, PICK_DISCOUNT, run, SALE_RESPONSE, withRelease, YEAR, type Levers, type QuarterNumber, type Run } from "./model";
+import {
+  baseline,
+  PICK_DISCOUNT,
+  run,
+  SALE_RESPONSE,
+  withRelease,
+  YEAR,
+  type Levers,
+  type QuarterNumber,
+  type Run,
+} from "./model";
 import { linesOf } from "./orders";
 import { isQ2Plan } from "./plan";
 import { RELEASE } from "./release";
-import { cardFor, eventFacts, historyFor, metricsOf, monthlyOf, prepare, saleFacts } from "./simulate";
-import type { MeasureId, PickCandidate, PickFacts, Q2Facts, Q2Plan, Q2SimulationResult } from "./types";
+import {
+  cardFor,
+  eventFacts,
+  historyFor,
+  metricsOf,
+  monthlyOf,
+  prepare,
+  saleFacts,
+} from "./simulate";
+import type {
+  MeasureId,
+  PickCandidate,
+  PickFacts,
+  Q2Facts,
+  Q2Plan,
+  Q2SimulationResult,
+} from "./types";
 
 const QUARTER = 2;
 const candidatesOf = new WeakMap<DeepReadonly<BookshopData>, PickCandidate[]>();
@@ -21,10 +46,25 @@ export function q2Candidates(data: DeepReadonly<BookshopData>): readonly PickCan
   if (cached) return cached;
   const byIsbn = new Map<string, PickCandidate>();
   for (const l of data.saleLines)
-    if (!byIsbn.has(l.isbn)) byIsbn.set(l.isbn, { isbn: l.isbn, bookId: l.book.id, title: l.title, format: l.format, listPrice: l.listPrice });
+    if (!byIsbn.has(l.isbn))
+      byIsbn.set(l.isbn, {
+        isbn: l.isbn,
+        bookId: l.book.id,
+        title: l.title,
+        format: l.format,
+        listPrice: l.listPrice,
+      });
   const { book, edition } = RELEASE;
-  byIsbn.set(edition.isbn, { isbn: edition.isbn, bookId: book.id, title: book.title, format: edition.format, listPrice: edition.listPrice });
-  const list = [...byIsbn.values()].sort((a, b) => a.title.localeCompare(b.title, "en-US") || a.format.localeCompare(b.format, "en-US"));
+  byIsbn.set(edition.isbn, {
+    isbn: edition.isbn,
+    bookId: book.id,
+    title: book.title,
+    format: edition.format,
+    listPrice: edition.listPrice,
+  });
+  const list = [...byIsbn.values()].sort(
+    (a, b) => a.title.localeCompare(b.title, "en-US") || a.format.localeCompare(b.format, "en-US"),
+  );
   candidatesOf.set(data, list);
   return list;
 }
@@ -38,7 +78,11 @@ function leversOf(plan: Q2Plan, saleResponse = SALE_RESPONSE): Levers {
 }
 
 /** Each month's pick: the extra copies, and the copies that would have sold anyway with what their discount cost. */
-function pickFacts(r: Run, months: readonly string[], candidates: ReadonlyMap<string, PickCandidate>): (PickFacts | null)[] {
+function pickFacts(
+  r: Run,
+  months: readonly string[],
+  candidates: ReadonlyMap<string, PickCandidate>,
+): (PickFacts | null)[] {
   return months.map((month, m) => {
     const isbn = r.picks[m];
     if (isbn === null) return null;
@@ -70,12 +114,16 @@ const PROBLEMS: Record<Q2PlanProblem, string> = {
 };
 
 /** The player's mistake, if any, so the game can refuse the plan (a 400) before simulating; null for a playable plan. */
-export function q2PlanProblem(plan: unknown, data: DeepReadonly<BookshopData>): Q2PlanProblem | null {
+export function q2PlanProblem(
+  plan: unknown,
+  data: DeepReadonly<BookshopData>,
+): Q2PlanProblem | null {
   if (!isQ2Plan(plan)) return "shape";
   const candidates = new Map(q2Candidates(data).map((c) => [c.isbn, c]));
   const chosen = plan.picks.filter((isbn): isbn is string => isbn !== null);
   if (!chosen.every((isbn) => candidates.has(isbn))) return "unknown-edition";
-  if (new Set(chosen.map((isbn) => candidates.get(isbn)!.bookId)).size !== chosen.length) return "same-title";
+  if (new Set(chosen.map((isbn) => candidates.get(isbn)!.bookId)).size !== chosen.length)
+    return "same-title";
   return null;
 }
 
@@ -103,21 +151,40 @@ function runsOf(plan: Q2Plan, seed: number, data: DeepReadonly<BookshopData>, se
   if (problem) throw new Error(`Invalid Q2 plan: ${PROBLEMS[problem]}`);
   const history = historyFor(data, setup.quarter, setup.year);
   const conditions = setup.conditions ?? { costs: {} };
-  const base = applyConditions(history, withRelease(history, baseline(history, seed), seed), seed, conditions);
+  const base = applyConditions(
+    history,
+    withRelease(history, baseline(history, seed), seed),
+    seed,
+    conditions,
+  );
   const runOf = (q: Q2Plan, response?: number) => run(history, base, seed, leversOf(q, response));
   const holdRun = runOf(HOLD);
-  const planRun = plan.picks.every((isbn) => isbn === null) && plan.levers.length === 0 ? holdRun : runOf(plan);
+  const planRun =
+    plan.picks.every((isbn) => isbn === null) && plan.levers.length === 0 ? holdRun : runOf(plan);
   return { conditions, runOf, holdRun, planRun };
 }
 
 /** The quarter's sale lines under the plan and under holding course, without the report card: for a save's replay. */
-export function picksLines(plan: Q2Plan, seed: number, data: DeepReadonly<BookshopData>, setup: PicksQuarter = Q2_2194) {
+export function picksLines(
+  plan: Q2Plan,
+  seed: number,
+  data: DeepReadonly<BookshopData>,
+  setup: PicksQuarter = Q2_2194,
+) {
   const { holdRun, planRun } = runsOf(plan, seed, data, setup);
-  return { lines: linesOf(planRun.orders, setup.year, setup.quarter), doNothingLines: linesOf(holdRun.orders, setup.year, setup.quarter) };
+  return {
+    lines: linesOf(planRun.orders, setup.year, setup.quarter),
+    doNothingLines: linesOf(holdRun.orders, setup.year, setup.quarter),
+  };
 }
 
 /** Plays a quarter under the plan, and under holding course (the empty calendar) from the same seed. Throws for a plan with a problem. */
-export function simulatePicks(plan: Q2Plan, seed: number, data: DeepReadonly<BookshopData>, setup: PicksQuarter = Q2_2194): Q2SimulationResult {
+export function simulatePicks(
+  plan: Q2Plan,
+  seed: number,
+  data: DeepReadonly<BookshopData>,
+  setup: PicksQuarter = Q2_2194,
+): Q2SimulationResult {
   const candidates = new Map(q2Candidates(data).map((c) => [c.isbn, c]));
   const { conditions, runOf, holdRun, planRun } = runsOf(plan, seed, data, setup);
   const p = prepare(data, setup.quarter, setup.year);
@@ -133,9 +200,13 @@ export function simulatePicks(plan: Q2Plan, seed: number, data: DeepReadonly<Boo
     return ledger(r.orders, r.nights.length, costs).grossProfit;
   };
   const withoutSale = profitOf({ picks: plan.picks, levers: others });
-  const saleChange = (response: number) => profitOf({ picks: plan.picks, levers: [...others, "sale"] }, response) - withoutSale;
+  const saleChange = (response: number) =>
+    profitOf({ picks: plan.picks, levers: [...others, "sale"] }, response) - withoutSale;
 
-  const facts: Q2Facts = { picks: pickFacts(planRun, p.history.months, candidates), amount: mine.grossProfit - holdLedger.grossProfit };
+  const facts: Q2Facts = {
+    picks: pickFacts(planRun, p.history.months, candidates),
+    amount: mine.grossProfit - holdLedger.grossProfit,
+  };
   if (plan.levers.includes("events")) facts.events = eventFacts(planRun, mine);
   if (plan.levers.includes("sale")) facts.sale = saleFacts(mine, holdLedger);
   const months = p.history.months.map((m) => MONTH_NAMES[Number(m) - 1]);
@@ -148,8 +219,20 @@ export function simulatePicks(plan: Q2Plan, seed: number, data: DeepReadonly<Boo
       quarter: `${setup.year}-Q${setup.quarter}`,
       monthly: monthlyOf(p.history.months, planRun, holdRun, setup.year),
       totals: { plan: metricsOf(mine), holdCourse: metricsOf(holdLedger) },
-      reportCard: { plan: cardFor(p, planRun, anchor, setup.goals, costs), holdCourse: cardFor(p, holdRun, anchor, setup.goals, costs) },
-      assumptions: q2Assumptions(plan, { averageOrderValue: p.averageOrderValue, saleAt10: saleChange(0.1), saleAt30: saleChange(0.3) }, setup.quarter, setup.copy),
+      reportCard: {
+        plan: cardFor(p, planRun, anchor, setup.goals, costs),
+        holdCourse: cardFor(p, holdRun, anchor, setup.goals, costs),
+      },
+      assumptions: q2Assumptions(
+        plan,
+        {
+          averageOrderValue: p.averageOrderValue,
+          saleAt10: saleChange(0.1),
+          saleAt30: saleChange(0.3),
+        },
+        setup.quarter,
+        setup.copy,
+      ),
       happened: q2Happened(facts, months),
       facts,
     },
@@ -157,6 +240,10 @@ export function simulatePicks(plan: Q2Plan, seed: number, data: DeepReadonly<Boo
 }
 
 /** Plays Q2 2194 under the plan, and under holding course (the empty calendar) from the same seed. Throws for a plan with a problem. */
-export function simulateQ2(plan: Q2Plan, seed: number, data: DeepReadonly<BookshopData>): Q2SimulationResult {
+export function simulateQ2(
+  plan: Q2Plan,
+  seed: number,
+  data: DeepReadonly<BookshopData>,
+): Q2SimulationResult {
   return simulatePicks(plan, seed, data);
 }

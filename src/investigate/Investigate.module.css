@@ -641,7 +641,11 @@
 
 /* A cell the terminal's row limit left out: unknown, so hatched and empty, never a $0 (Plot, #264). */
 .heatCell[data-cut] {
-  background: repeating-linear-gradient(135deg, transparent 0 5px, var(--color-border) 5px 6px) !important;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 5px,
+    var(--color-border) 5px 6px
+  ) !important;
 }
 
 .heatCell[data-dimmed] {

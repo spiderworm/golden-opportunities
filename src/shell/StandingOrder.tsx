@@ -4,7 +4,6 @@ import { FactText } from "~/platform/bosses/facts";
 import { ALERT_COPY, type AlertCopy } from "./alert-copy";
 import styles from "./StandingOrder.module.css";
 
-
 export interface StandingOrderProps {
   /** Which quarter's order: Q1's unless given. */
   copy?: AlertCopy["strip"];
@@ -15,7 +14,12 @@ export interface StandingOrderProps {
 }
 
 /** The Commerce Office's order, kept under the header until the plan is in. */
-export function StandingOrder({ copy: COPY = ALERT_COPY.strip, onLedgers, onReadMemo, onOpenLedgers }: StandingOrderProps) {
+export function StandingOrder({
+  copy: COPY = ALERT_COPY.strip,
+  onLedgers,
+  onReadMemo,
+  onOpenLedgers,
+}: StandingOrderProps) {
   return (
     <aside className={styles.strip} aria-label="Standing order">
       <p className={styles.text}>

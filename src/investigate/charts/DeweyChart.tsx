@@ -14,10 +14,24 @@ const HEIGHT = 220;
 
 export const DeweyChart: ChartRenderer = ({ chart, result }) => {
   const [x, seriesBy = null] = chart.query.by;
-  const model = useMemo(() => (x ? categoryModel(result, x, seriesBy, [], { limit: chart.query.limit }) : null), [result, x, seriesBy, chart.query.limit]);
-  const option = useMemo(() => (model ? categoryOption(model, { kind: chart.kind === "line" ? "line" : "bar", quarters: [], drill: false }) : null), [model, chart.kind]);
+  const model = useMemo(
+    () => (x ? categoryModel(result, x, seriesBy, [], { limit: chart.query.limit }) : null),
+    [result, x, seriesBy, chart.query.limit],
+  );
+  const option = useMemo(
+    () =>
+      model
+        ? categoryOption(model, {
+            kind: chart.kind === "line" ? "line" : "bar",
+            quarters: [],
+            drill: false,
+          })
+        : null,
+    [model, chart.kind],
+  );
   if (result.rows.length === 0) return <p>Nothing matched.</p>;
-  if (!model || !option || model.series.length > MAX_SERIES) return <ResultTable result={result} height={HEIGHT} />;
+  if (!model || !option || model.series.length > MAX_SERIES)
+    return <ResultTable result={result} height={HEIGHT} />;
   return (
     <>
       <Legend items={legendItems(model, [])} label="Series" />

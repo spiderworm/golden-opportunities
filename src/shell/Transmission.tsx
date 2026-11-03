@@ -6,7 +6,6 @@ import { FactText } from "~/platform/bosses/facts";
 import { ALERT_COPY, type AlertCopy } from "./alert-copy";
 import styles from "./Transmission.module.css";
 
-
 export interface TransmissionProps {
   open: boolean;
   /** Which quarter's memo: Q1's unless given. */
@@ -21,7 +20,12 @@ export interface TransmissionProps {
  * The Commerce Office's memo, delivered by its robot over the station: a modal dialog, so focus
  * stays in it and Escape puts it off, with the scene still showing around it.
  */
-export function Transmission({ open, copy: COPY = ALERT_COPY.transmission, onOpenLedgers, onLater }: TransmissionProps) {
+export function Transmission({
+  open,
+  copy: COPY = ALERT_COPY.transmission,
+  onOpenLedgers,
+  onLater,
+}: TransmissionProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {

@@ -1,27 +1,31 @@
-import type { Outcome, Q2Outcome } from '../simulation/types';
-import type { Sale } from '../bookshop/types';
-import type { QuarterId } from './quarters';
-import type { AlmaRecord } from '../alma/record';
-import type { BackstoryRecord } from '../alma/backstory-record';
-import type { LaterDiscoveryId } from './later-discoveries';
+import type { Outcome, Q2Outcome } from "../simulation/types";
+import type { Sale } from "../bookshop/types";
+import type { QuarterId } from "./quarters";
+import type { AlmaRecord } from "../alma/record";
+import type { BackstoryRecord } from "../alma/backstory-record";
+import type { LaterDiscoveryId } from "./later-discoveries";
 
 /** A to C are found in Q1, D to F in Q2 (docs/design/q2.md section 6). */
-export type DiscoveryId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
-export type Q2DiscoveryId = 'D' | 'E' | 'F';
-export const Q1_DISCOVERIES = ['A', 'B', 'C'] as const;
-export const Q2_DISCOVERIES = ['D', 'E', 'F'] as const;
+export type DiscoveryId = "A" | "B" | "C" | "D" | "E" | "F";
+export type Q2DiscoveryId = "D" | "E" | "F";
+export const Q1_DISCOVERIES = ["A", "B", "C"] as const;
+export const Q2_DISCOVERIES = ["D", "E", "F"] as const;
 /** Q2's outcome with the discoveries the game records, as M1's Outcome has them: Q2's own only. */
-export interface Q2GameOutcome extends Q2Outcome { discoveries: (Q2DiscoveryId | LaterDiscoveryId)[] }
+export interface Q2GameOutcome extends Q2Outcome {
+  discoveries: (Q2DiscoveryId | LaterDiscoveryId)[];
+}
 /**
  * A quarter's sale lines: replayed from its plan and the save's seed, and checked against the hash and count taken
  * when it was played (replay.server.ts); or, in saves from before that, stored.
  */
-export type QuarterLines = { lines: { hash: string; count: number }; sales?: never } | { sales: Sale[]; lines?: never };
+export type QuarterLines =
+  { lines: { hash: string; count: number }; sales?: never } | { sales: Sale[]; lines?: never };
 /** A committed quarter: its plan and result (the plan is in the outcome), and its lines, written together. */
 export type PlayedQuarter = (
-  | { period: '2194-Q1'; outcomeId: string; outcome: Outcome }
-  | { period: Exclude<QuarterId, '2194-Q1'>; outcomeId: string; outcome: Q2GameOutcome }
-) & QuarterLines;
+  | { period: "2194-Q1"; outcomeId: string; outcome: Outcome }
+  | { period: Exclude<QuarterId, "2194-Q1">; outcomeId: string; outcome: Q2GameOutcome }
+) &
+  QuarterLines;
 /** Private server persistence. Never return a save or its seed from a route. */
 export interface GameSave {
   version: 2;

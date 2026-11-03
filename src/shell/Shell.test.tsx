@@ -6,7 +6,13 @@ import { Shell } from "./Shell";
 
 function renderAt(path: string) {
   const notifications = [
-    { id: "q4-revenue-down", title: "Q4 revenue is down 41% on Q3", detail: "Look into it.", unread: true, to: "/investigate" },
+    {
+      id: "q4-revenue-down",
+      title: "Q4 revenue is down 41% on Q3",
+      detail: "Look into it.",
+      unread: true,
+      to: "/investigate",
+    },
   ];
   const Stub = createRoutesStub([
     {

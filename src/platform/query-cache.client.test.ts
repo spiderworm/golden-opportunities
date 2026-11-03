@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { Query } from "~/query/types";
-import { createQueryCache, flushQueryCacheStats, pageOf, queryKey, type Loaded } from "./query-cache.client";
+import {
+  createQueryCache,
+  flushQueryCacheStats,
+  pageOf,
+  queryKey,
+  type Loaded,
+} from "./query-cache.client";
 
 /** A request the test answers by hand. */
 function deferred<T>() {
@@ -13,7 +19,10 @@ function deferred<T>() {
   });
   return { promise, resolve, reject };
 }
-const answer = <T>(value: T, bytes = 10) => () => Promise.resolve({ value, bytes });
+const answer =
+  <T>(value: T, bytes = 10) =>
+  () =>
+    Promise.resolve({ value, bytes });
 
 describe("the query cache", () => {
   it("answers a repeat from memory, for the same data version", async () => {
@@ -63,7 +72,9 @@ describe("the query cache", () => {
     await cache.load("c", () => Promise.resolve({ value: "rows", bytes: 5, version: "v1" }));
     expect(cache.peek("c")).toBe("rows");
     // Asked under v1 but computed after a commit (v2): passed on, not kept under either; the page moves to v2.
-    expect(await cache.load("a", () => Promise.resolve({ value: "Q2's rows", bytes: 5, version: "v2" }))).toBe("Q2's rows");
+    expect(
+      await cache.load("a", () => Promise.resolve({ value: "Q2's rows", bytes: 5, version: "v2" })),
+    ).toBe("Q2's rows");
     expect(cache.peek("a")).toBeUndefined();
     expect(cache.version).toBe("v2");
   });
@@ -75,18 +86,26 @@ describe("the query cache", () => {
     cache.setVersion("v1");
     await cache.load("a", () => Promise.resolve({ value: "Q1's rows", bytes: 5, version: "v1" }));
     // Another tab committed Q2: this page's next answer is computed under v2.
-    expect(await cache.load("b", () => Promise.resolve({ value: "Q2's rows", bytes: 5, version: "v2" }))).toBe("Q2's rows");
+    expect(
+      await cache.load("b", () => Promise.resolve({ value: "Q2's rows", bytes: 5, version: "v2" })),
+    ).toBe("Q2's rows");
     expect(stale).toHaveBeenCalledOnce();
     expect(cache.version).toBe("v2");
     // Q1's answer is never served again; the next ask goes to the server, and is kept under v2.
     expect(cache.peek("a")).toBeUndefined();
-    expect(await cache.load("a", () => Promise.resolve({ value: "Q2's rows for a", bytes: 5, version: "v2" }))).toBe("Q2's rows for a");
+    expect(
+      await cache.load("a", () =>
+        Promise.resolve({ value: "Q2's rows for a", bytes: 5, version: "v2" }),
+      ),
+    ).toBe("Q2's rows for a");
     expect(cache.peek("a")).toBe("Q2's rows for a");
     // The shell renders again with its old data before revalidating: v1 doesn't come back.
     cache.setVersion("v1");
     expect(cache.version).toBe("v2");
     // Nor does a late answer computed before the commit.
-    await cache.load("late", () => Promise.resolve({ value: "Q1's rows", bytes: 5, version: "v1" }));
+    await cache.load("late", () =>
+      Promise.resolve({ value: "Q1's rows", bytes: 5, version: "v1" }),
+    );
     expect(cache.version).toBe("v2");
     expect(cache.peek("late")).toBeUndefined();
     expect(stale).toHaveBeenCalledOnce();
@@ -138,7 +157,9 @@ describe("the query cache", () => {
     expect(cache.peek("a")).toBe("rows");
     // A caller already aborted gets nothing, even from the cache.
     const aborted = AbortSignal.abort();
-    await expect(cache.load("a", answer("rows"), aborted)).rejects.toMatchObject({ name: "AbortError" });
+    await expect(cache.load("a", answer("rows"), aborted)).rejects.toMatchObject({
+      name: "AbortError",
+    });
   });
 
   it("passes errors on and keeps none, so the next ask tries again", async () => {
@@ -180,12 +201,22 @@ describe("the query cache", () => {
 
 describe("a query's key", () => {
   it("is the same whatever order the filters and their values come in, but keeps the grouping's order", () => {
-    const a: Query = { measure: "units", by: ["genre", "quarter"], filter: { quarter: ["2193-Q1", "2193-Q2"], format: ["Hardcover"] } };
-    const b: Query = { measure: "units", by: ["genre", "quarter"], filter: { format: ["Hardcover"], quarter: ["2193-Q2", "2193-Q1"] } };
+    const a: Query = {
+      measure: "units",
+      by: ["genre", "quarter"],
+      filter: { quarter: ["2193-Q1", "2193-Q2"], format: ["Hardcover"] },
+    };
+    const b: Query = {
+      measure: "units",
+      by: ["genre", "quarter"],
+      filter: { format: ["Hardcover"], quarter: ["2193-Q2", "2193-Q1"] },
+    };
     expect(queryKey(a)).toBe(queryKey(b));
     expect(queryKey({ ...a, by: ["quarter", "genre"] })).not.toBe(queryKey(a));
     expect(queryKey({ ...a, limit: 5 })).not.toBe(queryKey(a));
-    expect(queryKey({ measure: "units", by: [] })).not.toBe(queryKey({ measure: "revenue", by: [] }));
+    expect(queryKey({ measure: "units", by: [] })).not.toBe(
+      queryKey({ measure: "revenue", by: [] }),
+    );
   });
 });
 
@@ -208,7 +239,16 @@ describe("the page's cache summary", () => {
     await cache.load("a", answer("rows", 7));
     flushQueryCacheStats(cache, track, pageOf("/investigate"));
     expect(track).toHaveBeenCalledOnce();
-    expect(track).toHaveBeenCalledWith("query_cache_summary", { page: "investigate", hits: 1, misses: 1, shared: 0, bytesServed: 7, evictions: 0, overtaken: 0, entries: 1 });
+    expect(track).toHaveBeenCalledWith("query_cache_summary", {
+      page: "investigate",
+      hits: 1,
+      misses: 1,
+      shared: 0,
+      bytesServed: 7,
+      evictions: 0,
+      overtaken: 0,
+      entries: 1,
+    });
     expect(pageOf("/")).toBe("station");
     expect(pageOf("/result")).toBe("result");
     expect(pageOf("/reports/a-players-title")).toBe("other");

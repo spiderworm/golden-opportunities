@@ -44,7 +44,12 @@ const NOUNS: Record<Measure, string> = {
 };
 
 const ROUNDINGS = [10, 100, 1_000, 10_000, 100_000, 1_000_000];
-const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 const whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const twoPlaces = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const onePlace = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
@@ -61,7 +66,8 @@ function amount(kind: Kind, value: number, round?: number): string {
   if (kind === "fraction") return `${onePlace.format(v * 100)}%`;
   return twoPlaces.format(v);
 }
-const signed = (kind: Kind, value: number, round?: number) => (value < 0 ? `minus ${amount(kind, value, round)}` : amount(kind, value, round));
+const signed = (kind: Kind, value: number, round?: number) =>
+  value < 0 ? `minus ${amount(kind, value, round)}` : amount(kind, value, round);
 
 type Row = Record<string, unknown>;
 /** See Refs.describe. */
@@ -78,7 +84,8 @@ interface RefInfo {
   format?: string;
 }
 /** The title in an edition label, "Post Alley (Hardcover)" → "Post Alley". */
-const editionTitle = (edition: string) => /^(.*?)\s*\([^()]*\)\s*$/.exec(edition)?.[1]?.trim() || null;
+const editionTitle = (edition: string) =>
+  /^(.*?)\s*\([^()]*\)\s*$/.exec(edition)?.[1]?.trim() || null;
 /** The format in an edition label, "Post Alley (Trade paperback)" or "Heliotrope Pajamas (Paperback, 2181)", as running text says it. */
 const editionFormat = (edition: string) => {
   const m = /\(([^,()]+)(?:,[^()]*)?\)\s*$/.exec(edition);
@@ -104,7 +111,8 @@ interface Lookup {
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const label = (v: unknown) => (v === null || v === undefined ? "Unknown" : String(v));
-const join = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
+const join = (names: string[]) =>
+  names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 
 /** The refs this answer's successful lookups returned, and the period names they confirm. */
 export class Refs {
@@ -131,7 +139,10 @@ export class Refs {
    * can't carry a figure.
    */
   knownTitles(known: number): string[] {
-    return [...this.titles].filter(([, seq]) => seq < known).map(([t]) => t).sort((a, b) => b.length - a.length);
+    return [...this.titles]
+      .filter(([, seq]) => seq < known)
+      .map(([t]) => t)
+      .sort((a, b) => b.length - a.length);
   }
   hasQuarter(quarter: string, known: number): boolean {
     return [...this.periods].some(([name, seq]) => seq < known && name.endsWith(`-${quarter}`));
@@ -143,7 +154,9 @@ export class Refs {
    * a subject (an edition or title label). Null if it doesn't resolve.
    */
   describe(ref: string, known = Infinity): RefInfo | null {
-    const m = /^([a-z]+)(\d*)(?:\.([a-z_]+))?(?:\|round:\d+)?$/.exec(ref.replace(/^([a-z]+)\.total\.(?=[a-z])/, "$1.total_"));
+    const m = /^([a-z]+)(\d*)(?:\.([a-z_]+))?(?:\|round:\d+)?$/.exec(
+      ref.replace(/^([a-z]+)\.total\.(?=[a-z])/, "$1.total_"),
+    );
     if (!m) return null;
     const [, id, rowNumber, rawField = ""] = m;
     const field = rawField.replace(/^total_/, "");
@@ -151,20 +164,29 @@ export class Refs {
     if (!lookup || lookup.seq >= known) return null;
     const row = rowNumber ? lookup.rows.get(id + rowNumber) : undefined;
     if (rowNumber && !row) return null;
-    const isLabel = field !== "" && ((row && lookup.dims.includes(field)) || lookup.filtered.has(field));
+    const isLabel =
+      field !== "" && ((row && lookup.dims.includes(field)) || lookup.filtered.has(field));
     const value = !isLabel && field !== "rows";
     const info: RefInfo = { value, currency: value && KINDS[lookup.measure] === "currency" };
     if (!isLabel) return info;
-    const at = (dim: string) => (row && lookup.dims.includes(dim) ? label(row[dim]) : lookup.filtered.get(dim));
+    const at = (dim: string) =>
+      row && lookup.dims.includes(dim) ? label(row[dim]) : lookup.filtered.get(dim);
     if (field === "list_price") {
       // The row's most specific subject: its edition if the lookup grouped by edition, else its title.
       const edition = at("edition");
-      const own = [edition, edition && editionTitle(edition), at("title")].filter((s): s is string => !!s);
-      const format = edition ? editionFormat(edition) : at("format") ? (FORMAT_WORDS[at("format")!] ?? null) : null;
+      const own = [edition, edition && editionTitle(edition), at("title")].filter(
+        (s): s is string => !!s,
+      );
+      const format = edition
+        ? editionFormat(edition)
+        : at("format")
+          ? (FORMAT_WORDS[at("format")!] ?? null)
+          : null;
       info.price = { own, subject: own[0] ?? null, format };
     }
     if (field === "edition" || field === "title") info.subject = at(field);
-    if (field === "format") info.format = FORMAT_WORDS[at("format") ?? ""] ?? at("format")?.toLowerCase();
+    if (field === "format")
+      info.format = FORMAT_WORDS[at("format") ?? ""] ?? at("format")?.toLowerCase();
     return info;
   }
 
@@ -174,7 +196,10 @@ export class Refs {
     for (const lookup of this.lookups.values()) {
       if (lookup.seq >= known) continue;
       for (const dim of ["edition", "title"]) {
-        const values = [...(lookup.dims.includes(dim) ? lookup.ordered.map((row) => row[dim]) : []), lookup.filtered.get(dim)];
+        const values = [
+          ...(lookup.dims.includes(dim) ? lookup.ordered.map((row) => row[dim]) : []),
+          lookup.filtered.get(dim),
+        ];
         for (const v of values) {
           if (typeof v !== "string") continue;
           all.add(v);
@@ -194,11 +219,24 @@ export class Refs {
 
   /** Adds a successful tool call. `input` is the model's (checked by the tool server); `output` is ours. */
   addTool(name: string, input: unknown, output: unknown) {
-    if ((name !== "query_data" && name !== "compare_data") || !output || typeof output !== "object" || !input || typeof input !== "object") return;
+    if (
+      (name !== "query_data" && name !== "compare_data") ||
+      !output ||
+      typeof output !== "object" ||
+      !input ||
+      typeof input !== "object"
+    )
+      return;
     const out = output as Row;
     const args = input as Row;
     const measure = args.measure;
-    if (typeof out.ref !== "string" || typeof measure !== "string" || !(measure in KINDS) || !Array.isArray(out.rows)) return;
+    if (
+      typeof out.ref !== "string" ||
+      typeof measure !== "string" ||
+      !(measure in KINDS) ||
+      !Array.isArray(out.rows)
+    )
+      return;
     const rows = out.rows as Row[];
     const seq = this.lookups.size;
     const period = (name: string) => {
@@ -208,7 +246,9 @@ export class Refs {
       const folded = fold(name).trim();
       if (/\p{L}{3}/u.test(folded) && !this.titles.has(folded)) this.titles.set(folded, seq);
     };
-    const dims = Array.isArray(args.by) ? (args.by as unknown[]).filter((d): d is string => typeof d === "string") : [];
+    const dims = Array.isArray(args.by)
+      ? (args.by as unknown[]).filter((d): d is string => typeof d === "string")
+      : [];
     let from: string | null = null;
     let to: string | null = null;
     if (name === "compare_data") {
@@ -216,20 +256,31 @@ export class Refs {
       const labels = (out.labels ?? {}) as Row;
       from = typeof labels.from === "string" ? labels.from : null;
       to = typeof labels.to === "string" ? labels.to : null;
-      if (args.across === "quarter" || args.across === "month") for (const p of [from, to]) if (p) period(p);
+      if (args.across === "quarter" || args.across === "month")
+        for (const p of [from, to]) if (p) period(p);
       if (args.across === "title") for (const t of [from, to]) if (t) title(t);
     }
     // Period names come from returned rows, and one-value filters the data confirmed (below); never captions.
     // Months name their year ("2193-04"), so like quarters they are period names.
-    for (const row of rows) for (const key of ["quarter", "month"]) if (typeof row[key] === "string") period(row[key] as string);
+    for (const row of rows)
+      for (const key of ["quarter", "month"])
+        if (typeof row[key] === "string") period(row[key] as string);
     // An edition label is the data's string too ("Heliotrope Pajamas (Paperback, 2181)"), named in prose as a title is (Probe's #225, item 4).
-    for (const row of rows) for (const key of ["title", "edition"]) if (typeof row[key] === "string") title(row[key] as string);
+    for (const row of rows)
+      for (const key of ["title", "edition"])
+        if (typeof row[key] === "string") title(row[key] as string);
     // A filter value is the model's, so it's a label only when it alone was asked for and the data had
     // something there (with several values, any one could be the one that matched).
     const filtered = new Map<string, string>();
-    const found = name === "query_data" ? isNum(out.total) && out.total !== 0 : rows.length > 0 || Object.values((out.total ?? {}) as Row).some((v) => isNum(v) && v !== 0);
+    const found =
+      name === "query_data"
+        ? isNum(out.total) && out.total !== 0
+        : rows.length > 0 ||
+          Object.values((out.total ?? {}) as Row).some((v) => isNum(v) && v !== 0);
     if (found && args.filter && typeof args.filter === "object") {
-      for (const [dim, values] of Object.entries(args.filter as Row)) if (Array.isArray(values) && values.length === 1 && typeof values[0] === "string") filtered.set(dim, values[0]);
+      for (const [dim, values] of Object.entries(args.filter as Row))
+        if (Array.isArray(values) && values.length === 1 && typeof values[0] === "string")
+          filtered.set(dim, values[0]);
     }
     const quarter = filtered.get("quarter");
     if (quarter) period(quarter);
@@ -259,7 +310,9 @@ export class Refs {
    * or its lookup hadn't come back when the text citing it arrived (`known`, from the text's stamp).
    */
   render(ref: string, known = Infinity): string | null {
-    const m = /^([a-z]+)(\d*)(?:\.([a-z_]+))?(?:\|round:(\d+))?$/.exec(ref.replace(/^([a-z]+)\.total\.(?=[a-z])/, "$1.total_"));
+    const m = /^([a-z]+)(\d*)(?:\.([a-z_]+))?(?:\|round:(\d+))?$/.exec(
+      ref.replace(/^([a-z]+)\.total\.(?=[a-z])/, "$1.total_"),
+    );
     if (!m) return null;
     const [, id, rowNumber, rawField = "", roundText] = m;
     // "b.total.change" is "b.change": the total is what a ref without a row means.
@@ -276,8 +329,17 @@ export class Refs {
       if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
       // A row's figure, as {{a1}} or by its own measure's column, {{a1.revenue}} (Probe's #252 red-team); any
       // other measure's name isn't this lookup's, so it doesn't resolve.
-      if (lookup.name === "query_data") return (!field || field === lookup.measure) && isNum(row[lookup.measure]) ? signed(kind, row[lookup.measure] as number, round) : null;
-      return this.comparison(lookup, row, field, round, lookup.dims.map((d) => label(row[d])).join(", "));
+      if (lookup.name === "query_data")
+        return (!field || field === lookup.measure) && isNum(row[lookup.measure])
+          ? signed(kind, row[lookup.measure] as number, round)
+          : null;
+      return this.comparison(
+        lookup,
+        row,
+        field,
+        round,
+        lookup.dims.map((d) => label(row[d])).join(", "),
+      );
     }
     if (field === "rows") return round ? null : whole.format(lookup.ordered.length);
     if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
@@ -286,18 +348,32 @@ export class Refs {
       if (field === "max" || field === "min") return this.extreme(lookup, field, round);
       return null;
     }
-    if (field === "largest_fall" || field === "largest_rise") return this.largest(lookup, field, round);
-    if (field === "largest_fall_percent" || field === "largest_rise_percent") return round ? null : this.largestPercent(lookup, field);
+    if (field === "largest_fall" || field === "largest_rise")
+      return this.largest(lookup, field, round);
+    if (field === "largest_fall_percent" || field === "largest_rise_percent")
+      return round ? null : this.largestPercent(lookup, field);
     return this.comparison(lookup, (lookup.total ?? {}) as Row, field, round, "");
   }
 
-  private comparison(lookup: Lookup, figures: Row, field: string, round: number | undefined, rowName: string): string | null {
+  private comparison(
+    lookup: Lookup,
+    figures: Row,
+    field: string,
+    round: number | undefined,
+    rowName: string,
+  ): string | null {
     const kind = KINDS[lookup.measure];
     const noun = NOUNS[lookup.measure];
     const { from, to, change, percent_change: percent } = figures;
-    if (field === "from" || field === "to") return isNum(figures[field]) ? signed(kind, figures[field] as number, round) : null;
+    if (field === "from" || field === "to")
+      return isNum(figures[field]) ? signed(kind, figures[field] as number, round) : null;
     if (!isNum(change)) return null;
-    if (field === "change") return change > 0 ? `rose by ${amount(kind, change, round)}` : change < 0 ? `fell by ${amount(kind, change, round)}` : "was unchanged";
+    if (field === "change")
+      return change > 0
+        ? `rose by ${amount(kind, change, round)}`
+        : change < 0
+          ? `fell by ${amount(kind, change, round)}`
+          : "was unchanged";
     if (field === "percent") {
       if (!isNum(percent) || round) return null;
       if (percent === 0) return "no change";
@@ -306,11 +382,15 @@ export class Refs {
     }
     if (field === "from_vs_to" || field === "to_vs_from") {
       if (!isNum(from) || !isNum(to) || !lookup.from || !lookup.to) return null;
-      const [first, second, difference] = field === "from_vs_to" ? [lookup.from, lookup.to, from - to] : [lookup.to, lookup.from, to - from];
+      const [first, second, difference] =
+        field === "from_vs_to"
+          ? [lookup.from, lookup.to, from - to]
+          : [lookup.to, lookup.from, to - from];
       const where = rowName ? `For ${rowName}, ` : "";
       if (difference === 0) return `${where}${first} and ${second} had the same ${noun}`;
       const x = amount(kind, difference, round);
-      if (kind === "count") return `${where}${first} had ${x} ${difference > 0 ? "more" : "fewer"} ${noun} than ${second}`;
+      if (kind === "count")
+        return `${where}${first} had ${x} ${difference > 0 ? "more" : "fewer"} ${noun} than ${second}`;
       return `${where}${first}'s ${noun} was ${x} ${difference > 0 ? "higher" : "lower"} than ${second}'s`;
     }
     return null;
@@ -318,23 +398,40 @@ export class Refs {
 
   // Rankings are claims about every group, so they're made only over complete results; otherwise the ref
   // fails closed.
-  private largest(lookup: Lookup, field: "largest_fall" | "largest_rise", round?: number): string | null {
+  private largest(
+    lookup: Lookup,
+    field: "largest_fall" | "largest_rise",
+    round?: number,
+  ): string | null {
     if (!lookup.dims.length || !lookup.complete) return null;
     const fall = field === "largest_fall";
-    const moved = lookup.ordered.filter((r) => isNum(r.change) && (fall ? (r.change as number) < 0 : (r.change as number) > 0));
+    const moved = lookup.ordered.filter(
+      (r) => isNum(r.change) && (fall ? (r.change as number) < 0 : (r.change as number) > 0),
+    );
     if (!moved.length) return fall ? "none of them fell" : "none of them rose";
     const most = Math.max(...moved.map((r) => Math.abs(r.change as number)));
-    const names = moved.filter((r) => Math.abs(r.change as number) === most).map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
+    const names = moved
+      .filter((r) => Math.abs(r.change as number) === most)
+      .map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
     return `${join(names)} ${fall ? "fell" : "rose"} the most, by ${amount(KINDS[lookup.measure], most, round)}`;
   }
 
-  private largestPercent(lookup: Lookup, field: "largest_fall_percent" | "largest_rise_percent"): string | null {
+  private largestPercent(
+    lookup: Lookup,
+    field: "largest_fall_percent" | "largest_rise_percent",
+  ): string | null {
     if (!lookup.dims.length || !lookup.complete) return null;
     const fall = field === "largest_fall_percent";
-    const moved = lookup.ordered.filter((r) => isNum(r.percent_change) && (fall ? (r.percent_change as number) < 0 : (r.percent_change as number) > 0));
+    const moved = lookup.ordered.filter(
+      (r) =>
+        isNum(r.percent_change) &&
+        (fall ? (r.percent_change as number) < 0 : (r.percent_change as number) > 0),
+    );
     if (!moved.length) return fall ? "none of them fell" : "none of them rose";
     const most = Math.max(...moved.map((r) => Math.abs(r.percent_change as number)));
-    const names = moved.filter((r) => Math.abs(r.percent_change as number) === most).map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
+    const names = moved
+      .filter((r) => Math.abs(r.percent_change as number) === most)
+      .map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
     return `${join(names)} ${fall ? "fell" : "rose"} the most in percent, ${fall ? "a fall" : "a rise"} of ${onePlace.format(most)}%`;
   }
 
@@ -343,9 +440,18 @@ export class Refs {
     if (!lookup.dims.length || !rows.length || !lookup.complete) return null;
     const values = rows.map((r) => r[lookup.measure] as number);
     const target = field === "max" ? Math.max(...values) : Math.min(...values);
-    const names = rows.filter((r) => r[lookup.measure] === target).map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
+    const names = rows
+      .filter((r) => r[lookup.measure] === target)
+      .map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
     const kind = KINDS[lookup.measure];
-    const word = kind === "count" ? (field === "max" ? "the most" : "the fewest") : field === "max" ? "the highest" : "the lowest";
+    const word =
+      kind === "count"
+        ? field === "max"
+          ? "the most"
+          : "the fewest"
+        : field === "max"
+          ? "the highest"
+          : "the lowest";
     return `${join(names)} had ${word} ${NOUNS[lookup.measure]}, ${signed(kind, target, round)}`;
   }
 }
@@ -356,13 +462,18 @@ const DIRECTION_WORDS =
   "higher|highest|lower|lowest|more|most|less|least|fewer|fewest|greater|greatest|larger|largest|bigger|biggest|smaller|smallest|rise|rises|rising|rose|risen|fall|falls|falling|fell|fallen|up|down|increase|increases|increased|increasing|decrease|decreases|decreased|decreasing|grow|grows|grew|grown|growing|growth|drop|drops|dropped|dropping|decline|declines|declined|declining|gain|gains|gained|lose|loses|lost|loss|losses|above|below|exceed|exceeds|exceeded|beat|beats|trail|trails|trailed|outsold|outperformed|surge|surges|surged|jump|jumps|jumped|climb|climbs|climbed|dip|dips|dipped|slump|slumps|slumped|plunge|plunges|plunged|shrink|shrinks|shrank|shrunk|slip|slips|slipped|tumble|tumbles|tumbled|soar|soars|soared|edged|outpace|outpaces|outpaced|lag|lags|lagged|lagging|overtake|overtakes|overtook|overtaken|surpass|surpasses|surpassed|sink|sinks|sank|sunk|better|worse|peak|peaks|peaked|bottomed|unchanged|flat|steady|top|bottom|best|worst|ahead|behind|cheap|cheaper|cheapest|cheaply|pricey|pricier|priciest|costly|costlier|costliest|expensive|inexpensive|affordable|bargain|bargains|budget|premium|markdown|markdowns|buck|bucks";
 // Digits in any script and number symbols (after NFKC, so "１６１" and "¾" are caught), fractions written with
 // "quarter", "a couple", "a score of", "a pair of", and "-fold".
-const QUANTITY = "\\ba quarter\\b|\\bquarters? of\\b|\\ba couple\\b|\\ba (?:score|pair) of\\b|\\w*-?fold\\b";
-const BANNED = new RegExp(`\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS}|${DIRECTION_WORDS})\\b|${QUANTITY}`, "iu");
+const QUANTITY =
+  "\\ba quarter\\b|\\bquarters? of\\b|\\ba couple\\b|\\ba (?:score|pair) of\\b|\\w*-?fold\\b";
+const BANNED = new RegExp(
+  `\\p{Nd}|\\p{No}|[$%€£¥{}⁄]|\\b(?:${NUMBER_WORDS}|${DIRECTION_WORDS})\\b|${QUANTITY}`,
+  "iu",
+);
 /**
  * Roman numerals in capitals ("XX", and "XII" from a folded "Ⅻ"): two letters or more, so "I" stays a word, and
  * only whole valid numerals, so "DID", "MILD" and "CIVIL" pass. "MIX" is the one common word that's also one.
  */
-const ROMAN = /\b(?!MIX\b)(?=[MDCLXVI]{2,}\b)M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})(?<=\b[MDCLXVI]{2,})\b/u;
+const ROMAN =
+  /\b(?!MIX\b)(?=[MDCLXVI]{2,}\b)M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})(?<=\b[MDCLXVI]{2,})\b/u;
 /**
  * Look-alike letters (Probe's and Audit's reviews of #229 and #235). The checks read a plain copy, with accents
  * and other marks stripped ("hìgher" is "higher"), and any letter that's still not A to Z withholds the text:
@@ -389,7 +500,10 @@ const LOOKED_UP_THING = String.raw`(?:the\s+|its\s+|their\s+)?(?:revenue|units|o
 // The object form alone: all Alma's flavor needs, since its text never says "we look up" (Probe, after #244).
 const LOOK_IT_UP = String.raw`\blook(?:s|ed|ing)? (?:it|them|that|things|everything) up\b`;
 const LOOK_UP = String.raw`${LOOK_IT_UP}|(?<=(?:^\s*|\bto\s+|\blet\s+me\s+))look(?:s|ed|ing)? up(?=\s+${LOOKED_UP_THING})|\b${SUBJECT}(?:\s+${HELPER}){0,2}\s+look(?:s|ed|ing)? up\b`;
-const ALLOWED = new RegExp(String.raw`${LOOK_UP}|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))`, "giu");
+const ALLOWED = new RegExp(
+  String.raw`${LOOK_UP}|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))`,
+  "giu",
+);
 const REF = /\{\{([^{}]{1,40})\}\}/g;
 /**
  * The whole ban, for other text a player is shown as fact-free flavor (Alma's): only "look it up" and "look
@@ -403,11 +517,13 @@ export const hasBannedWord = (folded: string) => banned(folded.replace(FLAVOR_AL
 // Invisible characters (a soft hyphen, a zero-width space, a word joiner, bidi controls) are dropped first: NFKC
 // keeps them, so "fi\u00ADve" would read as "five" while slipping past every word check (Probe). The checks and
 // the text shown both use this, so what's checked is what's shown.
-const fold = (text: string) => text.normalize("NFKC").replace(/\p{Default_Ignorable_Code_Point}/gu, "");
+const fold = (text: string) =>
+  text.normalize("NFKC").replace(/\p{Default_Ignorable_Code_Point}/gu, "");
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Words that make a dollar figure a price (Probe's #225, with Sage's and Audit's additions).
-const PRICE_WORDS = /\b(?:price[sd]?|pricing|costs?|costing|list(?:s|ed)? at|sells? for|sold for|retail(?:s|ed)?|pay(?:s|ing)?|paid|spend(?:s|ing)?|spent|charge[sd]?|charging|worth)\b/iu;
+const PRICE_WORDS =
+  /\b(?:price[sd]?|pricing|costs?|costing|list(?:s|ed)? at|sells? for|sold for|retail(?:s|ed)?|pay(?:s|ing)?|paid|spend(?:s|ing)?|spent|charge[sd]?|charging|worth)\b/iu;
 // A bound put on a figure: "costs under {{a2.list_price}}" claims a comparison the data didn't make.
 const BOUND = /\b(?:under|over|at least|at most|up to)\s*$/iu;
 // Format words as running text says them, with their plurals and synonyms, longest first, each with the format it
@@ -425,10 +541,20 @@ const FORMAT_NAMES: Record<string, string> = {
   softback: "soft cover",
   "soft-back": "soft cover",
 };
-const FORMATS = Object.entries(FORMAT_NAMES).flatMap(([word, format]) => [[word, format], [`${word}s`, format]] as const).sort((a, b) => b[0].length - a[0].length);
+const FORMATS = Object.entries(FORMAT_NAMES)
+  .flatMap(
+    ([word, format]) =>
+      [
+        [word, format],
+        [`${word}s`, format],
+      ] as const,
+  )
+  .sort((a, b) => b[0].length - a[0].length);
 // In a sentence citing a list price, words that carry it over to another book (Probe's review of #228).
-const CARRY_OVER = /\b(?:same|too|also|likewise|as well|(?:as|so) (?:does|do|did|is|are)|like|alike|other|others|another|every|all|each|both|either)\b/iu;
-const wholeLabel = (text: string, flags: string) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(text)}(?![\\p{L}\\p{N}])`, flags);
+const CARRY_OVER =
+  /\b(?:same|too|also|likewise|as well|(?:as|so) (?:does|do|did|is|are)|like|alike|other|others|another|every|all|each|both|either)\b/iu;
+const wholeLabel = (text: string, flags: string) =>
+  new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(text)}(?![\\p{L}\\p{N}])`, flags);
 
 /**
  * Probe's #225: price can't be misstated, though it's a label a ref renders. A sentence is withheld when:
@@ -443,8 +569,12 @@ const wholeLabel = (text: string, flags: string) => new RegExp(`(?<![\\p{L}\\p{N
  *   breakdown by price or format, or a confirmed filter) may sit only with no book named.
  */
 function priceProblem(folded: string, refs: Refs, known: number): boolean {
-  const cited = [...folded.matchAll(REF)].map((m) => ({ at: m.index!, info: refs.describe(m[1]!.trim(), known) }));
-  if (cited.some(({ at, info }) => (info?.price || info?.value) && BOUND.test(folded.slice(0, at)))) return true;
+  const cited = [...folded.matchAll(REF)].map((m) => ({
+    at: m.index!,
+    info: refs.describe(m[1]!.trim(), known),
+  }));
+  if (cited.some(({ at, info }) => (info?.price || info?.value) && BOUND.test(folded.slice(0, at))))
+    return true;
   const prose = folded.replace(REF, " ");
   if (PRICE_WORDS.test(prose) && cited.some(({ info }) => info?.currency)) return true;
   const prices = cited.flatMap(({ info }) => (info?.price ? [info.price] : []));
@@ -507,20 +637,29 @@ const NO_PRICE: PriceContext = { book: [], paragraph: false };
  * book's price, and for naming another book from this answer in the next shown sentence.
  */
 function carriesOver(folded: string, refs: Refs, known: number, context: PriceContext): boolean {
-  if ([...folded.matchAll(REF)].some((m) => refs.describe(m[1]!.trim(), known)?.price)) return false;
+  if ([...folded.matchAll(REF)].some((m) => refs.describe(m[1]!.trim(), known)?.price))
+    return false;
   const prose = folded.replace(REF, " ");
   if ((context.paragraph || context.book.length) && CARRY_OVER.test(prose)) return true;
   if (!context.book.length) return false;
-  const cited = [...folded.matchAll(REF)].flatMap((m) => refs.describe(m[1]!.trim(), known)?.subject ?? []);
+  const cited = [...folded.matchAll(REF)].flatMap(
+    (m) => refs.describe(m[1]!.trim(), known)?.subject ?? [],
+  );
   const named = [...cited, ...refs.subjects(known).filter((s) => wholeLabel(s, "u").test(prose))];
   return named.some((n) => !context.book.includes(n));
 }
 
 /** The context after a sentence: a shown price sets it, a shown sentence ends `book`, a withheld one leaves it, and a paragraph break clears it. */
-export function nextPriceContext(context: PriceContext, result: { price: string[] } | null, sentence: string): PriceContext {
+export function nextPriceContext(
+  context: PriceContext,
+  result: { price: string[] } | null,
+  sentence: string,
+): PriceContext {
   if (/\n\s*\n/.test(sentence)) return NO_PRICE;
   if (!result) return context;
-  return result.price.length ? { book: result.price, paragraph: true } : { book: [], paragraph: context.paragraph };
+  return result.price.length
+    ? { book: result.price, paragraph: true }
+    : { book: [], paragraph: context.paragraph };
 }
 
 /**
@@ -528,7 +667,12 @@ export function nextPriceContext(context: PriceContext, result: { price: string[
  * had come back when the sentence's text arrived (the earliest stamp among its chunks). `after` is what the prices
  * shown before it hold it to; the result's `price` is the book this sentence priced, for nextPriceContext.
  */
-export function renderSentence(sentence: string, refs: Refs, known = Infinity, after: PriceContext = NO_PRICE): { text: string; refs: number; price: string[] } | null {
+export function renderSentence(
+  sentence: string,
+  refs: Refs,
+  known = Infinity,
+  after: PriceContext = NO_PRICE,
+): { text: string; refs: number; price: string[] } | null {
   let count = 0;
   let bad = false;
   const folded = fold(sentence);
@@ -542,7 +686,11 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity, a
   if (priceProblem(folded, refs, known) || carriesOver(folded, refs, known, after)) return null;
   // Titles the data returned, exactly and whole, are the data's words, not the model's: cleared before the ban.
   let prose = folded.replace(REF, " ");
-  for (const title of refs.knownTitles(known)) prose = prose.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(title)}(?![\\p{L}\\p{N}])`, "gu"), " ");
+  for (const title of refs.knownTitles(known))
+    prose = prose.replace(
+      new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(title)}(?![\\p{L}\\p{N}])`, "gu"),
+      " ",
+    );
   prose = prose
     .replace(/\b\d{4}-Q[1-4]\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
     .replace(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
@@ -561,7 +709,12 @@ export function renderSentence(sentence: string, refs: Refs, known = Infinity, a
  * are resolved when each sentence completes, so a ref cited before its lookup came back is withheld too.
  * `onWithheld` gets each withheld sentence, cleaned, so the server can keep it on the device (Probe's Q2 red-team).
  */
-export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s, onWithheld?: (sentence: string) => void, note: string = WITHHELD) {
+export function sentenceGate(
+  refs: Refs,
+  clean: (s: string) => string = (s) => s,
+  onWithheld?: (sentence: string) => void,
+  note: string = WITHHELD,
+) {
   let held = "";
   // Where each held chunk starts, and how many lookups had come back when it arrived.
   let stamps: { at: number; known: number }[] = [];
@@ -571,7 +724,12 @@ export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s
   let rendered = 0;
   // What the prices shown so far hold the next sentences to, so none can carry a price over.
   let after = NO_PRICE;
-  const knownAt = (start: number, end: number) => Math.min(...stamps.filter((s, i) => s.at < end && (stamps[i + 1]?.at ?? Infinity) > start).map((s) => s.known));
+  const knownAt = (start: number, end: number) =>
+    Math.min(
+      ...stamps
+        .filter((s, i) => s.at < end && (stamps[i + 1]?.at ?? Infinity) > start)
+        .map((s) => s.known),
+    );
   const check = (text: string) => {
     let out = "";
     // Whitespace after the note, kept until something follows it.
@@ -610,7 +768,13 @@ export function sentenceGate(refs: Refs, clean: (s: string) => string = (s) => s
     held = held.slice(cut);
     // What's left starts partway into some chunk: it keeps that chunk's stamp, and later chunks keep theirs.
     const covering = stamps.filter((s) => s.at <= cut).at(-1);
-    stamps = held && covering ? [{ at: 0, known: covering.known }, ...stamps.filter((s) => s.at > cut).map((s) => ({ at: s.at - cut, known: s.known }))] : [];
+    stamps =
+      held && covering
+        ? [
+            { at: 0, known: covering.known },
+            ...stamps.filter((s) => s.at > cut).map((s) => ({ at: s.at - cut, known: s.known })),
+          ]
+        : [];
     return result;
   };
   return {
@@ -644,7 +808,8 @@ export function scrubDeep<T>(value: T, secret: string, replacement = "[hidden]")
   const walk = (v: unknown): unknown => {
     if (typeof v === "string") return v.split(secret).join(replacement);
     if (Array.isArray(v)) return v.map(walk);
-    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [walk(k), walk(x)]));
+    if (v && typeof v === "object")
+      return Object.fromEntries(Object.entries(v).map(([k, x]) => [walk(k), walk(x)]));
     return v;
   };
   return walk(value) as T;

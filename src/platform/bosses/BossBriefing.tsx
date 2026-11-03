@@ -1,4 +1,14 @@
-import { Component, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type FocusEvent, type ReactNode } from "react";
+import {
+  Component,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type FocusEvent,
+  type ReactNode,
+} from "react";
 
 import { track } from "../analytics/analytics.client";
 import { pageLeaving } from "../lazy/cut-off";
@@ -85,13 +95,19 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
 
   // One scene swapping in for the other remounts the bubbles; whoever had a bubble focused keeps it.
   const focused = useRef<number | null>(null);
-  const bubbleButtons = () => [...(box.current?.querySelectorAll<HTMLButtonElement>("button[aria-controls]") ?? [])];
+  const bubbleButtons = () => [
+    ...(box.current?.querySelectorAll<HTMLButtonElement>("button[aria-controls]") ?? []),
+  ];
   const noteFocus = (event: FocusEvent) => {
     const i = bubbleButtons().indexOf(event.target as HTMLButtonElement);
     focused.current = i >= 0 ? i : null;
   };
   const restoreFocus = useCallback(() => {
-    if (focused.current === null || (document.activeElement && document.activeElement !== document.body)) return;
+    if (
+      focused.current === null ||
+      (document.activeElement && document.activeElement !== document.body)
+    )
+      return;
     bubbleButtons()[focused.current]?.focus();
   }, []);
   useLayoutEffect(restoreFocus, [mode, restoreFocus]);
@@ -127,11 +143,16 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
         }}
         floor={
           mode === "3d" && Scene3D ? (
-            <SceneBoundary
-              fallback={flat}
-              onError={() => failed3D("scene")}
-            >
-              <Scene3D bubbles={bubbles} open={open} onSelect={select} columns={columns} reducedMotion={reducedMotion} onShown={restoreFocus} onFailed={modelsFailed} />
+            <SceneBoundary fallback={flat} onError={() => failed3D("scene")}>
+              <Scene3D
+                bubbles={bubbles}
+                open={open}
+                onSelect={select}
+                columns={columns}
+                reducedMotion={reducedMotion}
+                onShown={restoreFocus}
+                onFailed={modelsFailed}
+              />
             </SceneBoundary>
           ) : (
             flat
@@ -143,7 +164,10 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
 }
 
 /** Falls back to the 2D scene if the 3D one throws (a lost GPU, a model that won't load). */
-class SceneBoundary extends Component<{ fallback: ReactNode; onError: () => void; children: ReactNode }, { failed: boolean }> {
+class SceneBoundary extends Component<
+  { fallback: ReactNode; onError: () => void; children: ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };

@@ -15,7 +15,11 @@ function scatter() {
   const seeds = new Float32Array(COUNT);
   for (let i = 0; i < COUNT; i++) {
     positions.set(
-      [(Math.random() - 0.5) * (ROOM.width - 1), 0.3 + Math.random() * (ROOM.height - 0.6), (Math.random() - 0.5) * (ROOM.depth - 1)],
+      [
+        (Math.random() - 0.5) * (ROOM.width - 1),
+        0.3 + Math.random() * (ROOM.height - 0.6),
+        (Math.random() - 0.5) * (ROOM.depth - 1),
+      ],
       i * 3,
     );
     seeds[i] = Math.random() * 100;
@@ -60,10 +64,13 @@ export function DustMotes() {
     });
     return { geometry, material };
   }, []);
-  useEffect(() => () => {
-    geometry.dispose();
-    material.dispose();
-  }, [geometry, material]);
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
   useFrame(({ gl, clock }) => {
     material.uniforms.time!.value = clock.elapsedTime;
     material.uniforms.pixelRatio!.value = gl.getPixelRatio();

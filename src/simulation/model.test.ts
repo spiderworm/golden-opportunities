@@ -3,7 +3,21 @@ import { describe, expect, it } from "vitest";
 import tables from "~/bookshop/data.json";
 import { joinBookshop } from "~/bookshop/joins";
 import type { BookshopTables } from "~/bookshop/types";
-import { baseline, eventWeeks, historyOf, JOIN_MIN_COPIES, monthsOf, OBSERVED_EXTRAS, quarterDays, replayedDay, run, streamName, unpromoted, withRelease, type QuarterNumber } from "./model";
+import {
+  baseline,
+  eventWeeks,
+  historyOf,
+  JOIN_MIN_COPIES,
+  monthsOf,
+  OBSERVED_EXTRAS,
+  quarterDays,
+  replayedDay,
+  run,
+  streamName,
+  unpromoted,
+  withRelease,
+  type QuarterNumber,
+} from "./model";
 import { RELEASE } from "./release";
 import { simulateQuarter } from "./simulate";
 import type { Plan } from "./types";
@@ -20,13 +34,30 @@ describe("any quarter", () => {
     // fact and copy, the model gave dcd2472a… again. It was cf924259… until generated copies
     // joined existing orders.
     const hash = createHash("sha256");
-    const plans = [[], ["repick"], ["events"], ["sale"], ["repick", "events"], ["repick", "sale"], ["events", "sale"]];
-    for (const levers of plans) for (const seed of [1, 2, 3]) hash.update(JSON.stringify(simulateQuarter({ levers } as Plan, seed, data)));
-    expect(hash.digest("hex")).toBe("d980df65fe0b055e42d7c1863c078e7fcfa60530aaed513719b579b48b76ee7e");
+    const plans = [
+      [],
+      ["repick"],
+      ["events"],
+      ["sale"],
+      ["repick", "events"],
+      ["repick", "sale"],
+      ["events", "sale"],
+    ];
+    for (const levers of plans)
+      for (const seed of [1, 2, 3])
+        hash.update(JSON.stringify(simulateQuarter({ levers } as Plan, seed, data)));
+    expect(hash.digest("hex")).toBe(
+      "d980df65fe0b055e42d7c1863c078e7fcfa60530aaed513719b579b48b76ee7e",
+    );
   });
 
   it("names each quarter's months and days", () => {
-    expect(QUARTERS.map(monthsOf)).toEqual([["01", "02", "03"], ["04", "05", "06"], ["07", "08", "09"], ["10", "11", "12"]]);
+    expect(QUARTERS.map(monthsOf)).toEqual([
+      ["01", "02", "03"],
+      ["04", "05", "06"],
+      ["07", "08", "09"],
+      ["10", "11", "12"],
+    ]);
     expect(QUARTERS.map((q) => quarterDays(2194, q).length)).toEqual([90, 91, 92, 92]);
     expect(quarterDays(2194, 2)[0]).toBe("2194-04-01");
     expect(quarterDays(2194, 4).at(-1)).toBe("2194-12-31");
@@ -47,8 +78,11 @@ describe("any quarter", () => {
 
   it("takes each quarter's 2193 sales and Books of the Month", () => {
     const histories = QUARTERS.map((q) => historyOf(data, q));
-    expect(histories.reduce((t, h) => t + h.lastYear.length, 0)).toBe(data.saleLines.filter((l) => l.date.startsWith("2193-")).length);
-    for (const h of histories) expect(h.lastYear.every((l) => h.months.includes(l.date.slice(5, 7)))).toBe(true);
+    expect(histories.reduce((t, h) => t + h.lastYear.length, 0)).toBe(
+      data.saleLines.filter((l) => l.date.startsWith("2193-")).length,
+    );
+    for (const h of histories)
+      expect(h.lastYear.every((l) => h.months.includes(l.date.slice(5, 7)))).toBe(true);
     const q2 = histories[1];
     expect(q2.months.map(q2.observedPick).map((isbn) => q2.template(isbn).title)).toEqual([
       "9803 North Millworks Road",
@@ -62,8 +96,13 @@ describe("any quarter", () => {
     const orders = unpromoted(history, 1);
     for (const month of history.months) {
       const isbn = history.observedPick(month);
-      const before = history.lastYear.filter((l) => l.isbn === isbn && l.date.slice(5, 7) === month);
-      const after = orders.filter((o) => o.day.slice(5, 7) === month).flatMap((o) => o.items).filter((i) => i.isbn === isbn);
+      const before = history.lastYear.filter(
+        (l) => l.isbn === isbn && l.date.slice(5, 7) === month,
+      );
+      const after = orders
+        .filter((o) => o.day.slice(5, 7) === month)
+        .flatMap((o) => o.items)
+        .filter((i) => i.isbn === isbn);
       expect(after.length).toBe(before.length - OBSERVED_EXTRAS[Number(month) - 1]);
       expect(after.some((i) => i.discount === 0.15)).toBe(false);
     }
@@ -120,7 +159,9 @@ describe("generated copies and the orders they join", () => {
 
   it("puts a Book of the Month's extras into baseline orders about as often, the same for every plan", () => {
     const history = historyOf(data, 2);
-    const isbn = data.saleLines.find((l) => l.title === "Land Water Sky Space" && l.format === "Hardcover")!.isbn;
+    const isbn = data.saleLines.find(
+      (l) => l.title === "Land Water Sky Space" && l.format === "Hardcover",
+    )!.isbn;
     let joined = 0;
     let extras = 0;
     for (const seed of [1, 2, 3, 4, 5]) {
@@ -135,7 +176,8 @@ describe("generated copies and the orders they join", () => {
           }
       // Author nights add orders, but not hosts: the extras land in the same orders.
       const withNights = run(history, base, seed, { ...levers, events: true });
-      const hosts = (orders: typeof r.orders) => orders.slice(0, base.length).map((o) => o.items.filter((i) => i.extra).length);
+      const hosts = (orders: typeof r.orders) =>
+        orders.slice(0, base.length).map((o) => o.items.filter((i) => i.extra).length);
       expect(hosts(withNights.orders)).toEqual(hosts(r.orders));
     }
     expect(joined / extras).toBeGreaterThan(history.joinShare(isbn) - 0.1);

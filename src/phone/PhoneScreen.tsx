@@ -1,4 +1,13 @@
-import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Component,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { track } from "~/platform/analytics/analytics.client";
 import { PHONE_EVENT } from "~/platform/phone";
@@ -16,7 +25,11 @@ import styles from "./PhoneScreen.module.css";
 // this is a phone that can draw it; otherwise the boss stands still.
 const PhoneScene = lazy(() => import("./PhoneScene"));
 
-export function PhoneScreen({ active }: { /** This is a phone: draw the scene and say so to analytics. */ active: boolean }) {
+export function PhoneScreen({
+  active,
+}: {
+  /** This is a phone: draw the scene and say so to analytics. */ active: boolean;
+}) {
   const [scene, setScene] = useState<"still" | "3d">("still");
   const [reducedMotion, setReducedMotion] = useState(false);
   // Whether the 3D scene has drawn: until then the still picture is what's there, and its name is right.
@@ -66,11 +79,22 @@ export function PhoneScreen({ active }: { /** This is a phone: draw the scene an
   const still = <Still onShown={speak} />;
   return (
     <main className={styles.phone}>
-      <div ref={sceneBox} className={styles.scene} role="img" aria-label={scene === "3d" && drawn ? PHONE_COPY.scene : PHONE_COPY.still}>
+      <div
+        ref={sceneBox}
+        className={styles.scene}
+        role="img"
+        aria-label={scene === "3d" && drawn ? PHONE_COPY.scene : PHONE_COPY.still}
+      >
         {active && scene === "3d" ? (
           <SceneBoundary fallback={still} onError={() => setScene("still")}>
             <Suspense fallback={still}>
-              <PhoneScene reducedMotion={reducedMotion} onDrawn={() => setDrawn(true)} onGrabbed={speak} zone={zone} head={sceneBox} />
+              <PhoneScene
+                reducedMotion={reducedMotion}
+                onDrawn={() => setDrawn(true)}
+                onGrabbed={speak}
+                zone={zone}
+                head={sceneBox}
+              />
             </Suspense>
           </SceneBoundary>
         ) : (
@@ -101,7 +125,10 @@ function Still({ onShown }: { onShown: () => void }) {
 }
 
 /** Falls back to the still boss if the scene throws (a lost GPU, say). */
-class SceneBoundary extends Component<{ fallback: ReactNode; onError: () => void; children: ReactNode }, { failed: boolean }> {
+class SceneBoundary extends Component<
+  { fallback: ReactNode; onError: () => void; children: ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };

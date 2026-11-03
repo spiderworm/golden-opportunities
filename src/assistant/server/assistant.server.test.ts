@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { acquire, arrive, fakeAssistant, getAssistant, ndjson, resetLimitsForTests, setAssistantForTests } from "./assistant.server.ts";
+import {
+  acquire,
+  arrive,
+  fakeAssistant,
+  getAssistant,
+  ndjson,
+  resetLimitsForTests,
+  setAssistantForTests,
+} from "./assistant.server.ts";
 import { emailRedactor, REDACTED } from "./redact.server.ts";
 
 afterEach(() => {
@@ -77,8 +85,15 @@ describe("the stream to the browser", () => {
     );
     expect(res.headers.get("content-type")).toMatch(/ndjson/);
     expect(res.headers.get("cache-control")).toBe("no-store");
-    const lines = (await res.text()).trim().split("\n").map((l) => JSON.parse(l));
-    expect(lines).toEqual([{ type: "text", text: "a" }, { type: "text", text: "b\nc" }, { type: "error", message: "boom" }]);
+    const lines = (await res.text())
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l));
+    expect(lines).toEqual([
+      { type: "text", text: "a" },
+      { type: "text", text: "b\nc" },
+      { type: "error", message: "boom" },
+    ]);
   });
 
   it("aborts the source when the reader cancels or the request is aborted", async () => {
@@ -110,8 +125,16 @@ describe("the stream to the browser", () => {
 describe("the fake assistant", () => {
   it("streams word by word and passes tool events through", async () => {
     const out = [];
-    for await (const e of fakeAssistant([{ type: "text", text: "Two words" }, { type: "tool", name: "query", input: {}, output: "{}", isError: false }]).ask({ system: "", message: "" }, new AbortController().signal)) out.push(e);
-    expect(out).toEqual([{ type: "text", text: "Two " }, { type: "text", text: "words" }, { type: "tool", name: "query", input: {}, output: "{}", isError: false }]);
+    for await (const e of fakeAssistant([
+      { type: "text", text: "Two words" },
+      { type: "tool", name: "query", input: {}, output: "{}", isError: false },
+    ]).ask({ system: "", message: "" }, new AbortController().signal))
+      out.push(e);
+    expect(out).toEqual([
+      { type: "text", text: "Two " },
+      { type: "text", text: "words" },
+      { type: "tool", name: "query", input: {}, output: "{}", isError: false },
+    ]);
   });
 });
 

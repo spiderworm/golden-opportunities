@@ -14,7 +14,12 @@ const MONTH_MS = 900;
 
 /** The scene's bubbles, in Plot's order: teaser, full line and fact strip for each boss. */
 export const sceneOf = (briefing: readonly BriefingBubble[]) =>
-  briefing.map((b) => ({ boss: b.boss, teaser: b.teaser, line: b.line, facts: <Facts bubble={b} /> }));
+  briefing.map((b) => ({
+    boss: b.boss,
+    teaser: b.teaser,
+    line: b.line,
+    facts: <Facts bubble={b} />,
+  }));
 
 export function onBubbleFocused(boss: BossId, how: FocusHow, mode: SceneMode) {
   track("bubble_focused", { boss, how, mode });
@@ -31,7 +36,8 @@ function Facts({ bubble }: { bubble: BriefingBubble }) {
         <ul>
           {COPY.scheduled.map((pick) => (
             <li key={pick.month}>
-              <strong>{pick.month}</strong> <cite className={styles.bookTitle}>{pick.title}</cite> ({pick.format})
+              <strong>{pick.month}</strong> <cite className={styles.bookTitle}>{pick.title}</cite> (
+              {pick.format})
             </li>
           ))}
         </ul>

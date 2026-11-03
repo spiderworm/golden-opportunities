@@ -7,7 +7,12 @@ import { quarterMonths } from "./names";
 import { FORMAT_WORDS, GENRE_WORDS } from "~/simulation/words";
 import type { AlmaRecord } from "./record";
 
-export const MEASURE_NAMES: Record<MeasureId, string> = { profit: "Profit", readers: "Readers served", happiness: "Happiness", culture: "Culture" };
+export const MEASURE_NAMES: Record<MeasureId, string> = {
+  profit: "Profit",
+  readers: "Readers served",
+  happiness: "Happiness",
+  culture: "Culture",
+};
 
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -34,8 +39,12 @@ export function factSentence(record: Pick<AlmaRecord, "quarter" | "type" | "para
 }
 
 /** The stretch sentence: `boss` is the one that owns the measure (the memo's caller knows which). */
-export function stretchSentence(record: Pick<AlmaRecord, "stretch" | "drop" | "reason">, boss: string): string {
-  if (!record.stretch) return "With two strikes counting, the bosses have held every goal at the usual 5% this quarter.";
+export function stretchSentence(
+  record: Pick<AlmaRecord, "stretch" | "drop" | "reason">,
+  boss: string,
+): string {
+  if (!record.stretch)
+    return "With two strikes counting, the bosses have held every goal at the usual 5% this quarter.";
   const name = MEASURE_NAMES[record.stretch.measure];
   if (record.drop !== undefined) {
     return `${name} fell ${record.drop}% against the same quarter a year earlier. The ${boss} requires it restored: "${name.toUpperCase()} FELL ${record.drop}%. RESTORE IT."`;

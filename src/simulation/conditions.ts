@@ -54,7 +54,10 @@ export function conditionsOf(event: TurnEvent | null, history: History): Conditi
     case "genre_slump":
       return { genre: { genre: String(p.genre), month: month(), factor: 1 - percent }, costs: {} };
     case "quiet_days":
-      return { weekday: { weekday: WEEKDAYS.indexOf(String(p.weekday)), factor: 1 - percent }, costs: {} };
+      return {
+        weekday: { weekday: WEEKDAYS.indexOf(String(p.weekday)), factor: 1 - percent },
+        costs: {},
+      };
     case "author_fares":
       return { costs: { fare: Number(p.cost) } };
     case "format_costs":
@@ -73,14 +76,25 @@ export const changesOrders = (c: Conditions) => c.genre !== undefined || c.weekd
  * Each order's factor from the conditions: below 1 it's dropped with probability 1 − factor, above 1 it's
  * cloned with probability factor − 1, the daily noise's drop-or-clone. One draw per order, on its own stream.
  */
-export function applyConditions(history: History, base: readonly Order[], seed: number, c: Conditions): Order[] {
+export function applyConditions(
+  history: History,
+  base: readonly Order[],
+  seed: number,
+  c: Conditions,
+): Order[] {
   if (!changesOrders(c)) return [...base];
   const random = stream(seed, history.streamOf(streamName(history.quarter, "alma")));
   const orders: Order[] = [];
   for (const order of base) {
     let factor = 1;
-    if (c.genre && order.day.slice(5, 7) === c.genre.month && order.items.some((i) => i.genre === c.genre!.genre)) factor *= c.genre.factor;
-    if (c.weekday && new Date(`${order.day}T00:00:00Z`).getUTCDay() === c.weekday.weekday) factor *= c.weekday.factor;
+    if (
+      c.genre &&
+      order.day.slice(5, 7) === c.genre.month &&
+      order.items.some((i) => i.genre === c.genre!.genre)
+    )
+      factor *= c.genre.factor;
+    if (c.weekday && new Date(`${order.day}T00:00:00Z`).getUTCDay() === c.weekday.weekday)
+      factor *= c.weekday.factor;
     const r = random();
     if (factor < 1) {
       if (r < factor) orders.push(order);

@@ -15,7 +15,10 @@ export function gameStorageKeys(instance: string): string[] {
 }
 
 /** Forgets this browser's per-game state. Storage can be missing or blocked; then there's nothing to forget. */
-export function clearGameStorage(storage: () => Pick<Storage, "removeItem"> | undefined, instance: string) {
+export function clearGameStorage(
+  storage: () => Pick<Storage, "removeItem"> | undefined,
+  instance: string,
+) {
   for (const key of gameStorageKeys(instance)) {
     try {
       storage()?.removeItem(key);
@@ -29,7 +32,11 @@ export function clearGameStorage(storage: () => Pick<Storage, "removeItem"> | un
  * Asks the server for a new game, then forgets the old one here. True once the new save is set (the server answers
  * with a redirect, not followed, so its cookie lands without loading the page twice); false if it refused.
  */
-export async function resetGame(instance: string, storage: () => Pick<Storage, "removeItem"> | undefined, post = fetch): Promise<boolean> {
+export async function resetGame(
+  instance: string,
+  storage: () => Pick<Storage, "removeItem"> | undefined,
+  post = fetch,
+): Promise<boolean> {
   let response: Response;
   try {
     response = await post("/game/new?reset=1", { method: "POST", redirect: "manual" });
