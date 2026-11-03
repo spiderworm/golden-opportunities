@@ -3,7 +3,19 @@
 // checkboxes (multi). The panel is a labelled fieldset, so screen readers hear the group and each option's state.
 // Escape or a click outside closes it; Escape puts the focus back on the button, as do a single choice and,
 // in WebKit, which doesn't focus a clicked checkbox, an Escape with the focus on the page.
-import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
+//
+// ToggleMenu is the same button and panel holding a chart's switches (David, 3 Nov 2026: "Create an "Options"
+// dropdown and put "Compare quarters", "vs same quarter last year", and "Scatter plot" into it"): a menu of
+// menuitemcheckboxes, each showing whether it's on, that stays open as they're switched.
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 import { Icon } from "~/shell/icons";
 import styles from "./Dropdown.module.css";
@@ -42,25 +54,16 @@ export type DropdownProps<T extends string> = Common<T> &
     | { mode: "multi"; values: readonly T[]; onChange: (values: T[]) => void }
   );
 
-export function Dropdown<T extends string>(props: DropdownProps<T>) {
-  const { name, options, active, empty, align = "start", trigger, legend = name } = props;
+/** Open or shut, shutting on a click outside, and on Escape, which puts the focus back on the button. */
+function usePanel(button: RefObject<HTMLButtonElement | null>) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
-  const ownButton = useRef<HTMLButtonElement>(null);
-  const button = props.buttonRef ?? ownButton;
-  const panelId = useId();
-  // A choice shows at once, though its caller may only take it when a navigation lands: until the props change.
-  const given = props.mode === "single" ? [props.value] : props.values;
-  const [pending, setPending] = useState<readonly T[] | null>(null);
-  useEffect(() => setPending(null), [given.join("\u0000")]);
-  const chosen = pending ?? given;
-
   useEffect(() => {
     if (!open) return;
     const away = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
-    const escape = (event: KeyboardEvent) => {
+    const escape = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setOpen(false);
       const focus = document.activeElement;
@@ -74,6 +77,20 @@ export function Dropdown<T extends string>(props: DropdownProps<T>) {
       document.removeEventListener("keydown", escape);
     };
   }, [open]);
+  return { open, setOpen, root };
+}
+
+export function Dropdown<T extends string>(props: DropdownProps<T>) {
+  const { name, options, active, empty, align = "start", trigger, legend = name } = props;
+  const ownButton = useRef<HTMLButtonElement>(null);
+  const button = props.buttonRef ?? ownButton;
+  const { open, setOpen, root } = usePanel(button);
+  const panelId = useId();
+  // A choice shows at once, though its caller may only take it when a navigation lands: until the props change.
+  const given = props.mode === "single" ? [props.value] : props.values;
+  const [pending, setPending] = useState<readonly T[] | null>(null);
+  useEffect(() => setPending(null), [given.join("\u0000")]);
+  const chosen = pending ?? given;
 
   const labels = options.filter((o) => chosen.includes(o.value)).map((o) => o.label);
   const summary =
@@ -157,6 +174,151 @@ export function Dropdown<T extends string>(props: DropdownProps<T>) {
           );
         })}
       </fieldset>
+    </div>
+  );
+}
+
+export interface MenuToggle {
+  /** Stable among the menu's items. */
+  key: string;
+  label: string;
+  on: boolean;
+  /** Why it can't be switched now, shown under it; it stays in the menu, focusable, so the player sees it exists. */
+  reason?: string | null;
+  /** What it does, as its tooltip while it can be switched. */
+  hint?: string;
+  onToggle: () => void;
+}
+
+/**
+ * A button that opens a menu of switches. Its button counts the ones on ("Options", "1 on"), so a chart's state
+ * isn't hidden behind it. The arrow keys, Home and End move through the items, a switch keeps the menu open, and
+ * Escape or Tab shuts it.
+ */
+export function ToggleMenu({
+  name,
+  toggles,
+  align = "start",
+}: {
+  name: string;
+  toggles: readonly MenuToggle[];
+  align?: "start" | "end";
+}) {
+  const button = useRef<HTMLButtonElement>(null);
+  const { open, setOpen, root } = usePanel(button);
+  const menuId = useId();
+  const items = useRef<(HTMLButtonElement | null)[]>([]);
+  const on = toggles.filter((t) => t.on).length;
+  // Opening puts the focus on the first item, as a menu's button does.
+  const [focusFirst, setFocusFirst] = useState(false);
+  useEffect(() => {
+    if (open && focusFirst) items.current[0]?.focus();
+    setFocusFirst(false);
+  }, [open, focusFirst]);
+
+  const onKey = (event: KeyboardEvent) => {
+    const at = items.current.indexOf(document.activeElement as HTMLButtonElement);
+    const last = toggles.length - 1;
+    const to =
+      event.key === "ArrowDown"
+        ? at >= last
+          ? 0
+          : at + 1
+        : event.key === "ArrowUp"
+          ? at <= 0
+            ? last
+            : at - 1
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? last
+              : null;
+    if (event.key === "Tab") setOpen(false);
+    if (to === null) return;
+    event.preventDefault();
+    items.current[to]?.focus();
+  };
+
+  return (
+    <div className={styles.menu} ref={root}>
+      <button
+        ref={button}
+        type="button"
+        className={styles.button}
+        data-active={on > 0 || undefined}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        onClick={() => {
+          setOpen(!open);
+          setFocusFirst(!open);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowDown" || open) return;
+          event.preventDefault();
+          setOpen(true);
+          setFocusFirst(true);
+        }}
+      >
+        <span className={styles.summary}>{name}</span>
+        {on > 0 && <span className={styles.name}>{on} on</span>}
+        <Icon name="chevronDown" size={16} />
+      </button>
+      <div
+        id={menuId}
+        role="menu"
+        aria-label={name}
+        className={styles.panel}
+        hidden={!open}
+        data-align={align}
+        onKeyDown={onKey}
+      >
+        {toggles.map((toggle, i) => {
+          const reason = toggle.reason ?? null;
+          const whyId = `${menuId}-why-${i}`;
+          return (
+            <button
+              key={toggle.key}
+              ref={(el) => {
+                items.current[i] = el;
+              }}
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked={toggle.on}
+              aria-disabled={reason !== null || undefined}
+              aria-describedby={reason !== null ? whyId : undefined}
+              title={reason === null ? toggle.hint : undefined}
+              tabIndex={-1}
+              className={styles.toggle}
+              data-disabled={reason !== null || undefined}
+              onClick={() => reason === null && toggle.onToggle()}
+            >
+              <span className={styles.tick} data-on={toggle.on || undefined} aria-hidden="true">
+                {toggle.on && (
+                  <svg viewBox="0 0 16 16" width="12" height="12">
+                    <path
+                      d="M3 8.5l3 3 7-7"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </span>
+              <span className={styles.toggleText}>
+                <span>{toggle.label}</span>
+                {reason !== null && (
+                  <span id={whyId} className={styles.toggleWhy}>
+                    {reason}
+                  </span>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
