@@ -10,7 +10,7 @@ import {
 
 import { quarterName } from "~/game/event-title";
 import { PinChart } from "~/investigate/pins/PinnedCharts";
-import { noChartReason, TableToggle } from "~/investigate/charts/TableToggle";
+import { noChartReason, TableToggle } from "~/platform/ui/TableToggle";
 import { MAX_SERIES } from "~/platform/charts/chart-theme";
 import { noChart, pinKey, shownAsTable, type PinSpec } from "~/investigate/pins/spec";
 import { usePins } from "~/investigate/pins/usePins";
