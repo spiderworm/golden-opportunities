@@ -135,7 +135,7 @@ export function shouldRevalidate({
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {
-  const { state, tiles, chart, also, heatmap, titleView, options, planned } = loaderData;
+  const { state, tiles, chart, also, heatmap, drove, titleView, options, planned } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const navigation = useNavigation();
   const location = useLocation();
@@ -263,6 +263,15 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           onLastYear={(on) => {
             track("investigate_last_year_toggled", { on });
             update({ ...state, lastYear: on });
+          }}
+          drove={drove}
+          onDrove={(on) => {
+            track("investigate_drove_toggled", { on, by: state.by });
+            update({ ...state, drove: on, split: on && state.split });
+          }}
+          onSplit={(on) => {
+            track("investigate_drove_split_toggled", { on });
+            update({ ...state, split: on });
           }}
           onDrill={(value) => {
             const next = toggleFilterValue(state, state.by, value);

@@ -47,6 +47,14 @@ export interface GroupChange {
   presence?: "new" | "gone";
 }
 
+/** The two quarters a change runs between, and each one's rows. */
+export interface DroveRows {
+  then: string;
+  now: string;
+  thenRows: PeriodRows;
+  nowRows: PeriodRows;
+}
+
 /** Why there's no price/volume/mix split, for the toggle's reason. */
 export type SplitProblem = "no_units" | "nothing_then" | "truncated";
 

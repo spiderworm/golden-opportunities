@@ -255,3 +255,40 @@ describe("vs. same quarter last year", () => {
     expect(sent({ by: "genre", filters: { quarter: ["2194-Q1"] } }).some((q) => q.vs)).toBe(false);
   });
 });
+
+describe("what drove the change (David, 3 Nov 2026)", () => {
+  const drove = {
+    ...DEFAULT_STATE,
+    by: "genre" as const,
+    drove: true,
+    filters: { quarter: ["2193-Q3"] },
+  };
+
+  it("sends each quarter's revenue by the breakdown, and units with the split", () => {
+    const queries: Query[] = [];
+    const spy = (query: Query, v: QueryView) => {
+      queries.push(query);
+      return runQuery(query, v);
+    };
+    const plain = investigate(drove, spy, view).drove!;
+    expect([plain.then, plain.now]).toEqual(["2193-Q2", "2193-Q3"]);
+    expect(plain.thenRows.units).toBeUndefined();
+    expect(plain.nowRows.revenue.total).toBeCloseTo(274036.165, 3);
+    const split = investigate({ ...drove, split: true }, spy, view).drove!;
+    expect(split.thenRows.units!.total).toBeGreaterThan(0);
+    // Plain queries with the quarter, never vs: a genre gone this quarter is still in last quarter's rows.
+    // Its queries (the chart's own sends no limit): 2 without the split, 4 with, plain, never vs.
+    const sent = queries.filter((q) => q.limit === 200);
+    expect(sent).toHaveLength(6);
+    expect(sent.every((q) => q.vs === undefined && q.filter?.quarter?.length === 1)).toBe(true);
+  });
+
+  it("sends nothing when it's off or can't be shown", () => {
+    expect(investigate({ ...drove, drove: false }, runQuery, view).drove).toBeNull();
+    // Q1 2193 has no quarter before it.
+    expect(
+      investigate({ ...drove, filters: { quarter: ["2193-Q1"] } }, runQuery, view).drove,
+    ).toBeNull();
+    expect(investigate({ ...drove, measure: "units" }, runQuery, view).drove).toBeNull();
+  });
+});
