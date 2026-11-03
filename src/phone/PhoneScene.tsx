@@ -25,7 +25,7 @@ import {
   type Light,
   type Object3D,
 } from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import { BOSSES } from "~/platform/bosses/bosses";
@@ -60,7 +60,7 @@ import { makeTurnstile } from "./turnstile";
 // hand turns to the grip and closes. At the grab the hand becomes the
 // phone's parent: from then on it carries the phone, and the camera with it,
 // so the robot's sway and tug move the view and the hand never leaves its
-// arm. Its outline can be drawn for debugging, and window.phoneCamera moves the
+// arm. Its outline can be drawn for debugging, and in development window.phoneCamera moves the
 // camera on it. Reduced motion: it's already holding it.
 
 export interface PhoneSceneProps {
@@ -229,6 +229,9 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     let skinned: SkinnedMesh | undefined;
     body.traverse((o) => void ((o as SkinnedMesh).isSkinnedMesh && (skinned ??= o as SkinnedMesh)));
     const turnstile = skinned ? makeTurnstile(skinned, bone("mixamorigSpine2")) : null;
+    // Without it the robot is drawn as it is, its turnstile fixed to its chest: worth knowing about when the model changes.
+    if (!turnstile && import.meta.env.DEV)
+      console.warn("The phone robot's turnstile wasn't found, so it won't turn");
     // Both arms, from the elbow down, for the turnstile to give way to.
     const arms = (["Left", "Right"] as const).map((side) =>
       ["ForeArm", "Hand", "HandMiddle1", "HandIndex4", "HandPinky4"].map((b) =>
@@ -337,7 +340,7 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
   //   phoneCamera.set(x, y, z)  places it, from the next frame on;  phoneCamera.reset()  puts it back;
   //   phoneCamera.get()  says where it is, and the phone's size;      phoneCamera.fov(degrees)  widens or narrows it.
   //   phoneCamera.toggleOrbit()  frees the camera from the phone to orbit the middle of the palm (drag, wheel), or
-  //     puts it back on the phone, and says which it is now (true: orbiting); phoneCamera.orbit(on) sets it outright;
+  //     puts it back on the phone, and resolves with which it is now (true: orbiting); phoneCamera.orbit(on) sets it;
   //   phoneCamera.orbitFrom(x, y, z)  puts the orbiting camera there from the palm, in the world (metres).
   // Orbiting starts off.
   const override = useRef<Vector3 | null>(null);
@@ -356,9 +359,12 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
   /** How far the head was asked to turn to the phone, last frame (radians), for phoneCamera.get(). */
   const looked = useRef({ wanted: 0, lookIn: 0 });
   const palm = useMemo(() => new Vector3(), []);
-  const setOrbit = (on: boolean) => {
+  const setOrbit = async (on: boolean) => {
     if (on === !!orbit.current) return;
     if (on) {
+      // Loaded only when asked for, so the scene itself doesn't carry them.
+      const { OrbitControls } = await import("three/examples/jsm/controls/OrbitControls.js");
+      if (orbit.current) return;
       const controls = new OrbitControls(camera, gl.domElement);
       controls.addEventListener("change", () => invalidate());
       orbit.current = controls;
@@ -369,8 +375,10 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     }
     invalidate();
   };
-  useEffect(() => () => setOrbit(false), [camera, gl]);
+  useEffect(() => () => void setOrbit(false), [camera, gl]);
   useEffect(() => {
+    // In development only: production builds have no phoneCamera.
+    if (!import.meta.env.DEV) return;
     const control = {
       orbit: (on = true) => setOrbit(on),
       // phoneCamera.record(seconds)  records the phone camera's place and turn in the world every frame for that
@@ -379,14 +387,14 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
         new Promise<unknown[]>((done) => {
           recording.current = { until: performance.now() + seconds * 1000, frames: [], done };
         }),
-      toggleOrbit: () => {
-        setOrbit(!orbit.current);
+      toggleOrbit: async () => {
+        await setOrbit(!orbit.current);
         return !!orbit.current;
       },
       // phoneCamera.orbitHub(on)  orbits the turnstile's hub on its chest instead of the palm.
       orbitHub: (on = true) => void (orbitHub.current = on),
       orbitFrom: (x: number, y: number, z: number) => {
-        setOrbit(true);
+        void setOrbit(true);
         orbitFrom.current = new Vector3(x, y, z);
       },
       set: (x: number, y: number, z: number) => void (override.current = new Vector3(x, y, z)),

@@ -162,14 +162,18 @@ const BAR_THICK = 0.03;
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 /** The directions among `angles` (radians), grouped where they're within 25 degrees of each other: each group's middle. */
-function clusterAngles(angles: number[]): number[] {
+export function clusterAngles(angles: number[]): number[] {
   const bins = new Array<number>(72).fill(0);
   for (const a of angles) bins[Math.floor(((a + Math.PI) / (2 * Math.PI)) * 72) % 72]!++;
+  // Start just after an empty bin, so a run across the seam at +-pi (a bar along -x) is gathered once, whole.
+  const empty = bins.indexOf(0);
+  if (empty < 0) return [];
   const groups: number[] = [];
   const seen = new Array<boolean>(72).fill(false);
-  for (let b = 0; b < 72; b++) {
+  for (let s = 1; s <= 72; s++) {
+    const b = (empty + s) % 72;
     if (!bins[b] || seen[b]) continue;
-    // Gather this run of filled bins, both ways round.
+    // Gather this run of filled bins, on round.
     let sum = 0;
     let weight = 0;
     for (let k = b, step = 0; bins[k] && !seen[k] && step < 72; k = (k + 1) % 72, step++) {
@@ -179,7 +183,7 @@ function clusterAngles(angles: number[]): number[] {
       sum += (ref + wrap(a - ref)) * bins[k]!;
       weight += bins[k]!;
     }
-    groups.push(sum / weight);
+    groups.push(wrap(sum / weight));
   }
   return groups;
 }
