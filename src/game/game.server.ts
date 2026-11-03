@@ -106,7 +106,7 @@ function commit(save: GameSave, quarter: Omit<PlayedQuarter, 'lines' | 'sales'> 
     if (quarterOf(draft) !== kept.period) throw alreadyPlayed();
     draft.played.push(kept);
   });
-  rememberLines(save.id, kept, sales);
+  rememberLines(save.id, kept, sales, loadBookshop());
   // Alma prepares the next quarter in the background (src/alma): it never waits, and never throws into the submit.
   // Not for a player the panel has just removed: there's no next quarter to prepare.
   if (quarterOf(after) !== null) onQuarterCommitted({ saveId: save.id, quarter: quarter.period, seed: save.seed });

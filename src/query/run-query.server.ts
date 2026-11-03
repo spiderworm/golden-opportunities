@@ -7,6 +7,7 @@ import { emit, trackQuery } from './telemetry.server';
 import { eligibleDays, groupDays, CALENDAR_DIMENSIONS, WEEKDAYS } from './calendar';
 import { checkLabel, serializeResult } from './result';
 import { PRICE_BANDS, QUERY_LIMITS } from './types';
+import { rollUpSales, type SaleCells } from './sale-cells';
 import type { Dimension, Measure, Query, QueryResult, QueryRow, QueryTrack, QueryView } from './types';
 
 const labels: Record<Dimension | Measure, string> = {
@@ -22,7 +23,33 @@ interface Fact { dimensions: Dimensions; value: number; orderId?: string; simula
  * of the aggregate's cells (`overlap`), so an order spanning cells is counted once.
  */
 interface Aggregate { sum: number; count: number; orders: Set<string>; cellOrders: number; overlap: number }
-const cache = new Map<string, QueryResult>();
+/**
+ * Results, least recently used out, bounded by count and by their JSON's size with their keys' (each result is at
+ * most QUERY_LIMITS.responseBytes; a key, with every playable quarter, about 4 KB; Audit, #247). A five-year save's Investigate load is 11 scans of about 340 ms each (Frank's
+ * profile, 2 Nov 2026), so a repeat view is served from here.
+ */
+const CACHE_LIMITS = { entries: 512, bytes: 16 * 2 ** 20 };
+let cacheLimits = { ...CACHE_LIMITS };
+const cache = new Map<string, { result: QueryResult; bytes: number }>();
+let cachedBytes = 0;
+function cached(key: string): QueryResult | undefined {
+  const entry = cache.get(key);
+  if (!entry) return undefined;
+  cache.delete(key); cache.set(key, entry);
+  return entry.result;
+}
+function remember(key: string, result: QueryResult, bytes: number) {
+  if (bytes > cacheLimits.bytes) return;
+  cache.set(key, { result, bytes }); cachedBytes += bytes;
+  for (const [oldest, entry] of cache) {
+    if (cache.size <= cacheLimits.entries && cachedBytes <= cacheLimits.bytes) break;
+    cache.delete(oldest); cachedBytes -= entry.bytes;
+  }
+}
+/** For tests: the cache's size, smaller bounds to exercise it, and a fresh start. */
+export const resultCacheSize = () => ({ entries: cache.size, bytes: cachedBytes });
+export function setResultCacheLimits(limits: Partial<typeof CACHE_LIMITS> | null) { cacheLimits = { ...CACHE_LIMITS, ...limits }; }
+export function forgetResults() { cache.clear(); cachedBytes = 0; }
 
 function bookDimensions(book: DeepReadonly<JoinedBook> | null): Dimensions {
   return { genre: book?.info?.genre ?? null, series: book?.series?.name ?? null, title: book?.title ?? null,
@@ -77,7 +104,19 @@ function saleFact(sale: DeepReadonly<SaleLine>, measure: Measure, periods: Set<s
     value: (measure === 'revenue' || measure === 'avg_order_value') ? lineRevenue(sale.listPrice, sale.discount) : measure === 'avg_discount' ? basisPoints(sale.discount) : 1,
     orderId: sale.orderId, simulated, awards: awardsOf(sale.book) };
 }
-function* facts(query: Query, view: QueryView): Generator<Fact> {
+/** 2193's sale lines, rolled up once per loaded dataset (sale-cells.ts), so a query reads cells, not 56,350 lines. */
+const historyCells = new WeakMap<object, SaleCells>();
+let historyAsLines = false;
+/** For tests: read 2193 line by line, as before the rollups, to compare the two (sale-cells.server.test.ts). */
+export function readHistoryAsLines(on: boolean) { historyAsLines = on; }
+function historyOf(data: ReturnType<typeof loadBookshop>): SaleCells | null {
+  if (historyAsLines) return null;
+  let cells = historyCells.get(data);
+  if (!cells) historyCells.set(data, (cells = rollUpSales(data.saleLines)));
+  return cells;
+}
+
+function* facts(query: Query, view: QueryView, history: SaleCells | null): Generator<Fact> {
   const cells: Fact[] = [];
   if (undated(query.measure) && !view.includeUndated) throw new QueryError('UNAVAILABLE_FACTS', 'This view does not allow the undated ratings and checkout snapshot.');
   const data = loadBookshop();
@@ -90,12 +129,18 @@ function* facts(query: Query, view: QueryView): Generator<Fact> {
     for (const checkout of data.joinedCheckouts) yield { dimensions: { ...bookDimensions(checkout.book), month: `2193-${String(checkout.month).padStart(2, '0')}` }, value: checkout.count, awards: awardsOf(checkout.book) };
   } else {
     const periods = new Set<string>(view.periods);
-    for (const sale of data.saleLines) { const fact = saleFact(sale, query.measure, periods, false); if (fact) yield fact; }
+    if (!history) for (const sale of data.saleLines) { const fact = saleFact(sale, query.measure, periods, false); if (fact) yield fact; }
     for (const sale of view.simulatedSales ?? []) { const fact = saleFact(sale, query.measure, periods, true); if (fact) yield fact; }
-    // Cells are facts for their sample line, weighted by how many lines they hold (sale-cells.ts).
+    // Cells are facts for their sample line, weighted by how many lines they hold (sale-cells.ts). 2193's come
+    // first, then the save's, numbered on from them, as execute numbers their spanning orders.
+    const offset = history?.cells.length ?? 0;
+    history?.cells.forEach((cell, at) => {
+      const fact = saleFact(cell.line, query.measure, periods, false);
+      if (fact) cells.push({ ...fact, weight: cell.lines, cell: at, orders: cell.orders });
+    });
     view.simulatedCells?.cells.forEach((cell, at) => {
       const fact = saleFact(cell.line, query.measure, periods, true);
-      if (fact) cells.push({ ...fact, weight: cell.lines, cell: at, orders: cell.orders });
+      if (fact) cells.push({ ...fact, weight: cell.lines, cell: offset + at, orders: cell.orders });
     });
     yield* cells;
   }
@@ -141,7 +186,8 @@ function execute(query: Query, view: QueryView): QueryResult {
   const inTotal = new Set<number>();
   const cellGroup = new Map<number, Aggregate>();
   if (!query.by.length) groups.set('[]', { dimensions: {}, aggregate: aggregate() });
-  for (const fact of facts(query, view)) {
+  const history = undated(query.measure) ? null : historyOf(loadBookshop());
+  for (const fact of facts(query, view, history)) {
     if (!filters.every(([dimension, values]) => {
       if (dimension === 'award') return fact.awards!.some(award => values.has(award));
       const v = fact.dimensions[dimension]; return v != null && values.has(v);
@@ -158,7 +204,9 @@ function execute(query: Query, view: QueryView): QueryResult {
     if (fact.cell !== undefined) cellGroup.set(fact.cell, group.aggregate);
   }
   // An order spanning several of an aggregate's cells was counted once in each: count it once (sale-cells.ts).
-  for (const touched of view.simulatedCells?.spanning ?? []) {
+  const offset = history?.cells.length ?? 0;
+  const spanning = [...(history?.spanning ?? []), ...(view.simulatedCells?.spanning ?? []).map(touched => touched.map(at => offset + at))];
+  for (const touched of spanning) {
     const seen = new Map<Aggregate, number>();
     let visible = 0;
     for (const at of touched) {
@@ -199,15 +247,16 @@ export function runQuery(input: unknown, view: QueryView, track: QueryTrack = tr
   try {
     query = validateQuery(input);
     validateView(view);
-    // History is immutable per build. Simulated arrays have no version contract yet,
-    // so never cache them. The history key includes the ENTIRE visibility grant.
-    const key = view.simulatedSales?.length || view.simulatedCells ? null : JSON.stringify([query, [...view.periods].sort(), view.includeUndated]);
-    let result = key ? cache.get(key) : undefined;
+    // History is immutable per build. Simulated lines and cells are cached only under the save's data version, which the
+    // server sets with them and which changes with every played quarter, new game and reset. The key includes the
+    // ENTIRE visibility grant.
+    const key = (view.simulatedSales?.length || view.simulatedCells) && !view.version ? null : JSON.stringify([query, [...view.periods].sort(), view.includeUndated, view.version ?? null]);
+    let result = key ? cached(key) : undefined;
     const cacheHit = result !== undefined;
     if (!result) {
       result = execute(query, view);
-      serializeResult(result);
-      if (key) { if (cache.size >= 64) cache.delete(cache.keys().next().value!); cache.set(key, result); }
+      const body = serializeResult(result);
+      if (key) remember(key, result, body.length + key.length);
     }
     emit(track, 'query_completed', { measure: query.measure, dimensionCount: query.by.length, rowCount: result.rows.length, durationMs: performance.now() - started, cacheHit });
     return structuredClone(result);

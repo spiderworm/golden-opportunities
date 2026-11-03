@@ -2,15 +2,15 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import type { MiddlewareFunction } from 'react-router';
 import { loadBookshop } from '../bookshop/loader.server';
-import type { JoinedBook } from '../bookshop/types';
 import type { QueryView } from '../query/types';
-import { RELEASE, releaseBook } from '../simulation/release';
 import { BASELINE_VIEW } from '../query/view.server';
+import { dataVersion } from '../query/data-version.server';
 import { DATA_DIR } from '../platform/analytics/instance.server';
 import { trackServer } from '../platform/analytics/analytics.server';
 import { onGameStarted } from '../alma/backstory.server';
 import { createSaveStore, isSaveId, SaveError } from './store.server';
-import { quarterLines } from './replay.server';
+import { quarterCells } from './replay.server';
+import { mergeCells } from '../query/sale-cells';
 import type { TurnEvent } from '../simulation/turn';
 import type { GameSave } from './types';
 import { saveDate } from './progress';
@@ -50,20 +50,13 @@ export function eventOf(save: GameSave, quarter: string): TurnEvent | null {
   return record ? { type: record.type, params: record.params, stretch: record.stretch, ...(record.drop === undefined ? {} : { drop: record.drop }) } : null;
 }
 export function queryViewForSave(save: GameSave): QueryView {
-  // Each quarter's lines, replayed and checked once per process (replay.server.ts), or as an older save stored them.
-  const sales = save.played.flatMap(q => quarterLines(save.id, save.seed, q, loadBookshop, eventOf(save, q.period)));
-  if (!sales.length) return { ...BASELINE_VIEW, periods: [...BASELINE_VIEW.periods, ...save.played.map(q => q.period)] };
-  const data = loadBookshop();
-  // The new volume is generated, not in the data: the engine's records join it (src/simulation/release.ts).
-  const editions = new Map([...data.editions, RELEASE.edition].map(e => [e.isbn, e]));
-  const books = new Map([...data.joinedBooks, releaseBook(data) as JoinedBook].map(b => [b.id, b]));
-  const publishers = new Map(data.publishers.map(p => [p.id, p]));
-  return { ...BASELINE_VIEW, periods: [...BASELINE_VIEW.periods, ...save.played.map(q => q.period)], simulatedSales: sales.map(sale => {
-    const edition = editions.get(sale.isbn); const book = edition && books.get(edition.bookId); const publisher = edition && publishers.get(edition.publisherId);
-    if (!edition || !book || !publisher) throw new SaveError('INVALID_SAVE');
-    return { ...sale, book, title: book.title, author: book.author, genre: book.info?.genre ?? null, format: edition.format, publisher,
-      listPrice: edition.listPrice, revenue: edition.listPrice * (1 - sale.discount) };
-  }) };
+  // Each quarter's cells, replayed, checked and rolled up once per process (replay.server.ts), or from an older
+  // save's stored lines.
+  const cells = mergeCells(save.played.map(q => quarterCells(save.id, save.seed, q, loadBookshop, eventOf(save, q.period))));
+  const periods = [...BASELINE_VIEW.periods, ...save.played.map(q => q.period)];
+  if (!cells.lines) return { ...BASELINE_VIEW, periods };
+  // The data version names these cells, so results over them can be cached (run-query.server.ts).
+  return { ...BASELINE_VIEW, periods, version: dataVersion(save), simulatedCells: cells };
 }
 /**
  * The request's save, its date, and its query view. The view replays the played quarters' lines, so it's built
