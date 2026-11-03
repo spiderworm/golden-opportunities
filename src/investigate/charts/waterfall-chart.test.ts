@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { waterfall, type PeriodRows } from "~/query/decompose";
 import type { QueryResult } from "~/query/types";
 import {
+  axisCaption,
   axisFoot,
   barLines,
   droveLabels,
@@ -116,6 +117,9 @@ describe("the waterfall's bars (Plot's copy, #328)", () => {
     const foot = axisFoot(bars);
     // The changes span some $5,000 here, so it's a round thousand.
     expect(foot % 1000).toBe(0);
+    // And it says so, in the axis's own format (Plot, #335); nothing when it starts at zero.
+    expect(axisCaption(80000)).toBe("The axis starts at $80K, not at zero, so small changes show.");
+    expect(axisCaption(0)).toBeNull();
     expect(foot).toBeLessThan(Math.min(...bars.map((b) => Math.min(b.from || Infinity, b.to))));
   });
 });

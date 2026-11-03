@@ -68,6 +68,16 @@ export function axisFoot(bars: readonly Bar[]): number {
   return Math.max(0, Math.floor((low - span * 0.6) / step) * step);
 }
 
+/**
+ * The caption when the axis doesn't start at zero, so the chart doesn't teach a cut-off axis by example: "The axis
+ * starts at $80K, not at zero, so small changes show." (Plot, #335). Null when it starts at zero.
+ */
+export function axisCaption(foot: number): string | null {
+  return foot > 0
+    ? `The axis starts at ${formatMeasure("revenue", foot, { compact: true })}, not at zero, so small changes show.`
+    : null;
+}
+
 const signed = (value: number) => formatDelta("revenue", value);
 
 /** A change's split, in Plot's words: `Price +$600 · Volume +$3,100 · Mix +$420`, or a new or gone group's. */
