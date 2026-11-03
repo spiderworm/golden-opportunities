@@ -127,7 +127,7 @@ function Tiles({ latest, before }: { latest: ShopReport; before?: ShopReport }) 
           was === undefined
             ? t.score >= 100
               ? { text: COPY.goalMet, tone: "up" as const }
-              : { text: COPY.belowGoal(100 - t.score), tone: "down" as const }
+              : { text: COPY.belowGoal, tone: "down" as const }
             : {
                 text: COPY.change(t.score - was, quarterName(before!.quarter)),
                 tone:
@@ -164,7 +164,7 @@ function ShopReportCard({ report: r }: { report: ShopReport }) {
   const months = COPY.months(r.quarter);
   const binding = r.overall.allMet
     ? COPY.allMet
-    : COPY.setBy(r.overall.binding.map(measureName).join(" and "));
+    : COPY.lowest(r.overall.binding.map(measureName).join(" and "));
   return (
     <details
       className={styles.card}
