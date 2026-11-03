@@ -7,6 +7,7 @@ import type { QueryView } from "../query/types";
 import { BASELINE_VIEW } from "../query/view.server";
 import { dataVersion } from "../query/data-version.server";
 import { DATA_DIR, instanceId } from "../platform/analytics/instance.server";
+import { servedOverHttps } from "../platform/origin.server";
 import { trackServer } from "../platform/analytics/analytics.server";
 import { onGameStarted } from "../alma/backstory.server";
 import { createSaveStore, isSaveId, SaveError } from "./store.server";
@@ -42,7 +43,7 @@ let creationWindow = Date.now();
 let creations = 0;
 export function saveCookie(id: string, request: Request): string {
   if (!isSaveId(id)) throw new SaveError("INVALID_SAVE");
-  return `${saveCookieName()}=${id}; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000${new URL(request.url).protocol === "https:" ? "; Secure" : ""}`;
+  return `${saveCookieName()}=${id}; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000${servedOverHttps(request) ? "; Secure" : ""}`;
 }
 /** The values a request's cookie header holds under one name. */
 function cookieValues(request: Request, name: string): string[] {

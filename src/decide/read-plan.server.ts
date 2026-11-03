@@ -1,6 +1,7 @@
 // Reads the Decide form at the door, as /api/query and /api/assistant read
 // theirs: same origin, a small capped body, a deadline, and nothing but the
 // fields the quarter's form sends.
+import { forPublicHost, isPublicOriginRequest } from "../platform/origin.server";
 import { FIRST_QUARTER, isQuarterName, type QuarterId } from "~/simulation/quarters";
 import { isQ2Plan, planOf } from "~/simulation/plan";
 import type { Plan, Q2Plan, Q2LeverId } from "~/simulation/types";
@@ -99,7 +100,14 @@ function q2PlanFrom(form: URLSearchParams): QuarterPlan {
 async function readForm(request: Request, deadlineMs: number): Promise<URLSearchParams> {
   const url = new URL(request.url);
   const site = request.headers.get("sec-fetch-site");
-  if (request.headers.get("origin") !== url.origin || (site !== null && site !== "same-origin")) {
+  // The request's own origin, as always, or the deployed origin: behind its proxy request.url is http while the
+  // browser's Origin is https (platform/origin.server.ts). On the deployed host only the deployed rule counts, so an
+  // http Origin there can't pass as the request's own.
+  const own =
+    !forPublicHost(request) &&
+    request.headers.get("origin") === url.origin &&
+    (site === null || site === "same-origin");
+  if (!own && !isPublicOriginRequest(request)) {
     throw new PlanRefused(403, "Same-origin requests only.");
   }
   const type = request.headers.get("content-type")?.split(";")[0]!.trim().toLowerCase();
