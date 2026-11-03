@@ -19,7 +19,9 @@
 // press play. The choice is recorded once, as entry_accepted's music; the startup pause itself isn't.
 // One who left it ticked hears it at once: the page Continue opens still has Continue's user activation, so the
 // browser lets it sound (measured in Chromium, under Chrome's autoplay policy, and WebKit, #317). If a browser
-// refuses, it waits for the first tap or key press, as before.
+// refuses, it waits for the first tap or key press, as before. A fresh agreement wins over the player's own
+// remembered state either way (David, 3 Nov 2026: "if the user has paused the music player, then deletes cookies,
+// is shown that screen, and keeps the play the music checkbox checked, then we should start the player").
 import type { Started } from "@tellim/kit/app";
 import type { Music } from "@tellim/kit/music/player";
 import "@tellim/kit/music/music.css";
@@ -41,22 +43,32 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
   // saved volume holds from the first note (audio-context.ts).
   const entry = takeEntryChoice();
   const paused = entry === "off";
-  let starting = paused;
+  // While the entry's choice is applied, its own pause or resume isn't the player's, so it isn't reported:
+  // entry_accepted already records the choice.
+  let starting = entry !== null;
+  const quiet = entry === "off" ? "music_paused" : "music_resumed";
   const music = studio().music({
     songs: { manifest: MANIFEST_URL, fetcher },
     base: "/music/",
     context: musicContext,
     legacyVolume: () => START_VOLUME,
     mediaKeys: { album: "Orbital Books" },
-    // Only for the paused start: its own pause isn't the player's, so it isn't reported.
-    ...(paused && {
+    ...(entry && {
       track: (event: string, props?: Parameters<Started["track"]>[1]) => {
-        if (starting && event === "music_paused") return;
+        if (starting && event === quiet) return;
         studio().track(event, props);
       },
     }),
   });
-  if (entry === "on") return music.then((m) => (m?.start(), m));
+  if (entry === "on")
+    return music.then(async (m) => {
+      // A pause remembered from before (the player's own session, kept in the browser) would stop start(), so resume
+      // it instead; resume does nothing to a player that isn't paused, so that one starts.
+      if (m?.state().paused) await m.resume("settings");
+      else m?.start();
+      starting = false;
+      return m;
+    });
   if (!paused) return music;
   return music.then(async (m) => {
     if (m) {

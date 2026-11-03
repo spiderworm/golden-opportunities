@@ -134,4 +134,29 @@ describe("loadMusic", () => {
     expect(start).toHaveBeenCalledOnce();
     expect(page.cookie).toBe("ob_music=; Path=/; Max-Age=0; SameSite=Lax");
   });
+
+  it("plays when the entry page was just answered with the music on, even over a pause the player remembers", async () => {
+    const calls: string[] = [];
+    createMusic.mockImplementationOnce((options) => {
+      const o = options as { track: (event: string, props?: object) => void };
+      return {
+        options,
+        state: () => ({ song: "nebula-waltz", paused: true }),
+        start: () => calls.push("start"),
+        resume: async () => (
+          calls.push("resume"),
+          o.track("music_resumed", { id: "nebula-waltz", where: "settings" }),
+          true
+        ),
+      } as never;
+    });
+    const page = { cookie: "ob_music=on" };
+    vi.stubGlobal("document", page);
+    await loadMusic(
+      respond({ songs: [{ id: "nebula-waltz", file: "nebula-waltz.mp3", title: "Nebula Waltz" }] }),
+    );
+    expect(calls).toEqual(["resume"]);
+    expect(track).not.toHaveBeenCalledWith("music_resumed", expect.anything());
+    expect(page.cookie).toBe("ob_music=; Path=/; Max-Age=0; SameSite=Lax");
+  });
 });
