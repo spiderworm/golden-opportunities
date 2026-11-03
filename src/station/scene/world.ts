@@ -55,6 +55,11 @@ export function kept<T>(key: string, make: () => T): T {
   return all.get(key) as T;
 }
 
+/** State another part of the scene keeps, if it has made it yet; never makes it (so its maker's `make` still runs). */
+export function peek<T>(key: string): T | undefined {
+  return current().kept.get(key) as T | undefined;
+}
+
 /** Forgets everything, as a reload would. For tests. */
 export function forgetStation() {
   world = undefined;

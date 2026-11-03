@@ -8,6 +8,7 @@ import { sceneLevels } from "../scene-params";
 import { CameraRig, SUN_INTENSITY } from "./CameraRig";
 import { DustMotes } from "./DustMotes";
 import { forgetFailedLoads } from "./loading";
+import { Dewey } from "./Dewey";
 import { Exterior, Shuttles } from "./Exterior";
 import { summarizeFrames } from "./frame-stats";
 import { Interior } from "./Interior";
@@ -99,6 +100,7 @@ export default function StationScene(props: StationSceneProps) {
             />
             <Shoppers count={levels.shoppers} shop={shop} />
             <Robots shop={shop} />
+            <Dewey reducedMotion={props.reducedMotion} />
             <DustMotes />
             <Props />
           </group>
