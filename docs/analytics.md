@@ -21,7 +21,7 @@ The goal: "Analytics are complete, with an instance ID; agent text is held on th
 - **Checking them:** I read each event's props for content against the page, and read the code paths for held events, sharing and automation.
 - **Tests:** `src/platform/analytics` and `src/assistant/ui` pass 27 of 27, and the analytics package's own tests (`node --test`, client and environment) pass 19 of 19.
 
-## The events (90)
+## The events (94)
 
 One event to a line, under its area, so changes to different events don't collide on the same line (Goldy, 3 Nov 2026). Add a new event as its own bullet.
 
@@ -164,6 +164,15 @@ One event to a line, under its area, so changes to different events don't collid
 
 - `game_report_saved` (`intent`: create, update or delete, the player's report count, and the report's `charts`, `notes` and `summary`)
 - `game_report_refused` (`intent` and `reason`)
+
+### Saved segments
+
+Counts only, never a segment's name: the names are the player's own words (Audit, #377).
+
+- `segment_applied` (browser: a segment's filters put on Investigate's bar, with `filters`, its count of filter values)
+- `segment_saved` (server: `intent` (`create`, `rename` or `update`), the player's `segments` count, and the segment's `filters` count)
+- `segment_deleted` (server: the player's `segments` count after it)
+- `segment_refused` (server: `intent` (`create`, `rename`, `update`, `delete` or `other`) and `reason` (`full`, `no_name`, `too_long`, `taken`, `same_filters`, `no_filters`, `too_many`, `missing` or `invalid`))
 
 ### Decide and results
 

@@ -16,6 +16,8 @@ import {
   droveBlock,
   droveOn,
   resolvedState,
+  SEGMENT_PARAM,
+  withSegment,
   runningBlock,
   shareBlock,
   droveQuarters,
@@ -649,5 +651,18 @@ describe("clicking a quarter a relative quarter picks (Audit and Chart, #379)", 
     expect(cleared.filters.quarter).toBeUndefined();
     // Another cell is chosen by its dated quarter, as any click is.
     expect(toggleCell(cell, "Fiction", "2193-Q4", quarters).filters.quarter).toEqual(["2193-Q4"]);
+  });
+});
+
+describe("the segment a link's filters came from (Plot, section 8)", () => {
+  it("is kept beside the question, never part of it", () => {
+    const params = withSegment(new URLSearchParams("by=genre&genre=Fiction"), "a1");
+    expect(params.get(SEGMENT_PARAM)).toBe("a1");
+    expect(withSegment(params, null).has(SEGMENT_PARAM)).toBe(false);
+    // Naming or un-naming a segment changes no data, so nothing is asked again.
+    const from = new URL("http://localhost/investigate?by=genre&genre=Fiction");
+    const to = new URL("http://localhost/investigate?by=genre&genre=Fiction&segment=a1");
+    expect(onlyShownChanged(from, to)).toBe(true);
+    expect(parseState(to.searchParams)).toEqual(parseState(from.searchParams));
   });
 });
