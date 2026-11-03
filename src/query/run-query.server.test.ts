@@ -432,13 +432,13 @@ describe("server-owned visibility and cache isolation", () => {
     ).toThrow(expect.objectContaining({ code: "INVALID_VIEW" }));
   });
   it("bounds a save's cells by cells, not by the lines they stand for (rollups step 4)", () => {
-    const cell = { line: sale({}), lines: 10, orders: 9 };
+    const cell = { line: sale({}), lines: 10, orders: 9, squares: 11 };
     // A 24-year save at the five-year save's rate (30,516 cells for 302,517 lines) fits, though its lines are far
     // past the line cap; one cell over the bound is refused.
     const cells = (n: number, lines: number): QueryView => ({
       periods: ["2194-Q1"],
       includeUndated: false,
-      simulatedCells: { cells: Array(n).fill(cell), spanning: [], lines },
+      simulatedCells: { cells: Array(n).fill(cell), spanning: [], spanningLines: [], lines },
     });
     expect(() =>
       validateView(cells(Math.round((24 / 5) * 30_516), Math.round((24 / 5) * 302_517))),
