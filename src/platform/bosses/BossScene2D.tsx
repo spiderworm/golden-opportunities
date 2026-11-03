@@ -15,7 +15,14 @@ export interface BossSceneProps {
 
 /** The bosses in 2D, standing under their bubbles in BossLayout. */
 export function BossScene2D({ bubbles, open, onSelect }: BossSceneProps) {
-  return <BossLayout bubbles={bubbles} open={open} onSelect={onSelect} floor={<BossFigures bubbles={bubbles} open={open} onSelect={onSelect} />} />;
+  return (
+    <BossLayout
+      bubbles={bubbles}
+      open={open}
+      onSelect={onSelect}
+      floor={<BossFigures bubbles={bubbles} open={open} onSelect={onSelect} />}
+    />
+  );
 }
 
 /**
@@ -38,7 +45,11 @@ export function BossFigures({ bubbles, open, onSelect }: BossSceneProps) {
             style={{ "--tint": tint } as CSSProperties}
             onClick={() => onSelect(i, "click")}
           >
-            {figure ? <img src={figure} alt="" draggable={false} /> : <BossAvatar portrait={portrait} />}
+            {figure ? (
+              <img src={figure} alt="" draggable={false} />
+            ) : (
+              <BossAvatar portrait={portrait} />
+            )}
           </div>
         );
       })}

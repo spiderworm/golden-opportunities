@@ -20,9 +20,34 @@ export interface Boss {
 const [blue, orange, green, amber, pink] = chartTheme.categorical as readonly string[];
 
 export const BOSSES: Record<BossId, Boss> = {
-  profit: { name: "The Commerce Office", tint: green!, portrait: "/bosses/profit.webp", figure: "/bosses/full/profit.webp" },
-  readers: { name: "The Throughput Subcommittee", tint: blue!, portrait: "/bosses/readers.webp", figure: "/bosses/full/readers.webp" },
-  happiness: { name: "The Readers' Guild survey drone", tint: pink!, portrait: "/bosses/happiness.webp", figure: "/bosses/full/happiness.webp" },
-  culture: { name: "The Ministry of Culture", tint: amber!, portrait: "/bosses/culture.webp", figure: "/bosses/full/culture.webp" },
-  overall: { name: "The Station Administrator", tint: orange!, portrait: "/bosses/overall.webp", figure: "/bosses/full/overall.webp" },
+  profit: {
+    name: "The Commerce Office",
+    tint: green!,
+    portrait: "/bosses/profit.webp",
+    figure: "/bosses/full/profit.webp",
+  },
+  readers: {
+    name: "The Throughput Subcommittee",
+    tint: blue!,
+    portrait: "/bosses/readers.webp",
+    figure: "/bosses/full/readers.webp",
+  },
+  happiness: {
+    name: "The Readers' Guild survey drone",
+    tint: pink!,
+    portrait: "/bosses/happiness.webp",
+    figure: "/bosses/full/happiness.webp",
+  },
+  culture: {
+    name: "The Ministry of Culture",
+    tint: amber!,
+    portrait: "/bosses/culture.webp",
+    figure: "/bosses/full/culture.webp",
+  },
+  overall: {
+    name: "The Station Administrator",
+    tint: orange!,
+    portrait: "/bosses/overall.webp",
+    figure: "/bosses/full/overall.webp",
+  },
 };

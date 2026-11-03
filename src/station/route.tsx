@@ -17,7 +17,10 @@ const FEATURED_TITLE = "The Mallemaroking";
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "Orbital Books" },
-    { name: "description", content: "Run a bookstore in orbit, and find out what your data is telling you." },
+    {
+      name: "description",
+      content: "Run a bookstore in orbit, and find out what your data is telling you.",
+    },
   ];
 }
 

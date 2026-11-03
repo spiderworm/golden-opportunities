@@ -20,7 +20,11 @@ export function viewKey(url: string): string {
 }
 
 /** The cached view for this URL, or the server's, kept if its evidence was recorded under the page's version. */
-export async function cachedView<T extends ServerView>(cache: QueryCache, url: string, serverLoader: () => Promise<T>): Promise<T> {
+export async function cachedView<T extends ServerView>(
+  cache: QueryCache,
+  url: string,
+  serverLoader: () => Promise<T>,
+): Promise<T> {
   const key = viewKey(url);
   const hit = cache.peek<T>(key);
   if (hit !== undefined) return hit;
@@ -29,6 +33,7 @@ export async function cachedView<T extends ServerView>(cache: QueryCache, url: s
   // A view computed under a newer version (a plan committed in another tab) moves the cache on, so no view from
   // the old version is served again (Frank's and Audit's findings on #191).
   cache.noteVersion(view.dataVersion);
-  if (view.evidence === "recorded") cache.put(key, view, JSON.stringify(view).length, view.dataVersion);
+  if (view.evidence === "recorded")
+    cache.put(key, view, JSON.stringify(view).length, view.dataVersion);
   return view;
 }

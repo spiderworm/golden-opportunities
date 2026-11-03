@@ -4,7 +4,13 @@ import { combineComparison, comparisonQueries } from "~/assistant/tools/comparis
 import type { ComparisonResult } from "~/assistant/tools/definitions";
 import type { Dimension, QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
-import { categoryHeight, categoryModel, categoryOption, legendItems, nothingToDraw } from "../charts/category-chart";
+import {
+  categoryHeight,
+  categoryModel,
+  categoryOption,
+  legendItems,
+  nothingToDraw,
+} from "../charts/category-chart";
 import { measuresModel, measuresOption, measuresTable } from "../charts/measures-chart";
 import type { ChartMeasure, Filters, HeatDimension } from "../state";
 import { heatAxis, heatModel } from "../charts/heat-model";
@@ -39,12 +45,20 @@ export function PinnedCharts({ pins, quarters, onRemove, onError }: PinnedCharts
         {pins.length > 0 && <span className={styles.pinnedCount}>{pins.length}</span>}
       </header>
       {pins.length === 0 ? (
-        <p className={styles.pinnedEmpty}>Pin a chart to keep it here: use Pin on the chart above or on a table Dewey shows, or ask Dewey to pin one.</p>
+        <p className={styles.pinnedEmpty}>
+          Pin a chart to keep it here: use Pin on the chart above or on a table Dewey shows, or ask
+          Dewey to pin one.
+        </p>
       ) : (
         <ul className={styles.pinnedGrid}>
           {pins.map((pin) => (
             <li key={pin.id}>
-              <PinnedChart pin={pin} quarters={quarters} onRemove={() => onRemove(pin.id)} onError={onError} />
+              <PinnedChart
+                pin={pin}
+                quarters={quarters}
+                onRemove={() => onRemove(pin.id)}
+                onError={onError}
+              />
             </li>
           ))}
         </ul>
@@ -53,8 +67,11 @@ export function PinnedCharts({ pins, quarters, onRemove, onError }: PinnedCharts
   );
 }
 
-type Loaded = { kind: "query"; result: QueryResult; also: QueryResult[] } | { kind: "comparison"; result: ComparisonResult };
-type Load = { status: "loading" } | ({ status: "ready" } & Loaded) | { status: "failed"; message: string };
+type Loaded =
+  | { kind: "query"; result: QueryResult; also: QueryResult[] }
+  | { kind: "comparison"; result: ComparisonResult };
+type Load =
+  { status: "loading" } | ({ status: "ready" } & Loaded) | { status: "failed"; message: string };
 
 /**
  * Runs a pin through POST /api/query, as the player's own queries run: nothing Dewey showed is kept or replayed.
@@ -66,7 +83,11 @@ export async function runPin(pin: Pin, signal: AbortSignal): Promise<Loaded> {
     // Several measures are a query each, as the main chart's.
     // A heatmap is context, never discovery evidence, pinned or not (Plot, #63 and #266): asked without recording.
     const evidence = pin.kind !== "heatmap";
-    const [result, ...also] = await Promise.all([pin.query.measure, ...(pin.also ?? [])].map((measure) => fetchQuery({ ...pin.query, measure }, signal, { evidence })));
+    const [result, ...also] = await Promise.all(
+      [pin.query.measure, ...(pin.also ?? [])].map((measure) =>
+        fetchQuery({ ...pin.query, measure }, signal, { evidence }),
+      ),
+    );
     return { kind: "query", result: result!, also };
   }
   const sides = new AbortController();
@@ -87,7 +108,17 @@ export async function runPin(pin: Pin, signal: AbortSignal): Promise<Loaded> {
   }
 }
 
-function PinnedChart({ pin, quarters, onRemove, onError }: { pin: Pin; quarters: readonly string[]; onRemove: () => void; onError: (code: string) => void }) {
+function PinnedChart({
+  pin,
+  quarters,
+  onRemove,
+  onError,
+}: {
+  pin: Pin;
+  quarters: readonly string[];
+  onRemove: () => void;
+  onError: (code: string) => void;
+}) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
 
   useEffect(() => {
@@ -99,7 +130,11 @@ function PinnedChart({ pin, quarters, onRemove, onError }: { pin: Pin; quarters:
         if (controller.signal.aborted) return;
         const code = error instanceof QueryRequestError ? error.code : "NETWORK";
         onError(code);
-        setLoad({ status: "failed", message: error instanceof QueryRequestError ? error.message : "The data terminal didn't answer." });
+        setLoad({
+          status: "failed",
+          message:
+            error instanceof QueryRequestError ? error.message : "The data terminal didn't answer.",
+        });
       });
     return () => controller.abort();
     // A pin's query never changes; a new query is a new pin.
@@ -110,41 +145,70 @@ function PinnedChart({ pin, quarters, onRemove, onError }: { pin: Pin; quarters:
       <header className={styles.pinHeader}>
         <div>
           <h3 className={styles.pinTitle}>{pin.title}</h3>
-          <div className={styles.pinMeta}>{pin.pinnedBy === "dewey" ? "Pinned by Dewey" : "Pinned by you"}</div>
+          <div className={styles.pinMeta}>
+            {pin.pinnedBy === "dewey" ? "Pinned by Dewey" : "Pinned by you"}
+          </div>
         </div>
-        <button type="button" className={styles.chipRemove} aria-label={`Unpin ${pin.title}`} title="Unpin" onClick={onRemove}>
+        <button
+          type="button"
+          className={styles.chipRemove}
+          aria-label={`Unpin ${pin.title}`}
+          title="Unpin"
+          onClick={onRemove}
+        >
           <Icon name="close" size={14} />
         </button>
       </header>
-      {load.status === "loading" && <div className={styles.pinPlaceholder} style={{ height: CHART_HEIGHT }} aria-busy="true" />}
+      {load.status === "loading" && (
+        <div className={styles.pinPlaceholder} style={{ height: CHART_HEIGHT }} aria-busy="true" />
+      )}
       {load.status === "failed" && (
         <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
           {load.message}
         </p>
       )}
       {load.status === "ready" &&
-        (pin.kind === "comparison" ? (
-          load.kind === "comparison" && <ComparisonBody pin={pin} result={load.result} />
-        ) : (
-          load.kind === "query" &&
-          (pin.kind === "heatmap" ? <HeatPinBody pin={pin} result={load.result} quarters={quarters} /> : <PinBody pin={pin} result={load.result} also={load.also} quarters={quarters} />)
-        ))}
+        (pin.kind === "comparison"
+          ? load.kind === "comparison" && <ComparisonBody pin={pin} result={load.result} />
+          : load.kind === "query" &&
+            (pin.kind === "heatmap" ? (
+              <HeatPinBody pin={pin} result={load.result} quarters={quarters} />
+            ) : (
+              <PinBody pin={pin} result={load.result} also={load.also} quarters={quarters} />
+            )))}
     </article>
   );
 }
 
 /** A pinned heatmap: the grid as Investigate draws it, without cells to click. */
-function HeatPinBody({ pin, result, quarters }: { pin: ChartPinSpec; result: QueryResult; quarters: readonly string[] }) {
+function HeatPinBody({
+  pin,
+  result,
+  quarters,
+}: {
+  pin: ChartPinSpec;
+  result: QueryResult;
+  quarters: readonly string[];
+}) {
   const [rows, cols] = pin.query.by as [HeatDimension, HeatDimension];
   const measure = pin.query.measure as ChartMeasure;
   const filters = (pin.query.filter ?? {}) as Filters;
   const model = useMemo(
-    () => heatModel(result, measure, rows, heatAxis(rows, result, quarters, filters), cols, heatAxis(cols, result, quarters, filters)),
+    () =>
+      heatModel(
+        result,
+        measure,
+        rows,
+        heatAxis(rows, result, quarters, filters),
+        cols,
+        heatAxis(cols, result, quarters, filters),
+      ),
     [result, measure, rows, cols, quarters, pin],
   );
   return (
     <>
-      {result.rows.length === 0 || nothingToDraw([{ values: model.cells.map((c) => c[2]) }], [measure]) ? (
+      {result.rows.length === 0 ||
+      nothingToDraw([{ values: model.cells.map((c) => c[2]) }], [measure]) ? (
         <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
           No sales match this chart.
         </p>
@@ -159,24 +223,60 @@ function HeatPinBody({ pin, result, quarters }: { pin: ChartPinSpec; result: Que
   );
 }
 
-function PinBody({ pin, result, also, quarters }: { pin: ChartPinSpec; result: QueryResult; also: readonly QueryResult[]; quarters: readonly string[] }) {
+function PinBody({
+  pin,
+  result,
+  also,
+  quarters,
+}: {
+  pin: ChartPinSpec;
+  result: QueryResult;
+  also: readonly QueryResult[];
+  quarters: readonly string[];
+}) {
   const [x, seriesBy = null] = pin.query.by;
   const measures = [pin.query.measure, ...(pin.also ?? [])] as ChartMeasure[];
   const many = useMemo(
-    () => (x && also.length && !seriesBy ? measuresModel([result, ...also], measures, x, x === "month" ? pinMonths(pin, quarters) : []) : null),
+    () =>
+      x && also.length && !seriesBy
+        ? measuresModel(
+            [result, ...also],
+            measures,
+            x,
+            x === "month" ? pinMonths(pin, quarters) : [],
+          )
+        : null,
     [result, also, x, seriesBy, quarters, pin],
   );
   const model = useMemo(
-    () => (x ? categoryModel(result, x, seriesBy, x === "month" ? pinMonths(pin, quarters) : [], { limit: pin.query.limit }) : null),
+    () =>
+      x
+        ? categoryModel(result, x, seriesBy, x === "month" ? pinMonths(pin, quarters) : [], {
+            limit: pin.query.limit,
+          })
+        : null,
     [result, x, seriesBy, quarters, pin],
   );
   const option = useMemo(
-    () => (model && (pin.kind === "bar" || pin.kind === "line") ? categoryOption(model, { kind: pin.kind, quarters, drill: false }) : null),
+    () =>
+      model && (pin.kind === "bar" || pin.kind === "line")
+        ? categoryOption(model, { kind: pin.kind, quarters, drill: false })
+        : null,
     [model, pin.kind, quarters],
   );
 
   let body;
-  if (x && pin.kind !== "table" && (result.rows.length === 0 || (many ? nothingToDraw(many.measures, many.measures.map((m) => m.measure)) : nothingToDraw(model?.series ?? [], [pin.query.measure])))) {
+  if (
+    x &&
+    pin.kind !== "table" &&
+    (result.rows.length === 0 ||
+      (many
+        ? nothingToDraw(
+            many.measures,
+            many.measures.map((m) => m.measure),
+          )
+        : nothingToDraw(model?.series ?? [], [pin.query.measure])))
+  ) {
     body = (
       <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
         No sales match this chart.
@@ -188,8 +288,18 @@ function PinBody({ pin, result, also, quarters }: { pin: ChartPinSpec; result: Q
         <ResultTable result={measuresTable(many, [result, ...also])} height={CHART_HEIGHT} />
       ) : (
         <>
-          <Legend items={many.measures.map((m) => ({ label: MEASURE_LABELS[m.measure], color: m.color }))} label="Measures" />
-          <EChart option={measuresOption(many)} height={categoryHeight({ ...model!, categories: many.categories, horizontal: many.horizontal }, CHART_HEIGHT)} label={pin.title} />
+          <Legend
+            items={many.measures.map((m) => ({ label: MEASURE_LABELS[m.measure], color: m.color }))}
+            label="Measures"
+          />
+          <EChart
+            option={measuresOption(many)}
+            height={categoryHeight(
+              { ...model!, categories: many.categories, horizontal: many.horizontal },
+              CHART_HEIGHT,
+            )}
+            label={pin.title}
+          />
         </>
       );
   } else if (!x) {
@@ -220,7 +330,10 @@ function PinBody({ pin, result, also, quarters }: { pin: ChartPinSpec; result: Q
   );
 }
 
-const percent = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1, signDisplay: "exceptZero" });
+const percent = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 1,
+  signDisplay: "exceptZero",
+});
 
 /** A pinned comparison: each breakdown row, then the overall figures, as Dewey showed them. */
 function ComparisonBody({ pin, result }: { pin: ComparisonPinSpec; result: ComparisonResult }) {
@@ -228,8 +341,10 @@ function ComparisonBody({ pin, result }: { pin: ComparisonPinSpec; result: Compa
   // The overall figures go last, as in Dewey's panel; its breakdown cell reads "All".
   const rows: Record<string, unknown>[] = [...result.rows, { ...result.total }];
   const cell = (key: string, value: unknown, total: boolean) => {
-    if (key === "percent_change") return typeof value === "number" ? `${percent.format(value)}%` : "No data";
-    if (key === "from" || key === "to" || key === "change") return formatMeasure(measure, typeof value === "number" ? value : null);
+    if (key === "percent_change")
+      return typeof value === "number" ? `${percent.format(value)}%` : "No data";
+    if (key === "from" || key === "to" || key === "change")
+      return formatMeasure(measure, typeof value === "number" ? value : null);
     return total ? "All" : formatDimensionValue(key as Dimension, value as string | null);
   };
   return (
@@ -239,7 +354,11 @@ function ComparisonBody({ pin, result }: { pin: ComparisonPinSpec; result: Compa
           <thead>
             <tr>
               {result.columns.map((c) => (
-                <th key={c.key} scope="col" className={c.type === "number" ? styles.numeric : undefined}>
+                <th
+                  key={c.key}
+                  scope="col"
+                  className={c.type === "number" ? styles.numeric : undefined}
+                >
                   {c.label}
                 </th>
               ))}

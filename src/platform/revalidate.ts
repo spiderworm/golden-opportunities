@@ -7,7 +7,17 @@ import type { ShouldRevalidateFunctionArgs } from "react-router";
  * shows the data moved on or the player comes back to the tab: the data version follows a plan commit, Play
  * again, a reset or another tab.
  */
-export function revalidateAbovePage({ formMethod, currentUrl, nextUrl, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
-  if (!formMethod && currentUrl.pathname === nextUrl.pathname && currentUrl.search !== nextUrl.search) return false;
+export function revalidateAbovePage({
+  formMethod,
+  currentUrl,
+  nextUrl,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  if (
+    !formMethod &&
+    currentUrl.pathname === nextUrl.pathname &&
+    currentUrl.search !== nextUrl.search
+  )
+    return false;
   return defaultShouldRevalidate;
 }

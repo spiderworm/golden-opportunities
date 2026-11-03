@@ -2,14 +2,45 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
-import { categoryHeight, categoryModel, categoryOption, legendItems, nothingToDraw, TOP_RANKED, type CategoryModel } from "./charts/category-chart";
+import {
+  categoryHeight,
+  categoryModel,
+  categoryOption,
+  legendItems,
+  nothingToDraw,
+  TOP_RANKED,
+  type CategoryModel,
+} from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
 import { Dropdown } from "~/platform/ui/Dropdown";
 import { Legend } from "./charts/Legend";
 import { ResultTable } from "./charts/ResultTable";
-import { measureColor, measuresModel, measuresOption, measuresTable } from "./charts/measures-chart";
-import { ADDITIVE, DIMENSION_LABELS, formatDimensionValue, MEASURE_LABELS, measuresLabel, periodLabel } from "./format";
-import { canAddMeasure, canCompare, CHART_MEASURES, fittingMeasures, GROUPINGS, measuresOf, monthsInScope, type ChartMeasure, type Grouping, type InvestigateState } from "./state";
+import {
+  measureColor,
+  measuresModel,
+  measuresOption,
+  measuresTable,
+} from "./charts/measures-chart";
+import {
+  ADDITIVE,
+  DIMENSION_LABELS,
+  formatDimensionValue,
+  MEASURE_LABELS,
+  measuresLabel,
+  periodLabel,
+} from "./format";
+import {
+  canAddMeasure,
+  canCompare,
+  CHART_MEASURES,
+  fittingMeasures,
+  GROUPINGS,
+  measuresOf,
+  monthsInScope,
+  type ChartMeasure,
+  type Grouping,
+  type InvestigateState,
+} from "./state";
 import styles from "./Investigate.module.css";
 
 export interface MeasureChartProps {
@@ -37,8 +68,17 @@ export interface MeasureChartProps {
  * chart ignores its own grouping's), and, comparing quarters, a measure whose
  * groups add up to the quarter.
  */
-export function chartShare(state: InvestigateState, model: CategoryModel, total: number | null, quarters: readonly string[]) {
-  const whole = ADDITIVE.includes(state.measure) && Object.entries(state.filters).every(([d, v]) => d === "quarter" || d === state.by || !v?.length);
+export function chartShare(
+  state: InvestigateState,
+  model: CategoryModel,
+  total: number | null,
+  quarters: readonly string[],
+) {
+  const whole =
+    ADDITIVE.includes(state.measure) &&
+    Object.entries(state.filters).every(
+      ([d, v]) => d === "quarter" || d === state.by || !v?.length,
+    );
   if (!whole) return undefined;
   if (model.seriesBy === "quarter") {
     // Each bar against its own quarter, as the sum of its groups. That's the quarter's
@@ -46,16 +86,31 @@ export function chartShare(state: InvestigateState, model: CategoryModel, total:
     // an order with books in two genres is in both.
     if (state.measure === "orders") return undefined;
     return {
-      total: (s: number) => model.series[s]?.values.reduce<number>((t, v) => t + (v ?? 0), 0) ?? null,
+      total: (s: number) =>
+        model.series[s]?.values.reduce<number>((t, v) => t + (v ?? 0), 0) ?? null,
       period: (s: number) => formatDimensionValue("quarter", model.series[s]?.key),
     };
   }
   // The period the chart's query covers: grouped by quarter, it ignores the quarter filter too.
-  const scope = state.by !== "quarter" && state.filters.quarter?.length ? state.filters.quarter : quarters;
+  const scope =
+    state.by !== "quarter" && state.filters.quarter?.length ? state.filters.quarter : quarters;
   return { total: () => total, period: () => periodLabel(scope) };
 }
 
-export function MeasureChart({ state, result, also = [], quarters, onMeasures, onSeries, onGroup, onCompare, onDrill, onTable, onPin, pinned }: MeasureChartProps) {
+export function MeasureChart({
+  state,
+  result,
+  also = [],
+  quarters,
+  onMeasures,
+  onSeries,
+  onGroup,
+  onCompare,
+  onDrill,
+  onTable,
+  onPin,
+  pinned,
+}: MeasureChartProps) {
   const [table, setTable] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [hidden, setHidden] = useState<ChartMeasure[]>([]);
@@ -64,15 +119,36 @@ export function MeasureChart({ state, result, also = [], quarters, onMeasures, o
   const selected = state.filters[state.by] ?? [];
   const months = state.by === "month" ? monthsInScope(quarters, state.filters.quarter) : [];
   const many = useMemo(
-    () => (several ? measuresModel([result, ...also], measures, state.by, months, { top: showAll ? undefined : TOP_RANKED, keep: selected }) : null),
-    [several, result, also, measures.join(), state.by, months.join(), showAll, selected.join("\u0000")],
+    () =>
+      several
+        ? measuresModel([result, ...also], measures, state.by, months, {
+            top: showAll ? undefined : TOP_RANKED,
+            keep: selected,
+          })
+        : null,
+    [
+      several,
+      result,
+      also,
+      measures.join(),
+      state.by,
+      months.join(),
+      showAll,
+      selected.join("\u0000"),
+    ],
   );
-  const manyOption = useMemo(() => (many ? measuresOption(many, { selected, hidden }) : null), [many, selected.join("\u0000"), hidden.join()]);
+  const manyOption = useMemo(
+    () => (many ? measuresOption(many, { selected, hidden }) : null),
+    [many, selected.join("\u0000"), hidden.join()],
+  );
   // A measure taken off the chart can't stay hidden.
   useEffect(() => setHidden((h) => h.filter((m) => measures.includes(m))), [measures.join()]);
   const model = useMemo(
     () =>
-      categoryModel(result, state.by, state.compare ? "quarter" : null, months, { top: showAll ? undefined : TOP_RANKED, keep: selected }),
+      categoryModel(result, state.by, state.compare ? "quarter" : null, months, {
+        top: showAll ? undefined : TOP_RANKED,
+        keep: selected,
+      }),
     [result, state.by, state.compare, months.join(), showAll, selected.join("\u0000")],
   );
   const option = useMemo(
@@ -160,13 +236,26 @@ export function MeasureChart({ state, result, also = [], quarters, onMeasures, o
           >
             Table
           </button>
-          <button type="button" className={styles.toggle} onClick={onPin} disabled={pinned} title={pinned ? "Already pinned" : "Pin this chart below"}>
+          <button
+            type="button"
+            className={styles.toggle}
+            onClick={onPin}
+            disabled={pinned}
+            title={pinned ? "Already pinned" : "Pin this chart below"}
+          >
             <Icon name="pin" size={14} /> {pinned ? "Pinned" : "Pin"}
           </button>
         </div>
       </header>
 
-      {result.rows.length === 0 || (!table && (many ? nothingToDraw(many.measures, many.measures.map((m) => m.measure)) : nothingToDraw(model.series, [model.measure]))) ? (
+      {result.rows.length === 0 ||
+      (!table &&
+        (many
+          ? nothingToDraw(
+              many.measures,
+              many.measures.map((m) => m.measure),
+            )
+          : nothingToDraw(model.series, [model.measure]))) ? (
         <p className={styles.empty}>No sales match these filters.</p>
       ) : many && manyOption ? (
         table ? (
@@ -183,11 +272,16 @@ export function MeasureChart({ state, result, also = [], quarters, onMeasures, o
                       className={styles.legendToggle}
                       aria-pressed={!off}
                       onClick={() => {
-                        setHidden(off ? hidden.filter((h) => h !== m.measure) : [...hidden, m.measure]);
+                        setHidden(
+                          off ? hidden.filter((h) => h !== m.measure) : [...hidden, m.measure],
+                        );
                         onSeries?.(m.measure, off);
                       }}
                     >
-                      <span className={styles.legendSwatch} style={{ background: off ? "transparent" : m.color, borderColor: m.color }} />
+                      <span
+                        className={styles.legendSwatch}
+                        style={{ background: off ? "transparent" : m.color, borderColor: m.color }}
+                      />
                       {MEASURE_LABELS[m.measure]}
                     </button>
                   </li>
@@ -196,7 +290,11 @@ export function MeasureChart({ state, result, also = [], quarters, onMeasures, o
             </ul>
             <EChart
               option={manyOption}
-              height={categoryHeight({ ...model, categories: many.categories, horizontal: many.horizontal })}
+              height={categoryHeight({
+                ...model,
+                categories: many.categories,
+                horizontal: many.horizontal,
+              })}
               label={`${title}. Click to look closer.`}
               onCategoryClick={drillAt}
               categoryAxis={many.horizontal ? "y" : "x"}
@@ -220,16 +318,19 @@ export function MeasureChart({ state, result, also = [], quarters, onMeasures, o
 
       {!table && model.horizontal && model.ranked > TOP_RANKED && (
         <button type="button" className={styles.showAll} onClick={() => setShowAll(!showAll)}>
-          {showAll ? `Show the top ${TOP_RANKED}` : `Show all ${model.ranked} ${state.by === "edition" ? "editions" : "titles"}`}
+          {showAll
+            ? `Show the top ${TOP_RANKED}`
+            : `Show all ${model.ranked} ${state.by === "edition" ? "editions" : "titles"}`}
         </button>
       )}
       <p className={styles.source}>
         {selected.length > 0
           ? `Filtered to ${selected.map((v) => formatDimensionValue(state.by, v)).join(", ")}. Click a highlighted bar again to clear it. `
-          : result.rows.length > 0 ? "Click to look closer. " : ""}
+          : result.rows.length > 0
+            ? "Click to look closer. "
+            : ""}
         Source: {result.source}
       </p>
     </section>
   );
 }
-

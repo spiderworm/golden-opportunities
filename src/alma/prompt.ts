@@ -46,18 +46,37 @@ Answer with exactly one JSON object and nothing else:
 {"candidate": 0, "story": "...", "reason": "...", "bossLine": "..."}`;
 
 /** The state and candidates Alma reads, as the JSON it receives. Only these fields, named one by one. */
-export function almaInput(context: QuarterContext, history: readonly QuarterSummary[], candidates: readonly Candidate[]): string {
+export function almaInput(
+  context: QuarterContext,
+  history: readonly QuarterSummary[],
+  candidates: readonly Candidate[],
+): string {
   const months = quarterMonths(context.quarter);
   return JSON.stringify({
     quarter: context.quarter,
     strikes: context.strikes,
     zoolanderLast: namesZoolander(context.previous.at(-1)?.bossLine),
-    history: history.map((q) => ({ quarter: q.quarter, plan: [...q.plan], scores: { ...q.scores }, overall: q.overall, grade: q.grade, strike: q.strike })),
-    lastEvents: context.previous.map((r) => ({ quarter: r.quarter, type: r.type, params: { ...r.params }, stretch: r.stretch && { measure: r.stretch.measure } })),
+    history: history.map((q) => ({
+      quarter: q.quarter,
+      plan: [...q.plan],
+      scores: { ...q.scores },
+      overall: q.overall,
+      grade: q.grade,
+      strike: q.strike,
+    })),
+    lastEvents: context.previous.map((r) => ({
+      quarter: r.quarter,
+      type: r.type,
+      params: { ...r.params },
+      stretch: r.stretch && { measure: r.stretch.measure },
+    })),
     candidates: candidates.map((c, i) => ({
       candidate: i,
       type: c.type,
-      params: { ...c.params, ...(typeof c.params.month === "number" ? { month: months[c.params.month - 1] } : {}) },
+      params: {
+        ...c.params,
+        ...(typeof c.params.month === "number" ? { month: months[c.params.month - 1] } : {}),
+      },
       stretch: c.stretch && { measure: c.stretch.measure, recovery: !wantsReason(c, context) },
       // The sentence the game puts after the story, so the flavor fits what happens (the live check: cheaper
       // fares were told as a burden).

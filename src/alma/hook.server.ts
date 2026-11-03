@@ -61,7 +61,10 @@ export function summarize(quarter: PlayedQuarter): QuarterSummary {
   return {
     quarter: quarter.period,
     plan: [...plan.levers.map((l) => `lever:${l}`), ...picks],
-    scores: Object.fromEntries(card.measures.map((m) => [m.id, m.score])) as Record<MeasureId, number>,
+    scores: Object.fromEntries(card.measures.map((m) => [m.id, m.score])) as Record<
+      MeasureId,
+      number
+    >,
     overall: card.overall.score,
     grade: card.overall.grade,
     strike: card.overall.score < STRIKE_BELOW,
@@ -74,17 +77,39 @@ export function summarize(quarter: PlayedQuarter): QuarterSummary {
  * Alma, the removal check and the memo: strikes from the last three quarters played, and the recovery goal
  * from the plan's own fall, net of every expected effect (section 2; Frank's and Sim's reviews of #195).
  */
-export function contextFor(save: GameSave, data: DeepReadonly<BookshopData>): QuarterContext | null {
+export function contextFor(
+  save: GameSave,
+  data: DeepReadonly<BookshopData>,
+): QuarterContext | null {
   const last = save.played.at(-1);
   if (!last) return null;
-  const counting = strikes(save.played.map((q) => q.outcome.reportCard.plan.overall.score), "next");
-  const recovery = recoveryFor(save.played.map((q) => ({ quarter: q.period, card: q.outcome.reportCard.plan })), data);
-  return { quarter: nextQuarter(last.period), previous: save.alma ?? [], strikes: counting, ...(recovery ? { recovery } : {}) };
+  const counting = strikes(
+    save.played.map((q) => q.outcome.reportCard.plan.overall.score),
+    "next",
+  );
+  const recovery = recoveryFor(
+    save.played.map((q) => ({ quarter: q.period, card: q.outcome.reportCard.plan })),
+    data,
+  );
+  return {
+    quarter: nextQuarter(last.period),
+    previous: save.alma ?? [],
+    strikes: counting,
+    ...(recovery ? { recovery } : {}),
+  };
 }
 
 /** The engine's 10% bound on an event's expected effect: a candidate it would refuse is never drawn (Sim). */
-const withinBound = (context: QuarterContext, data: DeepReadonly<BookshopData>) => (candidate: Candidate) =>
-  !eventProblem({ ...candidate, ...(context.recovery && candidate.stretch ? { drop: context.recovery.drop } : {}) }, context.quarter, data);
+const withinBound =
+  (context: QuarterContext, data: DeepReadonly<BookshopData>) => (candidate: Candidate) =>
+    !eventProblem(
+      {
+        ...candidate,
+        ...(context.recovery && candidate.stretch ? { drop: context.recovery.drop } : {}),
+      },
+      context.quarter,
+      data,
+    );
 
 type Written = { record: AlmaRecord; kept: boolean } | null;
 
@@ -114,7 +139,8 @@ function write(saveId: string, record: AlmaRecord, deps: AlmaDeps): Written {
       });
       return { record, kept: true };
     } catch (error) {
-      if (error instanceof SaveError && (error.code === "STALE_SAVE" || error.code === "SAVE_BUSY")) continue;
+      if (error instanceof SaveError && (error.code === "STALE_SAVE" || error.code === "SAVE_BUSY"))
+        continue;
       throw error;
     }
   }
@@ -124,9 +150,21 @@ function write(saveId: string, record: AlmaRecord, deps: AlmaDeps): Written {
 const pending = new Map<string, Promise<AlmaRecord | null>>();
 const key = (saveId: string, quarter: QuarterId) => `${saveId}:${quarter}`;
 
-function record(saveId: string, context: QuarterContext, history: QuarterSummary[], seed: number, deps: AlmaDeps, model: AlmaModel | null): Promise<AlmaRecord | null> {
+function record(
+  saveId: string,
+  context: QuarterContext,
+  history: QuarterSummary[],
+  seed: number,
+  deps: AlmaDeps,
+  model: AlmaModel | null,
+): Promise<AlmaRecord | null> {
   const started = performance.now();
-  return chooseEvent(context, history, { seed, model, titles: deps.titles, accept: withinBound(context, deps.data) }).then((chosen) => {
+  return chooseEvent(context, history, {
+    seed,
+    model,
+    titles: deps.titles,
+    accept: withinBound(context, deps.data),
+  }).then((chosen) => {
     const written = write(saveId, chosen, deps);
     if (!written) return null;
     if (written.kept) {
@@ -139,7 +177,11 @@ function record(saveId: string, context: QuarterContext, history: QuarterSummary
         ...(chosen.failure ? { failure: chosen.failure } : {}),
       });
     } else {
-      deps.track("alma_event_dropped", { quarter: chosen.quarter, reason: "already_recorded", source: chosen.source });
+      deps.track("alma_event_dropped", {
+        quarter: chosen.quarter,
+        reason: "already_recorded",
+        source: chosen.source,
+      });
     }
     return written.record;
   });
@@ -149,7 +191,10 @@ function record(saveId: string, context: QuarterContext, history: QuarterSummary
  * Called once from commit() after a quarter's transaction succeeds. It starts Alma's turn for the next quarter
  * and returns at once: it never waits, and never throws into the submit.
  */
-export function onQuarterCommitted({ saveId, quarter, seed }: { saveId: string; quarter: QuarterId; seed: number }, deps: AlmaDeps = defaultDeps()): void {
+export function onQuarterCommitted(
+  { saveId, quarter, seed }: { saveId: string; quarter: QuarterId; seed: number },
+  deps: AlmaDeps = defaultDeps(),
+): void {
   try {
     const next = nextQuarter(quarter);
     if (quarterIndex(next) < quarterIndex(FIRST_ALMA_QUARTER) || !deps.playable(next)) return;
@@ -173,15 +218,26 @@ export function onQuarterCommitted({ saveId, quarter, seed }: { saveId: string; 
  * once the budget is spent or the turn was lost (a restart), the scripted event, written so a reload shows the
  * same one. Null if the save has no quarter for Alma.
  */
-export async function almaRecordFor(saveId: string, budgetMs: number, deps: AlmaDeps = defaultDeps()): Promise<AlmaRecord | null> {
+export async function almaRecordFor(
+  saveId: string,
+  budgetMs: number,
+  deps: AlmaDeps = defaultDeps(),
+): Promise<AlmaRecord | null> {
   const save = deps.saves.read(saveId);
   const context = contextFor(save, deps.data);
-  if (!context || quarterIndex(context.quarter) < quarterIndex(FIRST_ALMA_QUARTER) || !deps.playable(context.quarter)) return null;
+  if (
+    !context ||
+    quarterIndex(context.quarter) < quarterIndex(FIRST_ALMA_QUARTER) ||
+    !deps.playable(context.quarter)
+  )
+    return null;
   const saved = save.alma?.find((r) => r.quarter === context.quarter);
   if (saved) return saved;
   const turn = pending.get(key(saveId, context.quarter));
   if (turn) {
-    const timer = new Promise<null>((resolve) => setTimeout(() => resolve(null), budgetMs).unref?.());
+    const timer = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), budgetMs).unref?.(),
+    );
     const done = await Promise.race([turn, timer]);
     if (done) return done;
   }
@@ -192,4 +248,5 @@ export async function almaRecordFor(saveId: string, budgetMs: number, deps: Alma
 /** For tests: forget pending turns. */
 export const forgetPending = () => pending.clear();
 /** For tests: the pending turn for a save's quarter. */
-export const pendingTurn = (saveId: string, quarter: QuarterId) => pending.get(key(saveId, quarter));
+export const pendingTurn = (saveId: string, quarter: QuarterId) =>
+  pending.get(key(saveId, quarter));

@@ -4,13 +4,29 @@
 import type { QuarterId } from "../simulation/quarters";
 import { FORMAT_WORDS, GENRE_WORDS } from "../simulation/words";
 
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 const opening = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** "2194-Q3" as "Q3 2194". */
 export const quarterName = (quarter: string) => `${quarter.slice(5)} ${quarter.slice(0, 4)}`;
 
 /** An event's type and params, as Alma's record and the service record carry them. */
-export interface TitledEvent { type: string; params: Readonly<Record<string, string | number>> }
+export interface TitledEvent {
+  type: string;
+  params: Readonly<Record<string, string | number>>;
+}
 
 /**
  * The short title of a quarter's event. Q1 2194 has none ("None"), and Q2 2194's goals were the first to count the
@@ -41,7 +57,14 @@ export function eventTitle(quarter: QuarterId, event: TitledEvent | null): strin
 }
 
 /** A later quarter's memo on the bell (endless-copy.md section 2): its id, title and detail. */
-export function bellItem(quarter: QuarterId, event: TitledEvent): { id: string; title: string; detail: string } {
+export function bellItem(
+  quarter: QuarterId,
+  event: TitledEvent,
+): { id: string; title: string; detail: string } {
   const name = quarterName(quarter);
-  return { id: `${quarter}-memo`, title: `${name}: ${eventTitle(quarter, event)}`, detail: `Read the memo, then submit your picks and a plan for ${name}.` };
+  return {
+    id: `${quarter}-memo`,
+    title: `${name}: ${eventTitle(quarter, event)}`,
+    detail: `Read the memo, then submit your picks and a plan for ${name}.`,
+  };
 }

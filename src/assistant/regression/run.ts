@@ -13,26 +13,56 @@ const [base = "http://[::1]:5173", ...only] = args.filter((a) => a !== "--after-
 
 // A new save: the station's first load sets its cookie.
 const first = await fetch(`${base}/`, { redirect: "manual" });
-const cookie = first.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+const cookie = first.headers
+  .getSetCookie()
+  .map((c) => c.split(";")[0])
+  .join("; ");
 if (!cookie) throw new Error("No save cookie from the station.");
 if (afterQ1) {
-  const played = await fetch(`${base}/decide.data`, { method: "POST", headers: { cookie, origin: base, "content-type": "application/x-www-form-urlencoded" }, body: "levers=" });
+  const played = await fetch(`${base}/decide.data`, {
+    method: "POST",
+    headers: { cookie, origin: base, "content-type": "application/x-www-form-urlencoded" },
+    body: "levers=",
+  });
   if (!played.ok) throw new Error(`Playing Q1 failed: HTTP ${played.status}`);
 }
 let failed = 0;
 for (const c of CASES.filter((c) => !only.length || only.includes(c.id))) {
   const res = await fetch(`${base}/api/assistant`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", cookie },
+    headers: {
+      "content-type": "application/json",
+      origin: base,
+      "sec-fetch-site": "same-origin",
+      cookie,
+    },
     body: JSON.stringify({ question: c.question, history: [], pins: true }),
   });
-  const events: WireEvent[] = (await res.text()).split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  const events: WireEvent[] = (await res.text())
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
   const text = events.flatMap((e) => (e.type === "text" ? [e.text] : [])).join("");
   // An empty, errored or unfinished answer fails outright: the checks are mostly absence checks.
-  const broken = !res.ok ? `HTTP ${res.status}` : events.some((e) => e.type === "error") ? "ended with an error" : events.at(-1)?.type !== "done" ? "never finished" : !text.trim() ? "said nothing" : null;
-  const problems = broken ? [broken] : c.checks.map((check) => check({ text, events })).filter((p) => p !== null);
+  const broken = !res.ok
+    ? `HTTP ${res.status}`
+    : events.some((e) => e.type === "error")
+      ? "ended with an error"
+      : events.at(-1)?.type !== "done"
+        ? "never finished"
+        : !text.trim()
+          ? "said nothing"
+          : null;
+  const problems = broken
+    ? [broken]
+    : c.checks.map((check) => check({ text, events })).filter((p) => p !== null);
   if (problems.length) failed++;
-  console.log(`${problems.length ? "FAIL" : "ok  "} ${c.id} (${c.finding}) [${events.map((e) => e.type).filter((t) => t !== "text").join(", ")}]`);
+  console.log(
+    `${problems.length ? "FAIL" : "ok  "} ${c.id} (${c.finding}) [${events
+      .map((e) => e.type)
+      .filter((t) => t !== "text")
+      .join(", ")}]`,
+  );
   console.log(`     ${text.replace(/\n+/g, " ")}`);
   for (const p of problems) console.log(`     - ${p}`);
 }

@@ -15,7 +15,11 @@ export const REACH = { across: Math.hypot(0.377, 0.371) * SIZE, up: 0.49 * SIZE 
 export const STANDOFF = 0.06;
 /** Each robot crosses the room at its own height, so they never meet. */
 export const CRUISE = [3.1, 3.5, 3.9];
-export const HOMES = [new Vector3(6.6, 4.3, 4.6), new Vector3(-7.1, 4.3, -0.6), new Vector3(1.5, 4.4, -4.3)];
+export const HOMES = [
+  new Vector3(6.6, 4.3, 4.6),
+  new Vector3(-7.1, 4.3, -0.6),
+  new Vector3(1.5, 4.4, -4.3),
+];
 
 /** A stretch of flight: from one point straight to another. */
 export type Hop = [from: Vector3, to: Vector3];
@@ -29,7 +33,12 @@ export function routePoints(from: Vector3, to: Vector3, cruise: number): Vector3
  * Where a robot hovers to work on a book: in front of the book's shelf, clear of its face by the robot's own
  * reach and a little air (whichever way it's turned as it comes down), `above` over the book's top.
  */
-export function inFrontOf(shop: Bookshop, book: number, above: number, out = new Vector3()): Vector3 {
+export function inFrontOf(
+  shop: Bookshop,
+  book: number,
+  above: number,
+  out = new Vector3(),
+): Vector3 {
   const b = shop.books[book]!;
   const center = shop.shelfCenter(book, out);
   // The book's center is b.local.z in front of its unit's center line; the face is half the shelf's depth.
@@ -57,7 +66,8 @@ export function clear(p: Vector3): Vector3 {
 }
 
 /** A unit's front, the way out toward the room. */
-export const unitFront = (unit: ShelfUnit) => new Vector3(Math.sin(unit.facing), 0, Math.cos(unit.facing));
+export const unitFront = (unit: ShelfUnit) =>
+  new Vector3(Math.sin(unit.facing), 0, Math.cos(unit.facing));
 
 /**
  * How far a robot centered at `p` reaches into a shelf unit (positive: into it), or a negative clearance:

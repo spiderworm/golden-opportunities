@@ -1,7 +1,18 @@
 import { useGLTF } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
-import { AnimationMixer, Bone, Box3, Group, MathUtils, PerspectiveCamera, Quaternion, Vector3, type AnimationAction, type Object3D } from "three";
+import {
+  AnimationMixer,
+  Bone,
+  Box3,
+  Group,
+  MathUtils,
+  PerspectiveCamera,
+  Quaternion,
+  Vector3,
+  type AnimationAction,
+  type Object3D,
+} from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import { BOSSES } from "~/platform/bosses/bosses";
@@ -50,7 +61,12 @@ export default function PhoneScene(props: PhoneSceneProps) {
     >
       <hemisphereLight args={["#c9d0ff", "#2a2140", 1.3]} />
       <directionalLight position={[1.5, 3, 2]} intensity={1.8} color="#fff3e2" />
-      <pointLight position={[0, 1.4, -0.3]} intensity={1.2} distance={3} color={BOSSES.readers.tint} />
+      <pointLight
+        position={[0, 1.4, -0.3]}
+        intensity={1.2}
+        distance={3}
+        color={BOSSES.readers.tint}
+      />
       <Grab {...props} />
     </Canvas>
   );
@@ -84,14 +100,24 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     const arms: Arm[] = (["Left", "Right"] as const).map((side) => ({
       joints: [bone(`mixamorig${side}Arm`), bone(`mixamorig${side}ForeArm`)],
       hand: bone(`mixamorig${side}Hand`),
-      fingers: ["Index", "Middle", "Ring", "Pinky", "Thumb"].flatMap((f) => [1, 2, 3].map((n) => bone(`mixamorig${side}Hand${f}${n}`))).filter(Boolean),
+      fingers: ["Index", "Middle", "Ring", "Pinky", "Thumb"]
+        .flatMap((f) => [1, 2, 3].map((n) => bone(`mixamorig${side}Hand${f}${n}`)))
+        .filter(Boolean),
       side: side === "Left" ? 1 : -1,
     }));
     const mixer = new AnimationMixer(body);
-    const clip = (name: string) => model.animations.find((a) => a.name === name) ?? model.animations[0]!;
+    const clip = (name: string) =>
+      model.animations.find((a) => a.name === name) ?? model.animations[0]!;
     const actions = { idle: mixer.clipAction(clip("idle")), walk: mixer.clipAction(clip("walk")) };
     actions.walk.play();
-    return { root, arms, headBone: bone("mixamorigHead"), mixer, actions, playing: actions.walk as AnimationAction };
+    return {
+      root,
+      arms,
+      headBone: bone("mixamorigHead"),
+      mixer,
+      actions,
+      playing: actions.walk as AnimationAction,
+    };
   }, [model]);
   useEffect(() => () => void rig.mixer.stopAllAction(), [rig]);
   useEffect(() => {
@@ -102,7 +128,15 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
   const started = useRef<number | null>(null);
   const told = useRef(false);
   const work = useMemo(
-    () => ({ v: new Vector3(), w: new Vector3(), target: new Vector3(), q: new Quaternion(), parent: new Quaternion(), headAt: new Vector3(), top: new Vector3() }),
+    () => ({
+      v: new Vector3(),
+      w: new Vector3(),
+      target: new Vector3(),
+      q: new Quaternion(),
+      parent: new Quaternion(),
+      headAt: new Vector3(),
+      top: new Vector3(),
+    }),
     [],
   );
 
@@ -122,7 +156,8 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     // Walk up to the glass, stop, and once it has the phone, tug at it.
     const walked = ease(clamp01((t - WALK[0]) / (WALK[1] - WALK[0])));
     const holding = t - REACH[1];
-    const tug = holding > 0 && !reducedMotion ? Math.max(0, Math.sin(holding * 2.1)) ** 3 * 0.05 : 0;
+    const tug =
+      holding > 0 && !reducedMotion ? Math.max(0, Math.sin(holding * 2.1)) ** 3 * 0.05 : 0;
     rig.root.position.set(0, 0, -(START + (headDistance - START) * walked) - tug);
     const next = walked < 1 && !reducedMotion ? rig.actions.walk : rig.actions.idle;
     if (rig.playing !== next) {
@@ -137,9 +172,18 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     rig.headBone.getWorldPosition(work.headAt);
     const headMiddle = (work.headAt.y + HEIGHT) / 2;
     const middle = 1 - (zone.current.top + zone.current.bottom); // the band's middle, in NDC y
-    const shake = holding > 0 && holding < SHAKE && !reducedMotion ? (1 - holding / SHAKE) * 0.012 : 0;
-    cam.position.set((Math.random() - 0.5) * shake, headMiddle + middle * work.headAt.z * tan + (Math.random() - 0.5) * shake, -tug * 0.6);
-    cam.rotation.set(0, 0, holding > 0 && !reducedMotion ? 0.03 + Math.sin(holding * 1.3) * 0.02 : 0);
+    const shake =
+      holding > 0 && holding < SHAKE && !reducedMotion ? (1 - holding / SHAKE) * 0.012 : 0;
+    cam.position.set(
+      (Math.random() - 0.5) * shake,
+      headMiddle + middle * work.headAt.z * tan + (Math.random() - 0.5) * shake,
+      -tug * 0.6,
+    );
+    cam.rotation.set(
+      0,
+      0,
+      holding > 0 && !reducedMotion ? 0.03 + Math.sin(holding * 1.3) * 0.02 : 0,
+    );
     cam.updateMatrixWorld(true);
 
     // The hands take the phone by its sides: just inside the screen's edges, wherever they are for this
@@ -157,16 +201,28 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       const [shoulder] = arm.joints;
       shoulder.scale.setScalar(1);
       shoulder.updateMatrixWorld(true);
-      const length = shoulder.getWorldPosition(work.v).distanceTo(arm.joints[1].getWorldPosition(work.w)) + work.w.distanceTo(arm.hand.getWorldPosition(new Vector3()));
-      const grow = 1 + (Math.min(MAX_GROW, Math.max(1, work.target.distanceTo(work.v) / length)) - 1) * reach;
+      const length =
+        shoulder.getWorldPosition(work.v).distanceTo(arm.joints[1].getWorldPosition(work.w)) +
+        work.w.distanceTo(arm.hand.getWorldPosition(new Vector3()));
+      const grow =
+        1 + (Math.min(MAX_GROW, Math.max(1, work.target.distanceTo(work.v) / length)) - 1) * reach;
       shoulder.scale.setScalar(grow);
       shoulder.updateMatrixWorld(true);
       if (reach > 0) {
         reachFor(arm, work.target, reach, work);
         // The hand turns its fingers toward the glass, leaning in a little, and they close round the screen's edge.
-        clasp(arm.hand, work.w.set(-arm.side * 0.4, 0.15, 1).normalize().applyQuaternion(cam.quaternion), reach, work);
+        clasp(
+          arm.hand,
+          work.w
+            .set(-arm.side * 0.4, 0.15, 1)
+            .normalize()
+            .applyQuaternion(cam.quaternion),
+          reach,
+          work,
+        );
         // The rig's hands are mirror images, so the left's fingers curl the other way about their own axis.
-        for (const finger of arm.fingers) finger.rotation.x = arm.side * (0.25 * reach + 0.85 * close);
+        for (const finger of arm.fingers)
+          finger.rotation.x = arm.side * (0.25 * reach + 0.85 * close);
       }
     }
 
@@ -179,7 +235,9 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       const tall = Math.abs(b.y - a.y) * (size.height / 2);
       const x = ((a.x + 1) / 2) * size.width;
       const y = ((1 - (a.y + b.y) / 2) / 2) * size.height;
-      head.current.dataset.head = [x - tall / 2, y - tall / 2, tall, tall].map(Math.round).join(",");
+      head.current.dataset.head = [x - tall / 2, y - tall / 2, tall, tall]
+        .map(Math.round)
+        .join(",");
     }
 
     if (reach >= 1 && !told.current) {
@@ -195,7 +253,12 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
  * Turns an arm's two joints so its hand reaches `target` (cyclic coordinate descent, in world space),
  * blended from the animated pose by `weight`.
  */
-function reachFor(arm: Arm, target: Vector3, weight: number, work: { v: Vector3; w: Vector3; q: Quaternion; parent: Quaternion }) {
+function reachFor(
+  arm: Arm,
+  target: Vector3,
+  weight: number,
+  work: { v: Vector3; w: Vector3; q: Quaternion; parent: Quaternion },
+) {
   const saved = arm.joints.map((j) => j.quaternion.clone());
   const at = new Vector3();
   const hand = new Vector3();
@@ -220,12 +283,19 @@ function reachFor(arm: Arm, target: Vector3, weight: number, work: { v: Vector3;
 }
 
 /** Turns a hand so its fingers (the bone's +Y) point along `direction` (world space), blended in by `weight`. */
-function clasp(hand: Bone, direction: Vector3, weight: number, work: { v: Vector3; q: Quaternion; parent: Quaternion }) {
+function clasp(
+  hand: Bone,
+  direction: Vector3,
+  weight: number,
+  work: { v: Vector3; q: Quaternion; parent: Quaternion },
+) {
   hand.getWorldQuaternion(work.q);
   work.v.set(0, 1, 0).applyQuaternion(work.q);
   const turn = new Quaternion().setFromUnitVectors(work.v, direction);
   (hand.parent as Object3D).getWorldQuaternion(work.parent);
-  const aimed = hand.quaternion.clone().premultiply(work.parent.clone().invert().multiply(turn).multiply(work.parent));
+  const aimed = hand.quaternion
+    .clone()
+    .premultiply(work.parent.clone().invert().multiply(turn).multiply(work.parent));
   hand.quaternion.slerp(aimed, weight);
   hand.updateMatrixWorld(true);
 }

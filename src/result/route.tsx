@@ -45,9 +45,10 @@ import styles from "./Result.module.css";
 
 export const handle: ShellHandle = { title: "Results", standingOrder: false };
 
-
 export function meta({ loaderData }: Route.MetaArgs) {
-  const copy = loaderData ? quarterCopy(loaderData.quarter, loaderData.referenceLabel) : QUARTER_COPY["2194-Q1"];
+  const copy = loaderData
+    ? quarterCopy(loaderData.quarter, loaderData.referenceLabel)
+    : QUARTER_COPY["2194-Q1"];
   return [{ title: `${copy.title} | Orbital Books` }];
 }
 
@@ -58,11 +59,31 @@ export function loader({ request }: Route.LoaderArgs): ResultData {
   if (!data) throw redirect("/decide");
   // Q1 and Q2 have their own three (A to F); from Q3 on, the quarter's own offers (Frank's #221).
   const later = data.quarter !== "2194-Q1" && data.quarter !== "2194-Q2";
-  return { ...data, discoveries: later ? laterDiscoveries(data.laterDiscoveries, data.discoveryOffers) : earnedDiscoveries(data.discoveries, data.quarter) };
+  return {
+    ...data,
+    discoveries: later
+      ? laterDiscoveries(data.laterDiscoveries, data.discoveryOffers)
+      : earnedDiscoveries(data.discoveries, data.quarter),
+  };
 }
 
 export default function Result({ loaderData }: Route.ComponentProps) {
-  const { quarter, outcome, sameQuarterLastYear, previousQuarter, reference, referenceLabel, discoveries, next, canPlayAgain, halfYear, record, goalStretch, season2193, removed: removal } = loaderData;
+  const {
+    quarter,
+    outcome,
+    sameQuarterLastYear,
+    previousQuarter,
+    reference,
+    referenceLabel,
+    discoveries,
+    next,
+    canPlayAgain,
+    halfYear,
+    record,
+    goalStretch,
+    season2193,
+    removed: removal,
+  } = loaderData;
   // The panel's vote closes the removal quarter's screen only: an earlier quarter's, opened later, stays as it was
   // (Audit, on #226), as Q1's did under the half-year review.
   const removed = removal && removal.at === quarter ? removal : null;
@@ -88,7 +109,15 @@ export default function Result({ loaderData }: Route.ComponentProps) {
       // Only where the review shows: Q1's screen, opened again after Q2, doesn't show it.
       ...(halfYear && quarter === "2194-Q2" ? { halfYear: halfYear.score } : {}),
     });
-  }, [quarter, levers, outcome.plan.levers.length, overall.score, overall.binding, outcome.discoveries.length, halfYear]);
+  }, [
+    quarter,
+    levers,
+    outcome.plan.levers.length,
+    overall.score,
+    overall.binding,
+    outcome.discoveries.length,
+    halfYear,
+  ]);
 
   const option = useMemo(
     () =>
@@ -106,7 +135,9 @@ export default function Result({ loaderData }: Route.ComponentProps) {
   function openAssumptions() {
     setAssumptionsOpen(true);
     track("result_assumptions_opened", { levers });
-    requestAnimationFrame(() => assumptionsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    requestAnimationFrame(() =>
+      assumptionsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
   }
 
   return (
@@ -123,9 +154,26 @@ export default function Result({ loaderData }: Route.ComponentProps) {
       />
 
       <section className={styles.tiles} aria-label="Totals">
-        <Tile label={COPY.tiles.grossProfit} value={moneyShort(plan.grossProfit)} delta={plan.grossProfit - holdCourse.grossProfit} money holdingCourse={holdingCourse} />
-        <Tile label={COPY.tiles.revenue} value={moneyShort(plan.revenue)} delta={plan.revenue - holdCourse.revenue} money holdingCourse={holdingCourse} />
-        <Tile label={COPY.tiles.units} value={Math.round(plan.units).toLocaleString("en-US")} delta={plan.units - holdCourse.units} holdingCourse={holdingCourse} />
+        <Tile
+          label={COPY.tiles.grossProfit}
+          value={moneyShort(plan.grossProfit)}
+          delta={plan.grossProfit - holdCourse.grossProfit}
+          money
+          holdingCourse={holdingCourse}
+        />
+        <Tile
+          label={COPY.tiles.revenue}
+          value={moneyShort(plan.revenue)}
+          delta={plan.revenue - holdCourse.revenue}
+          money
+          holdingCourse={holdingCourse}
+        />
+        <Tile
+          label={COPY.tiles.units}
+          value={Math.round(plan.units).toLocaleString("en-US")}
+          delta={plan.units - holdCourse.units}
+          holdingCourse={holdingCourse}
+        />
       </section>
 
       <section className={styles.card} aria-labelledby="outcome-chart-title">
@@ -139,7 +187,11 @@ export default function Result({ loaderData }: Route.ComponentProps) {
             <LegendItem color={OUTCOME_COLORS.reference} label={q.reference} />
           </ul>
         </header>
-        <EChart option={option} height={300} label={`${COPY.chartTitle}: ${COPY.lines.plan}, ${COPY.lines.holdCourse}, ${q.reference}`} />
+        <EChart
+          option={option}
+          height={300}
+          label={`${COPY.chartTitle}: ${COPY.lines.plan}, ${COPY.lines.holdCourse}, ${q.reference}`}
+        />
         <p className={styles.note}>
           {quarter === "2194-Q1"
             ? seasonNote((1 - plan.revenue / previousQuarter) * 100, sameQuarterLastYear)
@@ -156,7 +208,13 @@ export default function Result({ loaderData }: Route.ComponentProps) {
           </p>
         ))}
         <div className={styles.actions}>
-          <button type="button" className={styles.button} onClick={openAssumptions} aria-expanded={assumptionsOpen} aria-controls="assumptions">
+          <button
+            type="button"
+            className={styles.button}
+            onClick={openAssumptions}
+            aria-expanded={assumptionsOpen}
+            aria-controls="assumptions"
+          >
             {COPY.seeAssumptions}
           </button>
           {/* Under Q2's half-year review, and once the panel has voted, the way back to the ledgers is below. */}
@@ -167,7 +225,11 @@ export default function Result({ loaderData }: Route.ComponentProps) {
           )}
           {/* Only under the quarter just played: an earlier quarter's screen, opened later, gains nothing. */}
           {next !== null && next === nextQuarter(quarter) && (
-            <Link to="/" className={`${styles.button} ${styles.primary}`} onClick={() => track("result_continued", { to: next })}>
+            <Link
+              to="/"
+              className={`${styles.button} ${styles.primary}`}
+              onClick={() => track("result_continued", { to: next })}
+            >
               {continueTo(next)}
             </Link>
           )}
@@ -176,7 +238,13 @@ export default function Result({ loaderData }: Route.ComponentProps) {
 
       <Discoveries discoveries={discoveries} />
 
-      <section id="assumptions" ref={assumptionsRef} className={styles.card} hidden={!assumptionsOpen} aria-labelledby="assumptions-heading">
+      <section
+        id="assumptions"
+        ref={assumptionsRef}
+        className={styles.card}
+        hidden={!assumptionsOpen}
+        aria-labelledby="assumptions-heading"
+      >
         <h3 id="assumptions-heading" className={styles.cardTitle}>
           {COPY.assumptions.heading}
         </h3>
@@ -189,7 +257,9 @@ export default function Result({ loaderData }: Route.ComponentProps) {
               </span>
               <span>
                 {rule.text}
-                {rule.usedByPlan && <span className={styles.usedLabel}>{COPY.assumptions.used}</span>}
+                {rule.usedByPlan && (
+                  <span className={styles.usedLabel}>{COPY.assumptions.used}</span>
+                )}
               </span>
             </li>
           ))}
@@ -212,11 +282,22 @@ export default function Result({ loaderData }: Route.ComponentProps) {
  * The service record (endless.md section 6): every quarter played, newest first, with its measures, its overall
  * (a strike marked), and its event; then the tenure and the best quarter.
  */
-function ServiceRecord({ record, removedAt }: { record: ResultData["record"]; removedAt?: QuarterId }) {
+function ServiceRecord({
+  record,
+  removedAt,
+}: {
+  record: ResultData["record"];
+  removedAt?: QuarterId;
+}) {
   const c = COPY.reportCard;
   const rows = [...record].reverse();
-  const mean = roundHalfUp(record.reduce((sum, row) => sum + row.overall.score, 0) / Math.max(1, record.length));
-  const best = record.reduce((top, row) => (row.overall.score > top.overall.score ? row : top), record[0]!);
+  const mean = roundHalfUp(
+    record.reduce((sum, row) => sum + row.overall.score, 0) / Math.max(1, record.length),
+  );
+  const best = record.reduce(
+    (top, row) => (row.overall.score > top.overall.score ? row : top),
+    record[0]!,
+  );
   return (
     <section className={styles.card} aria-labelledby="service-record-heading">
       <h3 id="service-record-heading" className={styles.cardTitle}>
@@ -260,8 +341,12 @@ function ServiceRecord({ record, removedAt }: { record: ResultData["record"]; re
       </div>
       {record.length > 0 && (
         <>
-          <p className={styles.happened}>{SERVICE_RECORD.tenure(record.length, mean, gradeFor(mean))}</p>
-          <p className={styles.happened}>{SERVICE_RECORD.best(best.quarter, best.overall.score, best.overall.grade)}</p>
+          <p className={styles.happened}>
+            {SERVICE_RECORD.tenure(record.length, mean, gradeFor(mean))}
+          </p>
+          <p className={styles.happened}>
+            {SERVICE_RECORD.best(best.quarter, best.overall.score, best.overall.grade)}
+          </p>
         </>
       )}
     </section>
@@ -272,7 +357,15 @@ function ServiceRecord({ record, removedAt }: { record: ResultData["record"]; re
  * Once the panel has voted (endless.md section 7): the whole board speaks, the facts are plain, and the service
  * record ends with the removal. Play again starts a new game; the ledgers stay open to look at.
  */
-function Removal({ removed, record, canPlayAgain }: { removed: NonNullable<ResultData["removed"]>; record: ResultData["record"]; canPlayAgain: boolean }) {
+function Removal({
+  removed,
+  record,
+  canPlayAgain,
+}: {
+  removed: NonNullable<ResultData["removed"]>;
+  record: ResultData["record"];
+  canPlayAgain: boolean;
+}) {
   const c = COPY.reportCard;
   return (
     <section className={styles.card} aria-labelledby="removal-heading">
@@ -287,11 +380,17 @@ function Removal({ removed, record, canPlayAgain }: { removed: NonNullable<Resul
           <figcaption className={styles.boss}>{c.bosses[boss]}</figcaption>
         </figure>
       ))}
-      <p className={styles.happened}>{REMOVAL_COPY.facts(removed.strikes, record.length, removed.at)}</p>
+      <p className={styles.happened}>
+        {REMOVAL_COPY.facts(removed.strikes, record.length, removed.at)}
+      </p>
       <ServiceRecord record={record} removedAt={removed.at} />
       <div className={styles.actions}>
         {canPlayAgain && (
-          <Form method="post" action="/game/new" onSubmit={() => track("result_play_again", { removed: removed.at })}>
+          <Form
+            method="post"
+            action="/game/new"
+            onSubmit={() => track("result_play_again", { removed: removed.at })}
+          >
             <button type="submit" className={`${styles.button} ${styles.primary}`}>
               {REMOVAL_COPY.playAgain}
             </button>
@@ -353,7 +452,11 @@ function HalfYearReview({ review, canPlayAgain }: { review: HalfYearData; canPla
       <p className={styles.happened}>{HALF_YEAR_COPY.closing}</p>
       <div className={styles.actions}>
         {canPlayAgain && (
-          <Form method="post" action="/game/new" onSubmit={() => track("result_play_again", { halfYear: review.score })}>
+          <Form
+            method="post"
+            action="/game/new"
+            onSubmit={() => track("result_play_again", { halfYear: review.score })}
+          >
             <button type="submit" className={`${styles.button} ${styles.primary}`}>
               {HALF_YEAR_COPY.playAgain}
             </button>
@@ -371,7 +474,19 @@ function tone(value: number): "up" | "down" | "neutral" {
   return value > 0 ? "up" : value < 0 ? "down" : "neutral";
 }
 
-function Tile({ label, value, delta, money, holdingCourse }: { label: string; value: string; delta: number; money?: boolean; holdingCourse: boolean }) {
+function Tile({
+  label,
+  value,
+  delta,
+  money,
+  holdingCourse,
+}: {
+  label: string;
+  value: string;
+  delta: number;
+  money?: boolean;
+  holdingCourse: boolean;
+}) {
   const amount = money ? moneyShort(delta) : Math.round(Math.abs(delta)).toLocaleString("en-US");
   return (
     <article className={styles.tile}>
@@ -398,10 +513,26 @@ function LegendItem({ color, label }: { color: string; label: string }) {
  * overall score, the lowest measure's boss on it, the table with that row
  * marked, certificates, and the rest of the bosses tucked away.
  */
-function ReportCard({ quarter, copy: q, plan, holdCourse, holdingCourse, onBosses }: { quarter: QuarterId; copy: ReturnType<typeof quarterCopy>; plan: Card; holdCourse: Card; holdingCourse: boolean; onBosses: (open: boolean) => void }) {
+function ReportCard({
+  quarter,
+  copy: q,
+  plan,
+  holdCourse,
+  holdingCourse,
+  onBosses,
+}: {
+  quarter: QuarterId;
+  copy: ReturnType<typeof quarterCopy>;
+  plan: Card;
+  holdCourse: Card;
+  holdingCourse: boolean;
+  onBosses: (open: boolean) => void;
+}) {
   const c = COPY.reportCard;
   const { overall } = plan;
-  const certificates = plan.certificates.map((certificate) => certificateText(certificate, quarter)).filter(Boolean);
+  const certificates = plan.certificates
+    .map((certificate) => certificateText(certificate, quarter))
+    .filter(Boolean);
   return (
     <section className={styles.card} aria-labelledby="report-card-heading">
       <h3 id="report-card-heading" className={styles.cardTitle}>
@@ -416,7 +547,11 @@ function ReportCard({ quarter, copy: q, plan, holdCourse, holdingCourse, onBosse
             <span className={styles.grade}>{gradeText(overall.grade)}</span>
           </span>
           <span className={styles.scoreExplainer}>{c.overallExplainer}</span>
-          {!holdingCourse && <span className={styles.scoreHeading}>{heldCourseText(holdCourse.overall.score, holdCourse.overall.grade)}</span>}
+          {!holdingCourse && (
+            <span className={styles.scoreHeading}>
+              {heldCourseText(holdCourse.overall.score, holdCourse.overall.grade)}
+            </span>
+          )}
         </div>
         <figure className={styles.lowest}>
           <blockquote className={styles.lowestLines}>
@@ -461,7 +596,11 @@ function ReportCard({ quarter, copy: q, plan, holdCourse, holdingCourse, onBosse
                     <span className={styles.measureScore}>{scoreText(m.score, m.grade)}</span>
                     {m.exceeds && <span className={styles.award}>{c.exceeds}</span>}
                   </td>
-                  {!holdingCourse && <td className={styles.muted}>{held ? scoreText(held.score, held.grade) : ""}</td>}
+                  {!holdingCourse && (
+                    <td className={styles.muted}>
+                      {held ? scoreText(held.score, held.grade) : ""}
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -514,7 +653,9 @@ function Discoveries({ discoveries }: { discoveries: EarnedDiscovery[] }) {
       <ul className={styles.discoveries}>
         {discoveries.map((d) => (
           <li key={d.id} className={styles.discovery} data-found={d.found || undefined}>
-            <span className={styles.marker}>{d.found ? COPY.discoveries.found : COPY.discoveries.notFound}</span>
+            <span className={styles.marker}>
+              {d.found ? COPY.discoveries.found : COPY.discoveries.notFound}
+            </span>
             <span>{d.text}</span>
           </li>
         ))}
@@ -523,4 +664,3 @@ function Discoveries({ discoveries }: { discoveries: EarnedDiscovery[] }) {
     </section>
   );
 }
-

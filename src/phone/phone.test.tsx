@@ -9,11 +9,15 @@ import { PhoneScreen } from "./PhoneScreen";
 describe("the phone screen", () => {
   it("is shown by the same query in its stylesheet as in the browser's check", () => {
     // The stylesheet shows it before the scripts run, so the two must agree.
-    expect(readFileSync(new URL("./PhoneScreen.module.css", import.meta.url), "utf8")).toContain(`@media ${PHONE_QUERY} {`);
+    expect(readFileSync(new URL("./PhoneScreen.module.css", import.meta.url), "utf8")).toContain(
+      `@media ${PHONE_QUERY} {`,
+    );
   });
 
   it("counts a coarse pointer on a short side of 600 px or less as a phone, in either orientation", () => {
-    expect(PHONE_QUERY).toBe("(pointer: coarse) and (max-width: 600px), (pointer: coarse) and (max-height: 600px)");
+    expect(PHONE_QUERY).toBe(
+      "(pointer: coarse) and (max-width: 600px), (pointer: coarse) and (max-height: 600px)",
+    );
   });
 
   it("records only the short side, in a coarse bucket", () => {

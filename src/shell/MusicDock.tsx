@@ -15,7 +15,13 @@ import styles from "./Shell.module.css";
  * over the page, in `layer`. In the collapsed menu, only pause / play.
  * Nothing loads during server rendering, and with no songs nothing shows.
  */
-export function MusicDock({ collapsed, layer }: { collapsed: boolean; layer: RefObject<HTMLDivElement | null> }) {
+export function MusicDock({
+  collapsed,
+  layer,
+}: {
+  collapsed: boolean;
+  layer: RefObject<HTMLDivElement | null>;
+}) {
   const spot = useRef<HTMLDivElement>(null);
   const dock = useRef<ReturnType<typeof createDock>>(null);
   const compact = useRef(collapsed);

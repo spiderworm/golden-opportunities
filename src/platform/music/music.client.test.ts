@@ -10,13 +10,16 @@ const kit = vi.hoisted(() => ({ started: undefined as unknown }));
 vi.mock("~/platform/kit.client", async () => {
   const { defineApp, startApp } = await import("@tellim/kit/app");
   const app = defineApp({ id: "orbital-books" });
-  return { studio: () => (kit.started ??= startApp(app, { form: "desktop", analytics: false, track })) };
+  return {
+    studio: () => (kit.started ??= startApp(app, { form: "desktop", analytics: false, track })),
+  };
 });
 
 import { loadPrefs } from "../../../packages/music/src/prefs/prefs";
 import { loadMusic, START_VOLUME } from "./music.client";
 
-const respond = (body: unknown, ok = true) => vi.fn(async () => ({ ok, json: async () => body }) as unknown as Response);
+const respond = (body: unknown, ok = true) =>
+  vi.fn(async () => ({ ok, json: async () => body }) as unknown as Response);
 
 describe("loadMusic", () => {
   beforeEach(() => vi.stubGlobal("window", {}));
@@ -40,7 +43,9 @@ describe("loadMusic", () => {
   });
 
   it("makes the player once, from public/music/, with the kit's desktop defaults, reporting through track", async () => {
-    const fetcher = respond({ songs: [{ id: "nebula-waltz", file: "nebula-waltz.mp3", title: "Nebula Waltz" }] });
+    const fetcher = respond({
+      songs: [{ id: "nebula-waltz", file: "nebula-waltz.mp3", title: "Nebula Waltz" }],
+    });
     const [a, b] = await Promise.all([loadMusic(fetcher), loadMusic(fetcher)]);
     expect(a).toBe(b);
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -57,7 +62,9 @@ describe("loadMusic", () => {
       pauseWhenHidden: expect.any(Function), // the desktop player's: plays on behind other tabs
     });
     // a computer (no touch screen here) plays on while hidden
-    expect((createMusic.mock.calls[0]![0] as { pauseWhenHidden: () => boolean }).pauseWhenHidden()).toBe(false);
+    expect(
+      (createMusic.mock.calls[0]![0] as { pauseWhenHidden: () => boolean }).pauseWhenHidden(),
+    ).toBe(false);
   });
 
   it("starts a first-time player at 75%, and keeps a volume the player has set", async () => {
@@ -65,7 +72,10 @@ describe("loadMusic", () => {
     const { legacyVolume } = createMusic.mock.calls[0]![0] as { legacyVolume: () => number | null };
     expect(START_VOLUME).toBe(0.75);
     // the player's own reading of it: only while nothing is saved
-    const store = (saved?: object) => ({ getItem: () => (saved ? JSON.stringify(saved) : null), setItem: () => {} });
+    const store = (saved?: object) => ({
+      getItem: () => (saved ? JSON.stringify(saved) : null),
+      setItem: () => {},
+    });
     expect(loadPrefs("orbital-books", store(), legacyVolume).volume).toBe(0.75);
     expect(loadPrefs("orbital-books", store({ volume: 0.3 }), legacyVolume).volume).toBe(0.3);
     expect(loadPrefs("orbital-books", store({ volume: 1 }), legacyVolume).volume).toBe(1);

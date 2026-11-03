@@ -21,10 +21,21 @@ export interface TitleViewProps {
 }
 
 /** One title's sales by month, beside its ratings: where a drill into a title lands. */
-export function TitleView({ state, title, result, ratings, quarters, onMonth, onClose }: TitleViewProps) {
+export function TitleView({
+  state,
+  title,
+  result,
+  ratings,
+  quarters,
+  onMonth,
+  onClose,
+}: TitleViewProps) {
   const selected = state.filters.month ?? [];
   const months = monthsInScope(quarters, state.filters.quarter);
-  const model = useMemo(() => categoryModel(result, "month", null, months), [result, months.join()]);
+  const model = useMemo(
+    () => categoryModel(result, "month", null, months),
+    [result, months.join()],
+  );
   const option = useMemo(
     () => categoryOption(model, { selected, quarters }),
     [model, selected.join("\u0000"), quarters],
@@ -57,8 +68,10 @@ export function TitleView({ state, title, result, ratings, quarters, onMonth, on
           />
           <p className={styles.source}>
             {heading}
-            {selected.length > 0 ? `, filtered to ${selected.map((m) => formatDimensionValue("month", m)).join(", ")}` : ""}. Other
-            filters still apply. Source: {result.source}
+            {selected.length > 0
+              ? `, filtered to ${selected.map((m) => formatDimensionValue("month", m)).join(", ")}`
+              : ""}
+            . Other filters still apply. Source: {result.source}
           </p>
         </div>
         <RatingsHistogram title={title} result={ratings} />

@@ -12,7 +12,8 @@ export function useMoreLine() {
     more,
     peek: (id: string) => setMore((m) => (m?.pinned ? m : { id, pinned: false })),
     unpeek: (id: string) => setMore((m) => (m && m.id === id && !m.pinned ? null : m)),
-    toggle: (id: string) => setMore((m) => (m?.id === id && m.pinned ? null : { id, pinned: true })),
+    toggle: (id: string) =>
+      setMore((m) => (m?.id === id && m.pinned ? null : { id, pinned: true })),
     clear: () => setMore(null),
   };
 }
@@ -37,14 +38,25 @@ export function MoveCard({ move: m, number, selected, onToggle, line }: MoveCard
       onMouseEnter={() => line.peek(m.id)}
       onMouseLeave={() => line.unpeek(m.id)}
       onFocus={() => line.peek(m.id)}
-      onBlur={(event) => !event.currentTarget.contains(event.relatedTarget as Node | null) && line.clear()}
-      onKeyDown={(event) => event.key === "Escape" && more && (event.stopPropagation(), line.clear())}
+      onBlur={(event) =>
+        !event.currentTarget.contains(event.relatedTarget as Node | null) && line.clear()
+      }
+      onKeyDown={(event) =>
+        event.key === "Escape" && more && (event.stopPropagation(), line.clear())
+      }
     >
       <span className={styles.itemNumber} aria-hidden="true">
         {String(number).padStart(2, "0")}
       </span>
       <label className={styles.optionLabel}>
-        <input type="checkbox" name="levers" value={m.id} checked={selected} onChange={onToggle} aria-describedby={`move-line-${m.id}`} />
+        <input
+          type="checkbox"
+          name="levers"
+          value={m.id}
+          checked={selected}
+          onChange={onToggle}
+          aria-describedby={`move-line-${m.id}`}
+        />
         <span className={styles.optionTitle}>{m.title}</span>
         {m.figure && <span className={styles.optionFigure}>{m.figure}</span>}
       </label>

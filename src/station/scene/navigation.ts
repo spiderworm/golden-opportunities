@@ -26,7 +26,14 @@ export interface Footprint {
   height: number;
 }
 
-const around = (name: string, x: number, z: number, r: number, height: number): Footprint => ({ name, x0: x - r, z0: z - r, x1: x + r, z1: z + r, height });
+const around = (name: string, x: number, z: number, r: number, height: number): Footprint => ({
+  name,
+  x0: x - r,
+  z0: z - r,
+  x1: x + r,
+  z1: z + r,
+  height,
+});
 
 /** What stands on the shop floor: the shelves (shelves.ts), and the rest where Interior and Props put them. */
 export const FIXTURES: Footprint[] = [
@@ -77,7 +84,15 @@ let built: Promise<Navigation> | undefined;
 export function navigation(): Promise<Navigation> {
   // In the browser, Recast's WebAssembly comes as its own file, fetched with the station's code and
   // compiled as it streams (its default build carries it inside its JavaScript, a third larger).
-  built ??= (typeof window === "undefined" ? init() : held(() => cancelledAsThePageGoes(() => import("@recast-navigation/wasm/wasm").then((wasm) => init(wasm.default))))).then(build);
+  built ??= (
+    typeof window === "undefined"
+      ? init()
+      : held(() =>
+          cancelledAsThePageGoes(() =>
+            import("@recast-navigation/wasm/wasm").then((wasm) => init(wasm.default)),
+          ),
+        )
+  ).then(build);
   return built;
 }
 
@@ -94,7 +109,10 @@ function cancelledAsThePageGoes<T>(start: () => Promise<T>): Promise<T> {
   const fetch = globalThis.fetch;
   globalThis.fetch = (input, init) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    return fetch(input, /recast-navigation[^/]*\.wasm/.test(url) ? { ...init, signal: cut.signal } : init);
+    return fetch(
+      input,
+      /recast-navigation[^/]*\.wasm/.test(url) ? { ...init, signal: cut.signal } : init,
+    );
   };
   return start().finally(() => {
     globalThis.fetch = fetch;
@@ -113,7 +131,11 @@ function build(): Navigation {
     walkableClimb: Math.ceil(0.2 / cell),
   });
   if (!success || !navMesh) throw new Error("The shop's navigation mesh couldn't be built");
-  return { navMesh, query: new NavMeshQuery(navMesh), crowd: new Crowd(navMesh, { maxAgents: 16, maxAgentRadius: SHOPPER.radius }) };
+  return {
+    navMesh,
+    query: new NavMeshQuery(navMesh),
+    crowd: new Crowd(navMesh, { maxAgents: 16, maxAgentRadius: SHOPPER.radius }),
+  };
 }
 
 /** The floor, and a box for every fixture (and the keeper), as triangles for Recast. */
@@ -127,9 +149,22 @@ export function floorPlan(): { positions: number[]; indices: number[] } {
   indices.push(floorBase, floorBase + 2, floorBase + 1, floorBase, floorBase + 3, floorBase + 2);
   for (const f of [...FIXTURES, around("keeper", KEEPER[0], KEEPER[1], 0.3, 1.7)]) {
     const b = positions.length / 3;
-    for (const y of [0, f.height]) positions.push(f.x0, y, f.z0, f.x1, y, f.z0, f.x1, y, f.z1, f.x0, y, f.z1);
+    for (const y of [0, f.height])
+      positions.push(f.x0, y, f.z0, f.x1, y, f.z0, f.x1, y, f.z1, f.x0, y, f.z1);
     // The top and four sides (the bottom sits on the floor).
-    for (const t of [[4, 6, 5], [4, 7, 6], [0, 1, 5], [0, 5, 4], [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6], [3, 0, 4], [3, 4, 7]]) indices.push(...t.map((i) => b + i));
+    for (const t of [
+      [4, 6, 5],
+      [4, 7, 6],
+      [0, 1, 5],
+      [0, 5, 4],
+      [1, 2, 6],
+      [1, 6, 5],
+      [2, 3, 7],
+      [2, 7, 6],
+      [3, 0, 4],
+      [3, 4, 7],
+    ])
+      indices.push(...t.map((i) => b + i));
   }
   return { positions, indices };
 }

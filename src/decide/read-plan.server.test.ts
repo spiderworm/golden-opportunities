@@ -7,11 +7,19 @@ function post(body: BodyInit, headers: Record<string, string> = {}) {
   return new Request(URL_, {
     method: "POST",
     body,
-    headers: { origin: "http://localhost:5173", "content-type": "application/x-www-form-urlencoded", ...headers },
+    headers: {
+      origin: "http://localhost:5173",
+      "content-type": "application/x-www-form-urlencoded",
+      ...headers,
+    },
   });
 }
 
-async function status(request: Request, deadlineMs?: number, read: typeof readPlan | typeof readQ2Plan = readPlan) {
+async function status(
+  request: Request,
+  deadlineMs?: number,
+  read: typeof readPlan | typeof readQ2Plan = readPlan,
+) {
   try {
     await read(request, deadlineMs);
     return 200;
@@ -22,7 +30,9 @@ async function status(request: Request, deadlineMs?: number, read: typeof readPl
 
 describe("readPlan", () => {
   it("reads up to two moves, in any order, and none as holding course", async () => {
-    expect(await readPlan(post("levers=events%2Crepick"))).toEqual({ levers: ["repick", "events"] });
+    expect(await readPlan(post("levers=events%2Crepick"))).toEqual({
+      levers: ["repick", "events"],
+    });
     expect(await readPlan(post("levers=sale"))).toEqual({ levers: ["sale"] });
     expect(await readPlan(post("levers="))).toEqual({ levers: [] });
   });
@@ -36,7 +46,19 @@ describe("readPlan", () => {
         c.close();
       },
     });
-    expect(await status(new Request(URL_, { method: "POST", body: stream, duplex: "half", headers: { origin: "http://localhost:5173", "content-type": "application/x-www-form-urlencoded" } } as RequestInit))).toBe(413);
+    expect(
+      await status(
+        new Request(URL_, {
+          method: "POST",
+          body: stream,
+          duplex: "half",
+          headers: {
+            origin: "http://localhost:5173",
+            "content-type": "application/x-www-form-urlencoded",
+          },
+        } as RequestInit),
+      ),
+    ).toBe(413);
   });
 
   it("refuses unknown or repeated fields, unknown or repeated moves, and a third move", async () => {
@@ -53,12 +75,22 @@ describe("readPlan", () => {
   it("refuses other sites and other content types", async () => {
     expect(await status(post("levers=sale", { origin: "https://elsewhere.example" }))).toBe(403);
     expect(await status(post("levers=sale", { "sec-fetch-site": "cross-site" }))).toBe(403);
-    expect(await status(post('{"levers":["sale"]}', { "content-type": "application/json" }))).toBe(415);
+    expect(await status(post('{"levers":["sale"]}', { "content-type": "application/json" }))).toBe(
+      415,
+    );
   });
 
   it("gives up on a body that never finishes", async () => {
     const stalled = new ReadableStream({ start() {} });
-    const request = new Request(URL_, { method: "POST", body: stalled, duplex: "half", headers: { origin: "http://localhost:5173", "content-type": "application/x-www-form-urlencoded" } } as RequestInit);
+    const request = new Request(URL_, {
+      method: "POST",
+      body: stalled,
+      duplex: "half",
+      headers: {
+        origin: "http://localhost:5173",
+        "content-type": "application/x-www-form-urlencoded",
+      },
+    } as RequestInit);
     expect(await status(request, 50)).toBe(408);
   });
 });
@@ -66,17 +98,29 @@ describe("readPlan", () => {
 describe("readQ2Plan", () => {
   const A = "989-28-79-70597-8";
   const B = "989-28-654-6930-3";
-  const q2 = (body: string, quarter = "2194-Q2") => status(post(`${body}&quarter=${quarter}`), undefined, readQ2Plan);
+  const q2 = (body: string, quarter = "2194-Q2") =>
+    status(post(`${body}&quarter=${quarter}`), undefined, readQ2Plan);
 
   it("reads three months, each an ISBN or no pick, and up to one more move", async () => {
-    expect(await readQ2Plan(post(`picks=${A}%2C%2C${B}&levers=events&quarter=2194-Q2`))).toEqual({ quarter: "2194-Q2", plan: { picks: [A, null, B], levers: ["events"] } });
-    expect(await readQ2Plan(post(`quarter=2195-Q1&levers=sale&picks=${A}%2C${B}%2C`))).toEqual({ quarter: "2195-Q1", plan: { picks: [A, B, null], levers: ["sale"] } });
+    expect(await readQ2Plan(post(`picks=${A}%2C%2C${B}&levers=events&quarter=2194-Q2`))).toEqual({
+      quarter: "2194-Q2",
+      plan: { picks: [A, null, B], levers: ["events"] },
+    });
+    expect(await readQ2Plan(post(`quarter=2195-Q1&levers=sale&picks=${A}%2C${B}%2C`))).toEqual({
+      quarter: "2195-Q1",
+      plan: { picks: [A, B, null], levers: ["sale"] },
+    });
     // Holding course: no picks and no other move.
-    expect(await readQ2Plan(post("picks=%2C%2C&levers=&quarter=2194-Q2"))).toEqual({ quarter: "2194-Q2", plan: { picks: [null, null, null], levers: [] } });
+    expect(await readQ2Plan(post("picks=%2C%2C&levers=&quarter=2194-Q2"))).toEqual({
+      quarter: "2194-Q2",
+      plan: { picks: [null, null, null], levers: [] },
+    });
   });
 
   it("fits three ISBNs and a move well inside the cap", () => {
-    expect(new URLSearchParams({ picks: [A, A, A].join(","), levers: "events" }).toString().length).toBeLessThan(MAX_PLAN_BODY / 4);
+    expect(
+      new URLSearchParams({ picks: [A, A, A].join(","), levers: "events" }).toString().length,
+    ).toBeLessThan(MAX_PLAN_BODY / 4);
   });
 
   it("refuses the wrong number of months, one ISBN twice, two moves, Q1's moves, and other fields", async () => {
@@ -100,7 +144,13 @@ describe("readQ2Plan", () => {
   });
 
   it("keeps the door's checks: other sites, and an oversized body", async () => {
-    expect(await status(post("picks=%2C%2C&levers=&quarter=2194-Q2", { origin: "https://elsewhere.example" }), undefined, readQ2Plan)).toBe(403);
+    expect(
+      await status(
+        post("picks=%2C%2C&levers=&quarter=2194-Q2", { origin: "https://elsewhere.example" }),
+        undefined,
+        readQ2Plan,
+      ),
+    ).toBe(403);
     expect(await q2(`picks=%2C%2C&levers=&pad=${"x".repeat(MAX_PLAN_BODY)}`)).toBe(413);
   });
 });

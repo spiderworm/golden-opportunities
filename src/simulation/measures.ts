@@ -31,14 +31,18 @@ export function ratingsOf(history: DeepReadonly<BookshopData>): Ratings {
     s.count += 1;
     sums.set(r.bookId, s);
   }
-  const all = history.ratings.reduce((t, r) => t + r.rating, 0) / Math.max(1, history.ratings.length);
+  const all =
+    history.ratings.reduce((t, r) => t + r.rating, 0) / Math.max(1, history.ratings.length);
   const awards = new Map(history.joinedBooks.map((b) => [b.id, b.awards.length]));
   // A guard only: every title sold in 2193 has ratings. The new volume is rated like volume 2.
   const average = (bookId: string) => {
     const s = sums.get(bookId === RELEASE.book.id ? RELEASE.ratedLike : bookId);
     return s ? s.total / s.count : all;
   };
-  return { average, culture: (bookId) => 1 + 9 * stretch(average(bookId)) + 3 * (awards.get(bookId) ?? 0) };
+  return {
+    average,
+    culture: (bookId) => 1 + 9 * stretch(average(bookId)) + 3 * (awards.get(bookId) ?? 0),
+  };
 }
 
 /** What an event changes about costs (endless.md section 2): the author-night fare, and one format's cost of goods. */
@@ -71,7 +75,14 @@ export function ledger(orders: readonly Order[], events = 0, costs: Costs = {}):
     }
   const costOfGoods = COST_OF_GOODS * list + (costs.cogs ? costs.cogs.rate * changed : 0);
   const eventCosts = (costs.fare ?? EVENT_COST) * events;
-  return { revenue, units, orders: orders.length, costOfGoods, eventCosts, grossProfit: revenue - costOfGoods - eventCosts };
+  return {
+    revenue,
+    units,
+    orders: orders.length,
+    costOfGoods,
+    eventCosts,
+    grossProfit: revenue - costOfGoods - eventCosts,
+  };
 }
 
 /** One visit is one order: Quality and Value only in M1 (Comfort and Found it arrive in M2), plus the night out. */
@@ -81,7 +92,10 @@ export function orderHappiness(order: Order, ratings: Ratings): number {
   const discount = order.items.reduce((t, i) => t + i.discount, 0) / n;
   const quality = 100 * stretch(rating);
   const value = 50 + 50 * (1 - Math.exp(-discount / 0.075));
-  return Math.min(100, 0.6 * quality + 0.4 * value + (order.kind === "event" ? EVENT_HAPPINESS : 0));
+  return Math.min(
+    100,
+    0.6 * quality + 0.4 * value + (order.kind === "event" ? EVENT_HAPPINESS : 0),
+  );
 }
 
 export function happiness(orders: readonly Order[], ratings: Ratings): number {
@@ -109,7 +123,13 @@ export function culture(orders: readonly Order[], ratings: Ratings, eventOrders 
   return total + CULTURE_PER_ATTENDEE * eventOrders;
 }
 
-export function measures(orders: readonly Order[], ratings: Ratings, events = 0, eventOrders = 0, costs: Costs = {}): Record<MeasureId, number> {
+export function measures(
+  orders: readonly Order[],
+  ratings: Ratings,
+  events = 0,
+  eventOrders = 0,
+  costs: Costs = {},
+): Record<MeasureId, number> {
   return {
     profit: ledger(orders, events, costs).grossProfit,
     readers: orders.length,

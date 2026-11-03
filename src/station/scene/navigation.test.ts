@@ -1,7 +1,15 @@
 import { Crowd } from "@recast-navigation/core";
 import { describe, expect, it } from "vitest";
 
-import { addShopper, clearance, FIXTURES, navigation, pickSpot, SHOPPER, SPOTS } from "./navigation";
+import {
+  addShopper,
+  clearance,
+  FIXTURES,
+  navigation,
+  pickSpot,
+  SHOPPER,
+  SPOTS,
+} from "./navigation";
 
 /** Points every 5 cm along a path's straight legs. */
 function along(path: { x: number; z: number }[]) {
@@ -10,7 +18,8 @@ function along(path: { x: number; z: number }[]) {
     const a = path[i - 1]!;
     const b = path[i]!;
     const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.05));
-    for (let s = 0; s <= steps; s++) points.push([a.x + ((b.x - a.x) * s) / steps, a.z + ((b.z - a.z) * s) / steps]);
+    for (let s = 0; s <= steps; s++)
+      points.push([a.x + ((b.x - a.x) * s) / steps, a.z + ((b.z - a.z) * s) / steps]);
   }
   return points;
 }
@@ -40,7 +49,11 @@ describe("the shop's navigation", () => {
         expect(success).toBe(true);
         const end = path.at(-1)!;
         expect(Math.hypot(end.x - bx, end.z - bz)).toBeLessThan(0.01);
-        for (const [x, z] of along(path)) expect(nearest(x, z), `${i} to ${j} at ${x.toFixed(2)}, ${z.toFixed(2)}`).toBeGreaterThanOrEqual(CLEAR);
+        for (const [x, z] of along(path))
+          expect(
+            nearest(x, z),
+            `${i} to ${j} at ${x.toFixed(2)}, ${z.toFixed(2)}`,
+          ).toBeGreaterThanOrEqual(CLEAR);
       }
     }
   });

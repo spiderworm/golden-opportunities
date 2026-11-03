@@ -23,7 +23,9 @@ import { kept } from "./world";
 // pictures from Gemini (public/textures/station/, provenance.json); its
 // clouds, atmosphere, the sun and the stars themselves are shaders.
 
-const TEXTURES = ["planet-day", "planet-night", "starfield"].map((name) => `/textures/station/${name}.jpg`);
+const TEXTURES = ["planet-day", "planet-night", "starfield"].map(
+  (name) => `/textures/station/${name}.jpg`,
+);
 
 /** Equirectangular maps, wrapped once round a sphere by its own UVs (so mipmaps leave no seam). */
 function prepare(texture: Texture): Texture {
@@ -63,7 +65,12 @@ function Planet({ day, night }: { day: Texture; night: Texture }) {
   const material = useMemo(
     () =>
       new ShaderMaterial({
-        uniforms: { sun: { value: SUN_DIRECTION.clone() }, time: { value: 0 }, dayMap: { value: prepare(day) }, nightMap: { value: prepare(night) } },
+        uniforms: {
+          sun: { value: SUN_DIRECTION.clone() },
+          time: { value: 0 },
+          dayMap: { value: prepare(day) },
+          nightMap: { value: prepare(night) },
+        },
         vertexShader: /* glsl */ `
           varying vec3 vLocal;
           varying vec3 vNormal;
@@ -162,7 +169,12 @@ function starField() {
   const positions = new Float32Array(STAR_COUNT * 3);
   const colors = new Float32Array(STAR_COUNT * 3);
   const sizes = new Float32Array(STAR_COUNT);
-  const palette = [new Color("#ffffff"), new Color("#c9d6ff"), new Color("#ffe2b8"), new Color("#b9aaff")];
+  const palette = [
+    new Color("#ffffff"),
+    new Color("#c9d6ff"),
+    new Color("#ffe2b8"),
+    new Color("#b9aaff"),
+  ];
   for (let i = 0; i < STAR_COUNT; i++) {
     // Uniform on a sphere far beyond the planet.
     const u = Math.random() * 2 - 1;
@@ -227,7 +239,14 @@ function Stars() {
 /** Gemini's nebula (its stars filtered out), faint, on a sphere beyond the point stars. */
 function Nebula({ map }: { map: Texture }) {
   const material = useMemo(
-    () => new MeshBasicMaterial({ map: prepare(map), side: BackSide, depthWrite: false, color: new Color(0.55, 0.55, 0.6), toneMapped: false }),
+    () =>
+      new MeshBasicMaterial({
+        map: prepare(map),
+        side: BackSide,
+        depthWrite: false,
+        color: new Color(0.55, 0.55, 0.6),
+        toneMapped: false,
+      }),
     [map],
   );
   return (

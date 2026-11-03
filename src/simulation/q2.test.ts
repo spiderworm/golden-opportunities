@@ -11,13 +11,30 @@ import type { Q2LeverId, Q2Plan } from "./types";
 
 const data = joinBookshop(tables as BookshopTables);
 const candidates = q2Candidates(data);
-const isbn = (title: string, format: string) => candidates.find((c) => c.title === title && c.format === format)!.isbn;
+const isbn = (title: string, format: string) =>
+  candidates.find((c) => c.title === title && c.format === format)!.isbn;
 const plan = (picks: (string | null)[], ...levers: Q2LeverId[]): Q2Plan => ({ picks, levers });
 const HOLD = plan([null, null, null]);
 // docs/design/q2.md section 8: three quiet, well-rated hardcovers, and three bestsellers.
-const QUIET = [isbn("Land Water Sky Space", "Hardcover"), isbn("Thatchwork Cottage", "Hardcover"), isbn("Kalakalal Avenue", "Hardcover")];
-const BESTSELLERS = [isbn("The Mallemaroking", "Mass market paperback"), isbn("Rystwyth", "Hardcover"), isbn("Portmeirion", "Mass market paperback")];
-const PLANS = [HOLD, plan(QUIET), plan(BESTSELLERS), plan(QUIET, "events"), plan(QUIET, "sale"), plan([null, null, null], "events"), plan([QUIET[0], null, null])];
+const QUIET = [
+  isbn("Land Water Sky Space", "Hardcover"),
+  isbn("Thatchwork Cottage", "Hardcover"),
+  isbn("Kalakalal Avenue", "Hardcover"),
+];
+const BESTSELLERS = [
+  isbn("The Mallemaroking", "Mass market paperback"),
+  isbn("Rystwyth", "Hardcover"),
+  isbn("Portmeirion", "Mass market paperback"),
+];
+const PLANS = [
+  HOLD,
+  plan(QUIET),
+  plan(BESTSELLERS),
+  plan(QUIET, "events"),
+  plan(QUIET, "sale"),
+  plan([null, null, null], "events"),
+  plan([QUIET[0], null, null]),
+];
 const SWEEP = { timeout: 60_000 };
 const median = (values: number[]) => {
   const s = [...values].sort((a, b) => a - b);
@@ -44,28 +61,47 @@ describe("Q2 plans", () => {
 
   it("offers every edition sold in 2193, and the new volume", () => {
     expect(candidates).toHaveLength(new Set(data.saleLines.map((l) => l.isbn)).size + 1);
-    expect(candidates).toContainEqual({ isbn: RELEASE.edition.isbn, bookId: RELEASE.book.id, title: RELEASE.book.title, format: "Hardcover", listPrice: 22.99 });
+    expect(candidates).toContainEqual({
+      isbn: RELEASE.edition.isbn,
+      bookId: RELEASE.book.id,
+      title: RELEASE.book.title,
+      format: "Hardcover",
+      listPrice: 22.99,
+    });
     expect(candidates.map((c) => c.isbn)).toEqual([...new Set(candidates.map((c) => c.isbn))]);
   });
 
   it("features the edition picked, even beside another of the same title and format", () => {
     // Heliotrope Pajamas has two paperback editions, at $7.99 and $10.99.
-    const [first, second] = candidates.filter((c) => c.title === "Heliotrope Pajamas" && c.format === "Paperback");
+    const [first, second] = candidates.filter(
+      (c) => c.title === "Heliotrope Pajamas" && c.format === "Paperback",
+    );
     expect(first.isbn).not.toBe(second.isbn);
     for (const chosen of [first, second]) {
       const { lines, outcome } = simulateQ2(plan([chosen.isbn, null, null]), 1, data);
       const april = lines.filter((l) => l.date.slice(5, 7) === "04" && l.discount === 0.15);
       expect(new Set(april.map((l) => l.isbn))).toEqual(new Set([chosen.isbn]));
-      expect(outcome.facts.picks[0]).toMatchObject({ isbn: chosen.isbn, extra: expect.any(Number) });
+      expect(outcome.facts.picks[0]).toMatchObject({
+        isbn: chosen.isbn,
+        extra: expect.any(Number),
+      });
     }
   });
 
   it("refuses an invalid plan, an unknown edition, and a title picked twice", () => {
-    expect(() => simulateQ2({ picks: [null, null], levers: [] } as unknown as Q2Plan, 1, data)).toThrow(/Invalid Q2 plan/);
+    expect(() =>
+      simulateQ2({ picks: [null, null], levers: [] } as unknown as Q2Plan, 1, data),
+    ).toThrow(/Invalid Q2 plan/);
     expect(() => simulateQ2(plan(["000", null, null]), 1, data)).toThrow(/sold in 2193/);
-    const twoFormats = candidates.find((c) => candidates.some((d) => d.bookId === c.bookId && d.isbn !== c.isbn))!;
-    const other = candidates.find((d) => d.bookId === twoFormats.bookId && d.isbn !== twoFormats.isbn)!;
-    expect(() => simulateQ2(plan([twoFormats.isbn, other.isbn, null]), 1, data)).toThrow(/same title/);
+    const twoFormats = candidates.find((c) =>
+      candidates.some((d) => d.bookId === c.bookId && d.isbn !== c.isbn),
+    )!;
+    const other = candidates.find(
+      (d) => d.bookId === twoFormats.bookId && d.isbn !== twoFormats.isbn,
+    )!;
+    expect(() => simulateQ2(plan([twoFormats.isbn, other.isbn, null]), 1, data)).toThrow(
+      /same title/,
+    );
     // The same checks, without throwing, for the game to answer with a 400.
     expect(q2PlanProblem({ picks: [null, null], levers: [] }, data)).toBe("shape");
     expect(q2PlanProblem(plan(["000", null, null]), data)).toBe("unknown-edition");
@@ -90,9 +126,16 @@ describe("Q2 simulation", SWEEP, () => {
   it("writes Q2 lines at 2193's grain, with ids that never collide with Q1's", () => {
     const { lines, outcome } = simulateQ2(plan(QUIET, "events"), 3, data);
     expect(lines).toHaveLength(outcome.totals.plan.units);
-    expect(lines.every((l) => l.date >= "2194-04-01" && l.date <= "2194-06-30" && l.quarter === 2)).toBe(true);
+    expect(
+      lines.every((l) => l.date >= "2194-04-01" && l.date <= "2194-06-30" && l.quarter === 2),
+    ).toBe(true);
     expect(new Set(lines.map((l) => l.id)).size).toBe(lines.length);
-    expect(lines[0]).toMatchObject({ id: "sim-2194-q2:1", orderId: "S2194Q2-000001", itemId: "I2194Q2-000001", sourceSheet: "simulation" });
+    expect(lines[0]).toMatchObject({
+      id: "sim-2194-q2:1",
+      orderId: "S2194Q2-000001",
+      itemId: "I2194Q2-000001",
+      sourceSheet: "simulation",
+    });
   });
 
   it("holds course with the empty calendar: no Book of the Month discount", () => {
@@ -101,14 +144,19 @@ describe("Q2 simulation", SWEEP, () => {
 
   it("features each pick for its own month only, with extra copies as in 2193", () => {
     const { lines, outcome } = simulateQ2(plan([QUIET[0], null, QUIET[2]]), 5, data);
-    const featured = (isbn: string, month: string) => lines.filter((l) => l.isbn === isbn && l.date.slice(5, 7) === month);
+    const featured = (isbn: string, month: string) =>
+      lines.filter((l) => l.isbn === isbn && l.date.slice(5, 7) === month);
     expect(featured(QUIET[0], "04").every((l) => l.discount === 0.15)).toBe(true);
     expect(featured(QUIET[0], "05").some((l) => l.discount === 0.15)).toBe(false);
     expect(lines.some((l) => l.date.slice(5, 7) === "05" && l.discount === 0.15)).toBe(false);
     const [april, may, june] = outcome.facts.picks;
     expect(may).toBeNull();
     for (const f of [april!, june!]) expect(OBSERVED_EXTRAS).toContain(f.extra);
-    expect(april).toMatchObject({ isbn: QUIET[0], title: "Land Water Sky Space", format: "Hardcover" });
+    expect(april).toMatchObject({
+      isbn: QUIET[0],
+      title: "Land Water Sky Space",
+      format: "Hardcover",
+    });
   });
 
   it("produces outcomes the game's check accepts, and that check refuses a tampered one", () => {
@@ -130,33 +178,63 @@ describe("Q2 simulation", SWEEP, () => {
 
 describe("Q2 copy", () => {
   it("says what happened, one move or two", () => {
-    expect(simulateQ2(HOLD, 1, data).outcome.happened).toEqual(["You left the calendar empty: no Book of the Month in April, May or June."]);
+    expect(simulateQ2(HOLD, 1, data).outcome.happened).toEqual([
+      "You left the calendar empty: no Book of the Month in April, May or June.",
+    ]);
     const picks = simulateQ2(plan(QUIET), 1, data).outcome.happened;
     expect(picks).toHaveLength(4);
     expect(picks[3]).toMatch(/^Gross profit was [+-]\$[\d,]+ compared with holding course\.$/);
     // Land Water Sky Space sold none in Q2 2193, so nothing would have sold anyway.
-    expect(picks[0]).toMatch(/^In April, Land Water Sky Space sold about \d+ extra copies\. None would have sold without the pick, so every discounted copy was an extra sale\.$/);
-    expect(picks[2]).toMatch(/^In June, Kalakalal Avenue sold about \d+ extra copies; the discount on \d+ cop(y|ies) that would have sold anyway cost \$[\d,]+\.$/);
+    expect(picks[0]).toMatch(
+      /^In April, Land Water Sky Space sold about \d+ extra copies\. None would have sold without the pick, so every discounted copy was an extra sale\.$/,
+    );
+    expect(picks[2]).toMatch(
+      /^In June, Kalakalal Avenue sold about \d+ extra copies; the discount on \d+ cop(y|ies) that would have sold anyway cost \$[\d,]+\.$/,
+    );
     const sellers = simulateQ2(plan(BESTSELLERS), 1, data).outcome.happened;
-    expect(sellers[0]).toMatch(/^In April, The Mallemaroking sold about \d+ extra copies; the discount on [\d,]+ copies that would have sold anyway cost \$[\d,]+\.$/);
+    expect(sellers[0]).toMatch(
+      /^In April, The Mallemaroking sold about \d+ extra copies; the discount on [\d,]+ copies that would have sold anyway cost \$[\d,]+\.$/,
+    );
     const two = simulateQ2(plan(QUIET, "events"), 1, data).outcome.happened;
     expect(two.at(-1)).toMatch(/^Together, your two moves changed gross profit by/);
     expect(two.filter((s) => s.startsWith("Gross profit"))).toHaveLength(0);
   });
 
   it("states Q2's assumptions, the Book of the Month rules only for a plan with a pick", () => {
-    const used = (p: Q2Plan) => Object.fromEntries(simulateQ2(p, 1, data).outcome.assumptions.map((a) => [a.id, a.usedByPlan]));
+    const used = (p: Q2Plan) =>
+      Object.fromEntries(
+        simulateQ2(p, 1, data).outcome.assumptions.map((a) => [a.id, a.usedByPlan]),
+      );
     const hold = simulateQ2(HOLD, 1, data).outcome.assumptions;
     expect(hold.find((a) => a.id === "replay")!.text).toMatch(/^Q2 2194 repeats Q2 2193/);
-    expect(hold.find((a) => a.id === "event-orders")!.text).toMatch(/at Q2's average order value of \$\d+\.\d\d/);
-    expect(used(HOLD)).toMatchObject({ replay: true, "cost-of-goods": true, "botm-price": false, "botm-extra": false, "no-cannibalization": false, "sale-response": false, "event-orders": false });
-    expect(used(plan(QUIET, "sale"))).toMatchObject({ "botm-price": true, "botm-extra": true, "sale-response": true, "event-orders": false });
+    expect(hold.find((a) => a.id === "event-orders")!.text).toMatch(
+      /at Q2's average order value of \$\d+\.\d\d/,
+    );
+    expect(used(HOLD)).toMatchObject({
+      replay: true,
+      "cost-of-goods": true,
+      "botm-price": false,
+      "botm-extra": false,
+      "no-cannibalization": false,
+      "sale-response": false,
+      "event-orders": false,
+    });
+    expect(used(plan(QUIET, "sale"))).toMatchObject({
+      "botm-price": true,
+      "botm-extra": true,
+      "sale-response": true,
+      "event-orders": false,
+    });
   });
 });
 
 describe("the new volume in Q2", SWEEP, () => {
   it("keeps selling about 4.5 copies a day at full price, with no launch", () => {
-    const copies = Array.from({ length: 10 }, (_, i) => simulateQ2(HOLD, i + 1, data).lines.filter((l) => l.isbn === RELEASE.edition.isbn).length);
+    const copies = Array.from(
+      { length: 10 },
+      (_, i) =>
+        simulateQ2(HOLD, i + 1, data).lines.filter((l) => l.isbn === RELEASE.edition.isbn).length,
+    );
     for (const c of copies) {
       expect(c).toBeGreaterThan(390);
       expect(c).toBeLessThan(430);
@@ -165,7 +243,11 @@ describe("the new volume in Q2", SWEEP, () => {
 
   it("can be picked, and its copies that would sell anyway lose 15%", () => {
     const { outcome } = simulateQ2(plan([RELEASE.edition.isbn, null, null]), 1, data);
-    expect(outcome.facts.picks[0]).toMatchObject({ isbn: RELEASE.edition.isbn, title: RELEASE.book.title, format: "Hardcover" });
+    expect(outcome.facts.picks[0]).toMatchObject({
+      isbn: RELEASE.edition.isbn,
+      title: RELEASE.book.title,
+      format: "Hardcover",
+    });
     expect(outcome.facts.picks[0]!.baseCopies).toBeGreaterThan(100);
     expect(q2PlanProblem(plan([RELEASE.edition.isbn, null, null]), data)).toBeNull();
   });
@@ -182,9 +264,14 @@ describe("the new volume in Q2", SWEEP, () => {
 // The bands in docs/design/q2.md section 8, with the new volume still selling and anchored.
 describe("Q2 calibration", SWEEP, () => {
   const seeds = Array.from({ length: 20 }, (_, i) => i + 1);
-  const scores = (p: Q2Plan) => seeds.map((s) => simulateQ2(p, s, data).outcome.reportCard.plan.overall.score);
+  const scores = (p: Q2Plan) =>
+    seeds.map((s) => simulateQ2(p, s, data).outcome.reportCard.plan.overall.score);
   const profitChange = (p: Q2Plan) =>
-    median(seeds.map((s) => simulateQ2(p, s, data).outcome.totals).map((t) => t.plan.grossProfit - t.holdCourse.grossProfit));
+    median(
+      seeds
+        .map((s) => simulateQ2(p, s, data).outcome.totals)
+        .map((t) => t.plan.grossProfit - t.holdCourse.grossProfit),
+    );
 
   it("scores each kind of plan in its band", () => {
     const hold = scores(HOLD);

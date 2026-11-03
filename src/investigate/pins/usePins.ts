@@ -55,10 +55,13 @@ export function usePins(track: Track): Pins {
   );
 
   // A spec from before months had a year ("03") matches the 2193 pin it became when stored.
-  const has = useCallback((spec: PinSpec) => {
-    const key = pinKey(parsePinSpec(spec) ?? spec);
-    return pins.some((p) => pinKey(p) === key);
-  }, [pins]);
+  const has = useCallback(
+    (spec: PinSpec) => {
+      const key = pinKey(parsePinSpec(spec) ?? spec);
+      return pins.some((p) => pinKey(p) === key);
+    },
+    [pins],
+  );
 
   return { pins, add, remove, has };
 }

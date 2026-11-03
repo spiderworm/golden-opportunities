@@ -1,4 +1,14 @@
-import { createContext, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type Ref,
+} from "react";
 
 import { BOSSES } from "./bosses";
 import type { BossSceneProps } from "./BossScene2D";
@@ -30,7 +40,10 @@ export function BossLayout({ bubbles, open, onSelect, floor, columnRef }: BossLa
   const banner = useContext(BossBanner);
   const scroll = useScrollHint(open);
   return (
-    <div className={styles.scene} style={{ "--open": open, "--count": bubbles.length } as CSSProperties}>
+    <div
+      className={styles.scene}
+      style={{ "--open": open, "--count": bubbles.length } as CSSProperties}
+    >
       <div className={styles.room}>
         {/* The banner hung from the ceiling (David's layout 2): the open boss's briefing, then the form. Its
             panels share one cell, so it's always the tallest one's height and nothing below it moves. */}
@@ -52,7 +65,9 @@ export function BossLayout({ bubbles, open, onSelect, floor, columnRef }: BossLa
                     // A long briefing scrolls inside the banner; then the keyboard can reach and scroll it.
                     tabIndex={i === open && scroll.scrolls ? 0 : undefined}
                     role={i === open && scroll.scrolls ? "region" : undefined}
-                    aria-labelledby={i === open && scroll.scrolls ? `${id}-${i}-speaker` : undefined}
+                    aria-labelledby={
+                      i === open && scroll.scrolls ? `${id}-${i}-speaker` : undefined
+                    }
                     style={{ "--tint": tint } as CSSProperties}
                   >
                     <p id={`${id}-${i}-speaker`} className={styles.speaker}>
@@ -72,7 +87,12 @@ export function BossLayout({ bubbles, open, onSelect, floor, columnRef }: BossLa
           {bubbles.map((b, i) => {
             const { name, tint } = BOSSES[b.boss];
             return (
-              <li key={b.boss} ref={columnRef?.(i)} className={styles.column} style={{ "--tint": tint, "--order": i } as CSSProperties}>
+              <li
+                key={b.boss}
+                ref={columnRef?.(i)}
+                className={styles.column}
+                style={{ "--tint": tint, "--order": i } as CSSProperties}
+              >
                 <button
                   type="button"
                   className={styles.teaser}

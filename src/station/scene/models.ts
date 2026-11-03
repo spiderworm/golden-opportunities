@@ -23,7 +23,10 @@ export type StationModel =
 export const modelUrl = (name: StationModel) => `/models/station/${name}.glb`;
 
 /** The geometry and material of a static model, for instancing or placing as a plain mesh. */
-export function useModelParts(name: StationModel): { geometry: BufferGeometry; material: MeshStandardMaterial } {
+export function useModelParts(name: StationModel): {
+  geometry: BufferGeometry;
+  material: MeshStandardMaterial;
+} {
   const { scene } = useStationModel(modelUrl(name));
   return useMemo(() => {
     let mesh: Mesh | undefined;

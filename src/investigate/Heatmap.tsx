@@ -5,8 +5,26 @@ import { chartTheme, heatColor } from "~/platform/charts/chart-theme";
 import { Dropdown } from "~/platform/ui/Dropdown";
 import { Icon } from "~/shell/icons";
 import { cellSelected, heatAxis, heatModel, type HeatModel } from "./charts/heat-model";
-import { DIMENSION_LABELS, formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "./format";
-import { CHART_MEASURES, filtersExcept, HEAT_DIMENSIONS, HEAT_WINDOW, heatSpanFilter, heatWindow, type ChartMeasure, type Filters, type HeatDimension, type HeatState, type InvestigateState } from "./state";
+import {
+  DIMENSION_LABELS,
+  formatDimensionShort,
+  formatDimensionValue,
+  formatMeasure,
+  MEASURE_LABELS,
+} from "./format";
+import {
+  CHART_MEASURES,
+  filtersExcept,
+  HEAT_DIMENSIONS,
+  HEAT_WINDOW,
+  heatSpanFilter,
+  heatWindow,
+  type ChartMeasure,
+  type Filters,
+  type HeatDimension,
+  type HeatState,
+  type InvestigateState,
+} from "./state";
 import styles from "./Investigate.module.css";
 
 export interface HeatmapProps {
@@ -24,9 +42,13 @@ export interface HeatmapProps {
 /** What a heatmap says when the terminal's row limit left cells out: those cells are blank, not zero. */
 export const CUT_NOTE = "This grid is too large to show in full. Narrow it with a filter.";
 /** The same, when the player chose every quarter over a long ledger: the window is the other way out (Plot). */
-export const CUT_NOTE_ALL = "This grid is too large to show in full. Narrow it with a filter, or choose Last eight quarters.";
+export const CUT_NOTE_ALL =
+  "This grid is too large to show in full. Narrow it with a filter, or choose Last eight quarters.";
 /** Why Period can't be changed: the screen's own quarter (or else month) filter decides the span (Plot). */
-const PERIOD_FOLLOWS = { quarter: "Following the screen's quarter filter.", month: "Following the screen's month filter." } as const;
+const PERIOD_FOLLOWS = {
+  quarter: "Following the screen's quarter filter.",
+  month: "Following the screen's month filter.",
+} as const;
 /** A cut-off cell's label (Plot, #264). */
 const CUT_CELL = "Not shown: the grid was cut off.";
 
@@ -59,12 +81,24 @@ export function Heatmap({ state, result, quarters, onCell, onHeat, onPin, pinned
   const long = quarters.length > HEAT_WINDOW;
   const span = heatSpanFilter(state);
   const model = useMemo(
-    () => heatModel(result, shown.measure, shown.rows, heatAxis(shown.rows, result, quarters, scope), shown.cols, heatAxis(shown.cols, result, quarters, scope)),
+    () =>
+      heatModel(
+        result,
+        shown.measure,
+        shown.rows,
+        heatAxis(shown.rows, result, quarters, scope),
+        shown.cols,
+        heatAxis(shown.cols, result, quarters, scope),
+      ),
     [result, shown.measure, shown.rows, shown.cols, quarters, state.filters, window?.join()],
   );
   const title = heatTitle(shown, window !== null);
   // Each axis offers every dimension but the other axis's: never the same one twice.
-  const axisOptions = (other: HeatDimension) => HEAT_DIMENSIONS.filter((d) => d !== other).map((d) => ({ value: d, label: DIMENSION_LABELS[d] }));
+  const axisOptions = (other: HeatDimension) =>
+    HEAT_DIMENSIONS.filter((d) => d !== other).map((d) => ({
+      value: d,
+      label: DIMENSION_LABELS[d],
+    }));
 
   return (
     <section className={styles.card} aria-labelledby="heatmap-title">
@@ -80,8 +114,20 @@ export function Heatmap({ state, result, quarters, onCell, onHeat, onPin, pinned
             onChange={(measure: ChartMeasure) => choose({ ...heat, measure })}
             options={CHART_MEASURES.map((m) => ({ value: m, label: MEASURE_LABELS[m] }))}
           />
-          <Dropdown mode="single" name="Rows" value={heat.rows} onChange={(rows: HeatDimension) => choose({ ...heat, rows })} options={axisOptions(heat.cols)} />
-          <Dropdown mode="single" name="Columns" value={heat.cols} onChange={(cols: HeatDimension) => choose({ ...heat, cols })} options={axisOptions(heat.rows)} />
+          <Dropdown
+            mode="single"
+            name="Rows"
+            value={heat.rows}
+            onChange={(rows: HeatDimension) => choose({ ...heat, rows })}
+            options={axisOptions(heat.cols)}
+          />
+          <Dropdown
+            mode="single"
+            name="Columns"
+            value={heat.cols}
+            onChange={(cols: HeatDimension) => choose({ ...heat, cols })}
+            options={axisOptions(heat.rows)}
+          />
           {/* Only once the ledger holds more than eight quarters: before that, every quarter is the last eight (Plot). */}
           {long && (
             <Dropdown
@@ -95,14 +141,32 @@ export function Heatmap({ state, result, quarters, onCell, onHeat, onPin, pinned
               ].map((o) => ({ ...o, disabledReason: span ? PERIOD_FOLLOWS[span] : null }))}
             />
           )}
-          <button type="button" className={styles.toggle} onClick={onPin} disabled={pinned} title={pinned ? "Already pinned" : "Pin this heatmap below"}>
+          <button
+            type="button"
+            className={styles.toggle}
+            onClick={onPin}
+            disabled={pinned}
+            title={pinned ? "Already pinned" : "Pin this heatmap below"}
+          >
             <Icon name="pin" size={14} /> {pinned ? "Pinned" : "Pin"}
           </button>
         </div>
       </header>
       <HeatScale measure={shown.measure} model={model} />
-      <HeatGrid model={model} measure={shown.measure} rowsBy={shown.rows} colsBy={shown.cols} filters={state.filters} label={title} onCell={onCell} />
-      {model.cut && <p className={styles.source}>{long && shown.period === "all" && !span ? CUT_NOTE_ALL : CUT_NOTE}</p>}
+      <HeatGrid
+        model={model}
+        measure={shown.measure}
+        rowsBy={shown.rows}
+        colsBy={shown.cols}
+        filters={state.filters}
+        label={title}
+        onCell={onCell}
+      />
+      {model.cut && (
+        <p className={styles.source}>
+          {long && shown.period === "all" && !span ? CUT_NOTE_ALL : CUT_NOTE}
+        </p>
+      )}
       <p className={styles.source}>
         {`Click a cell to filter the screen to that ${DIMENSION_LABELS[shown.rows].toLowerCase()} and ${DIMENSION_LABELS[shown.cols].toLowerCase()}. Source: ${result.source}`}
       </p>
@@ -115,7 +179,10 @@ export function HeatScale({ measure, model }: { measure: ChartMeasure; model: He
   return (
     <div className={styles.scale} aria-hidden="true">
       <span>{formatMeasure(measure, model.min, { compact: true })}</span>
-      <span className={styles.scaleBar} style={{ background: `linear-gradient(90deg, ${chartTheme.heatRamp.join(", ")})` }} />
+      <span
+        className={styles.scaleBar}
+        style={{ background: `linear-gradient(90deg, ${chartTheme.heatRamp.join(", ")})` }}
+      />
       <span>{formatMeasure(measure, model.max, { compact: true })}</span>
     </div>
   );
@@ -148,7 +215,12 @@ export function HeatGrid({
   const known = (values: (string | null)[]) => values.filter((v): v is string => v !== null);
 
   return (
-    <div className={styles.heatmap} role="table" aria-label={label} style={{ gridTemplateColumns: `auto repeat(${model.cols.length}, minmax(0, 1fr))` }}>
+    <div
+      className={styles.heatmap}
+      role="table"
+      aria-label={label}
+      style={{ gridTemplateColumns: `auto repeat(${model.cols.length}, minmax(0, 1fr))` }}
+    >
       <div role="row" className={styles.heatRow}>
         <span role="columnheader" />
         {model.cols.map((c) => (
@@ -170,7 +242,10 @@ export function HeatGrid({
             // In a cut result, a cell with no value is one the terminal left out, not one with no sales.
             const missing = model.missing.has(`${x},${y}`);
             const name = `${formatDimensionValue(rowsBy, row)}, ${formatDimensionValue(colsBy, col)}: ${missing ? CUT_CELL : formatMeasure(measure, value)}`;
-            const style = { background: value === null ? "transparent" : heatColor(t), color: t > 0.75 && value !== null ? chartTheme.inkOnLight : chartTheme.inkOnDark };
+            const style = {
+              background: value === null ? "transparent" : heatColor(t),
+              color: t > 0.75 && value !== null ? chartTheme.inkOnLight : chartTheme.inkOnDark,
+            };
             const text = missing ? "" : formatMeasure(measure, value, { compact: true });
             // An unknown value can't be filtered on: the query API has no null filter.
             const clickable = onCell && row !== null && col !== null;
@@ -191,7 +266,13 @@ export function HeatGrid({
                     {text}
                   </button>
                 ) : (
-                  <span className={styles.heatCell} data-tip={name} aria-label={name} data-cut={missing || undefined} style={style}>
+                  <span
+                    className={styles.heatCell}
+                    data-tip={name}
+                    aria-label={name}
+                    data-cut={missing || undefined}
+                    style={style}
+                  >
                     {text}
                   </span>
                 )}

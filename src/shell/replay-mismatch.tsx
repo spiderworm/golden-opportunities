@@ -26,12 +26,22 @@ export function replayMismatchOf(error: unknown): string | null {
 }
 
 /** The screen: Settings' Reset game panel, with its in-page confirm, in this copy's words. */
-export function ReplayMismatch({ quarter, instance }: { quarter: string; instance: string | undefined }) {
+export function ReplayMismatch({
+  quarter,
+  instance,
+}: {
+  quarter: string;
+  instance: string | undefined;
+}) {
   return (
     <ResetGame
       instance={instance}
       from="replay"
-      copy={{ heading: REPLAY_MISMATCH_COPY.heading, text: REPLAY_MISMATCH_COPY.body(quarterName(quarter)), open: REPLAY_MISMATCH_COPY.start }}
+      copy={{
+        heading: REPLAY_MISMATCH_COPY.heading,
+        text: REPLAY_MISMATCH_COPY.body(quarterName(quarter)),
+        open: REPLAY_MISMATCH_COPY.start,
+      }}
     />
   );
 }

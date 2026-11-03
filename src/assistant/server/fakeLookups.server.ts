@@ -6,10 +6,14 @@
 import { callTool } from "../tools/server.ts";
 import type { AssistantProvider, ProviderEvent } from "./provider.server.ts";
 
-const TEXT = "Here is revenue by quarter, as the data terminal has it, and the latest quarter beside the quarter before it.";
+const TEXT =
+  "Here is revenue by quarter, as the data terminal has it, and the latest quarter beside the quarter before it.";
 
 export function fakeLookupAssistant(toolEnv: Record<string, string>): AssistantProvider {
-  const lookup = async (name: string, input: Record<string, unknown>): Promise<ProviderEvent & { type: "tool" }> => {
+  const lookup = async (
+    name: string,
+    input: Record<string, unknown>,
+  ): Promise<ProviderEvent & { type: "tool" }> => {
     const { content, isError } = await callTool(name, input, toolEnv);
     return { type: "tool", name, input, output: content[0]?.text ?? "", isError: isError === true };
   };
@@ -22,12 +26,20 @@ export function fakeLookupAssistant(toolEnv: Record<string, string>): AssistantP
       yield quarters;
       let labels: string[] = [];
       try {
-        labels = (JSON.parse(quarters.output) as { rows: { quarter?: unknown }[] }).rows.map((r) => r.quarter).filter((q): q is string => typeof q === "string");
+        labels = (JSON.parse(quarters.output) as { rows: { quarter?: unknown }[] }).rows
+          .map((r) => r.quarter)
+          .filter((q): q is string => typeof q === "string");
       } catch {
         // A failed lookup: nothing to compare.
       }
       if (labels.length < 2) return;
-      const compared = await lookup("compare_data", { measure: "revenue", across: "quarter", from: labels.at(-2), to: labels.at(-1), by: ["genre"] });
+      const compared = await lookup("compare_data", {
+        measure: "revenue",
+        across: "quarter",
+        from: labels.at(-2),
+        to: labels.at(-1),
+        by: ["genre"],
+      });
       if (signal.aborted) return;
       yield compared;
     },

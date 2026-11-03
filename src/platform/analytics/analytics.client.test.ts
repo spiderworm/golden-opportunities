@@ -16,7 +16,8 @@ async function load(fetchImpl: typeof fetch) {
   return import("./analytics.client");
 }
 const failing = (() => Promise.reject(new Error("offline"))) as typeof fetch;
-const ok = (async (_url: string, init?: RequestInit) => Response.json(JSON.parse(String(init?.body)))) as typeof fetch;
+const ok = (async (_url: string, init?: RequestInit) =>
+  Response.json(JSON.parse(String(init?.body)))) as typeof fetch;
 
 beforeEach(() => stored.clear());
 afterEach(() => vi.unstubAllGlobals());
@@ -40,7 +41,10 @@ test("an off choice the server never confirmed stays unconfirmed across reloads,
 
 test("a confirmed choice needs nothing at load", async () => {
   const calls: string[] = [];
-  const counting = (async (url: string, init?: RequestInit) => (calls.push(url), ok(url, init))) as typeof fetch;
+  const counting = (async (url: string, init?: RequestInit) => (
+    calls.push(url),
+    ok(url, init)
+  )) as typeof fetch;
   const page = await load(counting);
   page.startAnalytics("instance-1");
   expect(await page.sharingConfirmed()).toBe(true);
@@ -50,7 +54,12 @@ test("a confirmed choice needs nothing at load", async () => {
 test("a phone records only that it got the phone screen; a desktop records everything", async () => {
   const sent: string[] = [];
   vi.doMock("@tellim/analytics/client", () => ({
-    createAnalytics: () => ({ track: (event: string) => sent.push(event), sharing: () => true, setSharing() {}, install: () => "install" }),
+    createAnalytics: () => ({
+      track: (event: string) => sent.push(event),
+      sharing: () => true,
+      setSharing() {},
+      install: () => "install",
+    }),
   }));
   try {
     for (const phone of [true, false]) {
@@ -60,7 +69,9 @@ test("a phone records only that it got the phone screen; a desktop records every
       page.startAnalytics("instance-1");
       page.track("station_viewed", { mode: "3d" });
       page.track("phone_blocked", { size: "360-399" });
-      expect(sent.filter((e) => e !== "instance")).toEqual(phone ? ["phone_blocked"] : ["station_viewed", "phone_blocked"]);
+      expect(sent.filter((e) => e !== "instance")).toEqual(
+        phone ? ["phone_blocked"] : ["station_viewed", "phone_blocked"],
+      );
     }
   } finally {
     vi.doUnmock("@tellim/analytics/client");

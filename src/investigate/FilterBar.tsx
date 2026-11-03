@@ -69,7 +69,18 @@ export interface FilterBarProps {
  * One row of filters above everything they scope: only the ones the player has added, each with its own control
  * and an "x" to take it off, then "Add a filter" (David, 2 Nov 2026).
  */
-export function FilterBar({ filters, options, shown, onAdd, onRemove, onChange, onDiscount, onAward, onSeries, onClear }: FilterBarProps) {
+export function FilterBar({
+  filters,
+  options,
+  shown,
+  onAdd,
+  onRemove,
+  onChange,
+  onDiscount,
+  onAward,
+  onSeries,
+  onClear,
+}: FilterBarProps) {
   const addButton = useRef<HTMLButtonElement>(null);
   const any = FILTERS.some((id) => FILTER_PARTS[id].some((d) => filters[d]?.length));
   // A one-choice menu's filters that no single choice names (a link with both, or two awards or volumes) show as
@@ -84,25 +95,50 @@ export function FilterBar({ filters, options, shown, onAdd, onRemove, onChange, 
   const control = (id: FilterId) => {
     switch (id) {
       case "discount":
-        return <DiscountMenu choice={discountChoice(filters)} rates={options.discount_rate} onChange={onDiscount} />;
+        return (
+          <DiscountMenu
+            choice={discountChoice(filters)}
+            rates={options.discount_rate}
+            onChange={onDiscount}
+          />
+        );
       case "awards":
-        return <AwardMenu choice={awardChoice(filters)} awards={options.award} onChange={onAward} />;
+        return (
+          <AwardMenu choice={awardChoice(filters)} awards={options.award} onChange={onAward} />
+        );
       case "series":
-        return <SeriesMenu choice={seriesChoice(filters)} volumes={options.volume} onChange={onSeries} />;
+        return (
+          <SeriesMenu choice={seriesChoice(filters)} volumes={options.volume} onChange={onSeries} />
+        );
       case "price":
         return (
-          <FilterMenu dimension="price_band" options={options.price_band} selected={filters.price_band ?? []} onChange={(values) => onChange("price_band", values)} />
+          <FilterMenu
+            dimension="price_band"
+            options={options.price_band}
+            selected={filters.price_band ?? []}
+            onChange={(values) => onChange("price_band", values)}
+          />
         );
       default: {
         // Titles and editions are too many to list: they come from a chart's drilldown.
         const choices =
-          id === "month" ? monthsInScope(options.quarter) : id === "weekday" ? WEEKDAYS : id === "title" || id === "edition" ? (filters[id] ?? []) : options[id];
+          id === "month"
+            ? monthsInScope(options.quarter)
+            : id === "weekday"
+              ? WEEKDAYS
+              : id === "title" || id === "edition"
+                ? (filters[id] ?? [])
+                : options[id];
         return (
           <FilterMenu
             dimension={id}
             options={choices}
             selected={filters[id] ?? []}
-            empty={id === "title" || id === "edition" ? `Choose ${id === "title" ? "a title" : "an edition"} from a chart broken down by ${FILTER_LABELS[id]}.` : undefined}
+            empty={
+              id === "title" || id === "edition"
+                ? `Choose ${id === "title" ? "a title" : "an edition"} from a chart broken down by ${FILTER_LABELS[id]}.`
+                : undefined
+            }
             onChange={(values) => onChange(id, values)}
           />
         );
@@ -152,7 +188,12 @@ export function FilterBar({ filters, options, shown, onAdd, onRemove, onChange, 
                   type="button"
                   className={styles.chipRemove}
                   aria-label={`Remove ${DIMENSION_LABELS[dimension]} ${formatDimensionValue(dimension, value)}`}
-                  onClick={() => onChange(dimension, filters[dimension]!.filter((v) => v !== value))}
+                  onClick={() =>
+                    onChange(
+                      dimension,
+                      filters[dimension]!.filter((v) => v !== value),
+                    )
+                  }
                 >
                   <Icon name="close" size={14} />
                 </button>
@@ -220,7 +261,13 @@ function FilterMenu({
     <Dropdown
       mode="multi"
       name={DIMENSION_LABELS[dimension]}
-      summary={selected.length === 0 ? (ALL[dimension] ?? "All") : selected.length === 1 ? formatDimensionValue(dimension, selected[0]) : `${selected.length} selected`}
+      summary={
+        selected.length === 0
+          ? (ALL[dimension] ?? "All")
+          : selected.length === 1
+            ? formatDimensionValue(dimension, selected[0])
+            : `${selected.length} selected`
+      }
       active={selected.length > 0}
       empty={empty}
       values={selected}
@@ -234,7 +281,19 @@ function FilterMenu({
  * A one-choice menu whose choices aren't strings (an award, a volume): each is keyed for the dropdown, and the
  * key is mapped back to its choice.
  */
-function ChoiceMenu<C>({ name, choices, choice, keyOf, onChange }: { name: string; choices: { value: C; label: string }[]; choice: C; keyOf: (c: C) => string; onChange: (choice: C) => void }) {
+function ChoiceMenu<C>({
+  name,
+  choices,
+  choice,
+  keyOf,
+  onChange,
+}: {
+  name: string;
+  choices: { value: C; label: string }[];
+  choice: C;
+  keyOf: (c: C) => string;
+  onChange: (choice: C) => void;
+}) {
   const fallback = choices[0]!;
   const current = choices.find((c) => keyOf(c.value) === keyOf(choice)) ?? fallback;
   return (
@@ -251,36 +310,90 @@ function ChoiceMenu<C>({ name, choices, choice, keyOf, onChange }: { name: strin
 }
 
 /** One choice: every sale, full price, any discount, or a single rate. */
-function DiscountMenu({ choice, rates, onChange }: { choice: DiscountChoice; rates: string[]; onChange: (choice: DiscountChoice) => void }) {
+function DiscountMenu({
+  choice,
+  rates,
+  onChange,
+}: {
+  choice: DiscountChoice;
+  rates: string[];
+  onChange: (choice: DiscountChoice) => void;
+}) {
   const choices: { value: DiscountChoice; label: string }[] = [
     { value: "all", label: "Any price" },
     { value: "full", label: "Full price" },
     { value: "any", label: "Any discount" },
     ...rates
       .filter((rate) => parseFloat(rate) !== 0)
-      .map((rate) => ({ value: rate as DiscountChoice, label: formatDimensionValue("discount_rate", rate) })),
+      .map((rate) => ({
+        value: rate as DiscountChoice,
+        label: formatDimensionValue("discount_rate", rate),
+      })),
   ];
-  return <ChoiceMenu name="Discount" choices={choices} choice={choice} keyOf={(c) => c} onChange={onChange} />;
+  return (
+    <ChoiceMenu
+      name="Discount"
+      choices={choices}
+      choice={choice}
+      keyOf={(c) => c}
+      onChange={onChange}
+    />
+  );
 }
 
 /** One choice: every book, award winners, books without an award, or one award's winners. */
-function AwardMenu({ choice, awards, onChange }: { choice: AwardChoice; awards: string[]; onChange: (choice: AwardChoice) => void }) {
+function AwardMenu({
+  choice,
+  awards,
+  onChange,
+}: {
+  choice: AwardChoice;
+  awards: string[];
+  onChange: (choice: AwardChoice) => void;
+}) {
   const choices: { value: AwardChoice; label: string }[] = [
     { value: "all", label: "Any book" },
     { value: "yes", label: formatDimensionValue("awarded", "yes") },
     { value: "no", label: formatDimensionValue("awarded", "no") },
     ...awards.map((award) => ({ value: { award }, label: award })),
   ];
-  return <ChoiceMenu name="Awards" choices={choices} choice={choice} keyOf={(c) => (typeof c === "object" ? `award:${c.award}` : c)} onChange={onChange} />;
+  return (
+    <ChoiceMenu
+      name="Awards"
+      choices={choices}
+      choice={choice}
+      keyOf={(c) => (typeof c === "object" ? `award:${c.award}` : c)}
+      onChange={onChange}
+    />
+  );
 }
 
 /** One choice: every book, books in a series, standalone books, or one volume number. */
-function SeriesMenu({ choice, volumes, onChange }: { choice: SeriesChoice; volumes: string[]; onChange: (choice: SeriesChoice) => void }) {
+function SeriesMenu({
+  choice,
+  volumes,
+  onChange,
+}: {
+  choice: SeriesChoice;
+  volumes: string[];
+  onChange: (choice: SeriesChoice) => void;
+}) {
   const choices: { value: SeriesChoice; label: string }[] = [
     { value: "all", label: "Any book" },
     { value: "yes", label: formatDimensionValue("in_series", "yes") },
     { value: "no", label: formatDimensionValue("in_series", "no") },
-    ...volumes.map((volume) => ({ value: { volume }, label: formatDimensionValue("volume", volume) })),
+    ...volumes.map((volume) => ({
+      value: { volume },
+      label: formatDimensionValue("volume", volume),
+    })),
   ];
-  return <ChoiceMenu name="Series volume" choices={choices} choice={choice} keyOf={(c) => (typeof c === "object" ? `volume:${c.volume}` : c)} onChange={onChange} />;
+  return (
+    <ChoiceMenu
+      name="Series volume"
+      choices={choices}
+      choice={choice}
+      keyOf={(c) => (typeof c === "object" ? `volume:${c.volume}` : c)}
+      onChange={onChange}
+    />
+  );
 }

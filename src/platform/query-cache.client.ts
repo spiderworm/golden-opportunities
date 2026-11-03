@@ -73,7 +73,14 @@ export interface QueryCache {
   readonly size: { entries: number; bytes: number };
 }
 
-const NO_STATS: CacheStats = { hits: 0, misses: 0, shared: 0, bytesServed: 0, evictions: 0, overtaken: 0 };
+const NO_STATS: CacheStats = {
+  hits: 0,
+  misses: 0,
+  shared: 0,
+  bytesServed: 0,
+  evictions: 0,
+  overtaken: 0,
+};
 
 function abortError(): Error {
   return new DOMException("The operation was aborted.", "AbortError");
@@ -169,7 +176,8 @@ export function createQueryCache({ maxEntries = 300, maxBytes = 4_000_000 } = {}
     peek,
     load<T>(key: string, fetcher: () => Promise<Loaded<T>>, signal?: AbortSignal): Promise<T> {
       const cached = peek<T>(key);
-      if (cached !== undefined) return signal?.aborted ? Promise.reject(abortError()) : Promise.resolve(cached);
+      if (cached !== undefined)
+        return signal?.aborted ? Promise.reject(abortError()) : Promise.resolve(cached);
       const flightKey = `${version}\u0000${key}`;
       const pending = inFlight.get(flightKey) as Promise<T> | undefined;
       if (pending) {
@@ -184,7 +192,8 @@ export function createQueryCache({ maxEntries = 300, maxBytes = 4_000_000 } = {}
           if (inFlight.get(flightKey) === shared) inFlight.delete(flightKey);
           noteVersion(loaded.version);
           const computedFor = loaded.version === undefined ? asked : loaded.version;
-          if (computedFor !== null && asked === version && computedFor === version) keep(key, loaded.value, loaded.bytes);
+          if (computedFor !== null && asked === version && computedFor === version)
+            keep(key, loaded.value, loaded.bytes);
           return loaded.value;
         },
         (error: unknown) => {
@@ -236,7 +245,13 @@ const sortedFilter = (filter: Query["filter"]) =>
  * kept in order, since it orders the result's columns.
  */
 export function queryKey(query: Query): string {
-  return JSON.stringify([query.measure, query.by, sortedFilter(query.filter), query.sort ?? null, query.limit ?? null]);
+  return JSON.stringify([
+    query.measure,
+    query.by,
+    sortedFilter(query.filter),
+    query.sort ?? null,
+    query.limit ?? null,
+  ]);
 }
 
 const PAGES = ["investigate", "decide", "result", "settings"] as const;

@@ -10,7 +10,13 @@ import { DustMotes } from "./DustMotes";
 import { Exterior, Shuttles } from "./Exterior";
 import { summarizeFrames } from "./frame-stats";
 import { Interior } from "./Interior";
-import { BERTH_ORIGIN, OUTSIDE_EYE, STATION_SPIN, STATION_START_ANGLE, SUN_DIRECTION } from "./layout";
+import {
+  BERTH_ORIGIN,
+  OUTSIDE_EYE,
+  STATION_SPIN,
+  STATION_START_ANGLE,
+  SUN_DIRECTION,
+} from "./layout";
 import { Props } from "./Props";
 import { Robots } from "./Robots";
 import { Shoppers } from "./Shoppers";
@@ -66,7 +72,12 @@ export default function StationScene(props: StationSceneProps) {
     >
       <color attach="background" args={["#03050d"]} />
       <ambientLight intensity={0.6} color="#8c93c8" />
-      <directionalLight ref={sun} position={SUN_DIRECTION.clone().multiplyScalar(300).toArray()} intensity={SUN_INTENSITY} color="#fff3e2" />
+      <directionalLight
+        ref={sun}
+        position={SUN_DIRECTION.clone().multiplyScalar(300).toArray()}
+        intensity={SUN_INTENSITY}
+        color="#fff3e2"
+      />
       <Suspense fallback={null}>
         <Sky />
       </Suspense>
@@ -76,7 +87,12 @@ export default function StationScene(props: StationSceneProps) {
         <Suspense fallback={null}>
           <Exterior glow={levels.glow} />
           <group position={BERTH_ORIGIN}>
-            <Interior title={props.featuredTitle} glow={levels.glow} alert={props.alert} shop={shop} />
+            <Interior
+              title={props.featuredTitle}
+              glow={levels.glow}
+              alert={props.alert}
+              shop={shop}
+            />
             <Shoppers count={levels.shoppers} shop={shop} />
             <Robots shop={shop} />
             <DustMotes />
@@ -89,7 +105,12 @@ export default function StationScene(props: StationSceneProps) {
       <Suspense fallback={null}>
         <Shuttles count={levels.shuttles} />
       </Suspense>
-      <CameraRig station={station} sun={sun} view={props.view} instant={props.reducedMotion} onSettled={(view) => {
+      <CameraRig
+        station={station}
+        sun={sun}
+        view={props.view}
+        instant={props.reducedMotion}
+        onSettled={(view) => {
           settled.current = view;
           props.onSettled(view);
         }}
@@ -101,7 +122,8 @@ export default function StationScene(props: StationSceneProps) {
 
 function Spinner({ station }: { station: RefObject<Group | null> }) {
   useFrame(({ clock }) => {
-    if (station.current) station.current.rotation.y = STATION_START_ANGLE + STATION_SPIN * clock.elapsedTime;
+    if (station.current)
+      station.current.rotation.y = STATION_START_ANGLE + STATION_SPIN * clock.elapsedTime;
   });
   return null;
 }
@@ -165,7 +187,14 @@ function FrameSampler({
   settled: RefObject<StationViewpoint | null>;
   statsLine?: RefObject<HTMLElement | null>;
 }) {
-  const state = useRef({ view: null as StationViewpoint | null, tick: 0, seen: 0, frames: [] as number[], recent: [] as number[], sent: new Set<StationViewpoint>() });
+  const state = useRef({
+    view: null as StationViewpoint | null,
+    tick: 0,
+    seen: 0,
+    frames: [] as number[],
+    recent: [] as number[],
+    sent: new Set<StationViewpoint>(),
+  });
 
   useFrame(({ gl, size }, delta) => {
     const s = state.current;

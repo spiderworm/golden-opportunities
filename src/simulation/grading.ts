@@ -24,9 +24,15 @@ export function goalFor(lastYear: number, quarterlyAverage: number): number {
 }
 
 /** The unrounded score, 0 to 100. */
-export function rawScore(result: number, lastYear: number, goal: number, quarterlyAverage: number): number {
+export function rawScore(
+  result: number,
+  lastYear: number,
+  goal: number,
+  quarterlyAverage: number,
+): number {
   if (result >= goal) return 100;
-  if (result >= lastYear) return ANCHOR + ((100 - ANCHOR) * (result - lastYear)) / (goal - lastYear);
+  if (result >= lastYear)
+    return ANCHOR + ((100 - ANCHOR) * (result - lastYear)) / (goal - lastYear);
   const scale = Math.max(Math.abs(lastYear), Math.abs(quarterlyAverage));
   return Math.max(0, ANCHOR - (BELOW_PENALTY * (lastYear - result)) / scale);
 }
@@ -37,7 +43,16 @@ export function shownScore(raw: number, atGoal: boolean): number {
 }
 
 const GRADES: [number, Grade][] = [
-  [100, "A+"], [93, "A"], [90, "A-"], [87, "B+"], [83, "B"], [80, "B-"], [77, "C+"], [73, "C"], [70, "C-"], [60, "D"],
+  [100, "A+"],
+  [93, "A"],
+  [90, "A-"],
+  [87, "B+"],
+  [83, "B"],
+  [80, "B-"],
+  [77, "C+"],
+  [73, "C"],
+  [70, "C-"],
+  [60, "D"],
 ];
 
 export function gradeFor(score: number): Grade {
@@ -53,7 +68,10 @@ export interface MeasureInput {
   goal?: number;
 }
 
-export function scoreMeasure(id: MeasureId, { result, lastYear, quarterlyAverage, goal: set }: MeasureInput): MeasureScore {
+export function scoreMeasure(
+  id: MeasureId,
+  { result, lastYear, quarterlyAverage, goal: set }: MeasureInput,
+): MeasureScore {
   const goal = set ?? goalFor(lastYear, quarterlyAverage);
   const met = result >= goal;
   const score = shownScore(rawScore(result, lastYear, goal, quarterlyAverage), met);
@@ -66,8 +84,11 @@ export function reportCard(inputs: Record<MeasureId, MeasureInput>): ReportCard 
   const score = Math.min(...measures.map((m) => m.score));
   const allMet = measures.every((m) => m.met);
   const below = measures.filter((m) => m.result < m.lastYear);
-  const sacrifice = !allMet && below.some((low) => measures.some((m) => m.id !== low.id && m.exceeds));
-  const certificates: Certificate[] = measures.filter((m) => m.exceeds).map((m) => ({ id: "exceeds", measure: m.id }));
+  const sacrifice =
+    !allMet && below.some((low) => measures.some((m) => m.id !== low.id && m.exceeds));
+  const certificates: Certificate[] = measures
+    .filter((m) => m.exceeds)
+    .map((m) => ({ id: "exceeds", measure: m.id }));
   if (score >= WELL_ROUNDED) certificates.push({ id: "wellRounded" });
   return {
     measures,

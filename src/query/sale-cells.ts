@@ -4,7 +4,7 @@
 // An order sits on one date (Sim, #251), so its lines share a month and weekday; the orders that span several
 // cells (several editions, or one at two discounts) are kept, so distinct orders stay exact for any group.
 
-import type { DeepReadonly, SaleLine } from '../bookshop/types';
+import type { DeepReadonly, SaleLine } from "../bookshop/types";
 
 export interface SaleCell {
   /** One of the cell's lines: every line in the cell has its dimensions. */
@@ -33,7 +33,11 @@ export function rollUpSales(sales: readonly DeepReadonly<SaleLine>[]): SaleCells
   for (const sale of sales) {
     const key = `${sale.isbn}\0${sale.listPrice}\0${sale.date.slice(0, 7)}\0${WEEKDAY(sale.date)}\0${sale.discount}`;
     let at = index.get(key);
-    if (at === undefined) { at = cells.length; index.set(key, at); cells.push({ line: sale, lines: 0, orders: new Set() }); }
+    if (at === undefined) {
+      at = cells.length;
+      index.set(key, at);
+      cells.push({ line: sale, lines: 0, orders: new Set() });
+    }
     const cell = cells[at]!;
     cell.lines++;
     cell.orders.add(sale.orderId);
@@ -41,8 +45,14 @@ export function rollUpSales(sales: readonly DeepReadonly<SaleLine>[]): SaleCells
     if (!touched) orderCells.set(sale.orderId, (touched = new Set()));
     touched.add(at);
   }
-  const spanning = [...orderCells.values()].filter(touched => touched.size > 1).map(touched => [...touched]);
-  return { cells: cells.map(({ line, lines, orders }) => ({ line, lines, orders: orders.size })), spanning, lines: sales.length };
+  const spanning = [...orderCells.values()]
+    .filter((touched) => touched.size > 1)
+    .map((touched) => [...touched]);
+  return {
+    cells: cells.map(({ line, lines, orders }) => ({ line, lines, orders: orders.size })),
+    spanning,
+    lines: sales.length,
+  };
 }
 
 /**
@@ -56,7 +66,7 @@ export function mergeCells(parts: readonly SaleCells[]): SaleCells {
   for (const part of parts) {
     const offset = cells.length;
     cells.push(...part.cells);
-    for (const touched of part.spanning) spanning.push(touched.map(at => offset + at));
+    for (const touched of part.spanning) spanning.push(touched.map((at) => offset + at));
     lines += part.lines;
   }
   return { cells, spanning, lines };

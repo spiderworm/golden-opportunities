@@ -16,7 +16,9 @@ export const MEASURE_LABELS: Record<Measure, string> = {
 
 /** Measures named in a title: "Revenue", "Revenue and units sold", "Revenue, units sold and orders". */
 export function measuresLabel(measures: readonly Measure[]): string {
-  const names = measures.map((m, i) => (i === 0 ? MEASURE_LABELS[m] : MEASURE_LABELS[m].toLowerCase()));
+  const names = measures.map((m, i) =>
+    i === 0 ? MEASURE_LABELS[m] : MEASURE_LABELS[m].toLowerCase(),
+  );
   return names.length < 2 ? names[0]! : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
 
@@ -43,11 +45,18 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
 };
 
 /** How a dimension value reads on screen: "2193-Q4" as "Q4 2193", "2193-03" as "Mar 2193". */
-export function formatDimensionValue(dimension: Dimension, value: string | null | undefined): string {
+export function formatDimensionValue(
+  dimension: Dimension,
+  value: string | null | undefined,
+): string {
   if (value === null || value === undefined) {
     // A standalone book has no volume number; nor does the unknown book behind some ratings (Plot, #186).
     if (dimension === "volume") return "Not numbered";
-    return dimension === "title" ? "Unknown title" : dimension === "edition" ? "Unknown edition" : "Unknown";
+    return dimension === "title"
+      ? "Unknown title"
+      : dimension === "edition"
+        ? "Unknown edition"
+        : "Unknown";
   }
   if (dimension === "quarter") {
     const match = /^(\d+)-(Q[1-4])$/.exec(value);
@@ -61,11 +70,13 @@ export function formatDimensionValue(dimension: Dimension, value: string | null 
   if (dimension === "discounted") return value === "yes" ? "Any discount" : "Full price";
   if (dimension === "discount_rate") return parseFloat(value) === 0 ? "Full price" : `${value} off`;
   if (dimension === "stars") return value === "1" ? "1 star" : `${value} stars`;
-  if (dimension === "awarded") return value === "yes" ? "Award winner" : value === "no" ? "No award" : value;
+  if (dimension === "awarded")
+    return value === "yes" ? "Award winner" : value === "no" ? "No award" : value;
   if (dimension === "volume") return `Volume ${value}`;
   // "under $10" reads as a label: "Under $10".
   if (dimension === "price_band") return value.charAt(0).toUpperCase() + value.slice(1);
-  if (dimension === "in_series") return value === "yes" ? "In a series" : value === "no" ? "Not in a series" : value;
+  if (dimension === "in_series")
+    return value === "yes" ? "In a series" : value === "no" ? "Not in a series" : value;
   return value;
 }
 
@@ -79,8 +90,12 @@ export function periodLabel(quarters: readonly string[]): string {
     const [year, quarter] = q.split("-") as [string, string];
     byYear.set(year, [...(byYear.get(year) ?? []), quarter]);
   }
-  const parts = [...byYear].flatMap(([year, qs]) => (qs.length === 4 ? [year] : qs.map((q) => `${q} ${year}`)));
-  return parts.length < 2 ? (parts[0] ?? "") : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+  const parts = [...byYear].flatMap(([year, qs]) =>
+    qs.length === 4 ? [year] : qs.map((q) => `${q} ${year}`),
+  );
+  return parts.length < 2
+    ? (parts[0] ?? "")
+    : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
 }
 
 /**
@@ -89,17 +104,30 @@ export function periodLabel(quarters: readonly string[]): string {
  * boundary), the screen's name.
  */
 export function ledgersTitle(data: unknown): string {
-  const quarters = (data as { options?: { quarter?: unknown } } | null | undefined)?.options?.quarter;
-  return Array.isArray(quarters) && quarters.length ? `Ledgers: ${periodLabel(quarters as string[])}` : "Investigate";
+  const quarters = (data as { options?: { quarter?: unknown } } | null | undefined)?.options
+    ?.quarter;
+  return Array.isArray(quarters) && quarters.length
+    ? `Ledgers: ${periodLabel(quarters as string[])}`
+    : "Investigate";
 }
 
 /** Measures whose values add up, so a part can be a share of the whole. */
 export const ADDITIVE: readonly Measure[] = ["revenue", "units", "orders"];
 /** Measures whose axis never needs a tick between whole numbers: counts, and dollars of revenue. */
-export const WHOLE_TICKS: readonly Measure[] = ["revenue", "units", "orders", "checkouts", "ratings"];
+export const WHOLE_TICKS: readonly Measure[] = [
+  "revenue",
+  "units",
+  "orders",
+  "checkouts",
+  "ratings",
+];
 
 /** Short form for axes and tight spaces: "Q4" rather than "Q4 2193". */
-export function formatDimensionShort(dimension: Dimension, value: string | null | undefined, among: readonly string[] = []): string {
+export function formatDimensionShort(
+  dimension: Dimension,
+  value: string | null | undefined,
+  among: readonly string[] = [],
+): string {
   if (dimension === "quarter" && value) return value.replace(/^\d+-/, "");
   // "Mar", or "Mar 2193" when the months beside it span more than one year.
   if (dimension === "month" && value) {
@@ -112,14 +140,29 @@ export function formatDimensionShort(dimension: Dimension, value: string | null 
 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
 const whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-const cents = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+const cents = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
-export function formatMeasure(measure: Measure, value: number | null | undefined, options: { compact?: boolean } = {}): string {
+export function formatMeasure(
+  measure: Measure,
+  value: number | null | undefined,
+  options: { compact?: boolean } = {},
+): string {
   if (value === null || value === undefined) return "No data";
   switch (measure) {
     case "revenue":
-      return options.compact && Math.abs(value) >= 1000 ? `$${compact.format(value)}` : money.format(value);
+      return options.compact && Math.abs(value) >= 1000
+        ? `$${compact.format(value)}`
+        : money.format(value);
     case "avg_order_value":
       return cents.format(value);
     case "orders_per_day":
@@ -145,7 +188,11 @@ export interface Change {
  * Quarter-over-quarter change. Averages of fractions change in percentage
  * points; totals change by percent.
  */
-export function change(measure: Measure, current: number | null, previous: number | null): Change | null {
+export function change(
+  measure: Measure,
+  current: number | null,
+  previous: number | null,
+): Change | null {
   if (current === null || previous === null) return null;
   const points = measure === "avg_discount";
   if (!points && previous === 0) return null;
@@ -154,6 +201,8 @@ export function change(measure: Measure, current: number | null, previous: numbe
   const direction = rounded > 0 ? "up" : rounded < 0 ? "down" : "flat";
   const sign = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
   const text = `${sign}${Math.abs(rounded).toFixed(1)}${points ? " pts" : "%"}`;
-  const upIsGood = ["revenue", "units", "orders", "avg_order_value", "orders_per_day"].includes(measure);
+  const upIsGood = ["revenue", "units", "orders", "avg_order_value", "orders_per_day"].includes(
+    measure,
+  );
   return { text, direction, good: direction === "flat" || !upIsGood ? null : direction === "up" };
 }

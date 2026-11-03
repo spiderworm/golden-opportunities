@@ -8,7 +8,12 @@ import styles from "./StationView.module.css";
 export function StationPoster({ note }: { note?: string }) {
   return (
     <div className={styles.poster}>
-      <svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" role="img" aria-label="The station in orbit above a blue planet">
+      <svg
+        viewBox="0 0 800 450"
+        preserveAspectRatio="xMidYMid slice"
+        role="img"
+        aria-label="The station in orbit above a blue planet"
+      >
         <defs>
           <radialGradient id="poster-planet" cx="35%" cy="25%" r="75%">
             <stop offset="0%" stopColor="#3f7fb8" />
@@ -25,7 +30,15 @@ export function StationPoster({ note }: { note?: string }) {
           <circle key={i} cx={x} cy={y} r={r} fill="#dfe4ff" opacity={0.5 + (i % 3) * 0.2} />
         ))}
         <circle cx="560" cy="980" r="700" fill="url(#poster-planet)" />
-        <circle cx="560" cy="980" r="712" fill="none" stroke="#7f8cff" strokeOpacity="0.35" strokeWidth="10" />
+        <circle
+          cx="560"
+          cy="980"
+          r="712"
+          fill="none"
+          stroke="#7f8cff"
+          strokeOpacity="0.35"
+          strokeWidth="10"
+        />
         <g transform="translate(330 190)">
           <ellipse rx="190" ry="48" fill="none" stroke="#c3c8d8" strokeWidth="12" />
           <rect x="-12" y="-60" width="24" height="120" rx="6" fill="#c3c8d8" />

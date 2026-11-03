@@ -18,7 +18,10 @@ export type ChartMeasure = (typeof CHART_MEASURES)[number];
  * labels on the y-axis, color-coded"; three measures on two axes). Totals and averages never share one, even in
  * the same unit (David, 2 Nov 2026): average order value on revenue's axis is too small to see.
  */
-export const MEASURE_UNITS: Record<ChartMeasure, "dollars" | "count" | "order value" | "rate" | "percent"> = {
+export const MEASURE_UNITS: Record<
+  ChartMeasure,
+  "dollars" | "count" | "order value" | "rate" | "percent"
+> = {
   revenue: "dollars",
   avg_order_value: "order value",
   units: "count",
@@ -32,7 +35,10 @@ export const MAX_MEASURES = 3;
 export const MAX_UNITS = 2;
 
 /** Whether a measure can join the chart's: not already in it, at most three, and at most two units between them. */
-export function canAddMeasure(measures: readonly ChartMeasure[], measure: ChartMeasure): "ok" | "full" | "third unit" {
+export function canAddMeasure(
+  measures: readonly ChartMeasure[],
+  measure: ChartMeasure,
+): "ok" | "full" | "third unit" {
   if (measures.includes(measure)) return "ok";
   if (measures.length >= MAX_MEASURES) return "full";
   const units = new Set([...measures, measure].map((m) => MEASURE_UNITS[m]));
@@ -40,10 +46,18 @@ export function canAddMeasure(measures: readonly ChartMeasure[], measure: ChartM
 }
 
 /** The chart's measures, the first one first: it's the one the tiles, the heatmap and a title's view show. */
-export const measuresOf = (state: Pick<InvestigateState, "measure" | "also">): ChartMeasure[] => [state.measure, ...state.also];
+export const measuresOf = (state: Pick<InvestigateState, "measure" | "also">): ChartMeasure[] => [
+  state.measure,
+  ...state.also,
+];
 
 /** The headline figures, each against the quarter before. */
-export const TILE_MEASURES = ["revenue", "units", "orders", "avg_discount"] as const satisfies readonly ChartMeasure[];
+export const TILE_MEASURES = [
+  "revenue",
+  "units",
+  "orders",
+  "avg_discount",
+] as const satisfies readonly ChartMeasure[];
 export type TileMeasure = (typeof TILE_MEASURES)[number];
 
 export const GROUPINGS = [
@@ -90,7 +104,16 @@ export type Filters = Partial<Record<FilterDimension, string[]>>;
  * The heatmap's axes (David, 2 Nov 2026: "the same level of customization that we've given to charts"): the
  * breakdowns with a handful of values each. Titles and editions are too many for a grid.
  */
-export const HEAT_DIMENSIONS = ["weekday", "month", "quarter", "genre", "format", "publisher", "discount_rate", "price_band"] as const satisfies readonly FilterDimension[];
+export const HEAT_DIMENSIONS = [
+  "weekday",
+  "month",
+  "quarter",
+  "genre",
+  "format",
+  "publisher",
+  "discount_rate",
+  "price_band",
+] as const satisfies readonly FilterDimension[];
 export type HeatDimension = (typeof HEAT_DIMENSIONS)[number];
 
 /** The heatmap's question: one measure (a heatmap has one color scale), down its rows and across its columns. */
@@ -110,7 +133,9 @@ export const HEAT_WINDOW = 8;
  * month older than the window would leave nothing to draw; Plot, #270). Not a filter on one of the heatmap's own
  * axes, which its query ignores: a clicked cell sets one, and mustn't widen the grid (Frank, #270). Null when none.
  */
-export function heatSpanFilter(state: Pick<InvestigateState, "heat" | "filters">): "quarter" | "month" | null {
+export function heatSpanFilter(
+  state: Pick<InvestigateState, "heat" | "filters">,
+): "quarter" | "month" | null {
   const outside = filtersExcept(state.filters, [state.heat.rows, state.heat.cols]);
   return outside.quarter?.length ? "quarter" : outside.month?.length ? "month" : null;
 }
@@ -119,8 +144,12 @@ export function heatSpanFilter(state: Pick<InvestigateState, "heat" | "filters">
  * The quarters the heatmap's default window keeps, or null when it covers everything: until the ledger holds more
  * than eight quarters, when the player chose every quarter, or when the screen already filters by quarter or month.
  */
-export function heatWindow(state: Pick<InvestigateState, "heat" | "filters">, quarters: readonly string[]): string[] | null {
-  if (quarters.length <= HEAT_WINDOW || state.heat.period === "all" || heatSpanFilter(state)) return null;
+export function heatWindow(
+  state: Pick<InvestigateState, "heat" | "filters">,
+  quarters: readonly string[],
+): string[] | null {
+  if (quarters.length <= HEAT_WINDOW || state.heat.period === "all" || heatSpanFilter(state))
+    return null;
   return [...quarters].sort().slice(-HEAT_WINDOW);
 }
 
@@ -156,17 +185,24 @@ function oneOf<T extends string>(allowed: readonly T[], value: string | null, fa
 export function canCompare(by: Grouping, also: readonly ChartMeasure[] = []): boolean {
   // Time groupings already are quarters or sit inside one; titles and editions are too many to split. With several measures,
   // measures times quarters is too many series to read (David's choice, 2 Nov 2026).
-  return by !== "month" && by !== "quarter" && by !== "title" && by !== "edition" && also.length === 0;
+  return (
+    by !== "month" && by !== "quarter" && by !== "title" && by !== "edition" && also.length === 0
+  );
 }
 
 /** A list of measures cut to what fits one chart, in order: repeats, a fourth measure and a third unit dropped. */
 export function fittingMeasures(measures: readonly ChartMeasure[]): ChartMeasure[] {
-  return measures.reduce<ChartMeasure[]>((kept, m) => (canAddMeasure(kept, m) === "ok" && !kept.includes(m) ? [...kept, m] : kept), []);
+  return measures.reduce<ChartMeasure[]>(
+    (kept, m) => (canAddMeasure(kept, m) === "ok" && !kept.includes(m) ? [...kept, m] : kept),
+    [],
+  );
 }
 
 /** The measures a link asks for: `measures=a,b,c`, kept only while they fit one chart; else `measure=a`, as links always did. */
 function readMeasures(params: URLSearchParams): Pick<InvestigateState, "measure" | "also"> {
-  const listed = (params.get("measures") ?? "").split(",").filter((m): m is ChartMeasure => CHART_MEASURES.includes(m as ChartMeasure));
+  const listed = (params.get("measures") ?? "")
+    .split(",")
+    .filter((m): m is ChartMeasure => CHART_MEASURES.includes(m as ChartMeasure));
   const fitting = fittingMeasures(listed);
   if (fitting.length > 0) return { measure: fitting[0]!, also: fitting.slice(1) };
   return { measure: oneOf(CHART_MEASURES, params.get("measure"), DEFAULT_STATE.measure), also: [] };
@@ -195,8 +231,15 @@ export function parseState(params: URLSearchParams): InvestigateState {
 function readHeat(params: URLSearchParams, chartMeasure: ChartMeasure): HeatState {
   const rows = oneOf(HEAT_DIMENSIONS, params.get("heat_rows"), DEFAULT_STATE.heat.rows);
   const cols = oneOf(HEAT_DIMENSIONS, params.get("heat_cols"), DEFAULT_STATE.heat.cols);
-  const axes = rows === cols ? { rows: DEFAULT_STATE.heat.rows, cols: DEFAULT_STATE.heat.cols } : { rows, cols };
-  return { measure: oneOf(CHART_MEASURES, params.get("heat"), chartMeasure), ...axes, period: params.get("heat_period") === "all" ? "all" : "recent" };
+  const axes =
+    rows === cols
+      ? { rows: DEFAULT_STATE.heat.rows, cols: DEFAULT_STATE.heat.cols }
+      : { rows, cols };
+  return {
+    measure: oneOf(CHART_MEASURES, params.get("heat"), chartMeasure),
+    ...axes,
+    period: params.get("heat_period") === "all" ? "all" : "recent",
+  };
 }
 
 export function toSearchParams(state: InvestigateState): URLSearchParams {
@@ -218,7 +261,11 @@ export function toSearchParams(state: InvestigateState): URLSearchParams {
 }
 
 /** Sets one dimension's selected values; an empty list clears it. */
-export function setFilter(state: InvestigateState, dimension: FilterDimension, values: readonly string[]): InvestigateState {
+export function setFilter(
+  state: InvestigateState,
+  dimension: FilterDimension,
+  values: readonly string[],
+): InvestigateState {
   const filters = { ...state.filters };
   if (values.length) filters[dimension] = [...values];
   else delete filters[dimension];
@@ -226,7 +273,11 @@ export function setFilter(state: InvestigateState, dimension: FilterDimension, v
 }
 
 /** Adds the value to the dimension's selection, or takes it out if it's already there. */
-export function toggleFilterValue(state: InvestigateState, dimension: FilterDimension, value: string): InvestigateState {
+export function toggleFilterValue(
+  state: InvestigateState,
+  dimension: FilterDimension,
+  value: string,
+): InvestigateState {
   const current = state.filters[dimension] ?? [];
   const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
   return setFilter(state, dimension, next);
@@ -238,7 +289,8 @@ export type DiscountChoice = "all" | "full" | "any" | `${number}%`;
 const FULL_PRICE = "0%";
 
 export function discountChoice(filters: Filters): DiscountChoice {
-  if (filters.discounted?.length === 1 && filters.discounted[0] === "yes" && !filters.discount_rate) return "any";
+  if (filters.discounted?.length === 1 && filters.discounted[0] === "yes" && !filters.discount_rate)
+    return "any";
   if (filters.discount_rate?.length === 1 && !filters.discounted) {
     const rate = filters.discount_rate[0]!;
     return rate === FULL_PRICE ? "full" : (rate as DiscountChoice);
@@ -271,7 +323,9 @@ export function awardChoice(filters: Filters): AwardChoice {
 export function setAward(state: InvestigateState, choice: AwardChoice): InvestigateState {
   const cleared = setFilter(setFilter(state, "awarded", []), "award", []);
   if (choice === "all") return cleared;
-  return typeof choice === "object" ? setFilter(cleared, "award", [choice.award]) : setFilter(cleared, "awarded", [choice]);
+  return typeof choice === "object"
+    ? setFilter(cleared, "award", [choice.award])
+    : setFilter(cleared, "awarded", [choice]);
 }
 
 /** The series filter is one choice too: every book, books in a series, standalone books, or one volume number. */
@@ -289,14 +343,17 @@ export function seriesChoice(filters: Filters): SeriesChoice {
 export function setSeries(state: InvestigateState, choice: SeriesChoice): InvestigateState {
   const cleared = setFilter(setFilter(state, "in_series", []), "volume", []);
   if (choice === "all") return cleared;
-  return typeof choice === "object" ? setFilter(cleared, "volume", [choice.volume]) : setFilter(cleared, "in_series", [choice]);
+  return typeof choice === "object"
+    ? setFilter(cleared, "volume", [choice.volume])
+    : setFilter(cleared, "in_series", [choice]);
 }
 
 /** Drills into one heatmap cell, or back out if it's the only cell selected. */
 /** A heatmap cell filters the screen to its row's and column's values; clicking the one already chosen clears both. */
 export function toggleCell(state: InvestigateState, row: string, col: string): InvestigateState {
   const { rows, cols } = state.heat;
-  const only = (d: FilterDimension, v: string) => state.filters[d]?.length === 1 && state.filters[d]![0] === v;
+  const only = (d: FilterDimension, v: string) =>
+    state.filters[d]?.length === 1 && state.filters[d]![0] === v;
   const selected = only(rows, row) && only(cols, col);
   return setFilter(setFilter(state, rows, selected ? [] : [row]), cols, selected ? [] : [col]);
 }
@@ -313,8 +370,13 @@ export function filtersExcept(filters: Filters, dimensions: readonly Dimension[]
 }
 
 /** Months ("2193-01") in the quarters in scope: the selected ones, or every visible one. */
-export function monthsInScope(visibleQuarters: readonly string[], selectedQuarters: readonly string[] = []): string[] {
-  const quarters = selectedQuarters.length ? visibleQuarters.filter((q) => selectedQuarters.includes(q)) : visibleQuarters;
+export function monthsInScope(
+  visibleQuarters: readonly string[],
+  selectedQuarters: readonly string[] = [],
+): string[] {
+  const quarters = selectedQuarters.length
+    ? visibleQuarters.filter((q) => selectedQuarters.includes(q))
+    : visibleQuarters;
   const months = new Set<string>();
   for (const quarter of quarters) {
     const year = quarter.slice(0, 4);
@@ -333,7 +395,20 @@ export function isTotal(measure: Measure): boolean {
  * The filters a player can add to the bar, in the bar's order (David, 2 Nov 2026: an "+ add a filter" list, each
  * filter with an "x"). Some are one control over two dimensions (Discount, Awards, Series volume).
  */
-export const FILTERS = ["quarter", "genre", "format", "publisher", "price", "discount", "awards", "series", "month", "weekday", "title", "edition"] as const;
+export const FILTERS = [
+  "quarter",
+  "genre",
+  "format",
+  "publisher",
+  "price",
+  "discount",
+  "awards",
+  "series",
+  "month",
+  "weekday",
+  "title",
+  "edition",
+] as const;
 export type FilterId = (typeof FILTERS)[number];
 
 export const FILTER_PARTS: Record<FilterId, readonly FilterDimension[]> = {
@@ -361,7 +436,9 @@ export const SHOW_PARAM = "show";
  */
 export function shownFilters(params: URLSearchParams, filters: Filters): FilterId[] {
   const listed = params.getAll(SHOW_PARAM);
-  return FILTERS.filter((id) => listed.includes(id) || FILTER_PARTS[id].some((d) => filters[d]?.length));
+  return FILTERS.filter(
+    (id) => listed.includes(id) || FILTER_PARTS[id].some((d) => filters[d]?.length),
+  );
 }
 
 /** The URL's parameters with these filters shown (in the bar's order), replacing any `show` already there. */

@@ -47,22 +47,77 @@ type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const isStr = (v: unknown, max = TEXT_MAX): v is string => typeof v === "string" && v.length <= max;
 const only = (o: Obj, keys: string[]) => Object.keys(o).every((k) => keys.includes(k));
-const isCell = (v: unknown) => v === null || isStr(v, 1_000) || (typeof v === "number" && Number.isFinite(v));
-const isColumn = (c: unknown) => isObj(c) && only(c, ["key", "label", "type", "nullable"]) && isStr(c.key, 100) && isStr(c.label, 200) && (c.type === "string" || c.type === "number") && typeof c.nullable === "boolean";
-const isTable = (l: Obj) => Array.isArray(l.columns) && l.columns.length <= 10 && l.columns.every(isColumn) && Array.isArray(l.rows) && l.rows.length <= ROWS_MAX && l.rows.every((r) => isObj(r) && Object.values(r).every(isCell)) && isStr(l.source, 5_000);
+const isCell = (v: unknown) =>
+  v === null || isStr(v, 1_000) || (typeof v === "number" && Number.isFinite(v));
+const isColumn = (c: unknown) =>
+  isObj(c) &&
+  only(c, ["key", "label", "type", "nullable"]) &&
+  isStr(c.key, 100) &&
+  isStr(c.label, 200) &&
+  (c.type === "string" || c.type === "number") &&
+  typeof c.nullable === "boolean";
+const isTable = (l: Obj) =>
+  Array.isArray(l.columns) &&
+  l.columns.length <= 10 &&
+  l.columns.every(isColumn) &&
+  Array.isArray(l.rows) &&
+  l.rows.length <= ROWS_MAX &&
+  l.rows.every((r) => isObj(r) && Object.values(r).every(isCell)) &&
+  isStr(l.source, 5_000);
 const isFigures = (t: unknown) => isObj(t) && Object.values(t).every(isCell);
 /** A lookup's pin, loosely: Investigate checks it fully (parsePinSpec) before pinning, and runs it as a query. */
-const isPin = (p: unknown) => p === undefined || (isObj(p) && isStr(p.title, 200) && (((p.kind === "table" || p.kind === "bar" || p.kind === "line") && only(p, ["title", "kind", "query"]) && isObj(p.query)) || (p.kind === "comparison" && only(p, ["title", "kind", "comparison"]) && isObj(p.comparison))));
-const isChart = (c: unknown) => isObj(c) && only(c, ["title", "kind", "query"]) && isStr(c.title, 200) && isStr(c.kind, 20) && isObj(c.query);
+const isPin = (p: unknown) =>
+  p === undefined ||
+  (isObj(p) &&
+    isStr(p.title, 200) &&
+    (((p.kind === "table" || p.kind === "bar" || p.kind === "line") &&
+      only(p, ["title", "kind", "query"]) &&
+      isObj(p.query)) ||
+      (p.kind === "comparison" &&
+        only(p, ["title", "kind", "comparison"]) &&
+        isObj(p.comparison))));
+const isChart = (c: unknown) =>
+  isObj(c) &&
+  only(c, ["title", "kind", "query"]) &&
+  isStr(c.title, 200) &&
+  isStr(c.kind, 20) &&
+  isObj(c.query);
 
 /** One lookup as the panel stored it: a table with its source, a failed lookup, or a pin acknowledgement. */
 function isLookup(l: unknown): boolean {
   if (!isObj(l)) return false;
-  if (l.type === "data") return only(l, ["type", "columns", "rows", "total", "source", "query", "pin"]) && (l.query === undefined || isObj(l.query)) && isPin(l.pin) && isTable(l) && (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)));
-  if (l.type === "chart") return only(l, ["type", "chart", "columns", "rows", "total", "source", "pin"]) && isChart(l.chart) && ["bar", "line"].includes((l.chart as Obj).kind as string) && isPin(l.pin) && isTable(l) && (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)));
-  if (l.type === "comparison") return only(l, ["type", "columns", "rows", "total", "labels", "source", "pin"]) && isPin(l.pin) && isTable(l) && isFigures(l.total);
+  if (l.type === "data")
+    return (
+      only(l, ["type", "columns", "rows", "total", "source", "query", "pin"]) &&
+      (l.query === undefined || isObj(l.query)) &&
+      isPin(l.pin) &&
+      isTable(l) &&
+      (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)))
+    );
+  if (l.type === "chart")
+    return (
+      only(l, ["type", "chart", "columns", "rows", "total", "source", "pin"]) &&
+      isChart(l.chart) &&
+      ["bar", "line"].includes((l.chart as Obj).kind as string) &&
+      isPin(l.pin) &&
+      isTable(l) &&
+      (l.total === null || (typeof l.total === "number" && Number.isFinite(l.total)))
+    );
+  if (l.type === "comparison")
+    return (
+      only(l, ["type", "columns", "rows", "total", "labels", "source", "pin"]) &&
+      isPin(l.pin) &&
+      isTable(l) &&
+      isFigures(l.total)
+    );
   if (l.type === "lookup_failed") return only(l, ["type", "message"]) && isStr(l.message, 300);
-  if (l.type === "pin") return only(l, ["type", "chart", "source", "placed"]) && isChart(l.chart) && isStr(l.source, 5_000) && typeof l.placed === "boolean";
+  if (l.type === "pin")
+    return (
+      only(l, ["type", "chart", "source", "placed"]) &&
+      isChart(l.chart) &&
+      isStr(l.source, 5_000) &&
+      typeof l.placed === "boolean"
+    );
   return false;
 }
 
@@ -71,7 +126,12 @@ function isLookup(l: unknown): boolean {
  * kept: it's that input as the tool server checked it, titled from its parts, and Investigate checks it again
  * and runs it as the player's own query before showing anything.
  */
-const withoutQuery = <R extends StoredReply>(r: R): R => ({ ...r, lookups: r.lookups.map((l) => (isObj(l) && "query" in l ? (({ query: _, ...rest }) => rest)(l) : l)) });
+const withoutQuery = <R extends StoredReply>(r: R): R => ({
+  ...r,
+  lookups: r.lookups.map((l) =>
+    isObj(l) && "query" in l ? (({ query: _, ...rest }) => rest)(l) : l,
+  ),
+});
 
 /** A turn exactly as the panel stored it; anything else (null lookups, extra fields, wrong types) isn't. */
 function isReply(r: unknown): r is StoredReply {
@@ -92,7 +152,10 @@ function isReply(r: unknown): r is StoredReply {
  * Restores the conversation. An answer that was still streaming when the page went away comes back marked
  * interrupted, never passed off as complete. Anything unreadable is treated as no conversation.
  */
-export function loadConversation<R extends StoredReply>(storage: Storage | undefined, instance: string): R[] {
+export function loadConversation<R extends StoredReply>(
+  storage: Storage | undefined,
+  instance: string,
+): R[] {
   try {
     const raw = storage?.getItem(storageKey(instance));
     if (!raw) return [];
@@ -102,7 +165,9 @@ export function loadConversation<R extends StoredReply>(storage: Storage | undef
     return parsed
       .filter(isReply)
       .slice(-MAX_TURNS)
-      .map((r) => withoutQuery({ ...r, state: r.state === "streaming" ? INTERRUPTED : r.state })) as R[];
+      .map((r) =>
+        withoutQuery({ ...r, state: r.state === "streaming" ? INTERRUPTED : r.state }),
+      ) as R[];
   } catch {
     return [];
   }
@@ -112,7 +177,11 @@ export function loadConversation<R extends StoredReply>(storage: Storage | undef
  * Keeps the last MAX_TURNS turns. If storage is full, keeps as many of the latest as fit; if none fit, or
  * storage fails, it keeps nothing and says so. Returns how many turns were kept.
  */
-export function saveConversation(storage: Storage | undefined, instance: string, replies: readonly StoredReply[]): number {
+export function saveConversation(
+  storage: Storage | undefined,
+  instance: string,
+  replies: readonly StoredReply[],
+): number {
   if (!storage) return 0;
   const key = storageKey(instance);
   for (let turns = Math.min(replies.length, MAX_TURNS); turns > 0; turns = Math.floor(turns / 2)) {
@@ -143,6 +212,9 @@ export function clearConversation(storage: Storage | undefined, instance: string
 export function historyFor(replies: readonly StoredReply[]): SentTurn[] {
   return replies.flatMap((r) => [
     { role: "player" as const, text: r.question },
-    { role: "assistant" as const, text: r.state === INTERRUPTED ? "(This answer was interrupted before it finished.)" : r.text },
+    {
+      role: "assistant" as const,
+      text: r.state === INTERRUPTED ? "(This answer was interrupted before it finished.)" : r.text,
+    },
   ]);
 }

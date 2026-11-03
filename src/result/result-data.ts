@@ -8,7 +8,10 @@ export type HalfYearData = NonNullable<ResultData["halfYear"]>;
 
 /** Whether the plan was to hold course: no moves, and in Q2 no picks either. */
 export function heldCourse(outcome: ResultData["outcome"]): boolean {
-  return outcome.plan.levers.length === 0 && !("picks" in outcome.plan && outcome.plan.picks.some(Boolean));
+  return (
+    outcome.plan.levers.length === 0 &&
+    !("picks" in outcome.plan && outcome.plan.picks.some(Boolean))
+  );
 }
 
 /** A fixed vocabulary for analytics: "repick+events", "picks2+events", or "hold". */

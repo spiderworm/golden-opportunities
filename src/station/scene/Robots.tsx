@@ -80,7 +80,14 @@ export function Robots({ shop }: { shop: Bookshop }) {
   const materials = useMemo(
     () => ({
       body: selfLit(model.material, 0.45),
-      beam: new MeshBasicMaterial({ color: "#9fe6ff", transparent: true, opacity: 0.16, blending: AdditiveBlending, depthWrite: false, side: DoubleSide }),
+      beam: new MeshBasicMaterial({
+        color: "#9fe6ff",
+        transparent: true,
+        opacity: 0.16,
+        blending: AdditiveBlending,
+        depthWrite: false,
+        side: DoubleSide,
+      }),
     }),
     [model],
   );
@@ -109,18 +116,31 @@ export function Robots({ shop }: { shop: Bookshop }) {
       ),
     [],
   );
-  const busy = useMemo(() => kept("robot chores", () => ({ polishing: -1, dusting: new Set<number>() })), []);
-  const work = useMemo(() => ({ dummy: new Object3D(), q: new Quaternion(), v: new Vector3(), m: new Matrix4() }), []);
+  const busy = useMemo(
+    () => kept("robot chores", () => ({ polishing: -1, dusting: new Set<number>() })),
+    [],
+  );
+  const work = useMemo(
+    () => ({ dummy: new Object3D(), q: new Quaternion(), v: new Vector3(), m: new Matrix4() }),
+    [],
+  );
 
   /** Fetch a stray book and put it back in its gap. */
   function reshelve(i: number, robot: Robot, slot: number): Leg[] {
     const stray = shop.strays[slot]!;
     const book = stray.book;
-    const above = new Vector3().setFromMatrixPosition(stray.matrix).add(new Vector3(0, GRIP + 0.05, 0));
+    const above = new Vector3()
+      .setFromMatrixPosition(stray.matrix)
+      .add(new Vector3(0, GRIP + 0.05, 0));
     const facing = shop.books[book]!.facing;
     const hover = inFrontOf(shop, book, 0.32);
     const from = { at: new Vector3(), turn: new Quaternion() };
-    const into = { at: new Vector3(), turn: new Quaternion(), scale: new Vector3(), pose: new Matrix4() };
+    const into = {
+      at: new Vector3(),
+      turn: new Quaternion(),
+      scale: new Vector3(),
+      pose: new Matrix4(),
+    };
     const cruise = CRUISE[i]!;
     return [
       ...route(robot.at, above, cruise, {
@@ -177,9 +197,14 @@ export function Robots({ shop }: { shop: Bookshop }) {
     busy.dusting.add(u);
     const unit = SHELF_UNITS[u]!;
     const front = unitFront(unit);
-    const along = new Vector3(Math.cos(unit.facing), 0, -Math.sin(unit.facing)).multiplyScalar(unit.width / 2 - 0.35);
+    const along = new Vector3(Math.cos(unit.facing), 0, -Math.sin(unit.facing)).multiplyScalar(
+      unit.width / 2 - 0.35,
+    );
     const top = new Vector3(unit.x, SHELF_HEIGHT + 0.32, unit.z).addScaledVector(front, 0.05);
-    const [a, b] = Math.random() < 0.5 ? [top.clone().add(along), top.clone().sub(along)] : [top.clone().sub(along), top.clone().add(along)];
+    const [a, b] =
+      Math.random() < 0.5
+        ? [top.clone().add(along), top.clone().sub(along)]
+        : [top.clone().sub(along), top.clone().add(along)];
     // Come up in front of the shelf, not through it (nor the one beside it, in a corner), and leave the same way.
     const outA = clear(a.clone().addScaledVector(front, 0.6));
     const outB = clear(b.clone().addScaledVector(front, 0.6));
@@ -206,7 +231,11 @@ export function Robots({ shop }: { shop: Bookshop }) {
     const at = (x: number, y: number) => new Vector3(x * side, y, GLASS_Z);
     const toGlass = new Vector3(0, 0, 1);
     return [
-      ...route(robot.at, at(-5.5, 3.7), CRUISE[i]!, { face: 0, hold: 0.3, arrive: () => (robot.beam = toGlass) }),
+      ...route(robot.at, at(-5.5, 3.7), CRUISE[i]!, {
+        face: 0,
+        hold: 0.3,
+        arrive: () => (robot.beam = toGlass),
+      }),
       { to: at(5.5, 3.7), speed: 0.9 },
       { to: at(5.5, 2.7), speed: 0.9 },
       {
@@ -249,7 +278,8 @@ export function Robots({ shop }: { shop: Bookshop }) {
           leg.arrive?.();
         } else {
           robot.at.addScaledVector(v, (speed * delta) / distance);
-          if (Math.hypot(v.x, v.z) > 0.05) robot.yaw = turnToward(robot.yaw, Math.atan2(v.x, v.z), delta * 4);
+          if (Math.hypot(v.x, v.z) > 0.05)
+            robot.yaw = turnToward(robot.yaw, Math.atan2(v.x, v.z), delta * 4);
         }
       } else {
         robot.held += delta;
@@ -270,7 +300,12 @@ export function Robots({ shop }: { shop: Bookshop }) {
       dummy.scale.setScalar(SIZE);
       dummy.updateMatrix();
       bodies.current?.setMatrixAt(i, dummy.matrix);
-      if (robot.carrying >= 0) shop.hold(robot.carrying, v.copy(dummy.position).setY(dummy.position.y - GRIP), Bookshop.flat(robot.yaw, q));
+      if (robot.carrying >= 0)
+        shop.hold(
+          robot.carrying,
+          v.copy(dummy.position).setY(dummy.position.y - GRIP),
+          Bookshop.flat(robot.yaw, q),
+        );
       if (robot.beam) {
         dummy.quaternion.setFromUnitVectors(DOWN, robot.beam);
         dummy.scale.setScalar(0.9 + 0.1 * Math.sin(t * 9 + i));
@@ -281,14 +316,23 @@ export function Robots({ shop }: { shop: Bookshop }) {
         beams.current?.setMatrixAt(i, HIDDEN);
       }
     });
-    for (const mesh of [bodies.current, beams.current]) if (mesh) mesh.instanceMatrix.needsUpdate = true;
+    for (const mesh of [bodies.current, beams.current])
+      if (mesh) mesh.instanceMatrix.needsUpdate = true;
     materials.body.emissiveIntensity = 0.4 + 0.08 * Math.sin(t * 3);
   });
 
   return (
     <>
-      <instancedMesh ref={bodies} args={[geometry.body, materials.body, ROBOTS]} frustumCulled={false} />
-      <instancedMesh ref={beams} args={[geometry.beam, materials.beam, ROBOTS]} frustumCulled={false} />
+      <instancedMesh
+        ref={bodies}
+        args={[geometry.body, materials.body, ROBOTS]}
+        frustumCulled={false}
+      />
+      <instancedMesh
+        ref={beams}
+        args={[geometry.beam, materials.beam, ROBOTS]}
+        frustumCulled={false}
+      />
     </>
   );
 }

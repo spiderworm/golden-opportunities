@@ -1,17 +1,54 @@
 import { describe, expect, it } from "vitest";
 import { heatWindow } from "./state";
-import { awardChoice, canAddMeasure, canCompare, measuresOf, DEFAULT_STATE, onlyShownChanged, removeFilter, shownFilters, withShown, discountChoice, filtersExcept, monthsInScope, parseState, setAward, setDiscount, setSeries, seriesChoice, toggleCell, toggleFilterValue, toSearchParams } from "./state";
+import {
+  awardChoice,
+  canAddMeasure,
+  canCompare,
+  measuresOf,
+  DEFAULT_STATE,
+  onlyShownChanged,
+  removeFilter,
+  shownFilters,
+  withShown,
+  discountChoice,
+  filtersExcept,
+  monthsInScope,
+  parseState,
+  setAward,
+  setDiscount,
+  setSeries,
+  seriesChoice,
+  toggleCell,
+  toggleFilterValue,
+  toSearchParams,
+} from "./state";
 
 describe("investigate state", () => {
   it("round-trips through the URL", () => {
-    const state = { measure: "units", also: [], by: "genre", compare: true, filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] }, heat: { measure: "units", rows: "weekday", cols: "month", period: "recent" } } as const;
-    const params = toSearchParams({ ...state, also: [], filters: { genre: [...state.filters.genre], quarter: [...state.filters.quarter] }, heat: { ...state.heat } });
-    expect(params.toString()).toBe("measure=units&by=genre&compare=quarter&quarter=2193-Q4&genre=Fiction&genre=Memoir");
+    const state = {
+      measure: "units",
+      also: [],
+      by: "genre",
+      compare: true,
+      filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] },
+      heat: { measure: "units", rows: "weekday", cols: "month", period: "recent" },
+    } as const;
+    const params = toSearchParams({
+      ...state,
+      also: [],
+      filters: { genre: [...state.filters.genre], quarter: [...state.filters.quarter] },
+      heat: { ...state.heat },
+    });
+    expect(params.toString()).toBe(
+      "measure=units&by=genre&compare=quarter&quarter=2193-Q4&genre=Fiction&genre=Memoir",
+    );
     expect(parseState(params)).toEqual(state);
   });
 
   it("falls back to defaults for anything it doesn't know", () => {
-    expect(parseState(new URLSearchParams("measure=profit&by=colour&author=Someone"))).toEqual(DEFAULT_STATE);
+    expect(parseState(new URLSearchParams("measure=profit&by=colour&author=Someone"))).toEqual(
+      DEFAULT_STATE,
+    );
     expect(toSearchParams(DEFAULT_STATE).toString()).toBe("");
   });
 
@@ -23,14 +60,21 @@ describe("investigate state", () => {
   });
 
   it("drops empty, overlong and duplicate filter values", () => {
-    const params = new URLSearchParams([["genre", ""], ["genre", "x".repeat(201)], ["genre", "Fiction"], ["genre", "Fiction"]]);
+    const params = new URLSearchParams([
+      ["genre", ""],
+      ["genre", "x".repeat(201)],
+      ["genre", "Fiction"],
+      ["genre", "Fiction"],
+    ]);
     expect(parseState(params).filters).toEqual({ genre: ["Fiction"] });
   });
 
   it("toggles a drilldown value in and out", () => {
     const once = toggleFilterValue(DEFAULT_STATE, "genre", "Fiction");
     expect(once.filters).toEqual({ genre: ["Fiction"] });
-    expect(toggleFilterValue(once, "genre", "Memoir").filters).toEqual({ genre: ["Fiction", "Memoir"] });
+    expect(toggleFilterValue(once, "genre", "Memoir").filters).toEqual({
+      genre: ["Fiction", "Memoir"],
+    });
     expect(toggleFilterValue(once, "genre", "Fiction").filters).toEqual({});
   });
 
@@ -38,11 +82,16 @@ describe("investigate state", () => {
     const cell = toggleCell(DEFAULT_STATE, "Monday", "2193-03");
     expect(cell.filters).toEqual({ weekday: ["Monday"], month: ["2193-03"] });
     expect(toggleCell(cell, "Monday", "2193-03").filters).toEqual({});
-    expect(toggleCell(cell, "Friday", "2193-03").filters).toEqual({ weekday: ["Friday"], month: ["2193-03"] });
+    expect(toggleCell(cell, "Friday", "2193-03").filters).toEqual({
+      weekday: ["Friday"],
+      month: ["2193-03"],
+    });
   });
 
   it("leaves out a view's own dimensions", () => {
-    expect(filtersExcept({ genre: ["Fiction"], month: ["2193-03"] }, ["genre"])).toEqual({ month: ["2193-03"] });
+    expect(filtersExcept({ genre: ["Fiction"], month: ["2193-03"] }, ["genre"])).toEqual({
+      month: ["2193-03"],
+    });
   });
 
   it("keeps the discount filter to one choice", () => {
@@ -97,24 +146,36 @@ describe("investigate state", () => {
     const params = new URLSearchParams("by=genre&show=awards&show=genre&genre=Fiction");
     expect(shownFilters(params, parseState(params).filters)).toEqual(["genre", "awards"]);
     // A drilldown or an old link sets a value without show: that filter is on the bar too.
-    expect(shownFilters(new URLSearchParams("weekday=Monday"), { weekday: ["Monday"] })).toEqual(["weekday"]);
+    expect(shownFilters(new URLSearchParams("weekday=Monday"), { weekday: ["Monday"] })).toEqual([
+      "weekday",
+    ]);
     // Written in the bar's order, whatever order they were added in, and replacing what was there.
-    expect(withShown(new URLSearchParams("by=genre&show=title"), ["awards", "quarter"]).toString()).toBe("by=genre&show=quarter&show=awards");
+    expect(
+      withShown(new URLSearchParams("by=genre&show=title"), ["awards", "quarter"]).toString(),
+    ).toBe("by=genre&show=quarter&show=awards");
     // The question itself doesn't carry them, so the server's view (and its cache key) ignores them.
     expect(toSearchParams(parseState(params)).toString()).toBe("by=genre&genre=Fiction");
   });
 
   it("clears a filter's values when it comes off the bar, both parts of a two-part one", () => {
-    const state = { ...DEFAULT_STATE, filters: { genre: ["Fiction"], awarded: ["yes"], award: ["Hugo Award"] } };
+    const state = {
+      ...DEFAULT_STATE,
+      filters: { genre: ["Fiction"], awarded: ["yes"], award: ["Hugo Award"] },
+    };
     expect(removeFilter(state, "awards").filters).toEqual({ genre: ["Fiction"] });
-    expect(removeFilter(state, "genre").filters).toEqual({ awarded: ["yes"], award: ["Hugo Award"] });
+    expect(removeFilter(state, "genre").filters).toEqual({
+      awarded: ["yes"],
+      award: ["Hugo Award"],
+    });
   });
 
   it("knows when only the bar changed, which changes no data", () => {
     const at = (search: string) => new URL(`http://localhost/investigate${search}`);
     expect(onlyShownChanged(at("?by=genre"), at("?by=genre&show=genre"))).toBe(true);
     expect(onlyShownChanged(at("?by=genre&show=genre"), at("?by=genre"))).toBe(true);
-    expect(onlyShownChanged(at("?by=genre&show=genre"), at("?by=genre&show=genre&genre=Fiction"))).toBe(false);
+    expect(
+      onlyShownChanged(at("?by=genre&show=genre"), at("?by=genre&show=genre&genre=Fiction")),
+    ).toBe(false);
     expect(onlyShownChanged(at("?by=genre"), at("?by=genre"))).toBe(false);
   });
 
@@ -125,39 +186,87 @@ describe("investigate state", () => {
     expect(two.compare).toBe(false);
     expect(toSearchParams(two).toString()).toBe("measures=revenue%2Cunits&by=genre");
     // A third unit, a fourth measure, a repeat or an unknown one is dropped, keeping what fits.
-    expect(measuresOf(parseState(new URLSearchParams("measures=revenue,units,avg_discount")))).toEqual(["revenue", "units"]);
-    expect(measuresOf(parseState(new URLSearchParams("measures=revenue,units,orders,avg_order_value")))).toEqual(["revenue", "units", "orders"]);
-    expect(measuresOf(parseState(new URLSearchParams("measures=units,units,bogus")))).toEqual(["units"]);
+    expect(
+      measuresOf(parseState(new URLSearchParams("measures=revenue,units,avg_discount"))),
+    ).toEqual(["revenue", "units"]);
+    expect(
+      measuresOf(parseState(new URLSearchParams("measures=revenue,units,orders,avg_order_value"))),
+    ).toEqual(["revenue", "units", "orders"]);
+    expect(measuresOf(parseState(new URLSearchParams("measures=units,units,bogus")))).toEqual([
+      "units",
+    ]);
     // One measure is written as it always was, and old links still open.
-    expect(toSearchParams({ ...DEFAULT_STATE, measure: "units", heat: { ...DEFAULT_STATE.heat, measure: "units" } }).toString()).toBe("measure=units");
+    expect(
+      toSearchParams({
+        ...DEFAULT_STATE,
+        measure: "units",
+        heat: { ...DEFAULT_STATE.heat, measure: "units" },
+      }).toString(),
+    ).toBe("measure=units");
     expect(measuresOf(parseState(new URLSearchParams("measure=orders")))).toEqual(["orders"]);
     expect(measuresOf(parseState(new URLSearchParams("measures=")))).toEqual(["revenue"]);
   });
 
   it("breaks down and filters by price band, list price and edition, from a link", () => {
-    const state = parseState(new URLSearchParams("by=edition&compare=quarter&price_band=under%20%2410&list_price=%2412.99&edition=Rystwyth%20(Hardcover)"));
+    const state = parseState(
+      new URLSearchParams(
+        "by=edition&compare=quarter&price_band=under%20%2410&list_price=%2412.99&edition=Rystwyth%20(Hardcover)",
+      ),
+    );
     expect(state.by).toBe("edition");
     // Editions are too many to split by quarter.
     expect(state.compare).toBe(false);
-    expect(state.filters).toEqual({ price_band: ["under $10"], list_price: ["$12.99"], edition: ["Rystwyth (Hardcover)"] });
+    expect(state.filters).toEqual({
+      price_band: ["under $10"],
+      list_price: ["$12.99"],
+      edition: ["Rystwyth (Hardcover)"],
+    });
     expect(shownFilters(new URLSearchParams(), state.filters)).toEqual(["price", "edition"]);
     expect(parseState(new URLSearchParams("by=price_band&compare=quarter")).compare).toBe(true);
   });
 
   it("keeps the heatmap's measure and axes in the URL; without them, weekday by month in the chart's measure", () => {
     // Every link before: the heatmap follows the chart's measure.
-    expect(parseState(new URLSearchParams("measure=orders")).heat).toEqual({ measure: "orders", rows: "weekday", cols: "month", period: "recent" });
-    const chosen = parseState(new URLSearchParams("measure=orders&heat=units&heat_rows=genre&heat_cols=quarter"));
-    expect(chosen.heat).toEqual({ measure: "units", rows: "genre", cols: "quarter", period: "recent" });
-    expect(toSearchParams(chosen).toString()).toBe("measure=orders&heat=units&heat_rows=genre&heat_cols=quarter");
+    expect(parseState(new URLSearchParams("measure=orders")).heat).toEqual({
+      measure: "orders",
+      rows: "weekday",
+      cols: "month",
+      period: "recent",
+    });
+    const chosen = parseState(
+      new URLSearchParams("measure=orders&heat=units&heat_rows=genre&heat_cols=quarter"),
+    );
+    expect(chosen.heat).toEqual({
+      measure: "units",
+      rows: "genre",
+      cols: "quarter",
+      period: "recent",
+    });
+    expect(toSearchParams(chosen).toString()).toBe(
+      "measure=orders&heat=units&heat_rows=genre&heat_cols=quarter",
+    );
     // Never the same dimension twice, nor one a grid can't hold: back to the defaults.
-    expect(parseState(new URLSearchParams("heat_rows=month&heat_cols=month")).heat).toMatchObject({ rows: "weekday", cols: "month" });
+    expect(parseState(new URLSearchParams("heat_rows=month&heat_cols=month")).heat).toMatchObject({
+      rows: "weekday",
+      cols: "month",
+    });
     expect(parseState(new URLSearchParams("heat_rows=title")).heat.rows).toBe("weekday");
     expect(parseState(new URLSearchParams("heat=profit")).heat.measure).toBe("revenue");
   });
 
   it("keeps a long ledger's heatmap to its last eight quarters unless every quarter is chosen or the screen filters by quarter", () => {
-    const ten = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1", "2194-Q2", "2194-Q3", "2194-Q4", "2195-Q1", "2195-Q2"];
+    const ten = [
+      "2193-Q1",
+      "2193-Q2",
+      "2193-Q3",
+      "2193-Q4",
+      "2194-Q1",
+      "2194-Q2",
+      "2194-Q3",
+      "2194-Q4",
+      "2195-Q1",
+      "2195-Q2",
+    ];
     expect(heatWindow(DEFAULT_STATE, ten)).toEqual(ten.slice(2));
     expect(heatWindow(DEFAULT_STATE, ten.slice(0, 8))).toBeNull();
     const all = parseState(new URLSearchParams("heat_period=all"));
@@ -173,14 +282,25 @@ describe("investigate state", () => {
     const clicked = toggleCell(DEFAULT_STATE, "Monday", "2195-02");
     expect(clicked.filters).toEqual({ weekday: ["Monday"], month: ["2195-02"] });
     expect(heatWindow(clicked, ten)).toEqual(ten.slice(2));
-    const byQuarter = { ...DEFAULT_STATE, heat: { ...DEFAULT_STATE.heat, cols: "quarter" as const } };
+    const byQuarter = {
+      ...DEFAULT_STATE,
+      heat: { ...DEFAULT_STATE.heat, cols: "quarter" as const },
+    };
     expect(heatWindow(toggleCell(byQuarter, "Monday", "2195-Q1"), ten)).toEqual(ten.slice(2));
     // A month filter while months aren't an axis still decides the span.
     expect(heatWindow({ ...byQuarter, filters: { month: ["2193-02"] } }, ten)).toBeNull();
   });
 
   it("filters to a heatmap cell's row and column values, and clears them on a second click", () => {
-    const state = { ...DEFAULT_STATE, heat: { measure: "revenue" as const, rows: "genre" as const, cols: "price_band" as const, period: "recent" as const } };
+    const state = {
+      ...DEFAULT_STATE,
+      heat: {
+        measure: "revenue" as const,
+        rows: "genre" as const,
+        cols: "price_band" as const,
+        period: "recent" as const,
+      },
+    };
     const cell = toggleCell(state, "Fiction", "under $10");
     expect(cell.filters).toEqual({ genre: ["Fiction"], price_band: ["under $10"] });
     expect(toggleCell(cell, "Fiction", "under $10").filters).toEqual({});
@@ -201,8 +321,24 @@ describe("investigate state", () => {
   it("lists the months in the quarters in scope", () => {
     const visible = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
     expect(monthsInScope(visible)).toHaveLength(12);
-    expect(parseState(new URLSearchParams("month=04&month=2194-02&month=13")).filters.month).toEqual(["2193-04", "2194-02", "13"]);
-    expect(monthsInScope(["2193-Q1", "2194-Q1"])).toEqual(["2193-01", "2193-02", "2193-03", "2194-01", "2194-02", "2194-03"]);
-    expect(monthsInScope(visible, ["2193-Q4", "2193-Q1"])).toEqual(["2193-01", "2193-02", "2193-03", "2193-10", "2193-11", "2193-12"]);
+    expect(
+      parseState(new URLSearchParams("month=04&month=2194-02&month=13")).filters.month,
+    ).toEqual(["2193-04", "2194-02", "13"]);
+    expect(monthsInScope(["2193-Q1", "2194-Q1"])).toEqual([
+      "2193-01",
+      "2193-02",
+      "2193-03",
+      "2194-01",
+      "2194-02",
+      "2194-03",
+    ]);
+    expect(monthsInScope(visible, ["2193-Q4", "2193-Q1"])).toEqual([
+      "2193-01",
+      "2193-02",
+      "2193-03",
+      "2193-10",
+      "2193-11",
+      "2193-12",
+    ]);
   });
 });

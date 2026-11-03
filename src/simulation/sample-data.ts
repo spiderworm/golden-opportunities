@@ -14,7 +14,9 @@ const COLUMNS = ["Sale Date", "ISBN", "Discount", "ItemID", "OrderID"] as const;
 
 /** One sale line per row, as the source sheets have them: an empty discount is full price. */
 function csv(lines: readonly SimulatedLine[]): string {
-  const rows = lines.map((l) => [l.date, l.isbn, l.discount === 0 ? "" : String(l.discount), l.itemId, l.orderId].join(","));
+  const rows = lines.map((l) =>
+    [l.date, l.isbn, l.discount === 0 ? "" : String(l.discount), l.itemId, l.orderId].join(","),
+  );
   return [COLUMNS.join(","), ...rows].join("\n") + "\n";
 }
 
@@ -24,8 +26,12 @@ export function sampleFiles(): Record<string, string> {
   const q1Plan: Plan = { levers: ["repick", "events"] };
   const q1 = simulateQuarter(q1Plan, SAMPLE_SEED, data);
   // Q2's strong plan (q2.md section 8): three quiet, well-rated hardcovers, plus author nights.
-  const isbn = (title: string) => q2Candidates(data).find((c) => c.title === title && c.format === "Hardcover")!.isbn;
-  const q2Plan: Q2Plan = { picks: [isbn("Land Water Sky Space"), isbn("Thatchwork Cottage"), isbn("Kalakalal Avenue")], levers: ["events"] };
+  const isbn = (title: string) =>
+    q2Candidates(data).find((c) => c.title === title && c.format === "Hardcover")!.isbn;
+  const q2Plan: Q2Plan = {
+    picks: [isbn("Land Water Sky Space"), isbn("Thatchwork Cottage"), isbn("Kalakalal Avenue")],
+    levers: ["events"],
+  };
   const q2 = simulateQ2(q2Plan, SAMPLE_SEED, data);
   return {
     "sales-2194-q1-hold-course.csv": csv(q1.doNothingLines),

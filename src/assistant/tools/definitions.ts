@@ -7,7 +7,15 @@
 
 // Dewey sees only the reviewed lists (AGENT_*): a new dimension or measure stays Investigate-only until Probe has
 // reviewed it against the figures gate.
-import { AGENT_DIMENSIONS as DIMENSIONS, AGENT_MEASURE_DIMENSIONS as MEASURE_DIMENSIONS, AGENT_MEASURES as MEASURES, QUERY_LIMITS, type Dimension, type Measure, type Query } from "../../query/types.ts";
+import {
+  AGENT_DIMENSIONS as DIMENSIONS,
+  AGENT_MEASURE_DIMENSIONS as MEASURE_DIMENSIONS,
+  AGENT_MEASURES as MEASURES,
+  QUERY_LIMITS,
+  type Dimension,
+  type Measure,
+  type Query,
+} from "../../query/types.ts";
 
 export const SERVER_NAME = "orbital";
 export const CHART_KINDS = ["bar", "line", "table"] as const;
@@ -49,19 +57,38 @@ export interface ComparisonResult {
   source: string;
 }
 
-
 const queryProperties = {
   measure: { type: "string", enum: MEASURES, description: "What to measure." },
-  by: { type: "array", items: { type: "string", enum: DIMENSIONS }, maxItems: QUERY_LIMITS.dimensions, uniqueItems: true, description: "Up to two dimensions to group by; empty for one total." },
+  by: {
+    type: "array",
+    items: { type: "string", enum: DIMENSIONS },
+    maxItems: QUERY_LIMITS.dimensions,
+    uniqueItems: true,
+    description: "Up to two dimensions to group by; empty for one total.",
+  },
   filter: {
     type: "object",
-    description: "Exact, case-sensitive values to keep, per dimension. Values within a dimension are OR; dimensions are AND.",
-    properties: Object.fromEntries(DIMENSIONS.map((d) => [d, { type: "array", items: { type: "string", maxLength: QUERY_LIMITS.filterValueLength }, minItems: 1, maxItems: QUERY_LIMITS.filterValues }])),
+    description:
+      "Exact, case-sensitive values to keep, per dimension. Values within a dimension are OR; dimensions are AND.",
+    properties: Object.fromEntries(
+      DIMENSIONS.map((d) => [
+        d,
+        {
+          type: "array",
+          items: { type: "string", maxLength: QUERY_LIMITS.filterValueLength },
+          minItems: 1,
+          maxItems: QUERY_LIMITS.filterValues,
+        },
+      ]),
+    ),
     additionalProperties: false,
   },
   sort: {
     type: "object",
-    properties: { column: { type: "string", enum: [...DIMENSIONS, ...MEASURES] }, direction: { type: "string", enum: ["asc", "desc"] } },
+    properties: {
+      column: { type: "string", enum: [...DIMENSIONS, ...MEASURES] },
+      direction: { type: "string", enum: ["asc", "desc"] },
+    },
     required: ["column", "direction"],
     additionalProperties: false,
   },
@@ -71,13 +98,20 @@ const queryProperties = {
 export const TOOLS = [
   {
     name: "describe_data",
-    description: "Lists the measures and dimensions the player's data terminal offers, and which dimensions each measure supports. Call it before querying if you aren't sure a measure or dimension exists.",
+    description:
+      "Lists the measures and dimensions the player's data terminal offers, and which dimensions each measure supports. Call it before querying if you aren't sure a measure or dimension exists.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "query_data",
-    description: "Runs one query on the store's data, exactly as the player's dashboard would, over the periods the player can see. Returns a ref for the result and one for each row, columns, rows, the total, and a source line describing where the figures come from. The player sees the result and its source under your reply. Cite its figures by ref, as your rules say.",
-    inputSchema: { type: "object", properties: queryProperties, required: ["measure", "by"], additionalProperties: false },
+    description:
+      "Runs one query on the store's data, exactly as the player's dashboard would, over the periods the player can see. Returns a ref for the result and one for each row, columns, rows, the total, and a source line describing where the figures come from. The player sees the result and its source under your reply. Cite its figures by ref, as your rules say.",
+    inputSchema: {
+      type: "object",
+      properties: queryProperties,
+      required: ["measure", "by"],
+      additionalProperties: false,
+    },
   },
   {
     name: "compare_data",
@@ -87,10 +121,31 @@ export const TOOLS = [
       type: "object",
       properties: {
         measure: queryProperties.measure,
-        across: { type: "string", enum: DIMENSIONS, description: "The dimension whose two values are compared." },
-        from: { type: "string", minLength: 1, maxLength: QUERY_LIMITS.filterValueLength, description: "The earlier or baseline value, exactly as the terminal labels it (e.g. 2193-Q3, or a month like 2193-03)." },
-        to: { type: "string", minLength: 1, maxLength: QUERY_LIMITS.filterValueLength, description: "The value compared with it (e.g. 2193-Q4, or a month like 2193-04)." },
-        by: { type: "array", items: { type: "string", enum: DIMENSIONS }, maxItems: 1, description: "Optionally, one dimension to break the comparison down by; empty for the overall figures." },
+        across: {
+          type: "string",
+          enum: DIMENSIONS,
+          description: "The dimension whose two values are compared.",
+        },
+        from: {
+          type: "string",
+          minLength: 1,
+          maxLength: QUERY_LIMITS.filterValueLength,
+          description:
+            "The earlier or baseline value, exactly as the terminal labels it (e.g. 2193-Q3, or a month like 2193-03).",
+        },
+        to: {
+          type: "string",
+          minLength: 1,
+          maxLength: QUERY_LIMITS.filterValueLength,
+          description: "The value compared with it (e.g. 2193-Q4, or a month like 2193-04).",
+        },
+        by: {
+          type: "array",
+          items: { type: "string", enum: DIMENSIONS },
+          maxItems: 1,
+          description:
+            "Optionally, one dimension to break the comparison down by; empty for the overall figures.",
+        },
         filter: queryProperties.filter,
       },
       required: ["measure", "across", "from", "to"],
@@ -104,7 +159,12 @@ export const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        query: { type: "object", properties: queryProperties, required: ["measure", "by"], additionalProperties: false },
+        query: {
+          type: "object",
+          properties: queryProperties,
+          required: ["measure", "by"],
+          additionalProperties: false,
+        },
       },
       required: ["query"],
       additionalProperties: false,
@@ -117,7 +177,12 @@ export const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        query: { type: "object", properties: queryProperties, required: ["measure", "by"], additionalProperties: false },
+        query: {
+          type: "object",
+          properties: queryProperties,
+          required: ["measure", "by"],
+          additionalProperties: false,
+        },
         table: { type: "boolean" },
       },
       required: ["query"],
@@ -129,11 +194,14 @@ export type ToolName = (typeof TOOLS)[number]["name"];
 
 export class ToolInputError extends Error {}
 
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const has = <T extends string>(list: readonly T[], v: unknown): v is T => typeof v === "string" && (list as readonly string[]).includes(v);
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+const has = <T extends string>(list: readonly T[], v: unknown): v is T =>
+  typeof v === "string" && (list as readonly string[]).includes(v);
 function onlyKeys(o: Record<string, unknown>, allowed: readonly string[], what: string) {
   const extra = Object.keys(o).filter((k) => !allowed.includes(k));
-  if (extra.length) throw new ToolInputError(`${what} has unknown fields: ${extra.slice(0, 5).join(", ")}.`);
+  if (extra.length)
+    throw new ToolInputError(`${what} has unknown fields: ${extra.slice(0, 5).join(", ")}.`);
 }
 
 /** Checks a query from the model and rebuilds it from known parts only. Throws ToolInputError. */
@@ -141,21 +209,41 @@ export function checkQuery(input: unknown): Query {
   if (!isObject(input)) throw new ToolInputError("The query must be an object.");
   onlyKeys(input, ["measure", "by", "filter", "sort", "limit"], "The query");
   const { measure, by = [], filter, sort, limit } = input;
-  if (!has(MEASURES, measure)) throw new ToolInputError(`Unknown measure. Measures: ${MEASURES.join(", ")}.`);
-  if (!Array.isArray(by) || by.length > QUERY_LIMITS.dimensions || !by.every((d) => has(DIMENSIONS, d)) || new Set(by).size !== by.length) {
-    throw new ToolInputError(`"by" must list up to ${QUERY_LIMITS.dimensions} different dimensions from: ${DIMENSIONS.join(", ")}.`);
+  if (!has(MEASURES, measure))
+    throw new ToolInputError(`Unknown measure. Measures: ${MEASURES.join(", ")}.`);
+  if (
+    !Array.isArray(by) ||
+    by.length > QUERY_LIMITS.dimensions ||
+    !by.every((d) => has(DIMENSIONS, d)) ||
+    new Set(by).size !== by.length
+  ) {
+    throw new ToolInputError(
+      `"by" must list up to ${QUERY_LIMITS.dimensions} different dimensions from: ${DIMENSIONS.join(", ")}.`,
+    );
   }
   const allowed: readonly Dimension[] = MEASURE_DIMENSIONS[measure];
   const query: { -readonly [K in keyof Query]: Query[K] } = { measure, by: by as Dimension[] };
-  for (const d of by as Dimension[]) if (!allowed.includes(d)) throw new ToolInputError(`${measure} can't be grouped by ${d}. It supports: ${allowed.join(", ")}.`);
+  for (const d of by as Dimension[])
+    if (!allowed.includes(d))
+      throw new ToolInputError(
+        `${measure} can't be grouped by ${d}. It supports: ${allowed.join(", ")}.`,
+      );
   if (filter !== undefined) {
     if (!isObject(filter)) throw new ToolInputError('"filter" must be an object.');
     const clean: Partial<Record<Dimension, string[]>> = {};
     for (const [d, values] of Object.entries(filter)) {
-      if (!has(DIMENSIONS, d)) throw new ToolInputError(`Unknown filter dimension: ${d.slice(0, 40)}.`);
+      if (!has(DIMENSIONS, d))
+        throw new ToolInputError(`Unknown filter dimension: ${d.slice(0, 40)}.`);
       if (!allowed.includes(d)) throw new ToolInputError(`${measure} can't be filtered by ${d}.`);
-      if (!Array.isArray(values) || values.length < 1 || values.length > QUERY_LIMITS.filterValues || !values.every((v) => typeof v === "string" && v.length <= QUERY_LIMITS.filterValueLength)) {
-        throw new ToolInputError(`The ${d} filter must be 1 to ${QUERY_LIMITS.filterValues} strings.`);
+      if (
+        !Array.isArray(values) ||
+        values.length < 1 ||
+        values.length > QUERY_LIMITS.filterValues ||
+        !values.every((v) => typeof v === "string" && v.length <= QUERY_LIMITS.filterValueLength)
+      ) {
+        throw new ToolInputError(
+          `The ${d} filter must be 1 to ${QUERY_LIMITS.filterValues} strings.`,
+        );
       }
       clean[d] = values as string[];
     }
@@ -165,11 +253,15 @@ export function checkQuery(input: unknown): Query {
     if (!isObject(sort)) throw new ToolInputError('"sort" must be an object.');
     onlyKeys(sort, ["column", "direction"], '"sort"');
     const columns: (Dimension | Measure)[] = [measure, ...(by as Dimension[])];
-    if (!has(columns, sort.column) || (sort.direction !== "asc" && sort.direction !== "desc")) throw new ToolInputError(`"sort" must name one of ${columns.join(", ")} and a direction, asc or desc.`);
+    if (!has(columns, sort.column) || (sort.direction !== "asc" && sort.direction !== "desc"))
+      throw new ToolInputError(
+        `"sort" must name one of ${columns.join(", ")} and a direction, asc or desc.`,
+      );
     query.sort = { column: sort.column, direction: sort.direction };
   }
   if (limit !== undefined) {
-    if (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > QUERY_LIMITS.rows) throw new ToolInputError(`"limit" must be a whole number from 1 to ${QUERY_LIMITS.rows}.`);
+    if (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > QUERY_LIMITS.rows)
+      throw new ToolInputError(`"limit" must be a whole number from 1 to ${QUERY_LIMITS.rows}.`);
     query.limit = limit as number;
   }
   return query;
@@ -180,17 +272,38 @@ export function checkComparison(input: unknown): Comparison {
   if (!isObject(input)) throw new ToolInputError("The comparison must be an object.");
   onlyKeys(input, ["measure", "across", "from", "to", "by", "filter"], "The comparison");
   const { measure, across, from, to, by = [], filter } = input;
-  if (!has(DIMENSIONS, across)) throw new ToolInputError(`"across" must be one of: ${DIMENSIONS.join(", ")}.`);
-  for (const [name, v] of [["from", from], ["to", to]] as const) {
-    if (typeof v !== "string" || !v || v.length > QUERY_LIMITS.filterValueLength) throw new ToolInputError(`"${name}" must be 1 to ${QUERY_LIMITS.filterValueLength} characters.`);
+  if (!has(DIMENSIONS, across))
+    throw new ToolInputError(`"across" must be one of: ${DIMENSIONS.join(", ")}.`);
+  for (const [name, v] of [
+    ["from", from],
+    ["to", to],
+  ] as const) {
+    if (typeof v !== "string" || !v || v.length > QUERY_LIMITS.filterValueLength)
+      throw new ToolInputError(
+        `"${name}" must be 1 to ${QUERY_LIMITS.filterValueLength} characters.`,
+      );
   }
   if (from === to) throw new ToolInputError('"from" and "to" must differ.');
-  if (!Array.isArray(by) || by.length > 1) throw new ToolInputError('"by" may name at most one dimension.');
-  if (by.includes(across)) throw new ToolInputError(`"by" can't be ${across}, the dimension being compared.`);
-  if (isObject(filter) && across in filter) throw new ToolInputError(`Don't filter on ${across}; "from" and "to" choose its values.`);
+  if (!Array.isArray(by) || by.length > 1)
+    throw new ToolInputError('"by" may name at most one dimension.');
+  if (by.includes(across))
+    throw new ToolInputError(`"by" can't be ${across}, the dimension being compared.`);
+  if (isObject(filter) && across in filter)
+    throw new ToolInputError(`Don't filter on ${across}; "from" and "to" choose its values.`);
   // checkQuery checks the measure, dimensions and filter as one query would.
-  const query = checkQuery({ measure, by: [...by, across], ...(filter === undefined ? {} : { filter }) });
-  return { measure: query.measure, across, from: from as string, to: to as string, by: query.by.slice(0, -1), ...(query.filter ? { filter: query.filter } : {}) };
+  const query = checkQuery({
+    measure,
+    by: [...by, across],
+    ...(filter === undefined ? {} : { filter }),
+  });
+  return {
+    measure: query.measure,
+    across,
+    from: from as string,
+    to: to as string,
+    by: query.by.slice(0, -1),
+    ...(query.filter ? { filter: query.filter } : {}),
+  };
 }
 
 const MEASURE_TITLES: Record<Measure, string> = {
@@ -206,7 +319,8 @@ const MEASURE_TITLES: Record<Measure, string> = {
 };
 
 /** A chart's title, built from its query: the model doesn't title pins (Probe X1, #32). */
-export const chartTitle = (query: Query) => `${MEASURE_TITLES[query.measure]}${query.by.length ? ` by ${query.by.join(" and ").replace(/_/g, " ")}` : ""}${query.filter && Object.keys(query.filter).length ? ", filtered" : ""}`;
+export const chartTitle = (query: Query) =>
+  `${MEASURE_TITLES[query.measure]}${query.by.length ? ` by ${query.by.join(" and ").replace(/_/g, " ")}` : ""}${query.filter && Object.keys(query.filter).length ? ", filtered" : ""}`;
 
 const DIMENSION_WORDS = (by: readonly Dimension[]) => by.join(" and ").replace(/_/g, " ");
 
@@ -214,14 +328,17 @@ const DIMENSION_WORDS = (by: readonly Dimension[]) => by.join(" and ").replace(/
  * A comparison's title, built from its measure and dimensions only: the compared values are the model's free
  * text, shown only as the data returns them (Audit, #32).
  */
-export const comparisonTitle = (c: Comparison) => `${MEASURE_TITLES[c.measure]} compared across ${DIMENSION_WORDS([c.across])}${c.by.length ? ` by ${DIMENSION_WORDS(c.by)}` : ""}${c.filter && Object.keys(c.filter).length ? ", filtered" : ""}`;
+export const comparisonTitle = (c: Comparison) =>
+  `${MEASURE_TITLES[c.measure]} compared across ${DIMENSION_WORDS([c.across])}${c.by.length ? ` by ${DIMENSION_WORDS(c.by)}` : ""}${c.filter && Object.keys(c.filter).length ? ", filtered" : ""}`;
 
 /**
  * What the player can pin from a lookup Dewey showed: the query or comparison that ran, never its rows, so
  * Investigate runs it again through POST /api/query. Structurally one of Chart's PinSpecs
  * (src/investigate/pins/spec.ts).
  */
-export type LookupPin = { title: string; kind: "table" | (typeof SHOWN_CHART_KINDS)[number]; query: Query } | { title: string; kind: "comparison"; comparison: Comparison };
+export type LookupPin =
+  | { title: string; kind: "table" | (typeof SHOWN_CHART_KINDS)[number]; query: Query }
+  | { title: string; kind: "comparison"; comparison: Comparison };
 
 /** The pin for a lookup that ran, from the tool's input checked as the tool server checked it; null if it doesn't check. */
 export function lookupPin(tool: string, input: unknown): LookupPin | null {
@@ -242,7 +359,8 @@ export function lookupPin(tool: string, input: unknown): LookupPin | null {
 }
 
 /** The chart a query is drawn as: a line over months or quarters, bars for anything else (Audit, #252). */
-const drawnKind = (query: Query): (typeof SHOWN_CHART_KINDS)[number] => (query.by[0] === "month" || query.by[0] === "quarter" ? "line" : "bar");
+const drawnKind = (query: Query): (typeof SHOWN_CHART_KINDS)[number] =>
+  query.by[0] === "month" || query.by[0] === "quarter" ? "line" : "bar";
 
 /**
  * Checks a chart to pin, and makes it from its query, as show_chart does: the title, and the kind, a table only
@@ -253,9 +371,14 @@ const drawnKind = (query: Query): (typeof SHOWN_CHART_KINDS)[number] => (query.b
 export function checkChart(input: unknown): ChartSpec {
   if (!isObject(input)) throw new ToolInputError("The chart must be an object.");
   onlyKeys(input, ["title", "query", "table"], "The chart");
-  if (input.table !== undefined && typeof input.table !== "boolean") throw new ToolInputError("table must be true or false.");
+  if (input.table !== undefined && typeof input.table !== "boolean")
+    throw new ToolInputError("table must be true or false.");
   const checked = checkQuery(input.query);
-  return { title: chartTitle(checked), kind: input.table === true || !checked.by.length ? "table" : drawnKind(checked), query: checked };
+  return {
+    title: chartTitle(checked),
+    kind: input.table === true || !checked.by.length ? "table" : drawnKind(checked),
+    query: checked,
+  };
 }
 
 /**
@@ -263,12 +386,15 @@ export function checkChart(input: unknown): ChartSpec {
  * months or quarters and bars for anything else. The model chooses neither: a line across genres would suggest a
  * trend (Audit, #252). Throws ToolInputError.
  */
-export function checkShownChart(input: unknown): ChartSpec & { kind: (typeof SHOWN_CHART_KINDS)[number] } {
+export function checkShownChart(
+  input: unknown,
+): ChartSpec & { kind: (typeof SHOWN_CHART_KINDS)[number] } {
   if (!isObject(input)) throw new ToolInputError("The chart must be an object.");
   onlyKeys(input, ["query"], "The chart");
   const checked = checkQuery(input.query);
   const [x] = checked.by;
-  if (!x) throw new ToolInputError('A chart needs a dimension in "by"; for one total, use query_data.');
+  if (!x)
+    throw new ToolInputError('A chart needs a dimension in "by"; for one total, use query_data.');
   return { title: chartTitle(checked), kind: drawnKind(checked), query: checked };
 }
 

@@ -13,7 +13,12 @@ export const failedLoad = (model: object): model is Failed => FAILED in model;
 
 /** What this needs of a loader (three.js loaders, GLTFLoader among them). */
 interface Loader {
-  load(url: string, onLoad: (data: unknown) => void, onProgress?: (event: ProgressEvent) => void, onError?: (error: unknown) => void): unknown;
+  load(
+    url: string,
+    onLoad: (data: unknown) => void,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (error: unknown) => void,
+  ): unknown;
 }
 
 /**

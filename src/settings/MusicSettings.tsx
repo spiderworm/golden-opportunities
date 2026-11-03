@@ -15,7 +15,12 @@ export function MusicSettings({ load }: { load?: () => Promise<Music | null> }) 
     // No music on a phone (David): it gets the phone screen, and the game only mounts there for a moment.
     if (isPhoneScreen()) return;
     let live = true;
-    const get = load ?? (() => import("~/platform/music/music.client").then(({ loadMusic }) => loadMusic()).catch(cutOff("music settings")));
+    const get =
+      load ??
+      (() =>
+        import("~/platform/music/music.client")
+          .then(({ loadMusic }) => loadMusic())
+          .catch(cutOff("music settings")));
     void get().then((m) => live && setMusic(m));
     return () => {
       live = false;

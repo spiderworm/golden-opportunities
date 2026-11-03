@@ -32,7 +32,14 @@ const bookOf = (c: Candidate) => c.bookId ?? c.title;
  * or "No pick". It opens a list over the scene, with a search field at its top, so opening it moves nothing.
  * A book picked for another month stays in the list, marked and refused, so a book can't be picked twice.
  */
-export function PickPicker({ candidates, months, picks, onPick, onRefused, disabled }: PickPickerProps) {
+export function PickPicker({
+  candidates,
+  months,
+  picks,
+  onPick,
+  onRefused,
+  disabled,
+}: PickPickerProps) {
   const id = useId();
   const [open, setOpen] = useState<number | null>(null);
   const byIsbn = useMemo(() => new Map(candidates.map((c) => [c.isbn, c])), [candidates]);
@@ -94,7 +101,12 @@ export function PickPicker({ candidates, months, picks, onPick, onRefused, disab
 }
 
 /** The books picked for the other months, and for which month: they can't be picked again. */
-function takenBy(picks: readonly (string | null)[], months: readonly string[], month: number, byIsbn: ReadonlyMap<string, Candidate>): Map<string, string> {
+function takenBy(
+  picks: readonly (string | null)[],
+  months: readonly string[],
+  month: number,
+  byIsbn: ReadonlyMap<string, Candidate>,
+): Map<string, string> {
   const taken = new Map<string, string>();
   picks.forEach((isbn, m) => {
     const c = isbn && m !== month ? byIsbn.get(isbn) : undefined;
@@ -115,20 +127,39 @@ interface ChoicesProps {
 }
 
 /** The list for one month: a search field (an ARIA combobox) over "No pick" and every edition that matches. */
-function Choices({ id, month, candidates, chosen, taken, onChoose, onRefused, onClose }: ChoicesProps) {
+function Choices({
+  id,
+  month,
+  candidates,
+  chosen,
+  taken,
+  onChoose,
+  onRefused,
+  onClose,
+}: ChoicesProps) {
   const [query, setQuery] = useState("");
   const words = query.trim().toLowerCase();
   const shown = useMemo(
-    () => (words ? candidates.filter((c) => editionLabel(c).toLowerCase().includes(words)) : candidates),
+    () =>
+      words ? candidates.filter((c) => editionLabel(c).toLowerCase().includes(words)) : candidates,
     [candidates, words],
   );
   // "No pick" first (as option -1), then the editions shown; the active one starts at the current choice.
-  const [active, setActive] = useState(() => (chosen ? Math.max(-1, shown.findIndex((c) => c.isbn === chosen)) : -1));
+  const [active, setActive] = useState(() =>
+    chosen
+      ? Math.max(
+          -1,
+          shown.findIndex((c) => c.isbn === chosen),
+        )
+      : -1,
+  );
   const list = useRef<HTMLUListElement>(null);
   const optionId = (i: number) => `${id}-option-${i < 0 ? "none" : shown[i]!.isbn}`;
 
   useEffect(() => {
-    list.current?.querySelector(`[id="${CSS.escape(optionId(active))}"]`)?.scrollIntoView({ block: "nearest" });
+    list.current
+      ?.querySelector(`[id="${CSS.escape(optionId(active))}"]`)
+      ?.scrollIntoView({ block: "nearest" });
   });
 
   function choose(i: number) {
@@ -157,7 +188,9 @@ function Choices({ id, month, candidates, chosen, taken, onChoose, onRefused, on
     <div
       id={`${id}-popup`}
       className={styles.popup}
-      onBlur={(event) => !event.currentTarget.contains(event.relatedTarget as Node | null) && onClose(false)}
+      onBlur={(event) =>
+        !event.currentTarget.contains(event.relatedTarget as Node | null) && onClose(false)
+      }
     >
       <input
         className={styles.search}

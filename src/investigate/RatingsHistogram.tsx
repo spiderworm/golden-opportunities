@@ -25,8 +25,8 @@ export function RatingsHistogram({ title, result }: { title: string; result: Que
       {model ? (
         <>
           <p className={styles.ratingsSummary}>
-            Average {formatMeasure("avg_rating", model.mean)} from {formatMeasure("ratings", model.total)}{" "}
-            {model.total === 1 ? "rating" : "ratings"}
+            Average {formatMeasure("avg_rating", model.mean)} from{" "}
+            {formatMeasure("ratings", model.total)} {model.total === 1 ? "rating" : "ratings"}
           </p>
           <table className={styles.ratingsTable}>
             <caption className={styles.visuallyHidden}>Ratings of {title} by stars</caption>
@@ -45,9 +45,14 @@ export function RatingsHistogram({ title, result }: { title: string; result: Que
                   </th>
                   <td className={styles.ratingsBarCell}>
                     <span className={styles.ratingsTrack}>
-                      <span className={styles.ratingsBar} style={{ width: `${(row.share * 100).toFixed(1)}%` }} />
+                      <span
+                        className={styles.ratingsBar}
+                        style={{ width: `${(row.share * 100).toFixed(1)}%` }}
+                      />
                     </span>
-                    <span className={styles.ratingsCount}>{formatMeasure("ratings", row.count)}</span>
+                    <span className={styles.ratingsCount}>
+                      {formatMeasure("ratings", row.count)}
+                    </span>
                   </td>
                   <td className={styles.ratingsShare}>{`${Math.round(row.share * 100)}%`}</td>
                 </tr>
@@ -58,7 +63,10 @@ export function RatingsHistogram({ title, result }: { title: string; result: Que
       ) : (
         <p className={styles.ratingsSummary}>No one has rated this title.</p>
       )}
-      <p className={styles.source}>Ratings aren't dated, so the screen's other filters don't apply to them. Source: {result.source}</p>
+      <p className={styles.source}>
+        Ratings aren't dated, so the screen's other filters don't apply to them. Source:{" "}
+        {result.source}
+      </p>
     </section>
   );
 }

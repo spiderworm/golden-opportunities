@@ -92,7 +92,8 @@ describe("Investigate's views in the browser", () => {
     const show = async (search: string) => {
       const loader = s.loaderFor(url(search));
       await cachedView(cache, url(search), loader);
-      if (!loader.mock.calls.length) served.push({ key: viewKey(url(search)), version: cache.version! });
+      if (!loader.mock.calls.length)
+        served.push({ key: viewKey(url(search)), version: cache.version! });
     };
     await show("?by=genre");
     await show("?by=genre&compare=quarter");
@@ -113,6 +114,9 @@ describe("Investigate's views in the browser", () => {
     expect(served.length).toBe(4);
     for (const view of served) expect(s.observed).toContainEqual(view);
     // After the commit, the first view of each question went to the server again.
-    expect(s.observed.filter((o) => o.version === "q2").map((o) => o.key)).toEqual([viewKey(url("?by=genre")), viewKey(url("?title=Hashtag+QuokkaSelfie"))]);
+    expect(s.observed.filter((o) => o.version === "q2").map((o) => o.key)).toEqual([
+      viewKey(url("?by=genre")),
+      viewKey(url("?title=Hashtag+QuokkaSelfie")),
+    ]);
   });
 });
