@@ -121,12 +121,13 @@ export function safeReturn(to: FormDataEntryValue | null): string {
   // "/\t/evil.example" would land on //evil.example (Chart, #317). Backslashes too: browsers read them as slashes.
   if (typeof to !== "string" || !to.startsWith("/") || /[\u0000-\u001f\u007f\\]/.test(to))
     return "/";
-  // Then wherever it resolves must still be this site.
+  // Then wherever it resolves must still be this site, with one leading slash: "/.//evil.example" resolves to the
+  // path "//evil.example", which a browser reads as another site (Probe, #330). The checks below see that path.
   const at = new URL(to, ORIGIN);
+  const path = at.pathname.replace(/^\/+/, "/");
   // Not the entry action, and not a page's data, which would land the player on raw turbo-stream (Audit, #317).
-  if (at.origin !== ORIGIN || at.pathname === ENTRY_PATH || at.pathname.endsWith(".data"))
-    return "/";
-  return `${at.pathname}${at.search}`;
+  if (at.origin !== ORIGIN || path === ENTRY_PATH || path.endsWith(".data")) return "/";
+  return `${path}${at.search}`;
 }
 
 /** A stand-in origin for resolving a path: anything off it is off this site. */

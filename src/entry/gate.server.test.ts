@@ -184,5 +184,18 @@ describe("Continue", () => {
     expect(safeReturn("/%09/evil.example")).toBe("/%09/evil.example");
     expect(safeReturn("/./reports?q=1")).toBe("/reports?q=1");
     expect(safeReturn("/decide.data")).toBe("/");
+    // Paths that resolve to two or more leading slashes keep only one (Probe, #330).
+    for (const dots of [
+      "/.//evil.example",
+      "/x/..//evil.example",
+      "/%2e//evil.example",
+      "/%2E%2E//evil.example",
+      "/a/../..//evil.example",
+    ])
+      expect(safeReturn(dots)).toBe("/evil.example");
+    expect(safeReturn("/.///evil.example?q=1")).toBe("/evil.example?q=1");
+    // The checks see the collapsed path (Chart, #331).
+    expect(safeReturn("/.//entry")).toBe("/");
+    expect(safeReturn("/.//decide.data")).toBe("/");
   });
 });
