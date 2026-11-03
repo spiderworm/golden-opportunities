@@ -16,6 +16,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { Icon } from "~/shell/icons";
 import styles from "./Dropdown.module.css";
@@ -193,7 +194,7 @@ export interface MenuToggle {
 }
 
 /**
- * A button that opens a menu of switches. Its button counts the ones on ("Options", "1 on"), so a chart's state
+ * A button that opens a menu of switches. Its button counts the ones on ("View", "1 on", heard as "View, 1 on"), so a chart's state
  * isn't hidden behind it. The arrow keys, Home and End move through the items, a switch keeps the menu open, and
  * Escape or Tab shuts it.
  */
@@ -214,6 +215,16 @@ export function ToggleMenu({
   const menuId = useId();
   const items = useRef<(HTMLButtonElement | null)[]>([]);
   const on = toggles.filter((t) => t.on).length;
+  // An unavailable item's reason as a tooltip beside it, on hover and on keyboard focus (David, 3 Nov 2026: "Need
+  // tooltips on hovered view options in the dropdown that aren't available. Explanations as to why"). Drawn on the
+  // page, not in the panel, whose scrolling would clip it; to the item's right, or its left near the screen's edge.
+  const [tip, setTip] = useState<{ i: number; rect: DOMRect } | null>(null);
+  const showTip = (i: number, el: HTMLElement) =>
+    toggles[i]?.reason ? setTip({ i, rect: el.getBoundingClientRect() }) : setTip(null);
+  const hideTip = (i: number) => setTip((t) => (t?.i === i ? null : t));
+  useEffect(() => {
+    if (!open) setTip(null);
+  }, [open]);
   // Opening puts the focus on the first item, as a menu's button does.
   const [focusFirst, setFocusFirst] = useState(false);
   useEffect(() => {
@@ -222,6 +233,12 @@ export function ToggleMenu({
   }, [open, focusFirst]);
 
   const onKey = (event: KeyboardEvent) => {
+    // Escape takes the tooltip away first, and only then the menu.
+    if (event.key === "Escape" && tip) {
+      event.stopPropagation();
+      setTip(null);
+      return;
+    }
     const at = items.current.indexOf(document.activeElement as HTMLButtonElement);
     const last = toggles.length - 1;
     const to =
@@ -304,6 +321,10 @@ export function ToggleMenu({
               data-disabled={reason !== null || undefined}
               data-under={toggle.under || undefined}
               onClick={() => reason === null && toggle.onToggle()}
+              onPointerEnter={(e) => showTip(i, e.currentTarget)}
+              onPointerLeave={() => hideTip(i)}
+              onFocus={(e) => showTip(i, e.currentTarget)}
+              onBlur={() => hideTip(i)}
             >
               <span className={styles.tick} data-on={toggle.on || undefined} aria-hidden="true">
                 {toggle.on && (
@@ -331,6 +352,33 @@ export function ToggleMenu({
           );
         })}
       </div>
+      {tip &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <ReasonTip rect={tip.rect} reason={toggles[tip.i]?.reason ?? ""} />,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+const TIP_WIDTH = 260;
+
+/** The reason beside its item, fixed to the page so neither the panel nor the card clips it. */
+function ReasonTip({ rect, reason }: { rect: DOMRect; reason: string }) {
+  // Read already as the item's description, so the tooltip itself is only seen.
+  const right = window.innerWidth - rect.right > TIP_WIDTH + 16;
+  return (
+    <div
+      aria-hidden="true"
+      className={styles.tip}
+      style={{
+        top: rect.top + rect.height / 2,
+        ...(right ? { left: rect.right + 8 } : { right: window.innerWidth - rect.left + 8 }),
+        maxWidth: TIP_WIDTH,
+      }}
+    >
+      {reason}
     </div>
   );
 }
