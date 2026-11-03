@@ -5,8 +5,11 @@ import { EChart } from "~/platform/charts/EChart";
 import styles from "../Investigate.module.css";
 import { NOISE_EXPLAINED } from "./evidence";
 import {
+  axisCaption,
+  axisFoot,
   SPLIT_COLORS,
   SPLIT_LEGEND,
+  waterfallBars,
   waterfallOption,
   waterfallRows,
   type DroveLabels,
@@ -29,6 +32,7 @@ export function Waterfall({
   title: string;
 }) {
   const option = useMemo(() => waterfallOption(model, labels, { split }), [model, labels, split]);
+  const caption = axisCaption(axisFoot(waterfallBars(model, labels)));
   if (table) return <WaterfallTable model={model} labels={labels} split={split} />;
   return (
     <>
@@ -51,6 +55,7 @@ export function Waterfall({
         </ul>
       )}
       <EChart option={option} height={HEIGHT} label={title} />
+      {caption && <p className={styles.tableNote}>{caption}</p>}
     </>
   );
 }
