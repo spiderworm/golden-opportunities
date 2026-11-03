@@ -106,11 +106,19 @@ export interface HeatState {
 export const HEAT_WINDOW = 8;
 
 /**
+ * What decides the heatmap's span instead of its window: the screen's own quarter filter, or else its month filter
+ * (a month older than the window would leave nothing to draw; Plot, #270). Null when neither is set.
+ */
+export function heatSpanFilter(filters: Filters): "quarter" | "month" | null {
+  return filters.quarter?.length ? "quarter" : filters.month?.length ? "month" : null;
+}
+
+/**
  * The quarters the heatmap's default window keeps, or null when it covers everything: until the ledger holds more
- * than eight quarters, when the player chose every quarter, or when the screen already filters by quarter.
+ * than eight quarters, when the player chose every quarter, or when the screen already filters by quarter or month.
  */
 export function heatWindow(state: Pick<InvestigateState, "heat" | "filters">, quarters: readonly string[]): string[] | null {
-  if (quarters.length <= HEAT_WINDOW || state.heat.period === "all" || state.filters.quarter?.length) return null;
+  if (quarters.length <= HEAT_WINDOW || state.heat.period === "all" || heatSpanFilter(state.filters)) return null;
   return [...quarters].sort().slice(-HEAT_WINDOW);
 }
 

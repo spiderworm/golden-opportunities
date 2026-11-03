@@ -165,6 +165,8 @@ describe("investigate state", () => {
     expect(toSearchParams(all).toString()).toBe("heat_period=all");
     expect(heatWindow(all, ten)).toBeNull();
     expect(heatWindow({ ...DEFAULT_STATE, filters: { quarter: ["2194-Q1"] } }, ten)).toBeNull();
+    // A month older than the window would leave nothing: the month filter decides too (Plot, #270).
+    expect(heatWindow({ ...DEFAULT_STATE, filters: { month: ["2193-02"] } }, ten)).toBeNull();
   });
 
   it("filters to a heatmap cell's row and column values, and clears them on a second click", () => {
