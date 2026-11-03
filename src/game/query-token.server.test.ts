@@ -198,5 +198,17 @@ describe("a deployed visitor's Share play data choice on Dewey's lookups (Audit 
     await h(request(undefined, off));
     await h(request(undefined, on));
     expect(seen).toEqual([false, true]);
+    // A refused lookup's failure event follows the token's choice too (Probe, #368).
+    const failed: boolean[] = [];
+    const refusing = createQueryHandler({
+      track: (event) => event === "query_request_failed" && failed.push(visitorAllowsSharing()),
+    });
+    expect((await refusing(request(undefined, off, { measure: "nonsense", by: [] }))).status).toBe(
+      400,
+    );
+    expect((await refusing(request(undefined, on, { measure: "nonsense", by: [] }))).status).toBe(
+      400,
+    );
+    expect(failed).toEqual([false, true]);
   });
 });
