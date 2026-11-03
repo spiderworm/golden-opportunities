@@ -170,6 +170,11 @@ export interface InvestigateState {
   drove: boolean;
   /** The waterfall split into price, volume and mix (`split=1`), only with it on. */
   split: boolean;
+  /**
+   * Each group's share of the total (`share=total`), or that largest first with the running share (`share=running`);
+   * null for the figures themselves. Applies only while shareBlock allows it.
+   */
+  share: ShareMode | null;
   filters: Filters;
   /** The heatmap. Its measure follows the chart's first until the player picks one (`heat=`). */
   heat: HeatState;
@@ -184,6 +189,7 @@ export const DEFAULT_STATE: InvestigateState = {
   lastYear: false,
   drove: false,
   split: false,
+  share: null,
   filters: {},
   heat: { measure: "revenue", rows: "weekday", cols: "month", period: "recent" },
 };
@@ -335,6 +341,71 @@ export const droveOn = (
   quarters: readonly string[],
 ) => state.drove && droveBlock(state, quarters) === null;
 
+/** "% of total" and "Running share" (David, 3 Nov 2026, req_fa2e6a0dbbec; Plot's copy). */
+export const SHARE_MODES = ["total", "running"] as const;
+export type ShareMode = (typeof SHARE_MODES)[number];
+
+/** Measures whose groups add up to the total: a share is a part of it. Averages and rates have no share. */
+const SHARED_MEASURES: readonly Measure[] = ["revenue", "units", "orders"];
+/** Groupings each order falls in exactly once, by its date. By anything a book has, an order can be in several. */
+const ORDER_GROUPINGS: readonly Grouping[] = ["month", "quarter", "weekday"];
+
+/** Each grouping in the plural, in lower case, for the shares' words ("Top 5 titles"). */
+export const GROUP_PLURALS: Record<Grouping, string> = {
+  month: "months",
+  quarter: "quarters",
+  genre: "genres",
+  format: "formats",
+  publisher: "publishers",
+  weekday: "weekdays",
+  discount_rate: "discount rates",
+  price_band: "price bands",
+  list_price: "list prices",
+  awarded: "award groups",
+  volume: "series volumes",
+  title: "titles",
+  edition: "editions",
+};
+
+/**
+ * Why the chart can't show shares, or null if it can (Plot's copy). One additive measure, by a grouping its total
+ * splits into without counting anything twice, with no other mode on. `modes` are the other modes that are on and
+ * shown: last year and What drove the change, each only once allowed, so asking for them doesn't block shares.
+ */
+export function shareBlock(
+  state: Pick<InvestigateState, "by" | "also" | "compare" | "scatter"> & { measure: Measure },
+  modes: { lastYear: boolean; drove: boolean },
+): string | null {
+  if (state.also.length) return "Show one measure to see its share";
+  if (!SHARED_MEASURES.includes(state.measure))
+    return "An average has no share of a total: show revenue, units sold or orders";
+  if (state.measure === "orders" && !ORDER_GROUPINGS.includes(state.by))
+    return `An order with books in several ${GROUP_PLURALS[state.by]} counts in each, so their shares would add to more than 100%`;
+  if (state.compare) return "Turn off Compare quarters to see shares";
+  if (modes.lastYear) return "Turn off vs. same quarter last year to see shares";
+  if (state.scatter) return "Turn off Scatter plot to see shares";
+  if (modes.drove) return "Turn off What drove the change to see shares";
+  return null;
+}
+
+/** Why there's no running share where shares themselves are fine: over time, largest first isn't a reading. */
+export const runningBlock = (by: Grouping): string | null =>
+  ORDER_GROUPINGS.includes(by)
+    ? "Break down by title, genre or another group for a running share"
+    : null;
+
+/** Whether shares stay on in the URL: as long as the chart is one that could ever show them. */
+export const keepsShare = (
+  state: Pick<InvestigateState, "by" | "also" | "compare" | "scatter" | "share"> & {
+    measure: Measure;
+  },
+): ShareMode | null =>
+  state.share && shareBlock(state, { lastYear: false, drove: false }) === null
+    ? state.share === "running" && runningBlock(state.by)
+      ? "total"
+      : state.share
+    : null;
+
 /** Whether "What drove the change" stays on in the URL: as long as the chart is one it could ever break down. */
 export const keepsDrove = (
   state: Pick<InvestigateState, "by" | "also" | "compare" | "scatter"> & { measure: Measure },
@@ -400,6 +471,13 @@ export function parseState(params: URLSearchParams): InvestigateState {
     filters,
     heat: readHeat(params, measures.measure),
     ...readDrove(params, by, measures),
+    share: keepsShare({
+      by,
+      ...measures,
+      compare: params.get("compare") === "quarter" && canCompare(by, measures.also),
+      scatter: params.get("chart") === "scatter" && scatterProblem(by, measures.also) === null,
+      share: SHARE_MODES.find((m) => m === params.get("share")) ?? null,
+    }),
   };
 }
 
@@ -445,6 +523,8 @@ export function toSearchParams(state: InvestigateState): URLSearchParams {
   if (state.scatter && scatterProblem(state.by, state.also) === null)
     params.set("chart", "scatter");
   if (state.lastYear && keepsLastYear(state)) params.set("vs", "last_year");
+  const share = keepsShare(state);
+  if (share) params.set("share", share);
   if (state.drove && keepsDrove(state)) {
     params.set("drove", "1");
     if (state.split) params.set("split", "1");

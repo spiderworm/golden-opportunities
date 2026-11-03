@@ -14,6 +14,8 @@ import {
   canCompare,
   droveBlock,
   droveOn,
+  runningBlock,
+  shareBlock,
   droveQuarters,
   scatterProblem,
   measuresOf,
@@ -46,6 +48,7 @@ describe("investigate state", () => {
       lastYear: false,
       drove: false,
       split: false,
+      share: null,
       filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] },
       heat: { measure: "units", rows: "weekday", cols: "month", period: "recent" },
     } as const;
@@ -59,6 +62,56 @@ describe("investigate state", () => {
       "measure=units&by=genre&compare=quarter&quarter=2193-Q4&genre=Fiction&genre=Memoir",
     );
     expect(parseState(params)).toEqual(state);
+  });
+
+  it("keeps % of total and the running share in the URL only where the chart could show them", () => {
+    const read = (query: string) => parseState(new URLSearchParams(query));
+    expect(read("by=genre&share=total").share).toBe("total");
+    expect(read("by=title&share=running").share).toBe("running");
+    expect(toSearchParams(read("by=title&share=running")).toString()).toBe(
+      "by=title&share=running",
+    );
+    // Over time, the running share falls back to plain shares.
+    expect(read("by=month&share=running").share).toBe("total");
+    // An average, several measures, orders by a book's group, Compare quarters: none.
+    expect(read("measure=avg_discount&by=genre&share=total").share).toBeNull();
+    expect(read("measures=revenue,units&by=genre&share=total").share).toBeNull();
+    expect(read("measure=orders&by=genre&share=total").share).toBeNull();
+    expect(read("measure=orders&by=weekday&share=total").share).toBe("total");
+    expect(read("by=genre&compare=quarter&share=total").share).toBeNull();
+    expect(read("by=genre&share=everything").share).toBeNull();
+  });
+
+  it("says why shares can't be shown, in Plot's words", () => {
+    const state = { ...DEFAULT_STATE, by: "genre" as const };
+    const none = { lastYear: false, drove: false };
+    expect(shareBlock(state, none)).toBeNull();
+    expect(shareBlock({ ...state, also: ["units"] }, none)).toBe(
+      "Show one measure to see its share",
+    );
+    expect(shareBlock({ ...state, measure: "avg_order_value" }, none)).toBe(
+      "An average has no share of a total: show revenue, units sold or orders",
+    );
+    expect(shareBlock({ ...state, measure: "orders_per_day" }, none)).toBe(
+      "An average has no share of a total: show revenue, units sold or orders",
+    );
+    expect(shareBlock({ ...state, measure: "orders" }, none)).toBe(
+      "An order with books in several genres counts in each, so their shares would add to more than 100%",
+    );
+    expect(shareBlock({ ...state, measure: "orders", by: "month" }, none)).toBeNull();
+    expect(shareBlock({ ...state, compare: true }, none)).toBe(
+      "Turn off Compare quarters to see shares",
+    );
+    expect(shareBlock(state, { lastYear: true, drove: false })).toBe(
+      "Turn off vs. same quarter last year to see shares",
+    );
+    expect(shareBlock(state, { lastYear: false, drove: true })).toBe(
+      "Turn off What drove the change to see shares",
+    );
+    expect(runningBlock("genre")).toBeNull();
+    expect(runningBlock("weekday")).toBe(
+      "Break down by title, genre or another group for a running share",
+    );
   });
 
   it("keeps vs. same quarter last year in the URL, and says why it can't apply", () => {
