@@ -1,4 +1,5 @@
 import type { Route } from "./+types/api";
+import { SaveError } from "~/game/store.server";
 import { reportsData } from "./data.server";
 
 /**
@@ -9,5 +10,19 @@ import { reportsData } from "./data.server";
  * only rejects.
  */
 export function loader({ request }: Route.LoaderArgs) {
-  return Response.json(reportsData(request), { headers: { "Cache-Control": "no-store" } });
+  try {
+    return Response.json(reportsData(request), { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    // Outside the pages' layout, so no game-session middleware starts a game here: a request with no save (or a
+    // malformed one) is answered as the middleware answers a POST without one, not with a 500 (Audit, #376).
+    if (
+      error instanceof SaveError &&
+      (error.code === "MISSING_SAVE" || error.code === "INVALID_SAVE")
+    )
+      return new Response("Start a game first.", {
+        status: 401,
+        headers: { "Cache-Control": "no-store" },
+      });
+    throw error;
+  }
 }

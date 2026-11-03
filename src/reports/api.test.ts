@@ -30,4 +30,26 @@ describe("/api/reports (Frank, #352: a plain fetch, never a fetcher's route load
       quarters: ["2193-Q1", "2193-Q2"],
     });
   });
+
+  it("answers a request with no save as 401, not a 500 (Audit, #376)", async () => {
+    const { SaveError } = await import("~/game/store.server");
+    session.getGameSession.mockImplementationOnce(() => {
+      throw new SaveError("MISSING_SAVE");
+    });
+    const response = api({
+      request: new Request("http://localhost/api/reports"),
+    } as Route.LoaderArgs);
+    expect(response.status).toBe(401);
+    expect(await response.text()).toBe("Start a game first.");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("still throws any other failure", () => {
+    session.getGameSession.mockImplementationOnce(() => {
+      throw new Error("disk");
+    });
+    expect(() =>
+      api({ request: new Request("http://localhost/api/reports") } as Route.LoaderArgs),
+    ).toThrow("disk");
+  });
 });
