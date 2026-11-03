@@ -79,6 +79,12 @@ export type MusicOptions = {
    * shows besides the name (the game's name as the album, say); false
    * leaves them alone. */
   mediaKeys?: boolean | NowPlaying;
+  /** Start paused, as if the player had pressed pause (Orbital Books' "Play
+   * the music" left unticked, David, 3 Nov 2026): the first song is queued,
+   * or the one restored (`remember`), and waits for the player's play, through
+   * reloads too. Nothing is reported and no other tab is told; with `oneTab`,
+   * music already playing in another of the app's tabs carries on. */
+  startPaused?: boolean;
 };
 
 /** The place saved for `remember`. */
@@ -256,6 +262,11 @@ export function createMusic(o: MusicOptions) {
       if (sounding) share();
     });
     if (typeof addEventListener !== "undefined") addEventListener("pagehide", remember);
+  }
+  if (o.startPaused) {
+    paused = true;
+    song ??= queue.next();
+    remember();
   }
 
   // seconds into the song: the deck's, or, in a tab not heard, the heard tab's as last shared
