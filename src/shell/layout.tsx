@@ -38,6 +38,7 @@ function Frame({ station, children }: { station: StationState; children: ReactNo
         seen.submit(null, { method: "post", action: "/alert/seen" }).catch(() => {})
       }
       track={track}
+      counts={{ reports: station.newReports }}
     >
       {children}
     </Shell>

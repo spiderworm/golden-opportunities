@@ -381,7 +381,7 @@ There is no phone layout. David: "On phones? HEAVENS NO". A phone gets one scene
 | --- | --- |
 | Boss line (bubble) | `WHAT IS THIS? A COMPUTER FOR ANTS? WE ARE CONFISCATING IT. MR. ZOOLANDER WOULD WANT IT AT LEAST THREE TIMES BIGGER.` |
 | Fact line (plain, under the bubble) | `Orbital Books needs a laptop or desktop computer. Open this page on one to play.` |
-| Scene's accessible name | `A robot reaches out of the screen and grabs your phone.` |
+| Scene's accessible name | `A robot reaches out of the screen, takes your phone, looks it over, and walks off with it down endless white corridors.` |
 | Accessible name, still picture | `A robot glares at your phone.` |
 
 The fact line is the only thing the player needs, so it stays plain and readable without the animation. With reduced motion, show the robot already holding the phone, with no reach. The still picture (no WebGL 2, the scene failed, or the 3D code is still loading) shows the robot standing, so it takes the still picture's name. The bubble appears when the claw closes, or 2.5 seconds after the screen comes up, whichever is first; over the still picture, it appears at once.

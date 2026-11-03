@@ -11,9 +11,7 @@
     inset: 0;
     z-index: 1000;
     display: grid;
-    /* The words at the top, the boss's then the fact; the bottom of the screen is where its hand takes hold. */
-    grid-template-rows: auto auto 1fr;
-    align-content: start;
+    grid-template-rows: auto 1fr auto;
     gap: 12px;
     margin: 0;
     padding: max(16px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
@@ -26,21 +24,9 @@
     color: var(--color-text);
   }
 
-  /* Turned, the words stand in a column on the right, and the robot has the left of the screen. */
-  @media (orientation: landscape) {
-    .phone {
-      grid-template-columns: 1fr minmax(0, 54%);
-    }
-
-    .speech,
-    .fact {
-      grid-column: 2;
-    }
-
-    /* The still robot (while the 3D scene loads, or for good without WebGL 2) keeps to the left too. */
-    .still {
-      padding-right: calc(54% + 16px);
-    }
+  /* The 3D scene has its own room (room.ts). */
+  .phone[data-room] {
+    background: var(--color-space);
   }
 
   :global(body) > :not(.phone) {
@@ -86,7 +72,7 @@
 /* The one thing the player needs: plain, readable whatever the scene is doing. */
 .fact {
   position: relative;
-  grid-row: 2;
+  grid-row: 3;
   margin: 0;
   padding: 12px 14px;
   border-radius: var(--radius-control);

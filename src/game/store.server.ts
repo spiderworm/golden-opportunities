@@ -72,6 +72,15 @@ export class SaveError extends Error {
     this.code = code;
   }
 }
+/** A list of quarters the player has seen something for (memos, shop reports): distinct quarters, in play order. */
+function validSeen(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length <= playableQuarters() &&
+    value.every((q, i, all) => isQuarterId(q) && (i === 0 || compareQuarters(all[i - 1]!, q) < 0))
+  );
+}
+
 function validEvidence(value: unknown): value is Record<string, string[]> {
   return (
     typeof value === "object" &&
@@ -127,12 +136,8 @@ function validate(save: GameSave, id: string): void {
         save.queryRevision > save.revision)) ||
     (save.discoveryEvidence !== undefined && !validEvidence(save.discoveryEvidence)) ||
     (save.alertSeen !== undefined && save.alertSeen !== true) ||
-    (save.alertsSeen !== undefined &&
-      (!Array.isArray(save.alertsSeen) ||
-        save.alertsSeen.length > playableQuarters() ||
-        !save.alertsSeen.every(
-          (q, i, all) => isQuarterId(q) && (i === 0 || compareQuarters(all[i - 1]!, q) < 0),
-        ))) ||
+    (save.alertsSeen !== undefined && !validSeen(save.alertsSeen)) ||
+    (save.reportsSeen !== undefined && !validSeen(save.reportsSeen)) ||
     !Array.isArray(save.discoveries) ||
     save.discoveries.length > 6 ||
     new Set(save.discoveries).size !== save.discoveries.length ||
