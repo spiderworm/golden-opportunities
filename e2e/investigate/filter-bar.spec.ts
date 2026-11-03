@@ -44,8 +44,9 @@ test('filters are added from the list, filter nothing until chosen, and come off
   await expect(bar.getByRole('button', { name: /^Genre/ })).toHaveCount(0);
   await expect(add).toBeFocused();
   await expect(figures).toHaveText(everything);
-  // Only choosing and clearing Fiction asked for data, not adding or the empty filters.
-  expect(loads.length - before).toBe(2);
+  // Only choosing Fiction asked for data: not adding or the empty filters, and not clearing it either, which goes
+  // back to a view already shown under this data version, so the browser's cache has it (#191).
+  expect(loads.length - before).toBe(1);
 
   // Awards is still on the bar, empty; unchecking it in the list takes it off.
   await add.click();
