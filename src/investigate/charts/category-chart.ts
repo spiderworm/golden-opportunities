@@ -18,6 +18,8 @@ import {
 import { isTotal } from "../state";
 import { chartTheme, seriesColor, tooltipStyle } from "~/platform/charts/chart-theme";
 import { escapeHtml } from "~/platform/charts/escape";
+import { ratingRange, withinNoise, type Evidence, type EvidenceUnit } from "~/query/evidence";
+import { basedOnLine, faded as tooFew, lowLine, noisy, rangeLine } from "./evidence";
 
 export interface CategoryModel {
   measure: Measure;
@@ -27,8 +29,13 @@ export interface CategoryModel {
   categories: (string | null)[];
   /** The dimension that splits each category into series, if any. */
   seriesBy: Dimension | null;
-  /** One series, or one per value of seriesBy. */
-  series: { key: string | null; values: (number | null)[] }[];
+  /**
+   * One series, or one per value of seriesBy, with each value's evidence where the result has it (src/query/
+   * evidence.ts): null for a value with no row.
+   */
+  series: { key: string | null; values: (number | null)[]; evidence?: (Evidence | null)[] }[];
+  /** What an average is over, for its "Based on" line; null for other measures or a result without evidence. */
+  unit?: EvidenceUnit | null;
   /** Many unordered categories (titles, authors, series) read best as ranked horizontal bars. */
   horizontal: boolean;
   /** How many categories there were before a ranking was cut to the top ones. */
@@ -96,12 +103,16 @@ export function categoryModel(
   const seriesKeys = seriesBy
     ? orderCategories(seriesBy, [...new Set(result.rows.map((r) => r[seriesBy] ?? null))])
     : [null];
-  const valueAt = (category: string | null, key: string | null) => {
-    const row = result.rows.find(
+  const rowAt = (category: string | null, key: string | null) =>
+    result.rows.findIndex(
       (r) => (r[x] ?? null) === category && (!seriesBy || (r[seriesBy] ?? null) === key),
     );
+  const valueAt = (category: string | null, key: string | null) => {
+    const row = result.rows[rowAt(category, key)];
     return row ? (row[measure] ?? null) : complete && isTotal(measure) ? 0 : null;
   };
+  const evidenceAt = (category: string | null, key: string | null) =>
+    result.evidence?.rows[rowAt(category, key)] ?? null;
   const sum = (category: string | null) =>
     seriesKeys.reduce((total, key) => total + (valueAt(category, key) ?? 0), 0);
 
@@ -121,9 +132,14 @@ export function categoryModel(
     x,
     categories,
     seriesBy,
-    series: seriesKeys.map((key) => ({ key, values: categories.map((c) => valueAt(c, key)) })),
+    series: seriesKeys.map((key) => ({
+      key,
+      values: categories.map((c) => valueAt(c, key)),
+      ...(result.evidence && { evidence: categories.map((c) => evidenceAt(c, key)) }),
+    })),
     horizontal,
     ranked,
+    unit: result.evidence?.unit ?? null,
   };
 }
 
@@ -243,7 +259,7 @@ export function categoryOption(
           ? { type: "line", lineStyle: { color: chartTheme.axis, width: 1 } }
           : { type: "shadow", shadowStyle: { color: "rgb(143 132 255 / 0.08)" } },
       formatter: (
-        params: {
+        all: {
           dataIndex: number;
           seriesIndex: number;
           seriesName: string;
@@ -251,6 +267,8 @@ export function categoryOption(
           color: string;
         }[],
       ) => {
+        // The likely range's own series say nothing here: each value's line says its range.
+        const params = all.filter((p) => p.seriesIndex < model.series.length);
         const first = params[0];
         if (!first) return "";
         const heading = escapeHtml(formatDimensionValue(x, model.categories[first.dataIndex]));
@@ -264,7 +282,7 @@ export function categoryOption(
             share && p.value !== null && total
               ? `<div style="font-size:11px;color:${chartTheme.textMuted}">${escapeHtml(`${Math.round((p.value / total) * 100)}% of ${share.period(p.seriesIndex)}`)}</div>`
               : "";
-          return value + part;
+          return value + part + evidenceLines(model, p.seriesIndex, p.dataIndex, p.value, !ghost);
         });
         const hint = !drill
           ? ""
@@ -283,48 +301,196 @@ export function categoryOption(
     },
     xAxis: horizontal ? valueAxis : categoryAxis,
     yAxis: horizontal ? categoryAxis : valueAxis,
-    series: model.series.map((series, index) => {
-      // Last year is this year's color, lighter.
-      const faded = ghost !== undefined && index === 1;
-      const color = model.seriesBy
-        ? seriesColor(
-            model.seriesBy,
-            model.series[faded ? 0 : index]!.key,
-            faded ? 0 : index,
-            quarters,
-          )
-        : chartTheme.series;
-      const opacity = faded ? GHOST_OPACITY : 1;
-      const name = model.seriesBy
-        ? formatDimensionValue(model.seriesBy, series.key)
-        : MEASURE_LABELS[measure];
-      if (kind === "line") {
+    series: [
+      ...model.series.map((series, index) => {
+        // Last year is this year's color, lighter.
+        const faded = ghost !== undefined && index === 1;
+        const color = model.seriesBy
+          ? seriesColor(
+              model.seriesBy,
+              model.series[faded ? 0 : index]!.key,
+              faded ? 0 : index,
+              quarters,
+            )
+          : chartTheme.series;
+        const opacity = faded ? GHOST_OPACITY : 1;
+        const name = model.seriesBy
+          ? formatDimensionValue(model.seriesBy, series.key)
+          : MEASURE_LABELS[measure];
+        if (kind === "line") {
+          return {
+            type: "line",
+            name,
+            data: series.values,
+            lineStyle: { color, width: 2, cap: "round", join: "round", opacity },
+            itemStyle: { color, borderColor: chartTheme.surface, borderWidth: 2, opacity },
+            symbol: "circle",
+            symbolSize: 8,
+            showSymbol: model.categories.length <= 24,
+            emphasis: { focus: "none" },
+          };
+        }
         return {
-          type: "line",
+          type: "bar",
           name,
-          data: series.values,
-          lineStyle: { color, width: 2, cap: "round", join: "round", opacity },
-          itemStyle: { color, borderColor: chartTheme.surface, borderWidth: 2, opacity },
-          symbol: "circle",
-          symbolSize: 8,
-          showSymbol: model.categories.length <= 24,
-          emphasis: { focus: "none" },
+          barMaxWidth: horizontal ? 16 : 24,
+          barGap: "12%",
+          barCategoryGap: splitting ? "28%" : "40%",
+          // Rounded at the data end, square at the baseline.
+          itemStyle: { color, opacity, borderRadius: horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0] },
+          emphasis: { focus: "none", itemStyle: { color, opacity } },
+          data: series.values.map((value, i) => ({
+            value,
+            itemStyle: {
+              color: anySelected && !isSelected(i) ? chartTheme.dimmed : color,
+              // An average over too few to go on is faded further (Plot, #296).
+              opacity: tooFew(model.unit ?? null, series.evidence?.[i]) ? opacity * 0.45 : opacity,
+            },
+          })),
         };
-      }
-      return {
-        type: "bar",
-        name,
-        barMaxWidth: horizontal ? 16 : 24,
-        barGap: "12%",
-        barCategoryGap: splitting ? "28%" : "40%",
-        // Rounded at the data end, square at the baseline.
-        itemStyle: { color, opacity, borderRadius: horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0] },
-        emphasis: { focus: "none", itemStyle: { color, opacity } },
-        data: series.values.map((value, i) => ({
-          value,
-          itemStyle: { color: anySelected && !isSelected(i) ? chartTheme.dimmed : color, opacity },
-        })),
-      };
-    }),
+      }),
+      ...rangeSeries(model, kind, horizontal),
+    ],
   };
+}
+
+const note = (text: string) =>
+  `<div style="font-size:11px;color:${chartTheme.textMuted}">${escapeHtml(text)}</div>`;
+
+/**
+ * A value's evidence lines in the tooltip (Plot, #296 and #297): an average's `Based on 212 ratings` and its low-n
+ * line, average rating's likely range, and, comparing quarters, `Within noise against Q1 2194` when its difference
+ * from the quarter before it is (`comparing`: not when the series are this year and last).
+ */
+function evidenceLines(
+  model: CategoryModel,
+  seriesIndex: number,
+  dataIndex: number,
+  value: number | null,
+  comparing: boolean,
+): string {
+  const series = model.series[seriesIndex];
+  const evidence = series?.evidence?.[dataIndex];
+  if (!series || !evidence) return "";
+  const lines: string[] = [];
+  if (model.unit && value !== null) {
+    lines.push(basedOnLine(model.unit, evidence.n));
+    const low = lowLine(model.unit, evidence.n);
+    if (low) lines.push(low);
+  }
+  if (model.measure === "avg_rating") {
+    const range = rangeLine(value, evidence);
+    if (range) lines.push(range);
+  }
+  // Last year beside this year says it on its change line instead.
+  const before =
+    comparing && model.seriesBy === "quarter" ? model.series[seriesIndex - 1] : undefined;
+  if (
+    before &&
+    noisy(
+      model.unit ?? null,
+      { value, evidence },
+      { value: before.values[dataIndex] ?? null, evidence: before.evidence?.[dataIndex] },
+    )
+  )
+    lines.push(`Within noise against ${formatDimensionValue("quarter", before.key)}`);
+  return lines.map(note).join("");
+}
+
+/**
+ * Comparing quarters: how many of the chart's quarter-on-quarter differences (each quarter against the one before,
+ * in each category) can be judged, and how many of those are within noise.
+ */
+export function noiseFlags(model: CategoryModel): { compared: number; flagged: number } {
+  let compared = 0;
+  let flagged = 0;
+  if (model.seriesBy !== "quarter") return { compared, flagged };
+  model.series.forEach((series, s) => {
+    const before = model.series[s - 1];
+    if (!before) return;
+    series.values.forEach((value, i) => {
+      const a = { value, evidence: series.evidence?.[i] ?? null };
+      const b = { value: before.values[i] ?? null, evidence: before.evidence?.[i] ?? null };
+      const judged = withinNoise(model.unit ?? null, a, b);
+      if (judged === null) return;
+      compared++;
+      if (judged) flagged++;
+    });
+  });
+  return { compared, flagged };
+}
+
+/** Whether the chart draws average rating's likely range, so its legend names it. */
+export const drawsRange = (model: CategoryModel) => rangeSeries(model, "bar", false).length > 0;
+
+/** The unit of a chart's faded averages, for the caption under it, or null if nothing is faded. */
+export function fadedUnit(model: CategoryModel): EvidenceUnit | null {
+  const unit = model.unit ?? null;
+  return model.series.some((s) => s.evidence?.some((e) => tooFew(unit, e))) ? unit : null;
+}
+
+/**
+ * Average rating's likely range (95%) on an unsplit chart: a whisker on each bar, or a band along a line. A
+ * category with fewer than two ratings has none. Split charts leave it to the tooltip: whiskers beside grouped bars
+ * would have to find each bar's offset.
+ */
+function rangeSeries(model: CategoryModel, kind: "bar" | "line", horizontal: boolean) {
+  const series = model.series[0];
+  if (model.measure !== "avg_rating" || model.seriesBy || !series?.evidence) return [];
+  const ranges = series.values.map((value, i) => {
+    const evidence = series.evidence![i];
+    return evidence ? ratingRange(value, evidence) : null;
+  });
+  if (!ranges.some(Boolean)) return [];
+  if (kind === "line") {
+    // A band: its lower edge as an invisible stacked line, and its width stacked on it, filled.
+    const band = { type: "line", stack: "range", symbol: "none", silent: true, z: 1 };
+    return [
+      {
+        ...band,
+        name: "range-low",
+        data: ranges.map((r) => r?.low ?? null),
+        lineStyle: { opacity: 0 },
+      },
+      {
+        ...band,
+        name: "range-width",
+        data: ranges.map((r) => (r ? r.high - r.low : null)),
+        lineStyle: { opacity: 0 },
+        areaStyle: { color: chartTheme.series, opacity: 0.18 },
+      },
+    ];
+  }
+  return [
+    {
+      type: "custom",
+      name: "range",
+      silent: true,
+      z: 3,
+      data: ranges.map((r, i) => [i, r?.low ?? NaN, r?.high ?? NaN]),
+      encode: horizontal ? { x: [1, 2], y: 0 } : { x: 0, y: [1, 2] },
+      renderItem: (
+        _: unknown,
+        api: { value: (dimension: number) => number; coord: (point: number[]) => number[] },
+      ) => {
+        const [i, low, high] = [api.value(0), api.value(1), api.value(2)];
+        if (!Number.isFinite(low) || !Number.isFinite(high)) return null;
+        const at = (v: number) => api.coord(horizontal ? [v, i] : [i, v]);
+        const [a, b] = [at(low), at(high)];
+        const cap = (p: number[]) =>
+          horizontal
+            ? { x1: p[0]!, y1: p[1]! - 4, x2: p[0]!, y2: p[1]! + 4 }
+            : { x1: p[0]! - 4, y1: p[1]!, x2: p[0]! + 4, y2: p[1]! };
+        const style = { stroke: chartTheme.text, lineWidth: 1.5 };
+        return {
+          type: "group",
+          children: [
+            { type: "line", shape: { x1: a[0]!, y1: a[1]!, x2: b[0]!, y2: b[1]! }, style },
+            { type: "line", shape: cap(a), style },
+            { type: "line", shape: cap(b), style },
+          ],
+        };
+      },
+    },
+  ];
 }
