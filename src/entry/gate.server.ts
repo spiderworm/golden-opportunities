@@ -29,19 +29,49 @@ export const entryGate: MiddlewareFunction<Response> = async ({ request }, next)
   ) {
     return noIndex(await next());
   }
+  const page = pagePath(url);
+  // A page's data or a form's post (".data", which a production build keeps in the URL), from a tab opened before
+  // the agreement changed: reload the page itself, which is the entry page (Audit, #317).
+  if (url.pathname.endsWith(".data")) return reloadDocument(page);
   if (isDocument(request)) {
     trackServer("entry_shown", {});
-    return entryResponse(`${url.pathname}${url.search}`);
+    return entryResponse(page);
   }
-  // A page's data, from a browser tab opened before the agreement changed: load the page itself, which is the
-  // entry page. React Router answers a data request's redirect with a reload, not another request.
-  if (request.method === "GET" && !url.pathname.startsWith("/api/"))
-    throw redirectDocument(`${url.pathname}${url.search}`);
+  // The same from a browser whose URL React Router has already normalized.
+  if (request.method === "GET" && !url.pathname.startsWith("/api/")) throw redirectDocument(page);
   return new Response("Continue from the entry page first.", {
     status: 403,
     headers: { "Content-Type": "text/plain; charset=utf-8", "X-Robots-Tag": NO_INDEX },
   });
 };
+
+/**
+ * The page a request is for, as the player would see it: React Router's data suffix ("/decide.data", "/_.data" for
+ * the root) and its "_routes" parameter taken off, and one leading slash (as #310's closedDataResponse does).
+ */
+export function pagePath(url: URL): string {
+  const pathname = url.pathname
+    .replace(/^\/+/, "/")
+    .replace(/\/_\.data$/, "/")
+    .replace(/\.data$/, "");
+  const search = new URLSearchParams(url.search);
+  search.delete("_routes");
+  return `${pathname}${search.size ? `?${search}` : ""}`;
+}
+
+/** React Router's reload-document redirect for a data request: the browser loads `to` as a page. */
+function reloadDocument(to: string): Response {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "X-Remix-Redirect": to,
+      "X-Remix-Status": "302",
+      "X-Remix-Reload-Document": "true",
+      "Cache-Control": "no-store",
+      "X-Robots-Tag": NO_INDEX,
+    },
+  });
+}
 
 /** Dewey's tool server: the query API checks the token itself (src/query/access.server.ts). */
 function isTool(request: Request, url: URL): boolean {
@@ -93,7 +123,9 @@ export function safeReturn(to: FormDataEntryValue | null): string {
     return "/";
   // Then wherever it resolves must still be this site.
   const at = new URL(to, ORIGIN);
-  if (at.origin !== ORIGIN || at.pathname === ENTRY_PATH) return "/";
+  // Not the entry action, and not a page's data, which would land the player on raw turbo-stream (Audit, #317).
+  if (at.origin !== ORIGIN || at.pathname === ENTRY_PATH || at.pathname.endsWith(".data"))
+    return "/";
   return `${at.pathname}${at.search}`;
 }
 
