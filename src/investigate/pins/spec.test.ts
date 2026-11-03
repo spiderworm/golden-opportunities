@@ -475,3 +475,29 @@ describe("pinning What drove the change", () => {
     expect(waterfallPinFor({ ...on, filters: {} }, quarters)).toBeNull();
   });
 });
+
+describe("a pin as shares (req_fa2e6a0dbbec)", () => {
+  const spec = {
+    title: "Revenue by genre, as shares",
+    kind: "bar",
+    query: { measure: "revenue", by: ["genre"] },
+    share: "total",
+  };
+
+  it("keeps the mode, and is a different pin from the figures", () => {
+    const parsed = parsePinSpec(spec);
+    expect(parsed).toEqual(spec);
+    expect(parsePinSpec({ ...spec, share: "running" })).toMatchObject({ share: "running" });
+    const figures = { ...spec, share: undefined, title: "Revenue by genre" };
+    expect(pinKey(parsed!)).not.toBe(pinKey(parsePinSpec(figures)!));
+    expect(pinKey(parsed!)).not.toBe(pinKey(parsePinSpec({ ...spec, share: "running" })!));
+  });
+
+  it("drops a share mode the chart couldn't show", () => {
+    expect(parsePinSpec({ ...spec, share: "everything" })).toBeNull();
+    expect(parsePinSpec({ ...spec, query: { measure: "avg_discount", by: ["genre"] } })).toBeNull();
+    expect(parsePinSpec({ ...spec, query: { measure: "revenue", by: [] } })).toBeNull();
+    expect(parsePinSpec({ ...spec, kind: "heatmap" })).toBeNull();
+    expect(parsePinSpec({ ...spec, also: ["units"] })).toBeNull();
+  });
+});

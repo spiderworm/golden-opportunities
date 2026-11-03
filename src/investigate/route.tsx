@@ -24,6 +24,7 @@ import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
 import { PlanLink } from "./PlanLink";
 import { scatterTitle } from "./charts/scatter-chart";
+import { shareTitle } from "./charts/share-chart";
 import { lastYearLabels } from "./charts/last-year";
 import { runQuery } from "~/query/run-query.server";
 import { recordDiscoveries, type ObservedQuery } from "~/game/discoveries.server";
@@ -50,7 +51,9 @@ import {
   type InvestigateState,
   measuresOf,
   heatWindow,
+  runningBlock,
   scatterProblem,
+  shareBlock,
   lastYearBlock,
   shownQuarter,
 } from "./state";
@@ -405,11 +408,22 @@ function pinSpecFor(state: InvestigateState, quarters: readonly string[]): PinSp
   const quarter = shownQuarter(state);
   const vs = state.lastYear && !lastYearBlock(state, quarters) && quarter;
   const scatter = state.scatter && scatterProblem(state.by, state.also) === null;
+  // As shares, when the chart shows them: neither last year nor What drove the change is shown then.
+  const share =
+    state.share && !shareBlock(state, { lastYear: !!vs, drove: false })
+      ? state.share === "running" && runningBlock(state.by)
+        ? "total"
+        : state.share
+      : null;
+  const base = `${measuresLabel(measuresOf(state))} by ${DIMENSION_LABELS[state.by].toLowerCase()}`;
   const title = scatter
     ? scatterTitle(measuresOf(state), state.by)
-    : `${measuresLabel(measuresOf(state))} by ${DIMENSION_LABELS[state.by].toLowerCase()}${state.compare ? " and quarter" : ""}${vs ? `, vs. ${lastYearLabels(vs, state.by).then}` : ""}`;
+    : share
+      ? shareTitle(base, share === "running")
+      : `${base}${state.compare ? " and quarter" : ""}${vs ? `, vs. ${lastYearLabels(vs, state.by).then}` : ""}`;
   return {
     title,
+    ...(share ? { share } : {}),
     // Over time, several measures are lines, as on the main chart; two can be a scatter plot instead of bars.
     kind: scatter
       ? "scatter"
