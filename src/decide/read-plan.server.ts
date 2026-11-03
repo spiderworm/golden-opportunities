@@ -33,14 +33,15 @@ export async function readAnyPlan(
 
 /**
  * How many reports the player read in Decide's panel before submitting (reports.md section 5): an optional field,
- * a count for plan_submitted and nothing else. Taken off the form, so the plan's own fields are checked as before.
+ * a count for plan_submitted and nothing else. Taken off the form, so the plan's own fields are checked as before;
+ * a malformed count is 0, never a refused plan.
  */
 function reportsReadFrom(form: URLSearchParams): number {
   const value = form.get("reportsRead");
   if (value === null) return 0;
   form.delete("reportsRead");
-  if (!/^\d{1,3}$/.test(value)) throw new PlanRefused(400, "Send a count of reports read.");
-  return Number(value);
+  // An analytics count can't stop a plan being filed (Orbit, #287): anything but a small count reads as none.
+  return /^\d{1,3}$/.test(value) ? Number(value) : 0;
 }
 
 /** Q1's plan in one field: `levers=repick,events`, or `levers=` to hold course. */

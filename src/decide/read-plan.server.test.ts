@@ -168,13 +168,13 @@ describe("readAnyPlan's count of reports read (reports.md section 5)", () => {
     ).toMatchObject({ form: "picks", quarter: "2194-Q2", reportsRead: 1 });
   });
 
-  it("refuses a count that isn't one, and still refuses any other extra field", async () => {
+  it("reads a count that isn't one as none, never refusing the plan, and still refuses any other extra field", async () => {
     for (const body of [
       "levers=&reportsRead=-1",
       "levers=&reportsRead=lots",
       "levers=&reportsRead=1000",
     ])
-      await expect(readAnyPlan(post(body))).rejects.toMatchObject({ status: 400 });
+      expect(await readAnyPlan(post(body))).toMatchObject({ plan: { levers: [] }, reportsRead: 0 });
     await expect(readAnyPlan(post("levers=&reportsRead=1&extra=1"))).rejects.toMatchObject({
       status: 400,
     });
