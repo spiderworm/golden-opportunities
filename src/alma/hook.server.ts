@@ -51,7 +51,8 @@ const defaultDeps = (): AlmaDeps => ({
     }
   },
   playable: isQuarterId,
-  usage: (saveId) => spend("alma", saveId),
+  // Never counted under Vitest, which mustn't write .data, as the backstory's (Chart, #319).
+  usage: process.env.VITEST ? undefined : (saveId) => spend("alma", saveId),
 });
 
 /** The last quarter played, or null before any. */
