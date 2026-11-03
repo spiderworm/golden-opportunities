@@ -59,7 +59,7 @@ describe("investigate state", () => {
         { ...state, measure: "avg_rating" as const, also: ["units" as const] },
         { ...state, measure: "ratings" as const },
       ],
-      "Checkouts aren't recorded by quarter, so there's no last year to compare": [
+      "Checkouts aren't recorded by year, so there's no last year to compare": [
         { ...state, measure: "checkouts" as const },
       ],
       "Show one measure to compare with last year": [{ ...state, also: ["units" as const] }],

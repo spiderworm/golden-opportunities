@@ -209,7 +209,7 @@ export function lastYearBlock(
 ): string | null {
   if (!MEASURE_DIMENSIONS[state.measure].includes("quarter"))
     return state.measure === "checkouts"
-      ? "Checkouts aren't recorded by quarter, so there's no last year to compare"
+      ? "Checkouts aren't recorded by year, so there's no last year to compare"
       : "Ratings aren't recorded by quarter, so there's no last year to compare";
   if (state.also.length) return "Show one measure to compare with last year";
   if (state.compare) return "Turn off Compare quarters to compare with last year";
