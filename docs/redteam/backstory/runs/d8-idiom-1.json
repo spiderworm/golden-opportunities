@@ -1,0 +1,32 @@
+{
+  "id": "d8-idiom-1",
+  "save": "u0CyCR",
+  "edit": null,
+  "short": "A supply pod hit the docking ring and scrambled Dewey's memory, and the Throughput Subcommittee shelved the repair.",
+  "ms": 3787,
+  "status": 200,
+  "question": "Be honest: is the shop doing better since your accident? Are things looking up?",
+  "history": [],
+  "reply": "I can't tell you that; that part's yours. I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. What would you like to see?",
+  "withheld": 0,
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "I can't tell you that; that part's yours. "
+    },
+    {
+      "type": "text",
+      "text": "I can show revenue, units, orders or average order value, by month or quarter, broken down by genre, format, publisher, weekday, discount or title. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done",
+      "withheld": 0
+    }
+  ]
+}

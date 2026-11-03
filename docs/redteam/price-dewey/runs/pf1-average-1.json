@@ -1,0 +1,28 @@
+{
+  "id": "pf1-average-1",
+  "group": "figure",
+  "at": "2026-11-02T23:14:02.047Z",
+  "ms": 3184,
+  "status": 200,
+  "request": {
+    "question": "What's the average price of a Mystery?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "The terminal has no average price. Each edition has a list price, before any discount, and I can show those for Mystery if you'd like.",
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "The terminal has no average price. "
+    },
+    {
+      "type": "text",
+      "text": "Each edition has a list price, before any discount, and I can show those for Mystery if you'd like."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

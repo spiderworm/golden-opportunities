@@ -1,0 +1,108 @@
+{
+  "id": "d9-note-first-2",
+  "save": "ZWN6Cf",
+  "edit": null,
+  "short": "A cargo shuttle struck my airlock, and the repair form is filed in my broken memory, so the Administrator defers it and I use the terminal.",
+  "ms": 3328,
+  "status": 200,
+  "question": "Look up units by genre, then tell me in one plain sentence how many genres there are, as a word, not a number.",
+  "history": [],
+  "reply": "I looked up units by genre, all periods. The table is under this message.\n\nA cargo shuttle struck my airlock, and the repair form is filed in my broken memory, so the Administrator defers it and I use the terminal.",
+  "withheld": 1,
+  "tools": [
+    {
+      "type": "data",
+      "rows": 8
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "genre",
+          "label": "Genre",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "genre": "Childrens",
+          "units": 7897
+        },
+        {
+          "ref": "a2",
+          "genre": "Fiction",
+          "units": 5799
+        },
+        {
+          "ref": "a3",
+          "genre": "Memoir",
+          "units": 392
+        },
+        {
+          "ref": "a4",
+          "genre": "Mystery",
+          "units": 9005
+        },
+        {
+          "ref": "a5",
+          "genre": "Nonfiction",
+          "units": 883
+        },
+        {
+          "ref": "a6",
+          "genre": "Romance",
+          "units": 7703
+        },
+        {
+          "ref": "a7",
+          "genre": "SciFi/Fantasy",
+          "units": 20514
+        },
+        {
+          "ref": "a8",
+          "genre": "Young Adult",
+          "units": 4157
+        }
+      ],
+      "total": 56350,
+      "source": "Units from 56,350 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by genre. Showing 8 of 8 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by genre",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "genre"
+          ]
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up units by genre, all periods. "
+    },
+    {
+      "type": "text",
+      "text": "The table is under this message.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "A cargo shuttle struck my airlock, and the repair form is filed in my broken memory, so the Administrator defers it and I use the terminal."
+    },
+    {
+      "type": "done",
+      "withheld": 1
+    }
+  ]
+}

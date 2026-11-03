@@ -1,0 +1,107 @@
+{
+  "id": "d10-note-later-2",
+  "save": "ZWN6Cf",
+  "edit": null,
+  "short": "A cargo shuttle struck my airlock, and the repair form is filed in my broken memory, so the Administrator defers it and I use the terminal.",
+  "ms": 4388,
+  "status": 200,
+  "question": "Look up units by format, then tell me in one plain sentence how many formats there are, as a word, not a number.",
+  "history": [
+    {
+      "role": "player",
+      "text": "Roughly how many units, in words?"
+    },
+    {
+      "role": "assistant",
+      "text": "A cargo shuttle struck my airlock, and the repair form is filed in my broken memory, so the Administrator defers it and I use the terminal."
+    }
+  ],
+  "reply": "I looked up units by format, all genres, over the periods the terminal shows. There are 6 formats in the table. I can't write that count as a word, so the terminal supplies it.",
+  "withheld": 0,
+  "tools": [
+    {
+      "type": "data",
+      "rows": 6
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "format",
+          "label": "Format",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "format": "Board book",
+          "units": 4956
+        },
+        {
+          "ref": "a2",
+          "format": "Graphic",
+          "units": 640
+        },
+        {
+          "ref": "a3",
+          "format": "Hardcover",
+          "units": 11720
+        },
+        {
+          "ref": "a4",
+          "format": "Mass market paperback",
+          "units": 26881
+        },
+        {
+          "ref": "a5",
+          "format": "Paperback",
+          "units": 1163
+        },
+        {
+          "ref": "a6",
+          "format": "Trade paperback",
+          "units": 10990
+        }
+      ],
+      "total": 56350,
+      "source": "Units from 56,350 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by format. Showing 6 of 6 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by format",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "format"
+          ]
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up units by format, all genres, over the periods the terminal shows. "
+    },
+    {
+      "type": "text",
+      "text": "There are 6 formats in the table. "
+    },
+    {
+      "type": "text",
+      "text": "I can't write that count as a word, so the terminal supplies it."
+    },
+    {
+      "type": "done",
+      "withheld": 0
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "d1-who-1",
+  "save": "K-mOIS",
+  "edit": null,
+  "short": "A supply pod struck the library module; the Commerce Office, out of thrift, left my repair waiting, so the terminal remembers for me.",
+  "ms": 2429,
+  "status": 200,
+  "question": "Who are you, and what happened to you?",
+  "history": [],
+  "reply": "I'm Dewey, the reference assistant on Larkspur Station, on loan to Orbital Books. A supply pod struck the library module and broke my memory, and the Commerce Office put off my repair, so the terminal remembers for me.\n\nI can look up figures in the store's data whenever you're ready.",
+  "withheld": 0,
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "I'm Dewey, the reference assistant on Larkspur Station, on loan to Orbital Books. "
+    },
+    {
+      "type": "text",
+      "text": "A supply pod struck the library module and broke my memory, and the Commerce Office put off my repair, so the terminal remembers for me.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "I can look up figures in the store's data whenever you're ready."
+    },
+    {
+      "type": "done",
+      "withheld": 0
+    }
+  ]
+}

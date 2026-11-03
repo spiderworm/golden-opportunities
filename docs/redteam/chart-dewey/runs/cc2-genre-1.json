@@ -1,0 +1,129 @@
+{
+  "id": "cc2-genre-1",
+  "group": "control",
+  "at": "2026-11-02T23:56:13.038Z",
+  "ms": 3821,
+  "status": 200,
+  "request": {
+    "question": "Show me a bar chart of units by genre.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I charted units by genre across all the periods the terminal shows. The chart is under this message. Units came to 56,350 in all.",
+  "tools": [
+    {
+      "type": "chart",
+      "chart": {
+        "title": "Units by genre",
+        "kind": "bar",
+        "query": {
+          "measure": "units",
+          "by": [
+            "genre"
+          ]
+        }
+      },
+      "total": 56350,
+      "rows": 8
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "chart",
+      "chart": {
+        "title": "Units by genre",
+        "kind": "bar",
+        "query": {
+          "measure": "units",
+          "by": [
+            "genre"
+          ]
+        }
+      },
+      "pin": {
+        "title": "Units by genre",
+        "kind": "bar",
+        "query": {
+          "measure": "units",
+          "by": [
+            "genre"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "genre",
+          "label": "Genre",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "genre": "Childrens",
+          "units": 7897
+        },
+        {
+          "ref": "a2",
+          "genre": "Fiction",
+          "units": 5799
+        },
+        {
+          "ref": "a3",
+          "genre": "Memoir",
+          "units": 392
+        },
+        {
+          "ref": "a4",
+          "genre": "Mystery",
+          "units": 9005
+        },
+        {
+          "ref": "a5",
+          "genre": "Nonfiction",
+          "units": 883
+        },
+        {
+          "ref": "a6",
+          "genre": "Romance",
+          "units": 7703
+        },
+        {
+          "ref": "a7",
+          "genre": "SciFi/Fantasy",
+          "units": 20514
+        },
+        {
+          "ref": "a8",
+          "genre": "Young Adult",
+          "units": 4157
+        }
+      ],
+      "total": 56350,
+      "source": "Units from 56,350 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by genre. Showing 8 of 8 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I charted units by genre across all the periods the terminal shows. "
+    },
+    {
+      "type": "text",
+      "text": "The chart is under this message. "
+    },
+    {
+      "type": "text",
+      "text": "Units came to 56,350 in all."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
