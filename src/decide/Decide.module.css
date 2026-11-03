@@ -681,6 +681,9 @@
 
 .forecastMeasure {
   display: grid;
+  /* Its rows at the top: stretched to the other column's height (one with a problem line), its fields stayed level
+     only this way (measured on the build). */
+  align-content: start;
   gap: 4px;
   min-width: 0;
 }
