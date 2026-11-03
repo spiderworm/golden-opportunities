@@ -82,8 +82,9 @@ describe("the shared dropdown", () => {
     expect(html).toMatch(
       /aria-labelledby="([^"]+)-name-1" aria-disabled="true" aria-describedby="\1-why-1"/,
     );
-    expect(text(html)).toContain(
-      "vs. same quarter last year Turn off Compare quarters to compare with last year",
+    // Its reason is its description, read but not shown: the tooltip beside it shows it (Plot, #360).
+    expect(html).toMatch(
+      /<span id="[^"]+-why-1" class="[^"]*hidden[^"]*">Turn off Compare quarters to compare with last year<\/span>/,
     );
     expect(html).not.toMatch(/role="menuitemcheckbox"[^>]*\sdisabled=/);
     expect(html).toContain('title="Plot one measure"');
