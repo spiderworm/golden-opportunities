@@ -101,3 +101,27 @@ describe('a save whose replay no longer matches', () => {
     expect(() => session.queryView).toThrow(expect.objectContaining({ code: 'REPLAY_MISMATCH' }));
   });
 });
+
+describe('the replay cache (Audit, #233)', () => {
+  it('keeps a long save whole, and lets the least recently used other save go once over its bound', async () => {
+    const { rememberLines, replayCacheSize, setReplayCacheLimit } = await import('./replay.server');
+    forgetReplays();
+    setReplayCacheLimit(1_000);
+    try {
+      const quarter = (n: number) => ({ period: '2194-Q3', outcomeId: `q${n}`, lines: { hash: 'a'.repeat(64), count: 20 } }) as unknown as PlayedQuarter;
+      const lines = Array.from({ length: 20 }, () => ({}) as never);
+      // Another save first, then a long one: 60 quarters of 20 lines, past the bound alone.
+      rememberLines('other', quarter(0), lines);
+      for (let n = 0; n < 60; n++) rememberLines('long', quarter(n), lines);
+      // The long save keeps all 60 quarters (it's the one in use); the other save went to make room.
+      expect(replayCacheSize()).toEqual({ saves: 1, lines: 1_200 });
+      // Within the bound, saves share it, least recently used out first.
+      forgetReplays();
+      for (const id of ['a', 'b', 'c']) for (let n = 0; n < 10; n++) rememberLines(id, quarter(n), lines);
+      expect(replayCacheSize()).toEqual({ saves: 3, lines: 600 });
+      // A fourth save pushes the total past the bound: the oldest, a, goes, and that's enough.
+      for (let n = 0; n < 30; n++) rememberLines('d', quarter(n), lines);
+      expect(replayCacheSize()).toEqual({ saves: 3, lines: 1_000 });
+    } finally { setReplayCacheLimit(1_500_000); forgetReplays(); }
+  });
+});
