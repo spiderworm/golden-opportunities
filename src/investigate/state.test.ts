@@ -165,6 +165,18 @@ describe("investigate state", () => {
     expect(toSearchParams(all).toString()).toBe("heat_period=all");
     expect(heatWindow(all, ten)).toBeNull();
     expect(heatWindow({ ...DEFAULT_STATE, filters: { quarter: ["2194-Q1"] } }, ten)).toBeNull();
+    // A month older than the window would leave nothing: off the heatmap's axes, a month filter decides too (Plot,
+    // #270). Weekday by genre, as Audit pinned it.
+    const byGenre = { ...DEFAULT_STATE, heat: { ...DEFAULT_STATE.heat, cols: "genre" as const } };
+    expect(heatWindow({ ...byGenre, filters: { month: ["2193-02"] } }, ten)).toBeNull();
+    // A clicked cell filters the heatmap's own axes, which its query ignores: the window stays (Frank, #270).
+    const clicked = toggleCell(DEFAULT_STATE, "Monday", "2195-02");
+    expect(clicked.filters).toEqual({ weekday: ["Monday"], month: ["2195-02"] });
+    expect(heatWindow(clicked, ten)).toEqual(ten.slice(2));
+    const byQuarter = { ...DEFAULT_STATE, heat: { ...DEFAULT_STATE.heat, cols: "quarter" as const } };
+    expect(heatWindow(toggleCell(byQuarter, "Monday", "2195-Q1"), ten)).toEqual(ten.slice(2));
+    // A month filter while months aren't an axis still decides the span.
+    expect(heatWindow({ ...byQuarter, filters: { month: ["2193-02"] } }, ten)).toBeNull();
   });
 
   it("filters to a heatmap cell's row and column values, and clears them on a second click", () => {

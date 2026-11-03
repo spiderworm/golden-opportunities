@@ -54,6 +54,15 @@ describe("the heatmap (David: \"the same level of customization that we've given
     expect(html).toMatch(/<span class="[^"]*" data-tip="Unknown, Under \$10: 1"/);
   });
 
+  it("keeps every column of its own axis when a cell on it is selected", () => {
+    const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
+    const byQuarter = { ...heat, rows: "weekday" as const, cols: "quarter" as const };
+    const html = renderToString(
+      <Heatmap state={{ ...DEFAULT_STATE, heat: byQuarter, filters: { weekday: ["Monday"], quarter: ["2193-Q2"] } }} result={result} quarters={quarters} onCell={() => {}} onHeat={() => {}} />,
+    );
+    for (const q of ["Q1", "Q2", "Q3", "Q4"]) expect(html).toMatch(new RegExp(`role="columnheader"[^>]*>${q}<`));
+  });
+
   it("offers its period only once the ledger holds more than eight quarters, and says so in its title (Plot, #264)", () => {
     const render = (quarters: string[], extra: Partial<typeof DEFAULT_STATE> = {}) =>
       renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat, ...extra }} result={result} quarters={quarters} onCell={() => {}} onHeat={() => {}} />);
@@ -68,6 +77,10 @@ describe("the heatmap (David: \"the same level of customization that we've given
     const filtered = render(ten, { filters: { quarter: ["2194-Q4"] } });
     expect(filtered).toMatch(/<h2[^>]*>Units sold by genre and price band<\/h2>/);
     expect(text(filtered)).toMatch(/Following the screen(&#x27;|')s quarter filter\./);
+    const byMonth = text(render(ten, { filters: { month: ["2193-02"] } }));
+    expect(byMonth).toMatch(/Following the screen(&#x27;|')s month filter\./);
+    // Both set: the quarter wording.
+    expect(text(render(ten, { filters: { month: ["2193-02"], quarter: ["2193-Q1"] } }))).toMatch(/Following the screen(&#x27;|')s quarter filter\./);
     // Cut off over every quarter of a long ledger: the note offers the window.
     expect(text(renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat: { ...heat, period: "all" } }} result={{ ...result, truncated: true }} quarters={ten} onCell={() => {}} onHeat={() => {}} />))).toContain(
       "Narrow it with a filter, or choose Last eight quarters.",
