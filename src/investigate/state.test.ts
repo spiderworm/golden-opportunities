@@ -88,6 +88,18 @@ describe("investigate state", () => {
     );
   });
 
+  it("drops last year from the URL where the chart switches it off, but not for the quarter filter", () => {
+    const at = (q: string) => parseState(new URLSearchParams(q)).lastYear;
+    expect(at("by=genre&vs=last_year&measures=revenue,units")).toBe(false);
+    expect(at("by=genre&vs=last_year&compare=quarter")).toBe(false);
+    expect(at("by=quarter&vs=last_year")).toBe(false);
+    expect(at("by=genre&vs=last_year")).toBe(true);
+    const on = parseState(new URLSearchParams("by=genre&vs=last_year&quarter=2194-Q1"));
+    expect(toSearchParams({ ...on, also: ["units"] }).has("vs")).toBe(false);
+    expect(toSearchParams({ ...on, by: "quarter" }).has("vs")).toBe(false);
+    expect(toSearchParams({ ...on, filters: {} }).get("vs")).toBe("last_year");
+  });
+
   it("never refuses last year silently: every state either allows it or says why", () => {
     const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1", "2194-Q2"];
     const quarterFilters = [[], ["2194-Q1"], ["2194-Q1", "2194-Q2"], ["2193-Q2"], ["2197-Q1"]];
