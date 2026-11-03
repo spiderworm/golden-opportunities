@@ -1,13 +1,13 @@
 import { test, expect } from "../fixtures";
 
 // Scatter plots (David, 3 Nov 2026: "two measures across one dimension"), with Plot's copy (#291). It's an item in
-// the chart's Options menu (David, 3 Nov 2026), which says why it's off under it and what it does as its tooltip.
+// the chart's View menu (David, 3 Nov 2026), which says why it's off under it and what it does as its tooltip.
 test("two measures across a group can be a scatter plot, which says when it can't and pins as one", async ({
   page,
 }) => {
   await page.goto("/investigate?analytics-test=1");
   const chart = page.locator('section[aria-labelledby="measure-chart-title"]');
-  const options = chart.getByRole("button", { name: /^Options/ });
+  const options = chart.getByRole("button", { name: /^View/ });
   const scatter = chart.getByRole("menuitemcheckbox", { name: "Scatter plot" });
 
   // One measure: refused, with its reason.
@@ -35,7 +35,7 @@ test("two measures across a group can be a scatter plot, which says when it can'
   await expect(scatter).toHaveAttribute("aria-checked", "true");
   // The button says something is on, so the chart's state isn't hidden in the closed menu.
   await page.keyboard.press("Escape");
-  await expect(options).toHaveAccessibleName("Options, 1 on");
+  await expect(options).toHaveAccessibleName("View, 1 on");
   await expect(
     page.getByRole("heading", { name: "Units sold against revenue, by genre" }),
   ).toBeVisible();

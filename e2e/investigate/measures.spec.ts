@@ -47,8 +47,8 @@ test("measures are added from Show, a third unit is refused with its reason, and
   await chart.getByRole("button", { name: /^Break down by/ }).click();
   await chart.getByRole("radio", { name: "Genre", exact: true }).click();
   await expect(page).toHaveURL(/by=genre/);
-  // It's in the chart's Options menu (David, 3 Nov 2026).
-  await chart.getByRole("button", { name: /^Options/ }).click();
+  // It's in the chart's View menu (David, 3 Nov 2026).
+  await chart.getByRole("button", { name: /^View/ }).click();
   await expect(chart.getByRole("menuitemcheckbox", { name: "Compare quarters" })).toBeDisabled();
   await page.keyboard.press("Escape");
 

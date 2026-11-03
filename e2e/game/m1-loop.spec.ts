@@ -116,8 +116,8 @@ test("M1: discover, choose two moves, play; a separate save holds course with hi
   await page.getByRole("button", { name: /^Break down by/ }).click();
   await page.getByRole("radio", { name: "Genre", exact: true }).click();
   await expect(page).toHaveURL(/by=genre/);
-  // Compare quarters is in the chart's Options menu, which stays open as it's switched.
-  await page.getByRole("button", { name: /^Options/ }).click();
+  // Compare quarters is in the chart's View menu, which stays open as it's switched.
+  await page.getByRole("button", { name: /^View/ }).click();
   await page.getByRole("menuitemcheckbox", { name: "Compare quarters" }).click();
   await expect(page.getByRole("menuitemcheckbox", { name: "Compare quarters" })).toHaveAttribute(
     "aria-checked",
