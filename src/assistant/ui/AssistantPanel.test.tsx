@@ -53,9 +53,10 @@ it("draws a chart Dewey showed with the page's chart, titled, sourced and pinnab
   const html = renderToString(
     <LookupView lookup={drawn} ChartView={ChartView} pinning={{ onPin: () => true }} />,
   );
-  // Titled, with its Table toggle beside the title (unpressed: it's a chart), then the chart.
+  // Titled, with its Table toggle (unpressed: it's a chart) and then Pin beside the title, in one group (David,
+  // 3 Nov 2026: "put the "pin" button right next to the chart/table toggle"), then the chart.
   expect(html).toMatch(
-    /<figcaption[^>]*>Revenue by quarter<\/figcaption><span[^>]*><button[^>]*aria-pressed="false" aria-label="Table: Revenue by quarter"[^>]*>Table<\/button><\/span><\/div><div data-chart="1">/,
+    /<figcaption[^>]*>Revenue by quarter<\/figcaption><div[^>]*><span[^>]*><button[^>]*aria-pressed="false" aria-label="Table: Revenue by quarter"[^>]*>Table<\/button><\/span><div[^>]*><button[^>]*aria-label="Pin Revenue by quarter"[^>]*>Pin<\/button><\/div><\/div><\/div><div data-chart="1">/,
   );
   expect(html).toMatch(/Source: S/);
   expect(html).toMatch(/aria-label="Pin Revenue by quarter"/);
@@ -302,4 +303,33 @@ it("shows the spinner while thinking, the lightbulb as the answer arrives, mouth
   expect([12, 16].some((f) => talking.has(f))).toBe(true);
   // Idle: his smile, and now and then a happy blink, never a mouth.
   expect([...frames({ talk: 0, think: 0, idea: null })].sort((a, b) => a - b)).toEqual([9, 17]);
+});
+
+it("puts a table's Pin beside its toggle in the header, not after the source (David, 3 Nov 2026)", () => {
+  type Lookup = Parameters<typeof LookupView>[0]["lookup"];
+  const query = { measure: "revenue" as const, by: ["genre" as const] };
+  const data: Lookup = {
+    type: "data",
+    pin: { title: "Revenue by genre", kind: "table", query },
+    columns: [
+      { key: "genre", label: "Genre", type: "string", nullable: false },
+      { key: "revenue", label: "Revenue", type: "number", nullable: false },
+    ],
+    rows: [{ genre: "Mystery", revenue: 5 }],
+    total: 5,
+    source: "S",
+  };
+  const html = renderToString(
+    <LookupView lookup={data} ChartView={() => <div />} pinning={{ onPin: () => true }} />,
+  );
+  const toggle = html.indexOf('aria-label="Table: Revenue by genre"');
+  const pin = html.indexOf('aria-label="Pin Revenue by genre"');
+  // The toggle first, then Pin, both before the table and the source line.
+  expect(toggle).toBeGreaterThan(-1);
+  expect(pin).toBeGreaterThan(toggle);
+  expect(pin).toBeLessThan(html.indexOf("<table"));
+  expect(pin).toBeLessThan(html.indexOf("Source:"));
+  // Without the page's charts there's no toggle, and Pin still sits in the header.
+  const plain = renderToString(<LookupView lookup={data} pinning={{ onPin: () => true }} />);
+  expect(plain.indexOf('aria-label="Pin Revenue by genre"')).toBeLessThan(plain.indexOf("<table"));
 });
