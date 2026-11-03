@@ -8,6 +8,11 @@
   min-width: 0;
 }
 
+/* The fold button is placed against what stays in view (sticky beside the dashboard, below). */
+.assistant [data-dewey-stick] {
+  position: relative;
+}
+
 /* His name beside his face on the folded bar. */
 .assistant [data-dewey-name] {
   font-weight: 600;
@@ -18,22 +23,28 @@
   display: none;
 }
 
-/* Wide screens: Dewey gets a column, sticky beside the dashboard, as wide as he's been dragged (DeweyColumn). */
+/* Wide screens: Dewey gets a column beside the dashboard, as tall as it, as wide as he's been dragged (DeweyColumn). */
 @media (min-width: 1600px) {
   .layout {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
   }
 
+  /* The column runs the row's full height, so its resize edge spans it however short the chat; what's in it stays in
+     view as the page scrolls (David, 3 Nov). */
   .assistant {
-    position: sticky;
-    top: 20px;
+    align-self: stretch;
     /* Never past half the window, even with a width kept from a wider one (Chart, #308). */
     width: min(var(--dewey-width, 480px), 50vw);
   }
 
   .assistant [data-dewey-resize] {
     display: block;
+  }
+
+  .assistant [data-dewey-stick] {
+    position: sticky;
+    top: 20px;
   }
 
   .assistant [data-dewey-resize]:hover,
