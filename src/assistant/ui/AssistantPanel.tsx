@@ -14,6 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Query, QueryResult } from "~/query/types";
+import { flushSync } from "react-dom";
 import { useRouteLoaderData } from "react-router";
 import type { WireEvent } from "../events.ts";
 import { track as platformTrack } from "~/platform/analytics/analytics.client";
@@ -34,6 +35,7 @@ import {
   saveConversation,
 } from "./conversation.ts";
 import { canRenderWebGL2 } from "~/platform/webgl";
+import { LoadingLine, useCommitment } from "~/platform/ui/commitment";
 import { fetchStatus, type AssistantStatus } from "./status.ts";
 import { askAssistant } from "./stream.ts";
 // Only its type: the module itself is loaded lazily, below.
@@ -190,9 +192,15 @@ export function AssistantPanel({
   useEffect(checkStatus, []);
   const offline = !status.available;
 
-  // Dewey's faces: his portrait, or in 3D where the browser draws WebGL 2 and motion is welcome; the portraits
-  // stay until a face is drawn, and if the model doesn't come.
-  const [faces, setFaces] = useState<"portraits" | "loading" | "3d">("portraits");
+  // Dewey's faces: his portrait, or in 3D where the browser draws WebGL 2 and motion is welcome. Neither shows until
+  // the panel has committed to one (David, 3 Nov, AGENTS.md "Commit before you show": no portrait-then-canvas swap):
+  // deciding (the server's render, and until the browser's checked), then the portraits at once, or the 3D faces
+  // once one has drawn; the portraits again if the model doesn't come. Their places keep their size meanwhile.
+  const [faces, setFaces] = useState<"deciding" | "portraits" | "loading" | "3d">("deciding");
+  const { loading: facesLoading } = useCommitment(faces === "portraits" || faces === "3d");
+  useEffect(() => {
+    if (faces === "3d" || faces === "portraits") performance.mark(`dewey:committed-${faces}`);
+  }, [faces]);
   // Which the player gets: "3d", or "portraits" and why; once, and once more only if the 3D faces fail after drawing.
   const facesSent = useRef<string | null>(null);
   const facesShown = (
@@ -204,9 +212,15 @@ export function AssistantPanel({
     track("assistant_faces_shown", reason ? { kind, reason } : { kind });
   };
   useEffect(() => {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches)
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setFaces("portraits");
       return facesShown("portraits", "reduced_motion");
-    if (!canRenderWebGL2()) return facesShown("portraits", "no_webgl2");
+    }
+    if (!canRenderWebGL2()) {
+      setFaces("portraits");
+      return facesShown("portraits", "no_webgl2");
+    }
+    performance.mark("dewey:faces-loading");
     setFaces("loading");
   }, []);
   const facesFailed = () => {
@@ -226,7 +240,10 @@ export function AssistantPanel({
   const face = (turn: number) => ({
     turn,
     slots: slots.current,
-    shown: faces === "3d",
+    // The portraits only once they're what the panel has committed to; until then, and under the 3D faces, unseen.
+    shown: faces !== "portraits",
+    loading:
+      turn === talking.current && faces !== "portraits" && faces !== "3d" ? facesLoading : null,
     onFocus: () => setFocused(turn),
     onBlur: () => setFocused((f) => (f === turn ? null : f)),
     onPointerEnter: () => setPointed(turn),
@@ -379,7 +396,7 @@ export function AssistantPanel({
             </article>
           ))}
         </div>
-        {faces !== "portraits" && (
+        {(faces === "loading" || faces === "3d") && (
           <FacesBoundary onError={facesFailed}>
             <Suspense fallback={null}>
               <DeweyFaces3D
@@ -387,7 +404,10 @@ export function AssistantPanel({
                 talking={talking}
                 activity={activity}
                 onDrawn={() => {
-                  setFaces("3d");
+                  performance.mark("dewey:faces-3d");
+                  // At once: called from the faces' frame loop, an ordinary update waited ~250 ms behind it under
+                  // load, and the loading line's timer fired in between (measured: Loading… for ~115 ms after drawing).
+                  flushSync(() => setFaces("3d"));
                   facesShown("3d");
                 }}
                 onFailed={facesFailed}
@@ -471,8 +491,10 @@ function DeweyTurn({
   face: {
     turn: number;
     slots: Map<number, HTMLElement>;
-    /** Whether his face is drawn in 3D over the portrait, which then stays only for its name. */
+    /** Whether his portrait is hidden: drawn in 3D over it, or not committed to yet. It stays for its name. */
     shown: boolean;
+    /** Beside the face that talks, until the faces are committed: whether to say Loading… (null: no line). */
+    loading: boolean | null;
     onFocus: () => void;
     onBlur: () => void;
     onPointerEnter: () => void;
@@ -481,9 +503,10 @@ function DeweyTurn({
   bubble?: ReactNode;
   children?: ReactNode;
 }) {
-  const { turn, slots, shown, ...watch } = face;
+  const { turn, slots, shown, loading, ...watch } = face;
   return (
     <div style={styles.dewey} {...watch}>
+      {loading !== null && <LoadingLine loading={loading} style={styles.faceLoading} />}
       <img
         ref={(el) => {
           if (!el) return;
@@ -784,10 +807,22 @@ const styles = {
     borderRadius: "var(--radius-control)",
   },
   answer: { margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.5 },
-  dewey: { display: "flex", gap: 10, alignItems: "flex-start" },
+  dewey: { position: "relative", display: "flex", gap: 10, alignItems: "flex-start" },
   avatar: { flex: "none", borderRadius: "50%", background: "#1d2440" },
   // Under his 3D face: still there for its name and its place, but not seen.
   avatarUnder: { flex: "none", opacity: 0 },
+  // Loading…, over the talking face's place while the faces aren't committed (the face is AVATAR square, at its left).
+  faceLoading: {
+    position: "absolute",
+    width: AVATAR,
+    height: AVATAR,
+    margin: 0,
+    display: "grid",
+    placeItems: "center",
+    fontSize: 10,
+    color: "var(--color-text-muted)",
+    pointerEvents: "none",
+  },
   // The 3D faces' canvas lies over the conversation.
   logHolder: { position: "relative" },
   // Beside the face: the bubble, then his lookups; minWidth lets a wide table scroll rather than push the face off.
