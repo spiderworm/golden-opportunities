@@ -1,18 +1,25 @@
 import { useId } from "react";
 
-import type { QuarterId } from "~/game/quarters";
+import {
+  FORECAST_FIELDS,
+  FORECAST_MEASURES,
+  forecastFromForm,
+  type ForecastHint,
+  type ForecastHints,
+  type ForecastMeasure,
+  type ForecastProblem,
+} from "~/forecast/forecast";
 import { formatMeasure } from "~/investigate/format";
+import type { QuarterId } from "~/simulation/quarters";
 import { quarterName } from "./q2-copy";
-import { FORECAST_COPY as COPY, NOTE_MAX, type ForecastMeasure } from "./forecast-copy";
+import { FORECAST_COPY as COPY } from "./forecast-copy";
 import styles from "./Decide.module.css";
 
 // The player's own forecast, filed with the plan (David, 3 Nov 2026, req_6d136a2b7fb3; Plot's copy, section 10).
 // Optional: closed, it's a button, and closed is the skip. Open, each of revenue and units sold takes an expected
 // figure and an 80% range, with the quarter before's and a year earlier's figures beside it as hints, and the note
-// takes why. Nothing is pre-filled. What's sent is three form fields (Frank's shape): `forecastRevenue` and
-// `forecastUnits` as "point,low,high", and `forecastNote`; a measure left empty is left out.
-
-export const MEASURES: readonly ForecastMeasure[] = ["revenue", "units"];
+// takes why. Nothing is pre-filled. What's sent is Frank's three form fields (src/forecast/forecast.ts), checked in
+// the browser by his own forecastFromForm before the plan goes.
 
 /** One measure's three fields, as typed. */
 export interface Entry {
@@ -34,87 +41,35 @@ export const EMPTY_FORECAST: ForecastDraft = {
   note: "",
 };
 
-/** The figures beside a measure (Frank's ForecastHints): a quarter, and its value, or null when not in the ledgers. */
-export interface Hint {
-  quarter: QuarterId;
-  value: number | null;
-}
-export interface ForecastHints {
-  quarter: QuarterId;
-  revenue: { previous: Hint; yearEarlier: Hint };
-  units: { previous: Hint; yearEarlier: Hint };
-}
-
-/** Why a field can't be filed (Frank's reasons), or none. */
-export type ForecastReason = keyof typeof COPY.problems;
-export interface ForecastProblem {
-  field: ForecastMeasure | "note";
-  reason: ForecastReason;
-}
-
-/** A typed amount as a number: "$140,000" and "140000" alike; null when it isn't one. */
-export function parseAmount(text: string): number | null {
-  const plain = text.replace(/[$,\s]/g, "");
-  if (!/^-?\d+(\.\d+)?$/.test(plain)) return null;
-  return Number(plain);
-}
-
 /**
- * Why one measure's entry can't be filed, or null if it can (empty is fine: not forecast). The browser's own check,
- * so the player hears it before the plan goes; the server checks again (Frank's checkForecastField).
+ * The form fields the plan is sent with (Frank's FORECAST_FIELDS): none while closed, none for a measure left empty,
+ * and each measure's three figures as typed, joined `point,low,high`. Thousands separators come out first, since the
+ * field's own separator is the comma.
  */
-export function entryProblem(measure: ForecastMeasure, entry: Entry): ForecastReason | null {
-  const typed = [entry.point, entry.low, entry.high].map((t) => t.trim());
-  if (typed.every((t) => t === "")) return null;
-  if (typed.some((t) => t === "")) return "partial";
-  const [point, low, high] = typed.map(parseAmount);
-  if (point === null || low === null || high === null) return "number";
-  if (point < 0 || low < 0 || high < 0) return "negative";
-  if (measure === "units" && ![point, low, high].every(Number.isInteger)) return "number";
-  if (low > point) return "low_above_point";
-  if (point > high) return "point_above_high";
-  return null;
-}
-
-/** Counted by code point, as the server counts it (Frank's FORECAST_LIMITS.note): an emoji is one, not two. */
-export function noteProblem(note: string): ForecastReason | null {
-  return [...note].length > NOTE_MAX ? "too_long" : null;
-}
-
-/** The first problem in the draft, in the form's order, or null. A closed draft has none. */
-export function draftProblem(draft: ForecastDraft): ForecastProblem | null {
-  if (!draft.open) return null;
-  for (const measure of MEASURES) {
-    const reason = entryProblem(measure, draft[measure]);
-    if (reason) return { field: measure, reason };
-  }
-  const reason = noteProblem(draft.note);
-  return reason ? { field: "note", reason } : null;
-}
-
-/** The form fields the plan is sent with: none while closed, and none for a measure left empty. */
 export function forecastFields(draft: ForecastDraft): Record<string, string> {
   if (!draft.open) return {};
   const fields: Record<string, string> = {};
-  for (const measure of MEASURES) {
-    const { point, low, high } = draft[measure];
-    const values = [point, low, high].map(parseAmount);
-    if (values.every((v) => v !== null))
-      fields[measure === "revenue" ? "forecastRevenue" : "forecastUnits"] = values.join(",");
+  for (const measure of FORECAST_MEASURES) {
+    const parts = [draft[measure].point, draft[measure].low, draft[measure].high].map((t) =>
+      t.trim().replace(/,/g, ""),
+    );
+    if (parts.some((p) => p !== "")) fields[FORECAST_FIELDS[measure]] = parts.join(",");
   }
-  if (draft.note.trim()) fields.forecastNote = draft.note.trim();
+  if (draft.note.trim()) fields[FORECAST_FIELDS.note] = draft.note;
   return fields;
 }
 
-/** The measures forecast, for analytics: "revenue+units", "revenue", or "" for none. Never the values. */
-export function forecastMeasures(draft: ForecastDraft): string {
+/**
+ * The first problem in what would be sent, by the same check the server makes (Frank's forecastFromForm), so the
+ * browser and the door always agree; null when it can be filed. A closed draft has none.
+ */
+export function draftProblem(draft: ForecastDraft, quarter: QuarterId): ForecastProblem | null {
   const fields = forecastFields(draft);
-  return MEASURES.filter((m) => fields[m === "revenue" ? "forecastRevenue" : "forecastUnits"]).join(
-    "+",
-  );
+  const checked = forecastFromForm(quarter, (name) => fields[name] ?? null);
+  return checked.ok ? null : checked.problem;
 }
 
-const hintValue = (measure: ForecastMeasure, hint: Hint) =>
+const hintValue = (measure: ForecastMeasure, hint: ForecastHint) =>
   hint.value === null ? null : formatMeasure(measure, hint.value);
 
 export function ForecastSection({
@@ -168,7 +123,7 @@ export function ForecastSection({
       </button>
       <p className={styles.forecastExplain}>{COPY.explain}</p>
       <div className={styles.forecastMeasures}>
-        {MEASURES.map((measure) => {
+        {FORECAST_MEASURES.map((measure) => {
           const names = COPY.names(measure);
           const entry = draft[measure];
           const error = said(measure);
