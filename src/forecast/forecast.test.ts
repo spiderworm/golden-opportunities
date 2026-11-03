@@ -51,6 +51,24 @@ describe("a forecast's figures, as the player typed them", () => {
     expect(reason("units", "1e3,0,2000")).toBe("number");
     expect(reason("units", "Infinity,0,1")).toBe("number");
   });
+
+  it("takes every amount to the cent, which multiplying by 100 got wrong (Sim, #384)", () => {
+    for (const cents of ["1234.10", "0.29", "0.07", "1.15", "9999999.99", "4.35"])
+      expect(checkForecastField("revenue", `${cents},0,10000000`), cents).toMatchObject({
+        ok: true,
+      });
+    // Every two-decimal amount from 0.00 to 999.99, as the form and the save read it (Audit swept the same).
+    for (let c = 0; c < 100000; c++) {
+      const typed = (c / 100).toFixed(2);
+      const checked = checkForecastField("revenue", `${typed},0,1000`);
+      expect(checked.ok, typed).toBe(true);
+      if (checked.ok)
+        expect(
+          validForecasts([{ quarter: "2194-Q1", revenue: checked.entry! }], ["2194-Q1"]),
+          typed,
+        ).toBe(true);
+    }
+  });
 });
 
 describe("the note", () => {

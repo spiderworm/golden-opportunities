@@ -105,7 +105,8 @@ export function checkEntry(
     if (typeof v !== "number" || !Number.isFinite(v)) return { ok: false, reason: "number" };
     if (v < 0) return { ok: false, reason: "negative" };
     if (v > FORECAST_LIMITS[measure]) return { ok: false, reason: "too_large" };
-    if (measure === "units" ? !Number.isInteger(v) : Math.round(v * 100) !== v * 100)
+    // Cents compared as written, not multiplied: 0.29 * 100 is 28.999999999999996 (Sim and Audit, #384).
+    if (measure === "units" ? !Number.isInteger(v) : Number(v.toFixed(2)) !== v)
       return { ok: false, reason: "number" };
   }
   const e = { point, low, high } as ForecastEntry;
