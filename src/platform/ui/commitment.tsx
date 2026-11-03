@@ -1,4 +1,6 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, type CSSProperties } from "react";
+
+import styles from "./commitment.module.css";
 
 /**
  * David's rule for anything that loads in stages, such as the station or Decide's robots (3 Nov 2026): "We should
@@ -47,14 +49,32 @@ export function useCommitment(
 export const LOADING = "Loading…";
 
 /**
- * The loading line. Mounted for as long as the page hasn't committed, empty until it's `loading`: screen readers
+ * The loading line. Rendered from the server's page on, for as long as the page hasn't committed, and seen 500 ms
+ * after it's first painted (a CSS delay, so it keeps David's 500 ms however long the scripts take to arrive). Read out
+ * through a live region that's there from the start and filled once `loading` (from useCommitment): screen readers
  * announce a change inside a live region they already know, but often not one inserted with its text in it (Chart,
- * #348). Placed and styled by the page through `className`.
+ * #348). Placed and styled by the page through `className` or `style`.
  */
-export function LoadingLine({ loading, className }: { loading: boolean; className?: string }) {
+export function LoadingLine({
+  loading,
+  className,
+  style,
+}: {
+  loading: boolean;
+  className?: string;
+  /** For pages styled inline (Dewey's panel). */
+  style?: CSSProperties;
+}) {
+  // Marked once the page knows it's loading, for measuring how often, and how long, a page keeps a player waiting.
+  useEffect(() => {
+    if (loading) performance.mark("loading-shown");
+  }, [loading]);
   return (
-    <p role="status" className={className}>
-      {loading ? LOADING : ""}
+    <p role="status" className={className} style={style}>
+      <span aria-hidden="true" className={styles.seen}>
+        {LOADING}
+      </span>
+      <span className={styles.spoken}>{loading ? LOADING : ""}</span>
     </p>
   );
 }

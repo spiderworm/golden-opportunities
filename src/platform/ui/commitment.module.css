@@ -1,0 +1,26 @@
+/* The loading line as seen: in the server's page, hidden until 500 ms after it's first painted, then there. A CSS
+   delay, so it keeps time from first paint even while the page's scripts are still arriving (Chart: hydration took
+   about 4 s under load, and a timer can only start after it). Visibility, so nothing moves (reduced motion too). */
+.seen {
+  animation: commitment-reveal 0s linear 500ms both;
+}
+
+@keyframes commitment-reveal {
+  from {
+    visibility: hidden;
+  }
+
+  to {
+    visibility: visible;
+  }
+}
+
+/* The loading line as read out: the live region's text, filled once the page knows it's loading (Chart, #348). */
+.spoken {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

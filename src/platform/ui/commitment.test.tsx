@@ -11,13 +11,17 @@ import {
   type Commitment,
 } from "./commitment";
 
-it("says Loading… and nothing more, in a status that's there before its words are", () => {
-  expect(LOADING).toBe("Loading…");
-  expect(renderToString(<LoadingLine loading={false} className="floor" />)).toBe(
-    '<p role="status" class="floor"></p>',
+it("says Loading… and nothing more: seen from the server's page (after a CSS delay), read out once loading", () => {
+  expect(LOADING).toBe("Loading\u2026");
+  const quiet = renderToString(<LoadingLine loading={false} className="floor" />);
+  // Seen: in the page from the start, its 500 ms kept by CSS from first paint; hidden from screen readers.
+  expect(quiet).toMatch(
+    /^<p role="status" class="floor"><span aria-hidden="true" class="[^"]+">Loading…<\/span>/,
   );
-  expect(renderToString(<LoadingLine loading className="floor" />)).toBe(
-    '<p role="status" class="floor">Loading…</p>',
+  // Read out: the live region's own text, empty until the page knows it's loading.
+  expect(quiet).toMatch(/<span class="[^"]+"><\/span><\/p>$/);
+  expect(renderToString(<LoadingLine loading className="floor" />)).toMatch(
+    /<span class="[^"]+">Loading…<\/span><\/p>$/,
   );
 });
 
@@ -35,12 +39,14 @@ it("shows the line only once late and not committed, and never again once commit
   expect(showsLoading(commitment(quick, "late"))).toBe(false);
 });
 
-it("shows nothing on the server, before any delay, committed or not", () => {
+it("reads out nothing from the server, before any delay, committed or not", () => {
   expect(LOADING_DELAY_MS).toBe(500);
   function Probe({ committed }: { committed: boolean }) {
     const { loading } = useCommitment(committed);
     return <LoadingLine loading={loading} />;
   }
-  expect(renderToString(<Probe committed={false} />)).toBe('<p role="status"></p>');
-  expect(renderToString(<Probe committed />)).toBe('<p role="status"></p>');
+  for (const committed of [false, true])
+    expect(renderToString(<Probe committed={committed} />)).toMatch(
+      /<span class="[^"]+"><\/span><\/p>$/,
+    );
 });
