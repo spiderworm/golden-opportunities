@@ -187,6 +187,8 @@ export interface MenuToggle {
   reason?: string | null;
   /** What it does, as its tooltip while it can be switched. */
   hint?: string;
+  /** A sub-item of the one before, indented under it. */
+  under?: boolean;
   onToggle: () => void;
 }
 
@@ -199,10 +201,13 @@ export function ToggleMenu({
   name,
   toggles,
   align = "start",
+  onOpen,
 }: {
   name: string;
   toggles: readonly MenuToggle[];
   align?: "start" | "end";
+  /** Each time it's opened, for its caller's analytics. */
+  onOpen?: () => void;
 }) {
   const button = useRef<HTMLButtonElement>(null);
   const { open, setOpen, root } = usePanel(button);
@@ -246,16 +251,19 @@ export function ToggleMenu({
         type="button"
         className={styles.button}
         data-active={on > 0 || undefined}
+        aria-label={on > 0 ? `${name}, ${on} on` : undefined}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
         onClick={() => {
+          if (!open) onOpen?.();
           setOpen(!open);
           setFocusFirst(!open);
         }}
         onKeyDown={(event) => {
           if (event.key !== "ArrowDown" || open) return;
           event.preventDefault();
+          onOpen?.();
           setOpen(true);
           setFocusFirst(true);
         }}
@@ -276,6 +284,7 @@ export function ToggleMenu({
         {toggles.map((toggle, i) => {
           const reason = toggle.reason ?? null;
           const whyId = `${menuId}-why-${i}`;
+          const nameId = `${menuId}-name-${i}`;
           return (
             <button
               key={toggle.key}
@@ -285,12 +294,15 @@ export function ToggleMenu({
               type="button"
               role="menuitemcheckbox"
               aria-checked={toggle.on}
+              // Named by its label alone: the reason under it describes it.
+              aria-labelledby={nameId}
               aria-disabled={reason !== null || undefined}
               aria-describedby={reason !== null ? whyId : undefined}
               title={reason === null ? toggle.hint : undefined}
               tabIndex={-1}
               className={styles.toggle}
               data-disabled={reason !== null || undefined}
+              data-under={toggle.under || undefined}
               onClick={() => reason === null && toggle.onToggle()}
             >
               <span className={styles.tick} data-on={toggle.on || undefined} aria-hidden="true">
@@ -308,7 +320,7 @@ export function ToggleMenu({
                 )}
               </span>
               <span className={styles.toggleText}>
-                <span>{toggle.label}</span>
+                <span id={nameId}>{toggle.label}</span>
                 {reason !== null && (
                   <span id={whyId} className={styles.toggleWhy}>
                     {reason}

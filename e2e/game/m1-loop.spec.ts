@@ -116,11 +116,14 @@ test("M1: discover, choose two moves, play; a separate save holds course with hi
   await page.getByRole("button", { name: /^Break down by/ }).click();
   await page.getByRole("radio", { name: "Genre", exact: true }).click();
   await expect(page).toHaveURL(/by=genre/);
-  await page.getByRole("button", { name: "Compare quarters" }).click();
-  await expect(page.getByRole("button", { name: "Compare quarters" })).toHaveAttribute(
-    "aria-pressed",
+  // Compare quarters is in the chart's Options menu, which stays open as it's switched.
+  await page.getByRole("button", { name: /^Options/ }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Compare quarters" }).click();
+  await expect(page.getByRole("menuitemcheckbox", { name: "Compare quarters" })).toHaveAttribute(
+    "aria-checked",
     "true",
   );
+  await page.keyboard.press("Escape");
   await ledgers(page, "measure=avg_order_value&by=quarter");
   // B is deliberately selected; the default heatmap must never be relied upon.
   await ledgers(page, "by=weekday&compare=quarter");

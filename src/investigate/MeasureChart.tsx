@@ -18,8 +18,7 @@ import { EChart } from "~/platform/charts/EChart";
 import { waterfall, type DroveRows } from "~/query/decompose";
 import { Waterfall } from "./charts/Waterfall";
 import { droveLabels } from "./charts/waterfall-chart";
-import { Dropdown } from "~/platform/ui/Dropdown";
-import { ReasonToggle } from "~/platform/ui/ReasonToggle";
+import { Dropdown, ToggleMenu } from "~/platform/ui/Dropdown";
 import { EvidenceLegend, Legend } from "./charts/Legend";
 import { SCATTER_HEIGHT, scatterOption, scatterPoints, scatterTitle } from "./charts/scatter-chart";
 import { LastYearTable, ResultTable } from "./charts/ResultTable";
@@ -346,51 +345,66 @@ export function MeasureChart({
             onChange={onGroup}
             options={GROUPINGS.map((g) => ({ value: g, label: DIMENSION_LABELS[g] }))}
           />
-          <ReasonToggle
-            className={styles.toggle}
-            pressed={state.compare}
-            reason={
-              state.also.length
-                ? "Show one measure to compare quarters"
-                : !canCompare(state.by)
-                  ? "Group by genre, format or publisher to compare quarters"
-                  : waterfallOn
-                    ? "Turn off What drove the change to compare quarters"
-                    : labels
-                      ? "Turn off vs. same quarter last year to compare quarters"
-                      : null
-            }
-            onToggle={() => onCompare(!state.compare)}
-          >
-            Compare quarters
-          </ReasonToggle>
-          <ReasonToggle
-            className={styles.toggle}
-            pressed={labels !== null}
-            reason={lastYearReason}
-            onToggle={() => onLastYear?.(!state.lastYear)}
-          >
-            vs. same quarter last year
-          </ReasonToggle>
-          <ReasonToggle
-            className={styles.toggle}
-            pressed={waterfallModel !== null}
-            reason={droveReason}
-            hint={`See which ${droveGroups(state.by) ?? "groups"} added to revenue and which took away`}
-            onToggle={() => onDrove?.(!state.drove)}
-          >
-            What drove the change
-          </ReasonToggle>
-          {state.drove && (
-            <ReasonToggle
-              className={styles.toggle}
-              pressed={state.split && splitReason === null}
-              reason={splitReason}
-              onToggle={() => onSplit?.(!state.split)}
-            >
-              Split into price, volume and mix
-            </ReasonToggle>
-          )}
+          {/* The chart's modes, in one menu (David, 3 Nov 2026: "Keep the Chart/Table toggle and Pin buttons
+              inline. Create an "Options" dropdown"). One that can't be used stays in it, saying why. Plot's order: the
+              ways to compare, then (to come) the ways to show one measure, then Scatter plot, which needs two. */}
+          <ToggleMenu
+            name="Options"
+            onOpen={() => track("chart_options_opened", { where: "investigate" })}
+            toggles={[
+              {
+                key: "compare",
+                label: "Compare quarters",
+                on: state.compare,
+                reason: state.also.length
+                  ? "Show one measure to compare quarters"
+                  : !canCompare(state.by)
+                    ? "Group by genre, format or publisher to compare quarters"
+                    : waterfallOn
+                      ? "Turn off What drove the change to compare quarters"
+                      : labels
+                        ? "Turn off vs. same quarter last year to compare quarters"
+                        : null,
+                onToggle: () => onCompare(!state.compare),
+              },
+              {
+                key: "last_year",
+                label: "vs. same quarter last year",
+                on: labels !== null,
+                reason: lastYearReason,
+                onToggle: () => onLastYear?.(!state.lastYear),
+              },
+              {
+                key: "drove",
+                label: "What drove the change",
+                on: waterfallModel !== null,
+                reason: droveReason,
+                hint: `See which ${droveGroups(state.by) ?? "groups"} added to revenue and which took away`,
+                onToggle: () => onDrove?.(!state.drove),
+              },
+              // Its split, under it, only while it's asked for (Plot).
+              ...(state.drove
+                ? [
+                    {
+                      key: "split",
+                      label: "Split into price, volume and mix",
+                      on: state.split && splitReason === null,
+                      reason: splitReason,
+                      under: true,
+                      onToggle: () => onSplit?.(!state.split),
+                    },
+                  ]
+                : []),
+              {
+                key: "scatter",
+                label: "Scatter plot",
+                on: scatter,
+                reason: noScatter,
+                hint: `Plot one measure against the other, one point per ${DIMENSION_LABELS[state.by].toLowerCase()}`,
+                onToggle: () => onScatter(!scatter),
+              },
+            ]}
+          />
           <button
             type="button"
             className={styles.toggle}
@@ -401,19 +415,6 @@ export function MeasureChart({
             }}
           >
             Table
-          </button>
-          <button
-            type="button"
-            className={styles.toggle}
-            aria-pressed={scatter}
-            disabled={noScatter !== null}
-            title={
-              noScatter ??
-              `Plot one measure against the other, one point per ${DIMENSION_LABELS[state.by].toLowerCase()}`
-            }
-            onClick={() => onScatter(!scatter)}
-          >
-            Scatter plot
           </button>
           <button
             type="button"

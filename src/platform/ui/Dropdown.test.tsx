@@ -73,12 +73,15 @@ describe("the shared dropdown", () => {
       />,
     );
     expect(text(html)).toMatch(/^Options 1 on/);
+    expect(html).toContain('aria-label="Options, 1 on"');
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toMatch(/<div[^>]*role="menu"[^>]*hidden/);
     expect(html.match(/role="menuitemcheckbox"/g)).toHaveLength(3);
     expect(html.match(/aria-checked="true"/g)).toHaveLength(1);
     // Unavailable, but focusable and described by its reason, which shows.
-    expect(html).toMatch(/aria-disabled="true" aria-describedby="[^"]+-why-1"/);
+    expect(html).toMatch(
+      /aria-labelledby="([^"]+)-name-1" aria-disabled="true" aria-describedby="\1-why-1"/,
+    );
     expect(text(html)).toContain(
       "vs. same quarter last year Turn off Compare quarters to compare with last year",
     );
