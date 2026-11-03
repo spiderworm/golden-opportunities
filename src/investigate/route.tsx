@@ -55,7 +55,7 @@ import {
   shownQuarter,
 } from "./state";
 import { PinnedCharts } from "./pins/PinnedCharts";
-import type { PinSpec } from "./pins/spec";
+import { waterfallPinFor, type PinSpec } from "./pins/spec";
 import { usePins } from "./pins/usePins";
 import { TitleView } from "./TitleView";
 import { cachedView } from "./view-cache.client";
@@ -388,6 +388,9 @@ function heatPinFor(state: InvestigateState, quarters: readonly string[]): PinSp
 
 /** The main chart as a pin: the same query it runs, so the pin shows what the player saw. */
 function pinSpecFor(state: InvestigateState, quarters: readonly string[]): PinSpec {
+  // What drove the change, while it's on: pinned as the waterfall it is, not the chart under it.
+  const waterfall = waterfallPinFor(state, quarters);
+  if (waterfall) return waterfall;
   const filter = filtersExcept(state.filters, [state.by]);
   // Pinned as shown: with last year, when the chart has it (Frank's #301), and titled so.
   const quarter = shownQuarter(state);

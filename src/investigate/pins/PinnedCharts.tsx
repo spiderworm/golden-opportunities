@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { combineComparison, comparisonQueries } from "~/assistant/tools/comparison";
 import type { ComparisonResult } from "~/assistant/tools/definitions";
-import type { Dimension, QueryResult } from "~/query/types";
+import type { Dimension, Query, QueryResult } from "~/query/types";
+import { waterfall, type DroveRows, type PeriodRows } from "~/query/decompose";
+import { Waterfall } from "../charts/Waterfall";
+import { droveLabels } from "../charts/waterfall-chart";
 import { Icon } from "~/shell/icons";
 import {
   categoryHeight,
@@ -42,6 +45,7 @@ import {
   type ComparisonPinSpec,
   type Pin,
   type PinSpec,
+  type WaterfallPinSpec,
 } from "./spec";
 import { noChartReason, TableToggle } from "~/platform/ui/TableToggle";
 
@@ -102,7 +106,8 @@ export function PinnedCharts({
 
 type Loaded =
   | { kind: "query"; result: QueryResult; also: QueryResult[] }
-  | { kind: "comparison"; result: ComparisonResult };
+  | { kind: "comparison"; result: ComparisonResult }
+  | { kind: "waterfall"; rows: DroveRows };
 type Load =
   { status: "loading" } | ({ status: "ready" } & Loaded) | { status: "failed"; message: string };
 
@@ -112,6 +117,27 @@ type Load =
  * whole card fails, and the other side is cancelled.
  */
 export async function runPin(pin: PinSpec, signal: AbortSignal): Promise<Loaded> {
+  if (pin.kind === "waterfall") {
+    // Each quarter's revenue (and units, split), as Investigate's loader runs them. Context, not discovery evidence:
+    // only the groups drawn as their own bars may count, and a request can't be cut to those before it's recorded;
+    // the waterfall shown on Investigate already recorded them (Plot, #335).
+    const w = pin.waterfall;
+    const query = (measure: "revenue" | "units", quarter: string): Query => ({
+      measure,
+      by: [w.by],
+      filter: { ...w.filter, quarter: [quarter] },
+      limit: 200,
+    });
+    const period = async (quarter: string): Promise<PeriodRows> => {
+      const [revenue, units] = await Promise.all([
+        fetchQuery(query("revenue", quarter), signal, { evidence: false }),
+        w.split ? fetchQuery(query("units", quarter), signal, { evidence: false }) : undefined,
+      ]);
+      return { revenue, ...(units ? { units } : {}) };
+    };
+    const [thenRows, nowRows] = await Promise.all([period(w.then), period(w.now)]);
+    return { kind: "waterfall", rows: { then: w.then, now: w.now, thenRows, nowRows } };
+  }
   if (pin.kind !== "comparison") {
     // Several measures are a query each, as the main chart's.
     // A heatmap is context, never discovery evidence, pinned or not (Plot, #63 and #266): asked without recording.
@@ -247,7 +273,11 @@ export function PinChart({
           {load.message}
         </p>
       )}
+      {load.status === "ready" && spec.kind === "waterfall" && load.kind === "waterfall" && (
+        <WaterfallPinBody spec={spec} rows={load.rows} table={table} />
+      )}
       {load.status === "ready" &&
+        spec.kind !== "waterfall" &&
         (spec.kind === "comparison"
           ? load.kind === "comparison" && <ComparisonBody pin={spec} result={load.result} />
           : load.kind === "query" &&
@@ -532,4 +562,33 @@ export function pinMonths(pin: ChartPinSpec, quarters: readonly string[]): strin
   const months = monthsInScope(quarters, pin.query.filter?.quarter);
   const only = pin.query.filter?.month;
   return only ? months.filter((m) => only.includes(m)) : months;
+}
+
+/** A pinned waterfall: the same chart and table What drove the change draws on Investigate. */
+function WaterfallPinBody({
+  spec,
+  rows,
+  table,
+}: {
+  spec: WaterfallPinSpec;
+  rows: DroveRows;
+  table: boolean;
+}) {
+  const w = spec.waterfall;
+  const model = useMemo(
+    () => waterfall(w.by, rows.thenRows, rows.nowRows, { split: !!w.split }),
+    [rows, w.by, w.split],
+  );
+  const labels = useMemo(() => droveLabels(rows.then, rows.now), [rows]);
+  const split = !!model.split && !("problem" in model.split);
+  return (
+    <Waterfall
+      model={model}
+      labels={labels}
+      split={split}
+      table={table}
+      title={spec.title}
+      narrow
+    />
+  );
 }

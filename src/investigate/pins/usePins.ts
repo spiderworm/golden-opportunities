@@ -40,7 +40,12 @@ export function usePins(track: Track): Pins {
         return false;
       }
       setPins((current) => addPin(current ?? [], spec, pinnedBy, crypto.randomUUID()));
-      const { measure, by } = spec.kind === "comparison" ? spec.comparison : spec.query;
+      const { measure, by } =
+        spec.kind === "comparison"
+          ? spec.comparison
+          : spec.kind === "waterfall"
+            ? { measure: "revenue" as const, by: [spec.waterfall.by] }
+            : spec.query;
       track("investigate_pin_added", { pinnedBy, kind: spec.kind, measure, dimensions: by.length });
       return true;
     },
