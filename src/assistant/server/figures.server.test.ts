@@ -956,19 +956,21 @@ describe("how much evidence is behind a figure, only by ref (David, 3 Nov 2026)"
   const sayIn = (sentence: string) => say(sentence, refs());
 
   it("renders an average's n with its unit, singular for one, and the total's", () => {
-    expect(sayIn("That average is based on {{e1.n}}.")).toBe(
-      "That average is based on 212 ratings.",
+    expect(sayIn("{{e1.genre}}'s average is based on {{e1.n}}.")).toBe(
+      "Mystery's average is based on 212 ratings.",
     );
-    expect(sayIn("Poetry's rests on {{e2.n}}.")).toBe("Poetry's rests on 1 rating.");
-    expect(sayIn("All genres together: {{e.n}}.")).toBe("All genres together: 213 ratings.");
+    expect(sayIn("{{e2.genre}}'s rests on {{e2.n}}.")).toBe("Poetry's rests on 1 rating.");
+    expect(sayIn("All genres together, {{e.total}} from {{e.n}}.")).toBe(
+      "All genres together, 4.1 from 213 ratings.",
+    );
   });
 
   it("renders average rating's likely range to one decimal place", () => {
-    expect(sayIn("Mystery's average rating has {{e1.range}}.")).toBe(
+    expect(sayIn("{{e1.genre}}'s average rating has {{e1.range}}.")).toBe(
       "Mystery's average rating has a likely range of 3.9 to 4.3 stars.",
     );
-    expect(sayIn("Across genres, it has {{e.range}}.")).toBe(
-      "Across genres, it has a likely range of 3.9 to 4.3 stars.",
+    expect(sayIn("Across genres it's {{e.total}}, with {{e.range}}.")).toBe(
+      "Across genres it's 4.1, with a likely range of 3.9 to 4.3 stars.",
     );
     // The phrase is the ref's: in the model's own words it's withheld.
     expect(sayIn("Its likely range is {{e1.range}}.")).toBe(WITHHELD);
@@ -1014,6 +1016,52 @@ describe("how much evidence is behind a figure, only by ref (David, 3 Nov 2026)"
     expect(sayIn("I looked up average rating by genre.")).not.toBe(WITHHELD);
     expect(sayIn("Mystery's average rating is {{e1}}, based on {{e1.n}}.")).toBe(
       "Mystery's average rating is 4.12, based on 212 ratings.",
+    );
+  });
+
+  it("needs the evidence's own row in the sentence, by a ref: alone, or beside a name in prose, it's withheld (Probe's second red-team)", () => {
+    for (const sentence of [
+      "That is {{f1.noise}}.",
+      "That average is based on {{e1.n}}.",
+      "Poetry's average rests on {{e1.n}}.",
+      "Its average rating has {{e1.range}}.",
+      "All genres together: {{e.n}}.",
+      "Mystery {{f1.noise}}.",
+    ])
+      expect(sayIn(sentence), sentence).toBe(WITHHELD);
+    // Through the gate, the shape the real model wrote: the second sentence can't borrow the first's subject.
+    const gate = sentenceGate(refs());
+    expect(gate.push("Poetry {{f2.change}}. That is {{f1.noise}}. ") + gate.flush()).not.toContain(
+      "within noise",
+    );
+  });
+
+  it("renders a likely range with two decimal places when one would make both ends the same (Plot)", () => {
+    const r = new Refs();
+    r.addTool(
+      "query_data",
+      { measure: "avg_rating", by: ["genre"] },
+      {
+        ref: "k",
+        complete: true,
+        columns: [],
+        unit: "ratings",
+        rows: [
+          {
+            ref: "k1",
+            genre: "Drama",
+            avg_rating: 4.21,
+            n: 900,
+            range_low: 4.18,
+            range_high: 4.24,
+          },
+        ],
+        total: 4.21,
+        source: "S",
+      },
+    );
+    expect(say("{{k1.genre}} has {{k1.range}}.", r)).toBe(
+      "Drama has a likely range of 4.18 to 4.24 stars.",
     );
   });
 

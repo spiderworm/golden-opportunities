@@ -126,6 +126,10 @@ const stars = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
+const starsFine = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const label = (v: unknown) => (v === null || v === undefined ? "Unknown" : String(v));
@@ -439,8 +443,10 @@ export class Refs {
     }
     const { range_low: low, range_high: high } = figures;
     if (lookup.measure !== "avg_rating" || !isNum(low) || !isNum(high) || low > high) return null;
-    // The phrase comes with it: "likely range" in the model's own words is withheld (EVIDENCE_WORDS).
-    return `a likely range of ${stars.format(low)} to ${stars.format(high)} stars`;
+    // The phrase comes with it: "likely range" in the model's own words is withheld (EVIDENCE_WORDS). One decimal
+    // place, or two when one would make both ends the same: never "4.2 to 4.2 stars" (Plot).
+    const format = stars.format(low) === stars.format(high) ? starsFine : stars;
+    return `a likely range of ${format.format(low)} to ${format.format(high)} stars`;
   }
 
   // Rankings are claims about every group, so they're made only over complete results; otherwise the ref
@@ -743,19 +749,27 @@ const EVIDENCE_WORDS = new RegExp(
 
 /**
  * Evidence qualifies one figure: {{e1.n}} the average {{e1}}, {{f1.noise}} the change {{f1.change}}. So a sentence
- * with an evidence ref passes only if every ref in it is that same row's, or for {{e.n}} that lookup's total: two
- * true refs mustn't make a false sentence, "Poetry rose by 200, within noise" with Mystery's flag (Probe's
- * red-team of #337). A sentence with no evidence ref is unaffected.
+ * with an evidence ref passes only if every ref in it is that same row's, or for {{e.n}} that lookup's total, and
+ * at least one of them isn't evidence: two true refs mustn't make a false sentence, "Poetry rose by 200, within
+ * noise" with Mystery's flag (Probe's red-teams of #337). A sentence with no evidence ref is unaffected.
  */
 function evidenceBound(refs: string[]): boolean {
   const parsed = refs.map((ref) => {
     const m = /^([a-z]+)(\d*)(?:\.([a-z_.]+))?(?:\|.*)?$/.exec(ref.trim());
     return m ? { at: `${m[1]}${m[2]}`, field: (m[3] ?? "").replace(/^total[._]?/, "") } : null;
   });
-  const evidence = parsed.filter((p) => p && ["n", "range", "noise"].includes(p.field));
+  const isEvidence = (p: (typeof parsed)[number]) =>
+    p !== null && ["n", "range", "noise"].includes(p.field);
+  const evidence = parsed.filter(isEvidence);
   if (!evidence.length) return true;
   const at = evidence[0]!.at;
-  return parsed.every((p) => p !== null && p.at === at);
+  // And the row is in the sentence itself, by a ref of its own (its figure, or its name, {{e1.genre}}): an evidence
+  // ref alone, or beside a name in prose, would attach to whatever came before ("Poetry rose by 200. That is
+  // within noise."; Probe's second red-team of #337).
+  return (
+    parsed.every((p) => p !== null && p.at === at) &&
+    parsed.some((p) => p !== null && !isEvidence(p))
+  );
 }
 
 export function renderSentence(
