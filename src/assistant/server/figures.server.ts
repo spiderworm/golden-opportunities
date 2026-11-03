@@ -752,7 +752,8 @@ export function renderSentence(
     .replace(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g, (p) => (refs.hasPeriod(p, known) ? " " : p))
     .replace(/\bQ([1-4])\b/g, (q) => (refs.hasQuarter(q, known) ? " " : q))
     .replace(ALLOWED, " ");
-  if (banned(prose) || EVIDENCE_WORDS.test(prose)) return null;
+  // The plain copy, as banned() reads it, so an accent can't slip a word past (Audit's review of #337).
+  if (banned(prose) || EVIDENCE_WORDS.test(plain(prose))) return null;
   // "Yes" or "No" is itself a claim: allowed only to open a sentence that is otherwise refs ("No, {{b.to_vs_from}}.").
   const answer = /^\s*(?:yes|no)\b/i.exec(prose);
   if (answer && (count === 0 || /\p{L}/u.test(prose.slice(answer[0].length)))) return null;
