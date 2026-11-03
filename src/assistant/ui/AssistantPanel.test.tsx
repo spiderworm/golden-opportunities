@@ -2,7 +2,16 @@ import { renderToString } from "react-dom/server";
 import { createRoutesStub } from "react-router";
 import { expect, it } from "vitest";
 import type { LookupPin } from "../tools/definitions";
-import { AssistantPanel, fitToText, LookupView, sendsQuestion } from "./AssistantPanel";
+import {
+  AssistantPanel,
+  fitToText,
+  LookupView,
+  PORTRAIT,
+  sendsQuestion,
+  talkingTurn,
+} from "./AssistantPanel";
+import { Group } from "three";
+import { pose } from "./DeweyFaces3D";
 
 it("renders an empty panel on the server, without touching storage, and offers no reset until there's a conversation", () => {
   const storage = new Proxy({} as Storage, {
@@ -137,4 +146,46 @@ it("fits the box to its text, border and all, however tall, with no limit", () =
   };
   fitToText(box);
   expect(heights).toEqual(["auto", "602px"]);
+});
+
+it("shows Dewey's face, named, beside what he says, from his greeting on", () => {
+  const Stub = createRoutesStub([
+    { path: "/", Component: () => <AssistantPanel storage={undefined} track={() => {}} /> },
+  ]);
+  const html = renderToString(<Stub initialEntries={["/"]} />);
+  // The portrait comes first, then the greeting in its bubble.
+  expect(html).toMatch(
+    new RegExp(`<img src="${PORTRAIT}" alt="Dewey"[^>]*>.*Ask me about your sales`),
+  );
+});
+
+it("has the face beside the turn with focus talk, else the pointer's, else his last", () => {
+  expect(talkingTurn(null, null, 0)).toBe(0);
+  expect(talkingTurn(null, null, 3)).toBe(2);
+  expect(talkingTurn(null, 1, 3)).toBe(1);
+  expect(talkingTurn(0, 1, 3)).toBe(0);
+});
+
+it("keeps an idle face almost still, and a talking one moving", () => {
+  const most = (talking: number) => {
+    const dewey = new Group();
+    let turn = 0;
+    let rise = 0;
+    for (let t = 0; t < 20; t += 0.05) {
+      pose(dewey, t, 2, talking);
+      turn = Math.max(
+        turn,
+        Math.abs(dewey.rotation.x),
+        Math.abs(dewey.rotation.y),
+        Math.abs(dewey.rotation.z),
+      );
+      rise = Math.max(rise, Math.abs(dewey.position.y));
+    }
+    return { turn, rise };
+  };
+  // Idle: under two degrees and a centimetre (he's about a metre tall); talking: several times that.
+  expect(most(0).turn).toBeLessThan((2 * Math.PI) / 180);
+  expect(most(0).rise).toBeLessThan(0.01);
+  expect(most(1).turn).toBeGreaterThan(4 * most(0).turn);
+  expect(most(1).rise).toBeGreaterThan(2 * most(0).rise);
 });

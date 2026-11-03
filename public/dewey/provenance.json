@@ -1,0 +1,27 @@
+{
+  "about": "Dewey's face in his chat panel (src/assistant/ui): the shop's old reference terminal on Larkspur, a wise old hyperintelligent bookworm friend, battered from a shuttle that once missed its docking cradle. David asked for a face (via Goldy: \"wise old hyperintelligent bookworm friend\"), chose the reading-lamp terminal from four concepts (\"I want to go with 4-reading-lamp-terminal.png, but move the reading glasses to sit over the actual eyes, low over them like a grandpa might wear them\"), and approved the edit (\"those glasses are spot on now <3\").",
+  "date": "2026-11-02",
+  "by": "Orbit, in David's Tripo account at his request",
+  "credits": "45: image to 3D. The concepts and the edit were free (Tripo's image allowance).",
+  "concept": {
+    "tool": "Tripo Studio's image generator, Nano Banana 2 (Gemini), 1:1; then its image editor for the spectacles",
+    "prompt": "A friendly robot character for a cozy retro-futuristic space-station bookshop game: Dewey, the shop's old reference terminal, a wise old hyperintelligent bookworm friend. A boxy vintage computer terminal with a rounded cream-and-brass casing, a little dented and scuffed from a shuttle that once missed its docking cradle, one corner patched with a riveted plate. Its face is a round curved amber screen showing two kind, gently smiling glowing eyes; small half-moon reading spectacles perch on top of the screen, and a bent brass desk-lamp arm curls over its head casting a warm glow. A worn little book is tucked under one small mechanical arm. Warm, wise, gentle, approachable, never menacing. Bust-length portrait, facing the viewer, centered with generous margin so nothing touches the corners. Stylized game-ready 3D render: chunky clean shapes, soft bevels, smooth matte surfaces, a strong simple silhouette that stays readable as a tiny icon. Cream, brass and soft violet, with a warm amber glow. Plain flat solid dark navy blue background, no gradient, no text, no letters, no numbers, no logo, no ground shadow.",
+    "edit": "Move the small half-moon reading spectacles down from the top of the head so they sit over the glowing eyes, low on the face like a grandpa wears them: perched low just under the eyes, the eyes peeking over the top of the lenses, the thin brass frame resting on the screen with its arms reaching back to the sides of the head. Keep everything else exactly the same: the same robot, pose, kind smile, desk lamp, dents and patches, colors, lighting, framing and plain flat dark navy background. No text, no letters, no numbers.",
+    "source": "research/station-assets/dewey/dewey.jpg (downscaled to 768 from the edited 1024 x 1024 PNG, downloaded with David's OK)"
+  },
+  "files": {
+    "portrait": {
+      "processed": "research/station-assets/bosses.py's portrait(), as the bosses' portraits: background set to #1d2440, cropped square, 256 x 256 webp, quality 88, method 6. It reproduces this file byte for byte from Tripo's PNG.",
+      "file": "public/dewey/portrait.webp",
+      "sha256": "92b8698dcc433c8c434fb5a9cb2b917128085d6eb79b9d3b23c80cb6dfaaa90a",
+      "bytes": 8148
+    },
+    "model": {
+      "model": "Tripo Studio image to 3D from the edited concept: HD Model, H3.1, 2K texture; task b3436a2d-a1ab-4f44-8356-2da3e7aa935d (https://studio.tripo3d.ai/workspace/generate/b3436a2d-a1ab-4f44-8356-2da3e7aa935d); 45 credits",
+      "processed": "research/station-assets/process.mjs <export> public/dewey 512 (written to public/models/dewey and moved): color texture only, as 512 px webp, centered, resting on y = 0, facing +z; 9,588 triangles",
+      "file": "public/dewey/dewey.glb",
+      "sha256": "60c1c85a68f9fca55245ab3f8f9c51d27f1342cf4466d6fe72ee85dd7de389dd",
+      "bytes": 286832
+    }
+  }
+}
