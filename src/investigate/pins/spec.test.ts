@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Query } from "~/query/types";
 import {
   addPin,
-  canToggle,
+  noChart,
   drawnKind,
   MAX_PINS,
   parsePins,
@@ -329,11 +329,11 @@ describe("a pin's chart or table view (David, 3 Nov 2026)", () => {
     expect(drawnKind({ ...bar, kind: "line" })).toBe("line");
   });
 
-  it("offers both views only where there's a breakdown to draw", () => {
-    expect(canToggle(bar)).toBe(true);
-    expect(canToggle({ ...bar, query: { measure: "revenue", by: [] } })).toBe(false);
+  it("says why there's no chart: a single figure, or a comparison", () => {
+    expect(noChart(bar)).toBeNull();
+    expect(noChart({ ...bar, query: { measure: "revenue", by: [] } })).toBe("figure");
     expect(
-      canToggle({
+      noChart({
         title: "Q3 against Q4",
         kind: "comparison",
         comparison: {
@@ -344,7 +344,7 @@ describe("a pin's chart or table view (David, 3 Nov 2026)", () => {
           by: [],
         },
       }),
-    ).toBe(false);
+    ).toBe("comparison");
   });
 
   it("matches the same pin whichever way it's shown", () => {
