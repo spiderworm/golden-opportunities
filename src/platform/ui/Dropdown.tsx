@@ -65,7 +65,8 @@ function usePanel(button: RefObject<HTMLButtonElement | null>) {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
     const escape = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      // One already handled inside, such as a tooltip taken away first, isn't the panel's.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       setOpen(false);
       const focus = document.activeElement;
       if (!focus || focus === document.body || root.current?.contains(focus))
@@ -241,8 +242,10 @@ export function ToggleMenu({
 
   const onKey = (event: KeyboardEvent) => {
     // Escape takes the tooltip away first, and only then the menu.
+    // React Router hydrates the whole document, so React's listener and the panel's share a node and
+    // stopPropagation can't part them: preventDefault marks it handled (measured on the build).
     if (event.key === "Escape" && tip) {
-      event.stopPropagation();
+      event.preventDefault();
       setTip(null);
       return;
     }
