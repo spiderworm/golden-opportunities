@@ -52,7 +52,10 @@ it("draws a chart Dewey showed with the page's chart, titled, sourced and pinnab
   const html = renderToString(
     <LookupView lookup={drawn} ChartView={ChartView} pinning={{ onPin: () => true }} />,
   );
-  expect(html).toMatch(/<figcaption[^>]*>Revenue by quarter<\/figcaption><div data-chart="1">/);
+  // Titled, with its Table toggle beside the title (unpressed: it's a chart), then the chart.
+  expect(html).toMatch(
+    /<figcaption[^>]*>Revenue by quarter<\/figcaption><button[^>]*aria-pressed="false" aria-label="Table: Revenue by quarter"[^>]*>Table<\/button><\/div><div data-chart="1">/,
+  );
   expect(html).toMatch(/Source: S/);
   expect(html).toMatch(/aria-label="Pin Revenue by quarter"/);
   expect(html).not.toMatch(/<table/);
@@ -188,4 +191,40 @@ it("keeps an idle face almost still, and a talking one moving", () => {
   expect(most(0).rise).toBeLessThan(0.01);
   expect(most(1).turn).toBeGreaterThan(4 * most(0).turn);
   expect(most(1).rise).toBeGreaterThan(2 * most(0).rise);
+});
+
+it("starts a table on its table with the toggle pressed, and offers its chart where there's a breakdown", () => {
+  type Lookup = Parameters<typeof LookupView>[0]["lookup"];
+  const query = { measure: "revenue" as const, by: ["genre" as const] };
+  const data: Lookup = {
+    type: "data",
+    pin: { title: "Revenue by genre", kind: "table", query },
+    columns: [
+      { key: "genre", label: "Genre", type: "string", nullable: false },
+      { key: "revenue", label: "Revenue", type: "number", nullable: false },
+    ],
+    rows: [{ genre: "Mystery", revenue: 5 }],
+    total: 5,
+    source: "S",
+  };
+  const ChartView = () => <div data-chart="drawn" />;
+  const html = renderToString(<LookupView lookup={data} ChartView={ChartView} />);
+  expect(html).toMatch(/aria-pressed="true" aria-label="Table: Revenue by genre"/);
+  expect(html).not.toMatch(/disabled/);
+  expect(html).toMatch(/<table/);
+  // One figure has no chart: pressed and off, saying why (Plot, chart-features-copy.md section 1).
+  const total = renderToString(
+    <LookupView
+      lookup={{
+        ...data,
+        pin: { title: "Revenue", kind: "table", query: { measure: "revenue", by: [] } },
+        columns: [{ key: "revenue", label: "Revenue", type: "number", nullable: false }],
+        rows: [{ revenue: 5 }],
+      }}
+      ChartView={ChartView}
+    />,
+  );
+  expect(total).toMatch(/disabled="" title="A single figure has no chart"/);
+  // Without the page's charts (any page but Investigate), no toggle at all (Sage).
+  expect(renderToString(<LookupView lookup={data} />)).not.toMatch(/aria-pressed/);
 });

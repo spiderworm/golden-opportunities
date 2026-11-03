@@ -34,7 +34,7 @@ import {
   type Pin,
   type PinSpec,
 } from "./spec";
-import { noChartReason, TableToggle } from "../charts/TableToggle";
+import { noChartReason, TableToggle } from "~/platform/ui/TableToggle";
 
 const CHART_HEIGHT = 240;
 
@@ -162,6 +162,7 @@ function PinnedChart({
         <div className={styles.pinActions}>
           {onTable && (
             <TableToggle
+              className={styles.toggle}
               table={why !== null || (pin.kind !== "comparison" && shownAsTable(pin))}
               onChange={onTable}
               label={pin.title}

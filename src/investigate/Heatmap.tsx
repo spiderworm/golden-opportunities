@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { ResultTable } from "./charts/ResultTable";
-import { TableToggle } from "./charts/TableToggle";
+import { TableToggle } from "~/platform/ui/TableToggle";
 import type { QueryResult } from "~/query/types";
 import { chartTheme, heatColor } from "~/platform/charts/chart-theme";
 import { Dropdown } from "~/platform/ui/Dropdown";
@@ -157,6 +157,7 @@ export function Heatmap({
             />
           )}
           <TableToggle
+            className={styles.toggle}
             table={table}
             onChange={(next) => {
               setTable(next);
