@@ -6,6 +6,15 @@
 import { resolveSaveId } from "~/game/session.server";
 import { spend, type Cap } from "~/platform/usage.server";
 
+/** This question's game: its save's id, or null without one (no save cookie, or one that names no save). */
+export function gameOf(request: Request, resolve: (request: Request) => string = resolveSaveId) {
+  try {
+    return resolve(request);
+  } catch {
+    return null;
+  }
+}
+
 export function deweyUsage(
   request: Request,
   {
@@ -13,12 +22,7 @@ export function deweyUsage(
     count = spend,
   }: { resolve?: (request: Request) => string; count?: typeof spend } = {},
 ): Cap | null {
-  let save: string;
-  try {
-    save = resolve(request);
-  } catch {
-    // No save cookie, or one that names no save: no game, so no model, and nothing to count.
-    return null;
-  }
-  return count("dewey", save);
+  // No save cookie, or one that names no save: no game, so no model, and nothing to count.
+  const save = gameOf(request, resolve);
+  return save === null ? null : count("dewey", save);
 }

@@ -8,7 +8,7 @@ import { catalogNames } from "~/alma/backstory.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import { getAssistant } from "./server/assistant.server.ts";
 import { ask, type ServerTrack } from "./server/ask.server.ts";
-import { deweyUsage } from "./server/usage.server.ts";
+import { deweyUsage, gameOf } from "./server/usage.server.ts";
 import { assistantAvailability, offlineCopy } from "./server/availability.server.ts";
 import { anthropicAssistant } from "./server/anthropicApi.server.ts";
 import { claudeCodeAssistant, type ToolServer } from "./server/claudeCode.server.ts";
@@ -119,6 +119,8 @@ export const action = ({ request }: Route.ActionArgs) =>
     undefined,
     backstory,
     usage,
+    // Only a question with a real game counts toward the hour (Probe's red-team of #319).
+    (request) => gameOf(request) !== null,
   );
 
 /** Whether the panel can offer questions: { available: true }, or the fixed offline message and why. */
