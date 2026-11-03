@@ -43,6 +43,8 @@ export interface GameSave {
   alertSeen?: true;
   /** The quarters whose Commerce Office memo the player has seen, in play order. */
   alertsSeen?: QuarterId[];
+  /** The played quarters whose shop report the player has opened on Reports, in play order (reports.md section 2). */
+  reportsSeen?: QuarterId[];
   /**
    * Alma's event records, one per quarter from Q3 2194, in quarter order, up to the next unplayed quarter (the
    * one Alma prepares). Absent in older saves. Once written, a record is the quarter's truth (src/alma).
