@@ -10,7 +10,8 @@ vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() 
 import { loadBookshop } from '../bookshop/loader.server';
 import type { DeepReadonly, SaleLine } from '../bookshop/types';
 import { submitPlan, submitQ2Plan, getQ2Candidates } from '../game/game.server';
-import { queryViewForSave, saves } from '../game/session.server';
+import { eventOf, queryViewForSave, saves } from '../game/session.server';
+import { joinSales, replayLines } from '../game/replay.server';
 import { readHistoryAsLines, runQuery } from './run-query.server';
 import { rollUpSales } from './sale-cells';
 import { DIMENSIONS, FILTER_ONLY_DIMENSIONS, type Dimension, type Query, type QueryView } from './types';
@@ -59,8 +60,14 @@ describe('sale cells (docs/design/rollups.md)', () => {
     const save = saves.create(); const req = request(save.id);
     submitPlan(req, { levers: ['repick', 'events'] });
     submitQ2Plan(req, { picks: [getQ2Candidates()[0]!.isbn, null, null], levers: ['events'] });
-    const [byLines, byCells] = views(queryViewForSave(saves.read(save.id)));
-    expect(byCells.simulatedCells!.cells.length * 3).toBeLessThan(byLines.simulatedSales!.length);
+    // The save's own view is cells now; its lines, replayed and joined, are the old path to compare against.
+    const played = saves.read(save.id);
+    const lines = played.played.flatMap(q => joinSales(replayLines(q, played.seed, loadBookshop(), eventOf(played, q.period)), loadBookshop()));
+    const byCells = queryViewForSave(played);
+    const { simulatedCells: _, version: __, ...rest } = byCells;
+    const byLines: QueryView = { ...rest, simulatedSales: lines };
+    expect(byCells.simulatedCells!.lines).toBe(lines.length);
+    expect(byCells.simulatedCells!.cells.length * 3).toBeLessThan(lines.length);
     for (const measure of SALES) {
       same({ measure, by: [] }, byLines, byCells);
       for (const by of GROUPS) same({ measure, by: [by] }, byLines, byCells);

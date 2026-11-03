@@ -11,7 +11,7 @@ vi.mock('../platform/analytics/analytics.server', () => ({ trackServer: vi.fn() 
 import { loadBookshop } from '../bookshop/loader.server';
 import { runQuery } from '../query/run-query.server';
 import { getOutcome, getQ2Candidates, resetGame, submitPlan, submitQ2Plan } from './game.server';
-import { forgetReplays, linesHash, quarterLines, replayLines } from './replay.server';
+import { forgetReplays, linesHash, quarterCells, replayLines } from './replay.server';
 import { getGameSession, queryViewForSave, saves } from './session.server';
 import { SaveError } from './store.server';
 import type { PlayedQuarter } from './types';
@@ -59,7 +59,7 @@ describe("a played quarter's lines (endless.md section 9, how quarters are kept)
     expect(() => queryViewForSave(saves.read(id))).toThrow(expect.objectContaining({ code: 'REPLAY_MISMATCH' }));
     // Never silently rescored: the count is checked too.
     const counted = { ...saves.read(id).played[0]!, lines: { ...saves.read(id).played[0]!.lines!, count: 1 } } as PlayedQuarter;
-    expect(() => quarterLines(id, save.seed, counted, loadBookshop)).toThrow(SaveError);
+    expect(() => quarterCells(id, save.seed, counted, loadBookshop)).toThrow(SaveError);
     const fresh = resetGame(request(id, 'http://localhost/settings/reset'));
     expect(fresh).toMatch(/orbital_save=/);
   });
@@ -72,7 +72,8 @@ describe("a played quarter's lines (endless.md section 9, how quarters are kept)
     saves.update(id, save.revision, draft => { const { lines: _, ...rest } = draft.played[0]!; draft.played[0] = { ...rest, sales: stored } as PlayedQuarter; });
     const older = saves.read(id);
     expect(older.played[0]).toHaveProperty('sales');
-    expect(quarterLines(id, older.seed, older.played[0]!, () => { throw new Error('replayed'); })).toBe(older.played[0]!.sales);
+    // Its stored lines are what's rolled up: it has no hash, so a replay couldn't be checked, and would refuse.
+    expect(quarterCells(id, older.seed, older.played[0]!, loadBookshop).lines).toBe(older.played[0]!.sales!.length);
     expect(revenue(id, '2194-Q1')).toBeCloseTo(getOutcome(request(id))!.totals.plan.revenue, 6);
   });
 
@@ -104,24 +105,28 @@ describe('a save whose replay no longer matches', () => {
 
 describe('the replay cache (Audit, #233)', () => {
   it('keeps a long save whole, and lets the least recently used other save go once over its bound', async () => {
-    const { rememberLines, replayCacheSize, setReplayCacheLimit } = await import('./replay.server');
+    const { joinSales, rememberLines, replayCacheSize, setReplayCacheLimit } = await import('./replay.server');
+    const { rollUpSales } = await import('../query/sale-cells');
+    const data = loadBookshop();
+    // Twenty real lines a quarter, and the bound in cells: room for 50 of these quarters.
+    const lines = data.saleLines.slice(0, 20);
+    const k = rollUpSales(joinSales(lines, data)).cells.length;
     forgetReplays();
-    setReplayCacheLimit(1_000);
+    setReplayCacheLimit(50 * k);
     try {
       const quarter = (n: number) => ({ period: '2194-Q3', outcomeId: `q${n}`, lines: { hash: 'a'.repeat(64), count: 20 } }) as unknown as PlayedQuarter;
-      const lines = Array.from({ length: 20 }, () => ({}) as never);
-      // Another save first, then a long one: 60 quarters of 20 lines, past the bound alone.
-      rememberLines('other', quarter(0), lines);
-      for (let n = 0; n < 60; n++) rememberLines('long', quarter(n), lines);
+      // Another save first, then a long one: 60 quarters, past the bound alone.
+      rememberLines('other', quarter(0), lines, data);
+      for (let n = 0; n < 60; n++) rememberLines('long', quarter(n), lines, data);
       // The long save keeps all 60 quarters (it's the one in use); the other save went to make room.
-      expect(replayCacheSize()).toEqual({ saves: 1, lines: 1_200 });
+      expect(replayCacheSize()).toEqual({ saves: 1, cells: 60 * k });
       // Within the bound, saves share it, least recently used out first.
       forgetReplays();
-      for (const id of ['a', 'b', 'c']) for (let n = 0; n < 10; n++) rememberLines(id, quarter(n), lines);
-      expect(replayCacheSize()).toEqual({ saves: 3, lines: 600 });
+      for (const id of ['a', 'b', 'c']) for (let n = 0; n < 10; n++) rememberLines(id, quarter(n), lines, data);
+      expect(replayCacheSize()).toEqual({ saves: 3, cells: 30 * k });
       // A fourth save pushes the total past the bound: the oldest, a, goes, and that's enough.
-      for (let n = 0; n < 30; n++) rememberLines('d', quarter(n), lines);
-      expect(replayCacheSize()).toEqual({ saves: 3, lines: 1_000 });
-    } finally { setReplayCacheLimit(1_500_000); forgetReplays(); }
+      for (let n = 0; n < 30; n++) rememberLines('d', quarter(n), lines, data);
+      expect(replayCacheSize()).toEqual({ saves: 3, cells: 50 * k });
+    } finally { setReplayCacheLimit(600_000); forgetReplays(); }
   });
 });
