@@ -69,7 +69,7 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
         ) : (
           <>
             <Tiles latest={latest} before={reports[1]} />
-            <div className={styles.row} data-single={reports.length === 1 || undefined}>
+            <div className={styles.row}>
               {reports.length > 1 && (
                 <section className={styles.card} aria-labelledby="overall-chart">
                   <h3 id="overall-chart" className={styles.cardTitle}>

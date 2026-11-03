@@ -32,7 +32,7 @@
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   align-items: start;
   gap: 16px;
   margin: 0;
@@ -107,16 +107,12 @@
   gap: 4px;
 }
 
-/* One wide chart beside the record; with one quarter played, the record takes the row. */
+/* The chart, then the record under it: the record's seven columns need the page's width (measured at 1440 px,
+   beside the chart they scrolled). With one quarter played, the chart is hidden. */
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.row[data-single] {
   grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
 }
 
 .summary {
@@ -182,9 +178,5 @@
 @media (max-width: 1100px) {
   .tiles {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .row {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
