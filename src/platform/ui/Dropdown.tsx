@@ -199,10 +199,13 @@ export function ToggleMenu({
   name,
   toggles,
   align = "start",
+  onOpen,
 }: {
   name: string;
   toggles: readonly MenuToggle[];
   align?: "start" | "end";
+  /** Each time it's opened, for its caller's analytics. */
+  onOpen?: () => void;
 }) {
   const button = useRef<HTMLButtonElement>(null);
   const { open, setOpen, root } = usePanel(button);
@@ -250,12 +253,14 @@ export function ToggleMenu({
         aria-expanded={open}
         aria-controls={menuId}
         onClick={() => {
+          if (!open) onOpen?.();
           setOpen(!open);
           setFocusFirst(!open);
         }}
         onKeyDown={(event) => {
           if (event.key !== "ArrowDown" || open) return;
           event.preventDefault();
+          onOpen?.();
           setOpen(true);
           setFocusFirst(true);
         }}
@@ -276,6 +281,7 @@ export function ToggleMenu({
         {toggles.map((toggle, i) => {
           const reason = toggle.reason ?? null;
           const whyId = `${menuId}-why-${i}`;
+          const nameId = `${menuId}-name-${i}`;
           return (
             <button
               key={toggle.key}
@@ -285,6 +291,8 @@ export function ToggleMenu({
               type="button"
               role="menuitemcheckbox"
               aria-checked={toggle.on}
+              // Named by its label alone: the reason under it describes it.
+              aria-labelledby={nameId}
               aria-disabled={reason !== null || undefined}
               aria-describedby={reason !== null ? whyId : undefined}
               title={reason === null ? toggle.hint : undefined}
@@ -308,7 +316,7 @@ export function ToggleMenu({
                 )}
               </span>
               <span className={styles.toggleText}>
-                <span>{toggle.label}</span>
+                <span id={nameId}>{toggle.label}</span>
                 {reason !== null && (
                   <span id={whyId} className={styles.toggleWhy}>
                     {reason}

@@ -15,8 +15,7 @@ import {
   type CategoryModel,
 } from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
-import { Dropdown } from "~/platform/ui/Dropdown";
-import { ReasonToggle } from "~/platform/ui/ReasonToggle";
+import { Dropdown, ToggleMenu } from "~/platform/ui/Dropdown";
 import { EvidenceLegend, Legend } from "./charts/Legend";
 import { SCATTER_HEIGHT, scatterOption, scatterPoints, scatterTitle } from "./charts/scatter-chart";
 import { LastYearTable, ResultTable } from "./charts/ResultTable";
@@ -291,30 +290,42 @@ export function MeasureChart({
             onChange={onGroup}
             options={GROUPINGS.map((g) => ({ value: g, label: DIMENSION_LABELS[g] }))}
           />
-          <ReasonToggle
-            className={styles.toggle}
-            pressed={state.compare}
-            reason={
-              state.also.length
-                ? "Show one measure to compare quarters"
-                : !canCompare(state.by)
-                  ? "Group by genre, format or publisher to compare quarters"
-                  : labels
-                    ? "Turn off vs. same quarter last year to compare quarters"
-                    : null
-            }
-            onToggle={() => onCompare(!state.compare)}
-          >
-            Compare quarters
-          </ReasonToggle>
-          <ReasonToggle
-            className={styles.toggle}
-            pressed={labels !== null}
-            reason={lastYearReason}
-            onToggle={() => onLastYear?.(!state.lastYear)}
-          >
-            vs. same quarter last year
-          </ReasonToggle>
+          {/* The chart's modes, in one menu (David, 3 Nov 2026: "Keep the Chart/Table toggle and Pin buttons
+              inline. Create an "Options" dropdown"). One that can't be used stays in it, saying why. */}
+          <ToggleMenu
+            name="Options"
+            onOpen={() => track("chart_options_opened", { where: "investigate" })}
+            toggles={[
+              {
+                key: "compare",
+                label: "Compare quarters",
+                on: state.compare,
+                reason: state.also.length
+                  ? "Show one measure to compare quarters"
+                  : !canCompare(state.by)
+                    ? "Group by genre, format or publisher to compare quarters"
+                    : labels
+                      ? "Turn off vs. same quarter last year to compare quarters"
+                      : null,
+                onToggle: () => onCompare(!state.compare),
+              },
+              {
+                key: "last_year",
+                label: "vs. same quarter last year",
+                on: labels !== null,
+                reason: lastYearReason,
+                onToggle: () => onLastYear?.(!state.lastYear),
+              },
+              {
+                key: "scatter",
+                label: "Scatter plot",
+                on: scatter,
+                reason: noScatter,
+                hint: `Plot one measure against the other, one point per ${DIMENSION_LABELS[state.by].toLowerCase()}`,
+                onToggle: () => onScatter(!scatter),
+              },
+            ]}
+          />
           <button
             type="button"
             className={styles.toggle}
@@ -325,19 +336,6 @@ export function MeasureChart({
             }}
           >
             Table
-          </button>
-          <button
-            type="button"
-            className={styles.toggle}
-            aria-pressed={scatter}
-            disabled={noScatter !== null}
-            title={
-              noScatter ??
-              `Plot one measure against the other, one point per ${DIMENSION_LABELS[state.by].toLowerCase()}`
-            }
-            onClick={() => onScatter(!scatter)}
-          >
-            Scatter plot
           </button>
           <button
             type="button"
