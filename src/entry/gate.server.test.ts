@@ -74,6 +74,27 @@ describe("the entry gate", () => {
     expect(await response.text()).toContain(ENTRY_COPY.heading);
   });
 
+  it("reloads a page's data request, as the production build sends it, as the page itself", async () => {
+    for (const [path, to] of [
+      ["/decide.data", "/decide"],
+      ["/_.data", "/"],
+      [
+        "/investigate.data?quarter=2194-Q1&_routes=routes%2Finvestigate",
+        "/investigate?quarter=2194-Q1",
+      ],
+      ["//evil.example.data", "/evil.example"],
+    ] as const) {
+      const { response, next } = await gate(path, { headers: { "Sec-Fetch-Dest": "empty" } });
+      expect(next).not.toHaveBeenCalled();
+      expect(response.status).toBe(204);
+      expect(response.headers.get("X-Remix-Redirect")).toBe(to);
+      expect(response.headers.get("X-Remix-Reload-Document")).toBe("true");
+    }
+    // A form's post too, not a 403.
+    const posted = await gate("/decide.data", { method: "POST", body: "levers=" });
+    expect(posted.response.headers.get("X-Remix-Redirect")).toBe("/decide");
+  });
+
   it("sends a page's data request to the page itself, which is the entry page", async () => {
     const { response, next } = await gate("/decide", { headers: { "Sec-Fetch-Dest": "empty" } });
     expect(next).not.toHaveBeenCalled();
@@ -161,5 +182,6 @@ describe("Continue", () => {
     // Encoded, it's only a path on this site.
     expect(safeReturn("/%09/evil.example")).toBe("/%09/evil.example");
     expect(safeReturn("/./reports?q=1")).toBe("/reports?q=1");
+    expect(safeReturn("/decide.data")).toBe("/");
   });
 });
