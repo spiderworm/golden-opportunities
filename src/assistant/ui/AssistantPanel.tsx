@@ -2,7 +2,17 @@
 // is shown under the reply with its source, so a figure without a source stands out. Lookups are tables; a chart
 // Dewey drew (show_chart) is drawn by the page's own chart components, or shown as its table without them.
 
-import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
+import {
+  Component,
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import type { QueryResult } from "~/query/types";
 import { useRouteLoaderData } from "react-router";
 import type { WireEvent } from "../events.ts";
@@ -17,8 +27,12 @@ import {
   loadConversation,
   saveConversation,
 } from "./conversation.ts";
+import { canRenderWebGL2 } from "~/platform/webgl";
 import { fetchStatus, type AssistantStatus } from "./status.ts";
 import { askAssistant } from "./stream.ts";
+
+// Dewey's faces in 3D, loaded only where they'll be drawn.
+const DeweyFaces3D = lazy(() => import("./DeweyFaces3D"));
 
 /** The platform's track(); injectable for tests. */
 export type PanelTrack = (
@@ -166,6 +180,41 @@ export function AssistantPanel({
     });
   useEffect(checkStatus, []);
   const offline = !status.available;
+
+  // Dewey's faces: his portrait, or in 3D where the browser draws WebGL 2 and motion is welcome; the portraits
+  // stay until a face is drawn, and if the model doesn't come.
+  const [faces, setFaces] = useState<"portraits" | "loading" | "3d">("portraits");
+  // Which the player gets, once: "3d", or "portraits" and why.
+  const facesShown = (
+    kind: "3d" | "portraits",
+    reason?: "reduced_motion" | "no_webgl2" | "failed",
+  ) => track("assistant_faces_shown", reason ? { kind, reason } : { kind });
+  useEffect(() => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches)
+      return facesShown("portraits", "reduced_motion");
+    if (!canRenderWebGL2()) return facesShown("portraits", "no_webgl2");
+    setFaces("loading");
+  }, []);
+  const facesFailed = () => {
+    setFaces("portraits");
+    facesShown("portraits", "failed");
+  };
+  const slots = useRef(new Map<number, HTMLElement>());
+  // The face that talks: beside the turn with focus, or else the pointer, or else his last (the greeting, before
+  // any question).
+  const [focused, setFocused] = useState<number | null>(null);
+  const [pointed, setPointed] = useState<number | null>(null);
+  const talking = useRef(0);
+  talking.current = talkingTurn(focused, pointed, replies.length);
+  const face = (turn: number) => ({
+    turn,
+    slots: slots.current,
+    shown: faces === "3d",
+    onFocus: () => setFocused(turn),
+    onBlur: () => setFocused((f) => (f === turn ? null : f)),
+    onPointerEnter: () => setPointed(turn),
+    onPointerLeave: () => setPointed((p) => (p === turn ? null : p)),
+  });
   const busy = replies.at(-1)?.state === "streaming";
 
   // Starting over bumps the conversation, so an answer still winding down can't write into the new one.
@@ -261,37 +310,69 @@ export function AssistantPanel({
           </button>
         )}
       </header>
-      <div ref={log} style={styles.log} aria-live="polite">
-        {offline && (
-          <div role="status" style={styles.offline}>
-            <p style={styles.offlineMessage}>{status.message}</p>
-            <p style={styles.muted}>{status.hint}</p>
-          </div>
-        )}
-        {replies.length === 0 && !offline && <p style={styles.muted}>{greeting(status.short)}</p>}
-        {replies.map((r, i) => (
-          <article key={i} style={styles.turn}>
-            <p style={styles.question}>{r.question}</p>
-            {r.text && <p style={styles.answer}>{r.text}</p>}
-            {r.state === "streaming" && !r.text && <p style={styles.muted}>Looking...</p>}
-            {r.lookups.map((l, j) => (
-              <LookupView
-                key={j}
-                lookup={l}
-                ChartView={ChartView}
-                pinning={onPinLookup && { onPin: pinLookup, isPinned }}
+      <div style={styles.logHolder}>
+        <div ref={log} style={styles.log} aria-live="polite">
+          {offline && (
+            <div role="status" style={styles.offline}>
+              <p style={styles.offlineMessage}>{status.message}</p>
+              <p style={styles.muted}>{status.hint}</p>
+            </div>
+          )}
+          {replies.length === 0 && !offline && (
+            <DeweyTurn
+              face={face(0)}
+              bubble={<p style={styles.answer}>{greeting(status.short)}</p>}
+            />
+          )}
+          {replies.map((r, i) => (
+            <article key={i} style={styles.turn}>
+              <p style={styles.question}>{r.question}</p>
+              <DeweyTurn
+                face={face(i)}
+                bubble={
+                  (r.text || r.state === "streaming") &&
+                  (r.text ? (
+                    <p style={styles.answer}>{r.text}</p>
+                  ) : (
+                    <p style={styles.muted}>Looking...</p>
+                  ))
+                }
+              >
+                {r.lookups.map((l, j) => (
+                  <LookupView
+                    key={j}
+                    lookup={l}
+                    ChartView={ChartView}
+                    pinning={onPinLookup && { onPin: pinLookup, isPinned }}
+                  />
+                ))}
+                {r.error && <p style={styles.error}>{r.error}</p>}
+                {r.state === "stopped" && <p style={styles.muted}>Stopped.</p>}
+                {r.state === INTERRUPTED && (
+                  <p style={styles.muted}>
+                    Interrupted: this answer stopped when the page was reloaded or closed, before it
+                    finished.
+                  </p>
+                )}
+              </DeweyTurn>
+            </article>
+          ))}
+        </div>
+        {faces !== "portraits" && (
+          <FacesBoundary onError={facesFailed}>
+            <Suspense fallback={null}>
+              <DeweyFaces3D
+                slots={slots}
+                talking={talking}
+                onDrawn={() => {
+                  setFaces("3d");
+                  facesShown("3d");
+                }}
+                onFailed={facesFailed}
               />
-            ))}
-            {r.error && <p style={styles.error}>{r.error}</p>}
-            {r.state === "stopped" && <p style={styles.muted}>Stopped.</p>}
-            {r.state === INTERRUPTED && (
-              <p style={styles.muted}>
-                Interrupted: this answer stopped when the page was reloaded or closed, before it
-                finished.
-              </p>
-            )}
-          </article>
-        ))}
+            </Suspense>
+          </FacesBoundary>
+        )}
       </div>
       <form
         style={styles.form}
@@ -335,6 +416,77 @@ export function AssistantPanel({
       </form>
     </section>
   );
+}
+
+/**
+ * Which of Dewey's turns has the face that talks (David: "next the speech bubble that has focus, or is mouse
+ * hovered, or is the last of Dewey's messages"): the one with focus, else the pointer, else the last. With no
+ * replies, the greeting's, turn 0.
+ */
+export function talkingTurn(focused: number | null, pointed: number | null, replies: number) {
+  return focused ?? pointed ?? Math.max(0, replies - 1);
+}
+
+/** Dewey's portrait (David chose it, 2 Nov: the reading-lamp terminal, its spectacles low like a grandpa's). */
+export const PORTRAIT = "/dewey/portrait.webp";
+
+/**
+ * Dewey's side of a turn: his face beside what he says, in a speech bubble, with his lookups under it. The bubble
+ * is left out while there's nothing in it (a reply that's only lookups, or only an error).
+ */
+function DeweyTurn({
+  face,
+  bubble,
+  children,
+}: {
+  face: {
+    turn: number;
+    slots: Map<number, HTMLElement>;
+    /** Whether his face is drawn in 3D over the portrait, which then stays only for its name. */
+    shown: boolean;
+    onFocus: () => void;
+    onBlur: () => void;
+    onPointerEnter: () => void;
+    onPointerLeave: () => void;
+  };
+  bubble?: ReactNode;
+  children?: ReactNode;
+}) {
+  const { turn, slots, shown, ...watch } = face;
+  return (
+    <div style={styles.dewey} {...watch}>
+      <img
+        ref={(el) => {
+          if (!el) return;
+          slots.set(turn, el);
+          return () => void (slots.get(turn) === el && slots.delete(turn));
+        }}
+        src={PORTRAIT}
+        alt={NAME}
+        width={AVATAR}
+        height={AVATAR}
+        style={shown ? styles.avatarUnder : styles.avatar}
+      />
+      <div style={styles.said}>
+        {bubble && <div style={styles.bubble}>{bubble}</div>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** If the 3D faces fail to load or draw, the portraits stay. */
+class FacesBoundary extends Component<{ onError: () => void; children: ReactNode }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    this.props.onError();
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
 }
 
 interface Pinning {
@@ -452,6 +604,9 @@ function PinButton({ pin, pinning }: { pin: LookupPin; pinning: Pinning }) {
   );
 }
 
+/** Dewey's face beside each of his turns, in CSS pixels. */
+const AVATAR = 40;
+
 const styles = {
   panel: {
     display: "flex",
@@ -497,6 +652,22 @@ const styles = {
     borderRadius: "var(--radius-control)",
   },
   answer: { margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.5 },
+  dewey: { display: "flex", gap: 8, alignItems: "flex-start" },
+  avatar: { flex: "none", borderRadius: "50%", background: "#1d2440" },
+  // Under his 3D face: still there for its name and its place, but not seen.
+  avatarUnder: { flex: "none", opacity: 0 },
+  // The 3D faces' canvas lies over the conversation.
+  logHolder: { position: "relative" },
+  // Beside the face: the bubble, then his lookups; minWidth lets a wide table scroll rather than push the face off.
+  said: { display: "flex", flexDirection: "column", gap: 8, flex: 1, minWidth: 0 },
+  // A speech bubble, its corner by his face squared off as its tail.
+  bubble: {
+    alignSelf: "flex-start",
+    padding: "6px 10px",
+    background: "var(--color-panel-raised)",
+    borderRadius: "var(--radius-control)",
+    borderTopLeftRadius: 2,
+  },
   error: { margin: 0, color: "var(--color-down)" },
   lookup: {
     margin: 0,
