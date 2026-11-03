@@ -75,7 +75,11 @@ export function DecideReports({ planStarted }: { planStarted: boolean }) {
           <div role="alertdialog" aria-labelledby="leave-decide" className={styles.decideAsk}>
             <p id="leave-decide">{COPY.leave.question}</p>
             <div className={styles.actions}>
-              <button type="button" onClick={() => void navigate("/reports")}>
+              <button
+                type="button"
+                className={styles.primary}
+                onClick={() => void navigate("/reports")}
+              >
                 {COPY.leave.go}
               </button>
               <button type="button" autoFocus onClick={() => setAsking(false)}>
