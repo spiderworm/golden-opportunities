@@ -18,15 +18,23 @@ export function ForecastCalibration({
   heading: Heading = "h2",
 }: {
   calibration: Calibration;
-  /** Its heading's level: a page's section's, or, in Decide's panel under its own title, one below. */
-  heading?: "h2" | "h3";
+  /**
+   * Its heading's level: a page's section's, or, in Decide's panel under its own title, one below; null where the
+   * panel's title already says it, the section then named by that.
+   */
+  heading?: "h2" | "h3" | null;
 }) {
   const id = useId();
   return (
-    <section className={styles.calibration} aria-labelledby={`${id}-heading`}>
-      <Heading id={`${id}-heading`} className={styles.calibrationHeading}>
-        {COPY.heading}
-      </Heading>
+    <section
+      className={styles.calibration}
+      {...(Heading ? { "aria-labelledby": `${id}-heading` } : { "aria-label": COPY.heading })}
+    >
+      {Heading && (
+        <Heading id={`${id}-heading`} className={styles.calibrationHeading}>
+          {COPY.heading}
+        </Heading>
+      )}
       <p className={styles.calibrationCount}>
         {COPY.count(calibration.forecast, calibration.played)}
       </p>
