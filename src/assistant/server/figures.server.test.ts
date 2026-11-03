@@ -1248,6 +1248,9 @@ describe("a forecast is the player's, never Dewey's (David, 3 Nov 2026)", () => 
       "It will probably land near {{a4}}.",
       "Revenue is going to be {{a4}}.",
       "I prédict {{a4}}.",
+      "Revenue is headed for {{a4}}.",
+      "Units are set for {{a4}}.",
+      "Revenue is on pace for {{a4}}.",
     ])
       expect(say(sentence), sentence).toBe(WITHHELD);
   });
@@ -1258,6 +1261,12 @@ describe("a forecast is the player's, never Dewey's (David, 3 Nov 2026)", () => 
       "In {{a3.quarter}}, revenue was {{a3}}.",
       "I'll look it up.",
       "Here are the figures I've just looked up.",
+      // A modal with no figure is no forecast (Audit, #383): the pointer to the table, and turning a question away.
+      "You should see the table under this message.",
+      "The table will be under this message.",
+      "I could do that by quarter instead.",
+      "It may be easier to filter by genre first.",
+      "That would be a question for the ledgers.",
     ])
       expect(say(sentence), sentence).not.toBe(WITHHELD);
   });

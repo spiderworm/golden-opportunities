@@ -771,16 +771,29 @@ const EVIDENCE_WORDS = new RegExp(
 /**
  * A forecast, which only the player makes (David, 3 Nov 2026: the plan's optional forecast is theirs, and Dewey
  * never proposes one). A past figure by ref is true, but "you should expect {{a4}} next quarter" makes it a
- * forecast, so the model's own forecasting words withhold the sentence: forecasting verbs, claims about what a
- * result will be or should reach, and the quarter not yet played, which no lookup has data for.
+ * forecast. Words that name a forecast, and the quarter not yet played (which no lookup has data for), withhold a
+ * sentence anywhere.
  */
 const FORECAST_WORDS = new RegExp(
   "\\b(?:" +
     [
       "forecast(?:s|ed|ing)?|predict(?:s|ed|ing|ion|ions|able)?|projected|projections?|projecting",
       "expect(?:s|ed|ing|ation|ations)?|anticipat(?:e|es|ed|ing|ion)|estimat(?:e|es|ed|ing|ion|ions)|outlook",
-      "likely to|on track|on course|next quarter(?:'s)?|the coming quarter|this coming quarter",
+      "next quarter(?:'s)?|the coming quarter|this coming quarter",
+    ].join("|") +
+    ")\\b",
+  "iu",
+);
+/**
+ * What a result will be or is headed for: a forecast only beside a figure, so these withhold a sentence with a ref
+ * in it. "Revenue will be {{a1}}" is withheld, and "The table will be under this message" passes (Audit, #383); a
+ * direction in the model's own words is withheld anyway.
+ */
+const FORECAST_CLAIMS = new RegExp(
+  "\\b(?:" +
+    [
       "(?:will|should|would|could|might|may|going to)(?: probably| likely)? (?:be|sell|bring|reach|make|earn|come|hit|see|land|end|total|top|get|do|net|clear|beat|match|exceed)",
+      "likely to|on track|on course|on pace|head(?:ed|ing|s)? (?:for|to|toward|towards)|set (?:for|to)",
     ].join("|") +
     ")\\b",
   "iu",
@@ -842,7 +855,12 @@ export function renderSentence(
     .replace(/\bQ([1-4])\b/g, (q) => (refs.hasQuarter(q, known) ? " " : q))
     .replace(ALLOWED, " ");
   // The plain copy, as banned() reads it, so an accent can't slip a word past (Audit's review of #337).
-  if (banned(prose) || EVIDENCE_WORDS.test(plain(prose)) || FORECAST_WORDS.test(plain(prose)))
+  if (
+    banned(prose) ||
+    EVIDENCE_WORDS.test(plain(prose)) ||
+    FORECAST_WORDS.test(plain(prose)) ||
+    (count > 0 && FORECAST_CLAIMS.test(plain(prose)))
+  )
     return null;
   // "Yes" or "No" is itself a claim: allowed only to open a sentence that is otherwise refs ("No, {{b.to_vs_from}}.").
   const answer = /^\s*(?:yes|no)\b/i.exec(prose);
