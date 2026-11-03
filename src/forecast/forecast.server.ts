@@ -6,7 +6,17 @@ import { shiftQuarter } from "../query/relative";
 import { runQuery } from "../query/run-query.server";
 import type { QueryView } from "../query/types";
 import type { QuarterId } from "../simulation/quarters";
-import { type ForecastHint, type ForecastHints, type ForecastMeasure } from "./forecast";
+import {
+  calibrate,
+  FORECAST_MEASURES,
+  scoreEntry,
+  type Calibration,
+  type Forecast,
+  type ForecastHint,
+  type ForecastHints,
+  type ForecastMeasure,
+  type ForecastResult,
+} from "./forecast";
 
 /**
  * A quarter's total as Investigate shows it, from the player's own view: null for a quarter the ledgers don't hold,
@@ -37,4 +47,42 @@ export function forecastHints(request: Request): ForecastHints | null {
   const session = getGameSession(request);
   const quarter = currentQuarter(session.save);
   return quarter ? hintsFor(session.queryView, quarter) : null;
+}
+
+/** A played quarter's real revenue and units, as Investigate totals them: what the hints show the next quarter. */
+function actuals(view: QueryView, quarter: QuarterId): Record<ForecastMeasure, number> | null {
+  if (!view.periods.includes(quarter)) return null;
+  const total = (measure: ForecastMeasure) =>
+    runQuery({ measure, by: [], filter: { quarter: [quarter] } }, view, () => {}).total ?? 0;
+  return { revenue: total("revenue"), units: total("units") };
+}
+
+/** A forecast against its quarter's real figures; null for a quarter not yet in the ledgers. */
+export function scoreForecast(view: QueryView, forecast: Forecast): ForecastResult | null {
+  const real = actuals(view, forecast.quarter);
+  if (!real) return null;
+  const result: ForecastResult = { quarter: forecast.quarter };
+  for (const measure of FORECAST_MEASURES) {
+    const entry = forecast[measure];
+    if (entry) result[measure] = scoreEntry(entry, real[measure]);
+  }
+  if (forecast.note !== undefined) result.note = forecast.note;
+  return result;
+}
+
+/** The result page's comparison: the played quarter's forecast against what happened, or null with none. */
+export function forecastResult(request: Request, quarter: QuarterId): ForecastResult | null {
+  const session = getGameSession(request);
+  const forecast = session.save.forecasts?.find((f) => f.quarter === quarter);
+  return forecast ? scoreForecast(session.queryView, forecast) : null;
+}
+
+/** Reports' calibration, and Decide's panel's: every played quarter's forecast, out of the quarters played. */
+export function calibration(request: Request): Calibration {
+  const session = getGameSession(request);
+  const results = (session.save.forecasts ?? []).flatMap((f) => {
+    const scored = scoreForecast(session.queryView, f);
+    return scored ? [scored] : [];
+  });
+  return calibrate(results, session.save.played.length);
 }
