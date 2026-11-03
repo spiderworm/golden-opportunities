@@ -8,6 +8,7 @@ import {
   categoryHeight,
   categoryModel,
   categoryOption,
+  GHOST_OPACITY,
   legendItems,
   nothingToDraw,
 } from "../charts/category-chart";
@@ -16,10 +17,11 @@ import { scatterOption } from "../charts/scatter-chart";
 import type { ChartMeasure, Filters, HeatDimension } from "../state";
 import { heatAxis, heatModel } from "../charts/heat-model";
 import { HeatGrid, HeatScale } from "../Heatmap";
-import { MAX_SERIES } from "~/platform/charts/chart-theme";
+import { MAX_SERIES, seriesColor } from "~/platform/charts/chart-theme";
 import { EChart } from "~/platform/charts/EChart";
 import { EvidenceLegend, Legend } from "../charts/Legend";
-import { ResultTable } from "../charts/ResultTable";
+import { LastYearTable, ResultTable } from "../charts/ResultTable";
+import { changeLine, lastYearLabels, withLastYear } from "../charts/last-year";
 import { formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
 import { monthsInScope } from "../state";
 import styles from "../Investigate.module.css";
@@ -344,12 +346,33 @@ function PinBody({
         : null,
     [result, x, seriesBy, quarters, pin],
   );
+  // Pinned with last year beside it (Frank's #301): this year's quarter, the one the pin's quarter filter picks, and
+  // the same quarter a year before, drawn and tabled as the main chart draws them.
+  const quarter = pin.query.vs === "last_year" ? pin.query.filter?.quarter?.[0] : undefined;
+  const labels =
+    quarter && x && !seriesBy && !also.length && result.lastYear
+      ? lastYearLabels(quarter, x)
+      : null;
+  const ghost = useMemo(
+    () => (labels && model ? withLastYear(model, result, labels) : null),
+    [model, result, labels?.quarter],
+  );
   const option = useMemo(
     () =>
       model && !table
-        ? categoryOption(model, { kind: drawnKind(pin), quarters, drill: false })
+        ? ghost
+          ? categoryOption(ghost, {
+              kind: drawnKind(pin),
+              quarters,
+              drill: false,
+              ghost: {
+                change: (i) =>
+                  changeLine(model.measure, model.series[0]?.values[i] ?? null, ghost.lastYear[i]!),
+              },
+            })
+          : categoryOption(model, { kind: drawnKind(pin), quarters, drill: false })
         : null,
-    [model, table, pin.kind, quarters],
+    [model, ghost, table, pin.kind, quarters],
   );
 
   // Past the palette's series it reads as a table whatever the toggle says, and the toggle says why.
@@ -402,13 +425,26 @@ function PinBody({
         <span className={styles.pinMeta}>{MEASURE_LABELS[pin.query.measure]}</span>
       </div>
     );
+  } else if (table && labels) {
+    body = <LastYearTable result={result} by={x} measure={pin.query.measure} labels={labels} />;
   } else if (table || !model || !option || model.series.length > MAX_SERIES) {
     // Past the palette's series, a table reads better than generated colors.
     body = <ResultTable result={result} height={CHART_HEIGHT} />;
   } else {
     body = (
       <>
-        <Legend items={legendItems(model, quarters)} label="Series" />
+        <Legend
+          items={
+            ghost && labels
+              ? labels.legend.map((label, i) => ({
+                  label,
+                  color: seriesColor("quarter", ghost.series[0]!.key, 0, quarters),
+                  opacity: i === 1 ? GHOST_OPACITY : undefined,
+                }))
+              : legendItems(model, quarters)
+          }
+          label={ghost ? "Quarters" : "Series"}
+        />
         <EvidenceLegend model={model} />
         <EChart option={option} height={categoryHeight(model, CHART_HEIGHT)} label={pin.title} />
       </>

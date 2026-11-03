@@ -5,7 +5,10 @@ const directory = await vi.hoisted(async () => {
   const { tmpdir } = await import("node:os");
   return mkdtempSync(tmpdir() + "/orbital-backstory-");
 });
-vi.mock("../platform/analytics/instance.server", () => ({ DATA_DIR: directory }));
+vi.mock("../platform/analytics/instance.server", () => ({
+  DATA_DIR: directory,
+  instanceId: () => "0123abcd-0000-4000-8000-000000000000",
+}));
 vi.mock("../platform/analytics/analytics.server", () => ({ trackServer: vi.fn() }));
 import { AssistantUnavailable } from "~/assistant/server/provider.server";
 import { saves, startGame } from "~/game/session.server";
@@ -208,6 +211,27 @@ describe("in the game (section 8)", () => {
       "backstory_written",
       expect.objectContaining({ source: "scripted", take: record!.take, attempts: 0 }),
     );
+  });
+
+  it("past a daily cap, keeps the seeded story without asking Alma, and says which cap (David, 3 Nov 2026)", async () => {
+    const save = saves.create();
+    const asked: string[] = [];
+    const tracked: [string, unknown][] = [];
+    onGameStarted(
+      { saveId: save.id, seed: save.seed },
+      {
+        saves,
+        model: { name: "sonnet", ask: async () => (asked.push("asked"), story()) },
+        track: (name, props) => tracked.push([name, props]),
+        usage: () => "instance",
+      },
+    );
+    const record = await pendingBackstory(save.id);
+    expect(asked).toEqual([]);
+    expect(record).toEqual(scriptedBackstory(save.seed, { attempts: 0, failure: "capped" }));
+    // The save accepted it: "capped" is one of the fixed failure codes.
+    expect(saves.read(save.id).backstory).toEqual(record);
+    expect(tracked).toContainEqual(["assistant_capped", { who: "alma", cap: "instance" }]);
   });
 
   it("the first write wins: a late answer never replaces a saved backstory", async () => {

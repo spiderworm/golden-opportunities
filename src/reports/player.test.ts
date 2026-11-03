@@ -186,3 +186,21 @@ describe("a player's report", () => {
     });
   });
 });
+
+describe("report items' keys (Audit, #314)", () => {
+  it("stay unique when an old report holds a chart and its table, and follow each chart when it moves", async () => {
+    const { itemKeys } = await import("./PlayerReports");
+    const bar = {
+      spec: {
+        title: "A",
+        kind: "bar" as const,
+        query: { measure: "revenue" as const, by: ["genre" as const] },
+      },
+    };
+    const table = { spec: { ...bar.spec, title: "B", kind: "table" as const } };
+    const other = { spec: { ...bar.spec, query: { ...bar.spec.query, by: ["format" as const] } } };
+    const keys = itemKeys([bar, table, other]);
+    expect(new Set(keys).size).toBe(3);
+    expect(itemKeys([other, bar, table])).toEqual([keys[2], keys[0], keys[1]]);
+  });
+});

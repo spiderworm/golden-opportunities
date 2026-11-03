@@ -141,8 +141,10 @@ test("M1: discover, choose two moves, play; a separate save holds course with hi
     collectPageErrors(second, baseURL!, errors);
     await second.goto("/result?analytics-test=1");
     await expect(second).toHaveURL(/\/decide/); // first player's committed plan is not shared
-    const id = (await page.context().cookies()).find((c) => c.name === "orbital_save")?.value;
-    const otherId = (await other.cookies()).find((c) => c.name === "orbital_save")?.value;
+    const id = (await page.context().cookies()).find((c) =>
+      c.name.startsWith("orbital_save_"),
+    )?.value;
+    const otherId = (await other.cookies()).find((c) => c.name.startsWith("orbital_save_"))?.value;
     expect(id).toBeTruthy();
     expect(otherId).toBeTruthy();
     expect(otherId).not.toBe(id);
