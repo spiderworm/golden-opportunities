@@ -225,11 +225,11 @@ David: "I think it would be good to support event markers on time series. ie, ma
 - **The Options item:** `Events`, a tick box like the others. Its hint: `Mark releases, Book of the Month picks, your moves and station events on the timeline`.
 - **Marker labels,** short, on the chart and in the legend: `Release`, `Pick`, `Your move` and `Event` (Alma's station events).
 - **Tooltips:** the date and kind, then what happened.
-  - **Release:** `Feb 4, 2194 · Release`, then `The Bourton Model Village Poisoning, Inspector Ryeslton volume 3`.
+  - **Release:** `4 Feb 2194 · Release`, then `The Bourton Model Village Poisoning, Inspector Ryeslton volume 3`.
   - **Pick:** `March 2194 · Book of the Month`, then the edition's title and format, without its price, e.g. `Portmeirion, mass market paperback` (Frank, #353).
   - **Your move:** `Q1 2194 · Your move`, then the move's name exactly as Decide has it (`MOVES`): `Station-wide sale`, `Weekday author nights` or `Re-pick Book of the Month`. Holding course isn't a move, so it gets no marker. A re-pick gets both its own marker and the picks it chose, so on January 1 the move and January's pick draw as one `+2` (Frank, #353).
   - **Event:** `Q3 2194 · Station event`, then the event's short title (`eventTitle`) and its stretch, e.g. `{short title}, July 9 to 23`.
-  - Dates are month first, in the game's style: `Feb 4, 2194` for a day, `March 2194` for a month. Markers have no arrow or symbol characters.
+  - Dates follow the shell's Station date (`formatStationDate`): `4 Feb 2194` for a day, and `March 2194` for a month. Markers have no arrow or symbol characters.
 - **Crowding:** where markers overlap, one is drawn with `+{n}`, e.g. `+2`, and its tooltip lists each in date order. If some can't be drawn at all, the caption says `{n} more events hidden: filter to one quarter to see them all`, or `1 more event hidden: …`.
 - **Nothing to mark** isn't a disabled state. The caption says `No events in this period.`, as for 2193 and quarters not yet played. A quarter not yet played is never marked: no spoilers.
 - **Disabled, always with a reason:**
