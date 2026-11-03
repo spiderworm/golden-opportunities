@@ -66,11 +66,25 @@ describe("event markers (Plot's copy, section 7)", () => {
     expect(markerCounts(markers)).toEqual({ release: 1, pick: 2, move: 1, event: 0 });
   });
 
-  it("says when nothing is in the period, or how many are hidden", () => {
-    expect(eventsCaption(0, 0)).toBe("No events in this period.");
-    expect(eventsCaption(3, 0)).toBeNull();
-    expect(eventsCaption(3, 1)).toBe("1 more event hidden: filter to one quarter to see them all");
-    expect(eventsCaption(3, 4)).toBe("4 more events hidden: filter to one quarter to see them all");
+  it("says when nothing is in the period, how many aren't drawn, and when labels are left off (Plot)", () => {
+    const marker = (index: number) => ({ index, events: [release], label: "Release" });
+    const few = [marker(0), marker(1), marker(2)];
+    expect(eventsCaption([], 0)).toEqual(["No events in this period."]);
+    expect(eventsCaption(few, 0)).toEqual([]);
+    expect(eventsCaption(few, 1)).toEqual([
+      "1 more event hidden: filter to one quarter to see them all",
+    ]);
+    expect(eventsCaption(few, 4)).toEqual([
+      "4 more events hidden: filter to one quarter to see them all",
+    ]);
+    const many = Array.from({ length: 13 }, (_, i) => marker(i));
+    expect(eventsCaption(many, 0)).toEqual([
+      "Labels hidden for 13 events: filter to one quarter to see them.",
+    ]);
+    expect(eventsCaption(many, 2)).toEqual([
+      "2 more events hidden: filter to one quarter to see them all",
+      "Labels hidden for 13 events: filter to one quarter to see them.",
+    ]);
   });
 
   it("adds a dashed line per marker on the first series, and the events to the tooltip", () => {

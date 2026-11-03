@@ -104,15 +104,28 @@ export function markerCounts(markers: readonly Marker[]): Record<EventKind, numb
   return counts;
 }
 
-/** The caption under a marked chart (Plot), or null: none in scope, or some that couldn't be drawn. */
-export function eventsCaption(drawn: number, hidden: number): string | null {
-  if (hidden > 0)
-    return `${hidden} more ${hidden === 1 ? "event" : "events"} hidden: filter to one quarter to see them all`;
-  return drawn === 0 ? "No events in this period." : null;
-}
-
 /** Past this many markers their labels would collide (measured: 24 quarters), so only the lines and tooltips show. */
 export const MAX_LABELLED = 12;
+
+/**
+ * The caption's lines under a marked chart (Plot), one each, or none: none in scope; some events not drawn at all (past the result's
+ * cap, or off the axis); or, past MAX_LABELLED markers, events drawn without their labels.
+ */
+export function eventsCaption(markers: readonly Marker[], hidden: number): string[] {
+  const notes: string[] = [];
+  if (hidden > 0)
+    notes.push(
+      `${hidden} more ${hidden === 1 ? "event" : "events"} hidden: filter to one quarter to see them all`,
+    );
+  if (markers.length > MAX_LABELLED) {
+    const n = markers.reduce((t, m) => t + m.events.length, 0);
+    notes.push(
+      `Labels hidden for ${n} ${n === 1 ? "event" : "events"}: filter to one quarter to see them.`,
+    );
+  }
+  if (!markers.length && !hidden) notes.push("No events in this period.");
+  return notes;
+}
 
 type Formatter = (params: { dataIndex: number }[] | { dataIndex: number }) => string;
 

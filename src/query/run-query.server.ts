@@ -660,8 +660,9 @@ const EVENT_DIMENSIONS: readonly Dimension[] = [
  * move shows everywhere it's in scope. Past MAX_EVENTS, the latest of the highest-ranked kinds are kept.
  */
 function eventsFor(query: Query, view: QueryView, result: QueryResult): QueryResult["events"] {
-  if (!view.events?.length || !query.by.some((d) => d === "month" || d === "quarter"))
-    return undefined;
+  if (!query.by.some((d) => d === "month" || d === "quarter")) return undefined;
+  // A time series always says what it marks, if only that there's nothing: a view with no events gives an empty list.
+  if (!view.events?.length) return { list: [], hidden: 0 };
   const quarters = new Set(quartersCovered(query, view.periods));
   const months = query.filter?.month;
   const filters = Object.entries(query.filter ?? {}) as [Dimension, readonly string[]][];

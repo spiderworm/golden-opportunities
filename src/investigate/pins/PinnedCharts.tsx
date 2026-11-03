@@ -428,7 +428,7 @@ function PinBody({
     () => (option && marked ? withMarkers(option, marked.markers) : option),
     [option, marked],
   );
-  const eventsNote = marked ? eventsCaption(marked.markers.length, marked.hidden) : null;
+  const eventsNotes = marked ? eventsCaption(marked.markers, marked.hidden) : [];
 
   // As shares, as the main chart showed them (req_fa2e6a0dbbec): of the result's own total.
   const shares = useMemo(
@@ -541,7 +541,11 @@ function PinBody({
           height={categoryHeight(model, CHART_HEIGHT)}
           label={pin.title}
         />
-        {eventsNote && <p className={styles.tableNote}>{eventsNote}</p>}
+        {eventsNotes.map((note) => (
+          <p key={note} className={styles.tableNote}>
+            {note}
+          </p>
+        ))}
       </>
     );
   }

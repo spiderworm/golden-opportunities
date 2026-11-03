@@ -80,9 +80,9 @@ describe("the events a result marks", () => {
     expect(marked({ measure: "revenue", by: ["month"] })).toHaveLength(events.length);
     expect(marked({ measure: "units", by: ["quarter"] })).toHaveLength(events.length);
     expect(marked({ measure: "revenue", by: ["genre"] })).toBeUndefined();
-    expect(
-      marked({ measure: "revenue", by: ["month"] }, { ...view, events: undefined }),
-    ).toBeUndefined();
+    expect(marked({ measure: "revenue", by: ["month"] }, { ...view, events: undefined })).toEqual(
+      [],
+    );
   });
 
   it("marks an edition's event only where its sales are, and the shop's moves everywhere", () => {
