@@ -22,6 +22,7 @@ import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
 import { PlanLink } from "./PlanLink";
+import { scatterTitle } from "./charts/scatter-chart";
 import { runQuery } from "~/query/run-query.server";
 import { recordDiscoveries, type ObservedQuery } from "~/game/discoveries.server";
 import { getGameSession } from "~/game/session.server";
@@ -47,6 +48,7 @@ import {
   type InvestigateState,
   measuresOf,
   heatWindow,
+  scatterProblem,
 } from "./state";
 import { PinnedCharts } from "./pins/PinnedCharts";
 import type { PinSpec } from "./pins/spec";
@@ -250,6 +252,10 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             track("investigate_compare_toggled", { compare });
             update({ ...state, compare });
           }}
+          onScatter={(on) => {
+            track("investigate_scatter_toggled", { on });
+            update({ ...state, scatter: on });
+          }}
           onDrill={(value) => {
             const next = toggleFilterValue(state, state.by, value);
             track("investigate_drilldown", {
@@ -366,11 +372,18 @@ function heatPinFor(state: InvestigateState, quarters: readonly string[]): PinSp
 /** The main chart as a pin: the same query it runs, so the pin shows what the player saw. */
 function pinSpecFor(state: InvestigateState): PinSpec {
   const filter = filtersExcept(state.filters, [state.by]);
-  const title = `${measuresLabel(measuresOf(state))} by ${DIMENSION_LABELS[state.by].toLowerCase()}${state.compare ? " and quarter" : ""}`;
+  const scatter = state.scatter && scatterProblem(state.by, state.also) === null;
+  const title = scatter
+    ? scatterTitle(measuresOf(state), state.by)
+    : `${measuresLabel(measuresOf(state))} by ${DIMENSION_LABELS[state.by].toLowerCase()}${state.compare ? " and quarter" : ""}`;
   return {
     title,
-    // Over time, several measures are lines, as on the main chart.
-    kind: state.also.length && (state.by === "month" || state.by === "quarter") ? "line" : "bar",
+    // Over time, several measures are lines, as on the main chart; two can be a scatter plot instead of bars.
+    kind: scatter
+      ? "scatter"
+      : state.also.length && (state.by === "month" || state.by === "quarter")
+        ? "line"
+        : "bar",
     ...(state.also.length ? { also: [...state.also] } : {}),
     query: {
       measure: state.measure,
