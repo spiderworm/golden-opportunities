@@ -13,10 +13,15 @@ import { entryGate } from "./entry/gate.server";
 import { startAnalytics } from "./platform/analytics/analytics.client";
 import { serverAnalytics } from "./platform/analytics/analytics.server";
 import { instanceId } from "./platform/analytics/instance.server";
+import { closedMiddleware } from "./platform/closed/closed.server";
 import { revalidateAbovePage } from "./platform/revalidate";
 import "./platform/theme/theme.css";
 import { useIsPhone } from "./phone/phone";
 import { PhoneScreen } from "./phone/PhoneScreen";
+
+// Closed mode runs first, so a closed game runs no loader, action or agent; then the entry page, at any URL,
+// until the player has agreed (David, 3 Nov 2026). A visitor who hasn't agreed yet gets the closed page (Goldy).
+export const middleware: Route.MiddlewareFunction[] = [closedMiddleware, entryGate];
 
 export function loader() {
   serverAnalytics();
@@ -24,9 +29,6 @@ export function loader() {
 }
 
 export const shouldRevalidate = revalidateAbovePage;
-
-// The entry page comes first, at any URL, until the player has agreed (David, 3 Nov 2026).
-export const middleware: Route.MiddlewareFunction[] = [entryGate];
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },

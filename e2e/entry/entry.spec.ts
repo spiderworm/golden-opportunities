@@ -33,6 +33,7 @@ function silentWav(seconds = 1, rate = 8000): Buffer {
 
 test("any URL shows the entry page first, with no app behind it; Continue waits for the agreement, then goes where the player was going", async ({
   page,
+  browserName,
 }) => {
   const app: string[] = [];
   page.on("request", (r) => {
@@ -61,7 +62,9 @@ test("any URL shows the entry page first, with no app behind it; Continue waits 
   await page.keyboard.press("Space");
   await expect(go).toBeEnabled();
   await expect(page.getByText("Check the box above to continue.")).toBeHidden();
-  await page.keyboard.press("Tab");
+  // Safari's Tab skips buttons unless the Mac's keyboard setting says otherwise, so WebKit presses Enter on it.
+  if (browserName === "webkit") await go.focus();
+  else await page.keyboard.press("Tab");
   await expect(go).toBeFocused();
   await page.keyboard.press("Enter");
 

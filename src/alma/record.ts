@@ -47,6 +47,8 @@ export const FAILURES: readonly string[] = [
   ...(["story", "reason", "bossLine"] as const).flatMap((field) =>
     TEXT_PROBLEMS.map((p) => `text:${field}:${p}`),
   ),
+  // Not asked: a daily cap was reached (platform/usage.server.ts). Appended, as the list requires.
+  "capped",
 ];
 
 const isPlain = (v: unknown): v is Record<string, unknown> =>

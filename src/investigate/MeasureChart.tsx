@@ -444,7 +444,8 @@ export function MeasureChart({
       <p className={styles.source}>
         {selected.length > 0
           ? `Filtered to ${selected.map((v) => formatDimensionValue(state.by, v)).join(", ")}. Click a highlighted bar again to clear it. `
-          : result.rows.length > 0
+          : // The table's rows aren't clickable the way bars are: only the chart says to (Plot).
+            result.rows.length > 0 && !table
             ? "Click to look closer. "
             : ""}
         Source: {result.source}

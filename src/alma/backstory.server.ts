@@ -18,6 +18,7 @@ import {
   scriptedBackstory,
 } from "./backstory";
 import { ALMA_TIMEOUT_MS, almaModel, type AlmaModel } from "./director.server";
+import { spend, type Cap } from "~/platform/usage.server";
 
 /** What the backstory needs, injectable so tests never reach the real model; the saves come from the caller. */
 export interface BackstoryDeps {
@@ -28,6 +29,8 @@ export interface BackstoryDeps {
   model: AlmaModel | null;
   track: (name: string, props: Record<string, string | number | boolean>) => void;
   timeoutMs?: number;
+  /** Counts a generation against the daily caps (platform/usage.server.ts): null if it may go ahead, else the cap. */
+  usage?: ((saveId: string) => Cap | null) | null;
 }
 
 /** The catalog's titles, authors and publishers: none may be named in the backstory. */
@@ -148,7 +151,21 @@ export function onGameStarted(
   try {
     const model = deps.model === undefined ? almaModel() : deps.model;
     const started = performance.now();
-    const turn = writeBackstory(seed, model, catalogNames(), deps.timeoutMs)
+    // Past a daily cap, the seeded scripted story, and no model is asked (David, 3 Nov 2026). Never counted under
+    // Vitest, which mustn't write .data.
+    const usage =
+      deps.usage === undefined
+        ? process.env.VITEST
+          ? null
+          : (id: string) => spend("alma", id)
+        : deps.usage;
+    const capped = model && usage ? usage(saveId) : null;
+    if (capped) track("assistant_capped", { who: "alma", cap: capped });
+    const turn = (
+      capped
+        ? Promise.resolve(scriptedBackstory(seed, { attempts: 0, failure: "capped" }))
+        : writeBackstory(seed, model, catalogNames(), deps.timeoutMs)
+    )
       .then((record) => {
         if (!save(saveId, record, { ...deps, model, track })) return null;
         track("backstory_written", {
