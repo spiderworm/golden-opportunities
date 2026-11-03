@@ -126,7 +126,7 @@ David: "I'd also like to add showing how much evidence is behind a number. Show 
 - **Error bars on average rating:**
   - Legend: `Likely range (95%)`.
   - Tooltip line: `Likely range: 3.9 to 4.3 stars`, with stars to one decimal place. When both ends would read the same at one decimal, two: `Likely range: 4.18 to 4.24 stars`, never "4.2 to 4.2" (Probe, #337; Sim, #340). Dewey's range follows the same rule.
-  - When every rating is the same, from 2 ratings up, there's no bar, and the line says so and why: `All 3 ratings are 5 stars, so there's no likely range to give.`, or `Both ratings are 4 stars, …` for two, with `1 star` in the singular (Sim, #342). Dewey says the same (Sage).
+  - When every rating is the same, from 2 ratings up, there's no bar, and the line says so and why: `All 3 ratings are 5 stars, so there's no likely range to give.`, or `Both ratings are 4 stars, …` for two, with `1 star` in the singular (Sim, #342). Dewey's `range` ref will give the same line once Sage's follow-up lands; until then his sentence with it is withheld (Audit, #343).
   - Below 2 ratings there's no bar, and the tooltip line reads `Too few ratings for a likely range`. Ranges are clipped to 1 to 5 stars, and the tooltip shows the clipped figures (Sim, #296).
   - Error bars appear wherever average rating is drawn: Dewey's lookups, pins made from them, and reports. Investigate's own chart doesn't offer average rating (Audit, #296).
   - The legend's tooltip is one plain line: `Where the average would most likely land if as many readers rated again. Fewer ratings, wider range.`
