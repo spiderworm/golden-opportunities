@@ -101,19 +101,26 @@ describe("a query against the same quarter last year", () => {
     const result = run(
       {
         measure: "units",
-        by: ["title"],
+        by: ["title", "weekday"],
         filter: { quarter: ["2194-Q1"] },
+        sort: { column: "title", direction: "desc" },
         limit: 3,
         vs: "last_year",
       },
       view,
     );
-    const before = run({ measure: "units", by: ["title"], filter: { quarter: ["2193-Q1"] } }, view);
-    result.rows.forEach((row, i) =>
-      expect(result.lastYear!.rows[i]).toEqual({
-        value: before.rows.find((r) => r.title === row.title)?.units ?? 0,
-      }),
-    );
+    // 2193-Q1 has 367 title-weekday groups; these are past the first 200 (Sim, #292).
+    result.rows.forEach((row, i) => {
+      const before = run(
+        {
+          measure: "units",
+          by: [],
+          filter: { quarter: ["2193-Q1"], title: [row.title!], weekday: [row.weekday!] },
+        },
+        view,
+      );
+      expect(result.lastYear!.rows[i]).toEqual({ value: before.total });
+    });
   });
 
   it("refuses undated measures and unknown comparisons, and isn't Dewey's yet", () => {

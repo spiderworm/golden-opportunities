@@ -102,11 +102,11 @@ export function validateQuery(input: unknown): Query {
   }
   if (Object.hasOwn(input, "vs")) {
     if (input.vs !== "last_year") invalid('vs must be "last_year".');
-    // Last year is a year of quarters earlier: the undated snapshot has none.
+    // Last year is a year of quarters earlier: ratings and checkouts have no quarters.
     if (!MEASURE_DIMENSIONS[result.measure].includes("quarter"))
       throw new QueryError(
         "INCOMPATIBLE_DIMENSION",
-        `${result.measure} is undated, so it has no last year to compare.`,
+        `${result.measure} has no quarters to compare with last year.`,
       );
     result.vs = "last_year";
   }
