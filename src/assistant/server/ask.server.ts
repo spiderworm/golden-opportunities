@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
 import { chartTitle, lookupPin, type ChartSpec } from "../tools/definitions.ts";
+import { isSameOriginBrowserRequest } from "../../platform/origin.server.ts";
 import { acquire, arrive, arriveWithoutGame, ndjson } from "./assistant.server.ts";
 import { markOffline, offlineCopy, type OfflineReason } from "./availability.server.ts";
 import { Refs, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
@@ -54,14 +55,8 @@ export interface AskInput {
 export function checkDoor(request: Request) {
   if (request.method !== "POST") throw new Refused(405, "Use POST.");
   const url = new URL(request.url);
-  const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-  const site = request.headers.get("sec-fetch-site");
-  if (
-    !local ||
-    request.headers.get("origin") !== url.origin ||
-    (site !== null && site !== "same-origin")
-  )
-    throw new Refused(403, "Same-origin requests on this machine only.");
+  // On this machine as always, or from the deployed origin exactly (platform/origin.server.ts).
+  if (!isSameOriginBrowserRequest(request)) throw new Refused(403, "Same-origin requests only.");
   if (url.search) throw new Refused(400, "No query parameters.");
   const type = request.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
   if (

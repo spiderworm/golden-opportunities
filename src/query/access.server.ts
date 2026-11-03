@@ -4,18 +4,13 @@ import { saveForQueryToken } from "../game/query-token.server";
 import { SaveError } from "../game/store.server";
 import { ReplayMismatch } from "../game/replay.server";
 import type { GameSave } from "../game/types";
+import { isSameOriginBrowserRequest } from "../platform/origin.server";
 
-/** Shared local browser boundary; Host never chooses a token destination or save. */
-export function isLocalBrowserRequest(request: Request): boolean {
-  const url = new URL(request.url);
-  const origin = request.headers.get("origin");
-  const site = request.headers.get("sec-fetch-site");
-  return (
-    ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) &&
-    origin === url.origin &&
-    (site === null || site === "same-origin")
-  );
-}
+/**
+ * Shared browser boundary: a same-origin request on this machine, or from the deployed origin
+ * (ORBITAL_PUBLIC_ORIGIN; platform/origin.server.ts). Host never chooses a token destination or save.
+ */
+export const isLocalBrowserRequest = isSameOriginBrowserRequest;
 export interface QueryAccess {
   kind: "browser" | "agent";
   save: GameSave;
@@ -28,7 +23,7 @@ export function authorizeQuery(request: Request): QueryAccess {
     return { kind: "agent", save: saveForQueryToken(match[1]) };
   }
   if (!isLocalBrowserRequest(request))
-    throw new QueryError("UNAUTHORIZED", "Use a same-origin local browser request.");
+    throw new QueryError("UNAUTHORIZED", "Use a same-origin browser request.");
   try {
     return { kind: "browser", save: saves.read(resolveSaveId(request)) };
   } catch (error) {

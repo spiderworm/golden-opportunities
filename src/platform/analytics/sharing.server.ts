@@ -1,4 +1,5 @@
 import { serverAnalytics } from "./analytics.server";
+import { isPublicOriginRequest } from "../origin.server";
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const MAX_BODY_BYTES = 256;
@@ -30,7 +31,9 @@ export async function setSharingFromRequest(
   } catch {
     return { status: 403, body: { error: "same-origin requests only" } };
   }
-  if (!LOOPBACK.has(host) || origin !== new URL(request.url).origin)
+  // On this machine as always, or from the deployed origin exactly (platform/origin.server.ts).
+  const local = LOOPBACK.has(host) && origin === new URL(request.url).origin;
+  if (!local && !isPublicOriginRequest(request))
     return { status: 403, body: { error: "same-origin requests only" } };
   if (!(request.headers.get("content-type") ?? "").startsWith("application/json"))
     return { status: 415, body: { error: "JSON only" } };
