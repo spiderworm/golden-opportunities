@@ -108,6 +108,8 @@ export function loader({ request }: Route.LoaderArgs) {
     planned: currentQuarter(session.save) === null,
     dataVersion: dataVersion(session.save),
     evidence,
+    // The player's saved segments, for the Segment menu's first draw; changes come back from /api/segments.
+    segments: session.save.segments ?? [],
   };
 }
 
