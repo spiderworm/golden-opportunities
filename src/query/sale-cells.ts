@@ -44,3 +44,20 @@ export function rollUpSales(sales: readonly DeepReadonly<SaleLine>[]): SaleCells
   const spanning = [...orderCells.values()].filter(touched => touched.size > 1).map(touched => [...touched]);
   return { cells: cells.map(({ line, lines, orders }) => ({ line, lines, orders: orders.size })), spanning, lines: sales.length };
 }
+
+/**
+ * Several quarters' cells as one: their cells in order, each quarter's spanning orders numbered on from the
+ * quarters before it. An order sits on one date, so it never spans quarters, and no order spans two parts.
+ */
+export function mergeCells(parts: readonly SaleCells[]): SaleCells {
+  const cells: SaleCell[] = [];
+  const spanning: number[][] = [];
+  let lines = 0;
+  for (const part of parts) {
+    const offset = cells.length;
+    cells.push(...part.cells);
+    for (const touched of part.spanning) spanning.push(touched.map(at => offset + at));
+    lines += part.lines;
+  }
+  return { cells, spanning, lines };
+}
