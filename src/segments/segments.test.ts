@@ -41,6 +41,15 @@ describe("a segment's filters", () => {
     // Investigate reads a bare month as 2193's; stored, it must already be the year-month it reads.
     expect(checkFilters({ month: ["04"] })).toMatchObject({ reason: "invalid" });
     expect(checkFilters({ month: ["2193-04"] })).toMatchObject({ ok: true });
+    // At most SEGMENT_LIMITS.values filter values in all (Frank, #377): Investigate's own limit is per dimension.
+    const values = (titles: number, editions: number) => ({
+      title: Array.from({ length: titles }, (_, i) => `Title ${i}`),
+      edition: Array.from({ length: editions }, (_, i) => `Edition ${i}`),
+    });
+    expect(checkFilters(values(30, SEGMENT_LIMITS.values - 30))).toMatchObject({ ok: true });
+    expect(checkFilters(values(30, SEGMENT_LIMITS.values - 29))).toMatchObject({
+      reason: "too_many",
+    });
   });
 
   it("are counted, never named, for their events", () => {

@@ -58,7 +58,7 @@ export type DropdownProps<T extends string> = Common<T> &
   );
 
 /** Open or shut, shutting on a click outside, and on Escape, which puts the focus back on the button. */
-function usePanel(button: RefObject<HTMLButtonElement | null>) {
+export function usePanel(button: RefObject<HTMLButtonElement | null>) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
