@@ -69,10 +69,21 @@ describe("checking a query from the model", () => {
   });
 
   it("checks charts to pin and titles them from their query, ignoring any title from the model (Probe X1)", () => {
-    expect(checkChart({ title: "Revenue soared in autumn", kind: "bar", query: { measure: "revenue", by: ["quarter"] } })).toEqual({ title: "Revenue by quarter", kind: "bar", query: { measure: "revenue", by: ["quarter"] } });
-    expect(checkChart({ kind: "line", query: { measure: "avg_order_value", by: ["discount_rate", "month"], filter: { genre: ["Mystery"] } } }).title).toBe("Average order value by discount rate and month, filtered");
-    expect(() => checkChart({ title: "x", kind: "pie", query: { measure: "revenue", by: [] } })).toThrow(/kind/);
-    expect(() => checkChart({ title: "x", kind: "bar", query: { measure: "revenue", by: [] }, html: "<script>" })).toThrow(/unknown fields/);
+    expect(checkChart({ title: "Revenue soared in autumn", query: { measure: "revenue", by: ["quarter"] } })).toEqual({ title: "Revenue by quarter", kind: "line", query: { measure: "revenue", by: ["quarter"] } });
+    expect(checkChart({ query: { measure: "avg_order_value", by: ["discount_rate", "month"], filter: { genre: ["Mystery"] } } }).title).toBe("Average order value by discount rate and month, filtered");
+    expect(() => checkChart({ title: "x", query: { measure: "revenue", by: [] }, html: "<script>" })).toThrow(/unknown fields/);
+  });
+
+  it("chooses a pin's kind from its query, as show_chart does (Chart, after #258)", () => {
+    // Bars across genres, a line over time: the model never chooses a line across genres.
+    expect(checkChart({ query: { measure: "revenue", by: ["genre"] } }).kind).toBe("bar");
+    expect(checkChart({ query: { measure: "revenue", by: ["month", "genre"] } }).kind).toBe("line");
+    // A table only when asked for, or for one total.
+    expect(checkChart({ query: { measure: "revenue", by: ["genre"] }, table: true }).kind).toBe("table");
+    expect(checkChart({ query: { measure: "revenue", by: [] } }).kind).toBe("table");
+    expect(() => checkChart({ query: { measure: "revenue", by: ["genre"] }, table: "yes" })).toThrow(/table/);
+    // The model's old kind field is refused, so a line across genres can't come back.
+    expect(() => checkChart({ kind: "line", query: { measure: "revenue", by: ["genre"] } })).toThrow(/unknown fields/);
   });
 });
 
@@ -275,7 +286,7 @@ describe("calling tools against the app", () => {
   });
 
   it("pins a chart after checking its query runs", async () => {
-    const result = JSON.parse((await callTool("pin_chart", { kind: "line", query: { measure: "revenue", by: ["quarter"] } }, env)).content[0].text);
+    const result = JSON.parse((await callTool("pin_chart", { query: { measure: "revenue", by: ["quarter"] } }, env)).content[0].text);
     expect(result).toEqual({ pinned: true, chart: { title: "Revenue by quarter", kind: "line", query: { measure: "revenue", by: ["quarter"] } }, rows: 1, source: "Sales, 2193-Q1 to Q4" });
   });
 
@@ -283,7 +294,7 @@ describe("calling tools against the app", () => {
     const noPins = { ...env, ORBITAL_PINS: "0" };
     const list = (await handle({ jsonrpc: "2.0", id: 1, method: "tools/list" }, noPins)) as { result: { tools: { name: string }[] } };
     expect(list.result.tools.map((t) => t.name)).toEqual(["describe_data", "query_data", "compare_data", "show_chart"]);
-    expect((await callTool("pin_chart", { title: "R", kind: "bar", query: { measure: "revenue", by: [] } }, noPins)).isError).toBe(true);
+    expect((await callTool("pin_chart", { title: "R", query: { measure: "revenue", by: [] } }, noPins)).isError).toBe(true);
     expect(orbitalToolServer("t", { pins: false }).env?.ORBITAL_PINS).toBe("0");
   });
 
