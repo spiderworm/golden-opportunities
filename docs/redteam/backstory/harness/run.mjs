@@ -3,6 +3,8 @@
 // that must fail its checks on load. One answer at a time, against a dev server with the real provider:
 //   SAVES=<dir with the saves> node run.mjs <base url> [--repeat n] [case-id ...]
 // Each case names the save it runs in (`save`, an id prefix) and may first rewrite that save's backstory (`edit`).
+// It writes to the save files themselves: point SAVES only at a throwaway server's data folder (its own
+// ORBITAL_DATA_DIR), never at a real game's, and copy the saves first if you want them back (Audit).
 // Logs each answer to $RUNS/<id>[-n].json, prints each reply and its problems, and exits 1 if any case failed.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 
