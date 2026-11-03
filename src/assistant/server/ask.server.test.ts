@@ -1303,3 +1303,43 @@ describe("a question without a game (Probe's red-team of #319)", () => {
     expect(asked).toEqual(["asked"]);
   });
 });
+
+it("turns a question without a game away before it takes the slot, so a slow body can't hold it (Frank, #336)", async () => {
+  // A body that never arrives.
+  const body = new ReadableStream<Uint8Array>({ pull() {} }, { highWaterMark: 0 });
+  const stalled = new Request("http://127.0.0.1:5173/api/assistant", {
+    method: "POST",
+    headers: { origin: "http://127.0.0.1:5173", "content-type": "application/json" },
+    body,
+    duplex: "half",
+  } as RequestInit);
+  const turnedAway = await events(
+    await ask(
+      stalled,
+      () => fakeAssistant(),
+      () => {},
+      Date.now,
+      undefined,
+      () => null,
+      () => null,
+      () => false,
+    ),
+  );
+  expect(turnedAway).toEqual([
+    { type: "text", text: START_A_GAME },
+    { type: "done", withheld: 0 },
+  ]);
+  // The slot is free: a player with a game is answered at once, not told Dewey is busy.
+  const answered = await ask(
+    post({ question: "Revenue?" }),
+    () => fakeAssistant(),
+    () => {},
+    Date.now,
+    undefined,
+    () => null,
+    () => null,
+    () => true,
+  );
+  expect(answered.status).toBe(200);
+  expect((await events(answered)).at(-1)).toMatchObject({ type: "done" });
+});
