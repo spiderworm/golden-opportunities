@@ -104,15 +104,18 @@ interface Options {
 }
 /**
  * Discovery evidence from an answered query, for the save it was asked for: the browser's (Investigate and its pins)
- * or a Dewey session's, whose lookups count the same (David, 3 Nov 2026). A save busy with another write defers it,
- * as Investigate's loader does: the answer is never refused for it, and a later look can still find it.
+ * or a Dewey session's, whose lookups count the same (David, 3 Nov 2026). For Dewey, a save busy with another write
+ * defers it, as Investigate's loader does: his answer is never refused for it. The browser's still gets the 429:
+ * it keeps answers in its query cache for the data version, which evidence doesn't change, so a deferred view
+ * would be served from there and never recorded, where the 429 makes it ask again (Frank, #356).
  */
 function recordEvidence(access: QueryAccess, view: QueryView, query: Query, result: QueryResult) {
   const source = access.kind === "agent" ? "dewey" : "investigate";
   try {
     recordDiscoveries(access.save, view, [{ query, result }], source);
   } catch (error) {
-    if (!(error instanceof QueryError) || error.code !== "RATE_LIMITED") throw error;
+    if (!(error instanceof QueryError) || error.code !== "RATE_LIMITED" || source !== "dewey")
+      throw error;
     try {
       trackServer("discovery_record_deferred", { code: "SAVE_BUSY", source });
     } catch {
