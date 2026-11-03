@@ -134,7 +134,52 @@ David: "I'd also like to add showing how much evidence is behind a number. Show 
   - Tooltip: `A difference this small often shows up by chance with this much data, so don't read much into it.`
   - A clear difference gets no flag, and nothing is labeled "significant". No flag also covers a comparison that can't be judged: a missing flag makes no claim (Sim, #296).
   - From a zero base, both can show: `New · within noise`.
+  - Compare quarters has no change cell, so a quarter's tooltip says `Within noise against Q1 2193` when its difference from the quarter drawn before it is within noise (Sim, #311).
+- **Beside last year** (vs. same quarter last year, #322): an average's table gets a `Based on` column after `% change`, with both years' counts in the columns' order and the unit once, `1,240 and 980 orders`. The singular applies only when both are one, `1 and 1 rating`, and "and" is used, not "/", which reads as a ratio. The row fades when either year is under the threshold. The tooltip has one line for the two, `Based on 1,240 orders (Q1 2194) and 980 (Q1 2193)`, in place of each series' own.
 
-## Analytics, for all three
+## 5. What drove the change (Sim)
+
+David: "Change decomposition. A waterfall showing which genres, titles or editions drove a change in revenue, and optionally a price/volume/mix split" (req_7a41bd439666).
+
+- **The control:** a toggle `What drove the change`, beside the others, keeping its name while pressed. Its tooltip, when it's available: `See which {genres|titles|editions} added to revenue and which took away`.
+- **What it compares:** the filtered quarter against the quarter before it. With `vs. same quarter last year` on, against that quarter instead.
+- **The title:** `What drove revenue's change, Q4 2193 to Q1 2194, by genre`, with the dimension in lower case.
+- **The bars:**
+  - the start and end bars are the quarters alone, `Q4 2193` and `Q1 2194`, since the axis says revenue;
+  - one bar per group, named as `formatDimensionValue` gives it;
+  - the rest in one bar, `Everything else`, with the tooltip `{n} more {genres|titles|editions}, together`.
+- **A bar's tooltip:**
+  ```
+  Fiction
+  Change: +$4,120 (+12.0%)
+  From $34,300 in Q4 2193 to $38,420 in Q1 2194
+  ```
+  - A group new this quarter reads `Change: +$400 (New)`, and one gone reads `-100.0%`, as the last-year table does.
+  - The start and end bars read `Q1 2194: $412,500`.
+  - "to" is used, never an arrow character, which some systems draw as emoji.
+- **The split:** a toggle `Split into price, volume and mix`. When it's on, each bar's tooltip adds one line, `Price +$600 · Volume +$3,100 · Mix +$420`. The legend items and their tooltips:
+  - `Price`: `The same books selling for more or less each.`
+  - `Volume`: `More or fewer books sold in all, at the old prices.`
+  - `Mix`: `Sales shifting toward pricier or cheaper books.`
+- **Disabled, always with a reason:**
+
+| Why | Tooltip |
+| --- | --- |
+| Not revenue | `Show revenue to see what drove its change` |
+| More than one measure | `Show one measure to see what drove its change` |
+| Not by genre, title or edition | `Break down by genre, title or edition to see what drove the change` |
+| No single quarter in the filter | `Filter to one quarter to see what drove its change` |
+| The first quarter | `Q1 2193 is the first quarter in the ledgers: there's nothing before it to compare` |
+| A quarter not yet played | `{Q3 2196} isn't in the ledgers yet: filter to a quarter that's been played` |
+| Compare quarters on | `Turn off Compare quarters to see what drove the change` |
+| Scatter plot on | `Turn off Scatter plot to see what drove the change` |
+| Nothing matches | `Nothing in {Q1 2194} or {Q4 2193} matches these filters, so there's no change to explain` |
+| Any other refusal | `Can't break down this chart's change` |
+| The split, with the waterfall off | `Turn on What drove the change to split it` |
+| The split, any other refusal | `Can't split this change into price, volume and mix` |
+
+  While the waterfall is on, Compare quarters reads `Turn off What drove the change to compare quarters`, and Scatter plot reads `Turn off What drove the change for a scatter plot`.
+
+## Analytics, for all of them
 
 Events say what happened, never content (CLAUDE.md). The new toggles record their state, as `investigate_table_toggled { shown }` does, for example `investigate_last_year_toggled { on }` and `investigate_scatter_toggled { on }`. The builders pick the final names.
