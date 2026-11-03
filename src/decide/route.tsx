@@ -39,8 +39,21 @@ import { onBubbleFocused, PlayOut, sceneOf } from "./PlanParts";
 import { PlanQ2 } from "./PlanQ2";
 import { quarterName, type PlanBrief } from "./q2-copy";
 import { ForecastRefused, PlanRefused, readAnyPlan } from "./read-plan.server";
-import { FORECAST_MEASURES, forecastMeasures, type Forecast } from "~/forecast/forecast";
-import { forecastResult } from "~/forecast/forecast.server";
+import {
+  FORECAST_MEASURES,
+  forecastMeasures,
+  type Forecast,
+  type ForecastHints,
+  type ForecastProblem,
+} from "~/forecast/forecast";
+import { forecastHints, forecastResult } from "~/forecast/forecast.server";
+import {
+  draftProblem,
+  EMPTY_FORECAST,
+  ForecastSection,
+  forecastFields,
+  type ForecastDraft,
+} from "./ForecastSection";
 import styles from "./Decide.module.css";
 
 export const handle: ShellHandle = { title: "Decisions", standingOrder: false, bleed: true };
@@ -55,7 +68,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   // One plan per quarter: once the last one's in, the results are what's left to see.
   const quarter = currentQuarter(request);
   if (!quarter) throw redirect("/result");
-  if (quarter === FIRST_QUARTER) return { quarter };
+  // The player's own forecast's hints (src/forecast): the quarter before's figures and a year earlier's.
+  const hints = forecastHints(request);
+  if (quarter === FIRST_QUARTER) return { quarter, hints };
   // Every later quarter is planned on Q2's form: the game's brief for it (Frank's getQuarterBrief), with the
   // picker's editions and, from Q3 on, the quarter's event, stretch and strikes (null in Q2 2194, which has none).
   const planned = await getQuarterBrief(request);
@@ -64,6 +79,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     quarter: planned.quarter,
     candidates: planned.candidates,
     brief: planned.brief as PlanBrief | null,
+    hints,
   };
 }
 
@@ -233,16 +249,25 @@ type Step = "choose" | "confirm" | "playing";
 export default function Decide() {
   // Without a loader (the unit tests' stub), it's Q1's plan.
   const loaded = useLoaderData<typeof loader>() as Awaited<ReturnType<typeof loader>> | undefined;
+  const hints = loaded?.hints ?? null;
   return loaded?.candidates ? (
-    <PlanQ2 quarter={loaded.quarter} candidates={loaded.candidates} brief={loaded.brief ?? null} />
+    <PlanQ2
+      quarter={loaded.quarter}
+      candidates={loaded.candidates}
+      brief={loaded.brief ?? null}
+      hints={hints}
+    />
   ) : (
-    <PlanQ1 />
+    <PlanQ1 hints={hints} />
   );
 }
 
 /** The plan for Q1 2194 (m1-copy section 3): up to two of three moves, on the bosses' requisition form. */
-function PlanQ1() {
+function PlanQ1({ hints }: { hints: ForecastHints | null }) {
   const [chosen, setChosen] = useState<LeverId[]>([]);
+  // The player's forecast, filed with the plan if they open it (src/forecast; Plot's section 10).
+  const [forecast, setForecast] = useState<ForecastDraft>(EMPTY_FORECAST);
+  const [forecastProblem, setForecastProblem] = useState<ForecastProblem | null>(null);
   const [tooMany, setTooMany] = useState(false);
   const [refused, setRefused] = useState(false);
   const [step, setStep] = useState<Step>("choose");
@@ -278,6 +303,14 @@ function PlanQ1() {
     else {
       setStep("choose");
       setRefused(true);
+      // A forecast the door refused is said by its field, as the browser's own check says it.
+      // The action's own tag; the problem is the shape it sends (src/forecast/forecast.ts).
+      if (
+        "problem" in fetcher.data &&
+        fetcher.data.problem === "forecast" &&
+        "forecastProblem" in fetcher.data
+      )
+        setForecastProblem(fetcher.data.forecastProblem as ForecastProblem);
     }
   }, [fetcher.state, fetcher.data, navigate]);
 
@@ -320,6 +353,15 @@ function PlanQ1() {
             />
           ))}
         </div>
+        <ForecastSection
+          draft={forecast}
+          onChange={(next) => {
+            setForecast(next);
+            setForecastProblem(null);
+          }}
+          hints={hints}
+          problem={forecastProblem}
+        />
         <div className={styles.formFoot}>
           <div className={styles.formNotes}>
             {/* What the plan is now, said in words: holding course, or a third move refused. */}
@@ -353,6 +395,10 @@ function PlanQ1() {
             type="button"
             className={styles.primary}
             onClick={() => {
+              // A forecast that can't be filed is said by its field first, and the plan waits for it.
+              const problem = draftProblem(forecast, FIRST_QUARTER);
+              setForecastProblem(problem);
+              if (problem) return;
               setStep("confirm");
               setTooMany(false);
               setRefused(false);
@@ -392,7 +438,11 @@ function PlanQ1() {
               onClick={() => {
                 setStep("playing");
                 fetcher.submit(
-                  { levers: plan.levers.join(","), reportsRead: String(read.size) },
+                  {
+                    levers: plan.levers.join(","),
+                    reportsRead: String(read.size),
+                    ...forecastFields(forecast),
+                  },
                   { method: "post" },
                 );
               }}

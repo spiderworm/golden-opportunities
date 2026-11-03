@@ -9,6 +9,14 @@ import { FactText } from "~/platform/bosses/facts";
 import type { Q2LeverId } from "~/simulation/types";
 import { MoveCard, useMoreLine } from "./MoveCard";
 import { PickPicker, type Candidate } from "./PickPicker";
+import type { ForecastHints, ForecastProblem } from "~/forecast/forecast";
+import {
+  draftProblem,
+  EMPTY_FORECAST,
+  ForecastSection,
+  forecastFields,
+  type ForecastDraft,
+} from "./ForecastSection";
 import { onBubbleFocused, PlayOut, sceneOf } from "./PlanParts";
 import type { QuarterId } from "~/simulation/quarters";
 import {
@@ -23,7 +31,9 @@ import styles from "./Decide.module.css";
 /** What the Q2 action answers: Frank's shapes, with the engine's reason when it refuses a plan. */
 export type Q2ActionData =
   | { ok: true }
-  | { ok: false; played: boolean; problem?: "shape" | "unknown-edition" | "same-title" };
+  | { ok: false; played: boolean; problem?: "shape" | "unknown-edition" | "same-title" }
+  // A forecast the door refused, by its field (src/forecast; Frank's #384).
+  | { ok: false; played: false; problem: "forecast"; forecastProblem: ForecastProblem };
 
 type Step = "choose" | "confirm" | "playing";
 
@@ -42,10 +52,13 @@ export function PlanQ2({
   quarter,
   candidates,
   brief = null,
+  hints = null,
 }: {
   quarter: QuarterId;
   candidates: readonly Candidate[];
   brief?: PlanBrief | null;
+  /** The player's forecast's hints (src/forecast): the quarter before's figures and a year earlier's. */
+  hints?: ForecastHints | null;
 }) {
   const plan = useMemo(() => planCopy(quarter, brief), [quarter, brief]);
   const scene = useMemo(() => sceneOf(plan.briefing), [plan]);
@@ -54,6 +67,9 @@ export function PlanQ2({
   const [lever, setLever] = useState<Q2LeverId | null>(null);
   const [tooMany, setTooMany] = useState(false);
   const [refused, setRefused] = useState(false);
+  // The player's forecast, filed with the plan if they open it (src/forecast; Plot's section 10).
+  const [forecast, setForecast] = useState<ForecastDraft>(EMPTY_FORECAST);
+  const [forecastProblem, setForecastProblem] = useState<ForecastProblem | null>(null);
   const [step, setStep] = useState<Step>("choose");
   // The reports read in Decide's panel, by key, for plan_submitted's count.
   const [read, setRead] = useState<ReadonlySet<string>>(new Set());
@@ -85,6 +101,8 @@ export function PlanQ2({
     else {
       setStep("choose");
       setRefused(true);
+      // A forecast the door refused is said by its field, as the browser's own check says it.
+      if (fetcher.data.problem === "forecast") setForecastProblem(fetcher.data.forecastProblem);
     }
   }, [fetcher.state, fetcher.data, navigate]);
 
@@ -147,6 +165,15 @@ export function PlanQ2({
             ))}
           </div>
         </div>
+        <ForecastSection
+          draft={forecast}
+          onChange={(next) => {
+            setForecast(next);
+            setForecastProblem(null);
+          }}
+          hints={hints}
+          problem={forecastProblem}
+        />
         <div className={styles.formFoot}>
           <div className={styles.formNotes}>
             <p
@@ -178,6 +205,10 @@ export function PlanQ2({
             type="button"
             className={styles.primary}
             onClick={() => {
+              // A forecast that can't be filed is said by its field first, and the plan waits for it.
+              const problem = draftProblem(forecast, quarter);
+              setForecastProblem(problem);
+              if (problem) return;
               setStep("confirm");
               setTooMany(false);
               setRefused(false);
@@ -231,6 +262,7 @@ export function PlanQ2({
                     levers: lever ?? "",
                     quarter,
                     reportsRead: String(read.size),
+                    ...forecastFields(forecast),
                   },
                   { method: "post" },
                 );
