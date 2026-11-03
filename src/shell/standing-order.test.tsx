@@ -1,7 +1,8 @@
 import { renderToString } from "react-dom/server";
-import { createRoutesStub } from "react-router";
+import { createRoutesStub, Outlet } from "react-router";
 import { describe, expect, it } from "vitest";
 
+import { PlanLink } from "~/investigate/PlanLink";
 import { Shell, type ShellHandle } from "./Shell";
 
 /** Just the strip's markup (the transmission has its own "Open the ledgers"). */
@@ -10,7 +11,12 @@ function strip(html: string) {
   return start < 0 ? "" : html.slice(start, html.indexOf("</aside>", start));
 }
 
-type Order = { seen: boolean; submitted: boolean; quarter?: "2194-Q1" | "2194-Q2" | null };
+type Order = {
+  seen: boolean;
+  submitted: boolean;
+  quarter?: "2194-Q1" | "2194-Q2" | null;
+  memo?: null;
+};
 function renderAt(
   path: string,
   standingOrder: Order = { seen: false, submitted: false },
@@ -28,10 +34,12 @@ function renderAt(
           track={() => {}}
         >
           <p>page</p>
+          <Outlet />
         </Shell>
       ),
       children: [
-        { path: "investigate", Component: () => null },
+        // Investigate's own plan button, which steps aside while the order carries it.
+        { path: "investigate", Component: () => <PlanLink planned={standingOrder.submitted} /> },
         {
           path: "decide",
           handle: { standingOrder: false } satisfies ShellHandle,
@@ -119,5 +127,23 @@ describe("the standing order", () => {
     const blind = renderAt("/", { seen: false, submitted: false, quarter: "2194-Q2" });
     expect(blind).not.toContain('aria-label="Standing order"');
     expect(blind).not.toContain("<dialog");
+  });
+
+  it("carries Write the plan on Investigate, which then leaves its own out: one button, never none or two", () => {
+    const buttons = (html: string) => html.match(/>(Write the plan|See the results)<\/a>/g) ?? [];
+    // The order showing: its button, and none from the page.
+    const showing = renderAt("/investigate");
+    expect(buttons(showing)).toEqual([">Write the plan</a>"]);
+    expect(strip(showing)).toMatch(/<a[^>]*href="\/decide"[^>]*>Write the plan<\/a>/);
+    // Filed: no order, and the page's own "See the results".
+    const filed = renderAt("/investigate", { seen: true, submitted: true });
+    expect(filed).not.toContain('aria-label="Standing order"');
+    expect(buttons(filed)).toEqual([">See the results</a>"]);
+    // No memo yet (from Q3, until Alma's record is saved): no order, and the page's own "Write the plan".
+    const noMemo = renderAt("/investigate", { seen: false, submitted: false, memo: null });
+    expect(noMemo).not.toContain('aria-label="Standing order"');
+    expect(buttons(noMemo)).toEqual([">Write the plan</a>"]);
+    // Elsewhere the order keeps to its links.
+    expect(strip(renderAt("/"))).not.toContain("Write the plan");
   });
 });
