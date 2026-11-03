@@ -195,11 +195,8 @@ export function categoryOption(
     share?: { total: (series: number) => number | null; period: (series: number) => string };
     /**
      * The second series is last year's (last-year.ts): drawn lighter in this year's color, with the tooltip's change
-     * line for each category, or null for none.
-     */
-    /**
-     * Last year beside this year: the tooltip's change line, and for an average both years' counts in one line
-     * (Plot, after #311), which stands in for each series' own.
+     * line for each category, or null for none, and for an average both years' counts in one line (Plot, after
+     * #311), which stands in for each series' own.
      */
     ghost?: {
       change: (category: number) => string | null;
