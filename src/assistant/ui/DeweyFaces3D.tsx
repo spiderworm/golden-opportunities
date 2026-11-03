@@ -77,8 +77,12 @@ function Faces({ slots, talking, onDrawn, onFailed }: DeweyFacesProps) {
   const loaded = useGLTF(MODEL, false, undefined, softFail) as unknown as
     { scene: Object3D } | Failed;
   const failed = failedLoad(loaded);
+  // Told once, whatever the panel passes as onFailed from one render to the next.
+  const told = useRef(false);
   useEffect(() => {
-    if (failed) onFailed();
+    if (!failed || told.current) return;
+    told.current = true;
+    onFailed();
   }, [failed, onFailed]);
   // His own scene and camera, drawn by hand into each face's square, not R3F's.
   const view = useMemo(() => {

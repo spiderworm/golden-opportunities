@@ -184,11 +184,16 @@ export function AssistantPanel({
   // Dewey's faces: his portrait, or in 3D where the browser draws WebGL 2 and motion is welcome; the portraits
   // stay until a face is drawn, and if the model doesn't come.
   const [faces, setFaces] = useState<"portraits" | "loading" | "3d">("portraits");
-  // Which the player gets, once: "3d", or "portraits" and why.
+  // Which the player gets: "3d", or "portraits" and why; once, and once more only if the 3D faces fail after drawing.
+  const facesSent = useRef<string | null>(null);
   const facesShown = (
     kind: "3d" | "portraits",
     reason?: "reduced_motion" | "no_webgl2" | "failed",
-  ) => track("assistant_faces_shown", reason ? { kind, reason } : { kind });
+  ) => {
+    if (facesSent.current === kind) return;
+    facesSent.current = kind;
+    track("assistant_faces_shown", reason ? { kind, reason } : { kind });
+  };
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches)
       return facesShown("portraits", "reduced_motion");
