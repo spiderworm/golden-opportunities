@@ -418,20 +418,6 @@ function PinBody({
         : null,
     [model, ghost, table, pin.kind, quarters],
   );
-  // The result's events on a time axis, as the main chart marks them (src/query/events.ts).
-  const marked = useMemo(() => {
-    if (!model || !result.events || (model.x !== "month" && model.x !== "quarter")) return null;
-    const { markers } = markersFor(result.events.list, model.x, model.categories);
-    // Only the result's cap hides events from the caption's count: one off the axis is outside what the chart
-    // shows, and isn't mentioned (Plot, #357).
-    return { markers, hidden: result.events.hidden };
-  }, [model, result.events]);
-  const markedOption = useMemo(
-    () => (option && marked ? withMarkers(option, marked.markers) : option),
-    [option, marked],
-  );
-  const eventsNotes = marked ? eventsCaption(marked.markers, marked.hidden) : [];
-
   // As shares, as the main chart showed them (req_fa2e6a0dbbec): of the result's own total.
   const shares = useMemo(
     () =>
@@ -443,9 +429,34 @@ function PinBody({
         : null,
     [pin.share, model, seriesBy, also.length, result],
   );
+
+  // The result's events on a time axis, as the main chart marks them (src/query/events.ts).
+  const marked = useMemo(() => {
+    if (!model || !result.events || (model.x !== "month" && model.x !== "quarter")) return null;
+    // The categories as drawn: % of total's, in its own order, or the chart's.
+    const { markers } = markersFor(
+      result.events.list,
+      model.x,
+      shares ? shares.categories : model.categories,
+    );
+    // Only the result's cap hides events from the caption's count: one off the axis is outside what the chart
+    // shows, and isn't mentioned (Plot, #357).
+    return { markers, hidden: result.events.hidden };
+  }, [model, shares, result.events]);
+  const markedOption = useMemo(
+    () => (option && marked ? withMarkers(option, marked.markers) : option),
+    [option, marked],
+  );
+  const eventsNotes = marked ? eventsCaption(marked.markers, marked.hidden) : [];
+
   const shareChart = useMemo(
-    () => (shares && !table ? shareOption(shares, { drill: false }) : null),
-    [shares, table],
+    () =>
+      shares && !table
+        ? marked
+          ? withMarkers(shareOption(shares, { drill: false }), marked.markers)
+          : shareOption(shares, { drill: false })
+        : null,
+    [shares, table, marked],
   );
 
   // Past the palette's series it reads as a table whatever the toggle says, and the toggle says why.
@@ -515,6 +526,11 @@ function PinBody({
           height={shareHeight(shares, CHART_HEIGHT)}
           label={top ? `${pin.title}. ${top}` : pin.title}
         />
+        {eventsNotes.map((note) => (
+          <p key={note} className={styles.tableNote}>
+            {note}
+          </p>
+        ))}
       </>
     );
   } else if (table && labels) {
