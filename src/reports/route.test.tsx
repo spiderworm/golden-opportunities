@@ -90,7 +90,8 @@ describe("Reports", () => {
     expect(html).toContain("See the full results");
     // One quarter: no chart, the record takes the row; the tiles compare against Q1's own goals.
     expect(html).not.toContain("Overall score by quarter");
-    expect(html).toMatch(/vs\. goal|Goal met/);
+    expect(html).toMatch(/Below goal|Goal met/);
+    expect(html).toMatch(/Lowest measure: |Every measure met its goal/);
   });
 
   it("marks a report seen through its action, only for a played quarter, and goes on to its results", async () => {

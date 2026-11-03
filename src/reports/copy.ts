@@ -22,7 +22,8 @@ export const REPORTS_COPY = {
       ? `No change vs. ${before}`
       : `${delta > 0 ? "+" : "\u2212"}${Math.abs(delta)} vs. ${before}`,
   goalMet: "Goal met",
-  belowGoal: (points: number) => `\u2212${points} vs. goal`,
+  /** No number: under a measure's name, points would read as the measure's own units (Plot, #282). */
+  belowGoal: "Below goal",
   /** Overall score by quarter, with the strike line (endless.md section 7). */
   chartTitle: "Overall score by quarter",
   strikeLine: "Strike line (70)",
@@ -49,8 +50,9 @@ export const REPORTS_COPY = {
   oneMore: (move: string) => `One more move: ${move}`,
   nothingFound: "Nothing found this quarter.",
   goalLine: (result: string, goal: string) => `${result} against a goal of ${goal}`,
-  setBy: (measures: string) => `Set by ${measures}`,
-  allMet: "Every goal met",
+  /** The memo's score line (endless-copy.md), so the report and the memo name it the same way (Plot, #282). */
+  lowest: (measures: string) => `Lowest measure: ${measures}`,
+  allMet: "Every measure met its goal",
 } as const;
 
 /** The greeting line: the new shop reports, as the nav badge counts them. */

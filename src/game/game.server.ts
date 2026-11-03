@@ -497,7 +497,6 @@ export function resetGame(request: Request): string {
     return failure(error);
   }
 }
-/** The opening transmission has been seen (opened or put off): the bell's alert is read, and the transmission doesn't return. Idempotent. */
 /** A played quarter's shop report was opened on Reports, its card or its full results. Refuses an unplayed quarter. */
 export function markReportSeen(request: Request, quarter: unknown): void {
   try {
@@ -512,6 +511,7 @@ export function markReportSeen(request: Request, quarter: unknown): void {
   }
 }
 
+/** The opening transmission has been seen (opened or put off): the bell's alert is read, and the transmission doesn't return. Idempotent. */
 export function markAlertSeen(request: Request): void {
   try {
     refuseUnlessLocalPost(request);
