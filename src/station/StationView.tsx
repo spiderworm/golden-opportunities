@@ -19,7 +19,7 @@ import { heldFrame, watchHeldFrame } from "./held-frame";
 import { StationPoster } from "./StationPoster";
 import { FIRST_VIEW, rememberedView, rememberView } from "./view-memory";
 import { ImportFailed, retryImport } from "~/platform/lazy/retry";
-import { LoadingLine, useCommitment } from "~/platform/ui/commitment";
+import { LOAD_CAP_MS, LoadingLine, useCommitment } from "~/platform/ui/commitment";
 import { canRenderWebGL2 } from "~/platform/webgl";
 import styles from "./StationView.module.css";
 
@@ -34,9 +34,6 @@ import styles from "./StationView.module.css";
 // left it last time. Coming back to the screen, the last frame of the
 // previous visit stays up until the new scene has drawn.
 const StationScene = lazy(() => retryImport(() => import("./scene/StationScene")));
-
-/** How long the scene may take to load and draw before the station commits to its still picture instead. */
-const LOAD_CAP_MS = 20_000;
 
 /** "static": no WebGL 2 here. "failed": the device could draw it, but the scene didn't load, or broke. */
 type Support = "checking" | "3d" | "static" | "failed";

@@ -11,6 +11,13 @@ import styles from "./commitment.module.css";
  */
 export const LOADING_DELAY_MS = 500;
 
+/**
+ * How long a scene may take to load and draw before its page commits to the fallback instead (the still picture,
+ * the portraits): a load that stalls, neither failing nor drawing, must still commit (Audit, #361). Well past any
+ * cold load measured (the station's slowest drew at 6.7 s).
+ */
+export const LOAD_CAP_MS = 20_000;
+
 export interface Commitment {
   /** The delay has passed. */
   late: boolean;

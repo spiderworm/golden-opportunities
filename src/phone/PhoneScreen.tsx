@@ -14,7 +14,7 @@ import { track } from "~/platform/analytics/analytics.client";
 import { PHONE_EVENT } from "~/platform/phone";
 import { BossBubble } from "~/platform/bosses/BossBubble";
 import { canRenderWebGL2 } from "~/platform/webgl";
-import { LoadingLine, useCommitment } from "~/platform/ui/commitment";
+import { LOAD_CAP_MS, LoadingLine, useCommitment } from "~/platform/ui/commitment";
 import { PHONE_COPY } from "./copy";
 import { sizeBucket } from "./phone";
 import styles from "./PhoneScreen.module.css";
@@ -62,6 +62,16 @@ export function PhoneScreen({
     return () => clearTimeout(soon);
   }, [shown3d, reducedMotion, speak]);
   const { loading } = useCommitment(scene === "still" || shown3d);
+  // The 3D scene failed, or stalled (neither failing nor drawing): the still boss instead, for good (Audit, #361).
+  const fallBack = useCallback((cause: "error" | "timeout") => {
+    setScene("still");
+    track("phone_scene_failed", { cause });
+  }, []);
+  useEffect(() => {
+    if (scene !== "3d" || drawn) return;
+    const timer = setTimeout(() => fallBack("timeout"), LOAD_CAP_MS);
+    return () => clearTimeout(timer);
+  }, [scene, drawn, fallBack]);
 
   // Where the robot's head is kept: between the bubble at the top and the hand's room above the fact line at
   // the bottom (shares of the height); and where the hand holds the phone, just above the fact line.
@@ -104,7 +114,7 @@ export function PhoneScreen({
         aria-label={shown3d ? PHONE_COPY.scene : scene === "still" ? PHONE_COPY.still : undefined}
       >
         {active && scene === "3d" ? (
-          <SceneBoundary fallback={still} onError={() => setScene("still")}>
+          <SceneBoundary fallback={still} onError={() => fallBack("error")}>
             <Suspense fallback={null}>
               {/* Out of sight until it has drawn, then shown once. */}
               <div className={styles.scene} data-hidden={!drawn || undefined}>
