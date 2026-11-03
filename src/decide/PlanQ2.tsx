@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { DecideReports } from "~/reports/DecideReports";
 import { Link, useFetcher, useNavigate } from "react-router";
 
 import { track } from "~/platform/analytics/analytics.client";
@@ -54,6 +55,8 @@ export function PlanQ2({
   const [tooMany, setTooMany] = useState(false);
   const [refused, setRefused] = useState(false);
   const [step, setStep] = useState<Step>("choose");
+  // The reports read in Decide's panel, by key, for plan_submitted's count.
+  const [read, setRead] = useState<ReadonlySet<string>>(new Set());
   const line = useMoreLine();
   const fetcher = useFetcher<Q2ActionData>();
   const navigate = useNavigate();
@@ -91,6 +94,12 @@ export function PlanQ2({
         {plan.heading}
       </h2>
       <p className={styles.hint}>{COPY.hint}</p>
+      {/* The player's reports, read beside the plan (reports.md section 4). */}
+      <DecideReports
+        planStarted={!holding}
+        quarter={quarter}
+        onRead={(key) => setRead((r) => new Set(r).add(key))}
+      />
     </div>
   );
   const chosenMove = plan.moves.find((m) => m.id === lever);
@@ -217,7 +226,12 @@ export function PlanQ2({
               onClick={() => {
                 setStep("playing");
                 fetcher.submit(
-                  { picks: picks.map((p) => p ?? "").join(","), levers: lever ?? "", quarter },
+                  {
+                    picks: picks.map((p) => p ?? "").join(","),
+                    levers: lever ?? "",
+                    quarter,
+                    reportsRead: String(read.size),
+                  },
                   { method: "post" },
                 );
               }}

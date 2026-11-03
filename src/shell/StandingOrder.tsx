@@ -2,6 +2,7 @@ import { Link } from "react-router";
 
 import { FactText } from "~/platform/bosses/facts";
 import { ALERT_COPY, type AlertCopy } from "./alert-copy";
+import { PLAN_LINK } from "./standing-order-shown";
 import styles from "./StandingOrder.module.css";
 
 export interface StandingOrderProps {
@@ -11,6 +12,8 @@ export interface StandingOrderProps {
   onLedgers: boolean;
   onReadMemo: () => void;
   onOpenLedgers: () => void;
+  /** On Investigate, the strip's own action: "Write the plan", to Decide. */
+  onWritePlan?: () => void;
 }
 
 /** The Commerce Office's order, kept under the header until the plan is in. */
@@ -19,6 +22,7 @@ export function StandingOrder({
   onLedgers,
   onReadMemo,
   onOpenLedgers,
+  onWritePlan,
 }: StandingOrderProps) {
   return (
     <aside className={styles.strip} aria-label="Standing order">
@@ -37,6 +41,11 @@ export function StandingOrder({
         {!onLedgers && (
           <Link to="/investigate" className={styles.link} onClick={onOpenLedgers}>
             {COPY.ledgers}
+          </Link>
+        )}
+        {onWritePlan && (
+          <Link to="/decide" className={styles.action} onClick={onWritePlan}>
+            {PLAN_LINK.write}
           </Link>
         )}
       </div>

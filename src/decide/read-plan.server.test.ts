@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_PLAN_BODY, PlanRefused, readPlan, readQ2Plan } from "./read-plan.server";
+import { MAX_PLAN_BODY, PlanRefused, readAnyPlan, readPlan, readQ2Plan } from "./read-plan.server";
 
 const URL_ = "http://localhost:5173/decide";
 
@@ -152,5 +152,31 @@ describe("readQ2Plan", () => {
       ),
     ).toBe(403);
     expect(await q2(`picks=%2C%2C&levers=&pad=${"x".repeat(MAX_PLAN_BODY)}`)).toBe(413);
+  });
+});
+
+describe("readAnyPlan's count of reports read (reports.md section 5)", () => {
+  it("takes an optional count beside either form's fields, and none as zero", async () => {
+    expect(await readAnyPlan(post("levers=sale&reportsRead=2"))).toEqual({
+      form: "moves",
+      plan: { levers: ["sale"] },
+      reportsRead: 2,
+    });
+    expect(await readAnyPlan(post("levers="))).toMatchObject({ reportsRead: 0 });
+    expect(
+      await readAnyPlan(post("picks=%2C%2C&levers=&quarter=2194-Q2&reportsRead=1")),
+    ).toMatchObject({ form: "picks", quarter: "2194-Q2", reportsRead: 1 });
+  });
+
+  it("reads a count that isn't one as none, never refusing the plan, and still refuses any other extra field", async () => {
+    for (const body of [
+      "levers=&reportsRead=-1",
+      "levers=&reportsRead=lots",
+      "levers=&reportsRead=1000",
+    ])
+      expect(await readAnyPlan(post(body))).toMatchObject({ plan: { levers: [] }, reportsRead: 0 });
+    await expect(readAnyPlan(post("levers=&reportsRead=1&extra=1"))).rejects.toMatchObject({
+      status: 400,
+    });
   });
 });
