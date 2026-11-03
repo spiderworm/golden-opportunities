@@ -77,6 +77,7 @@ Each copy of the game caps its own model use every day, a UTC day (David, 3 Nov 
 
 - **Past a cap,** Dewey says "I've looked up all I can for now, and my circuits need a rest. Ask me again later.", and no model is asked. Alma's quarter event and backstory are the game's scripted ones. The rest of the game is unchanged.
 - **The counts** are kept in `.data/usage.json`, so a restart doesn't reset them. They're counts only: a visitor is a hash of their save's id, and nothing anyone typed is stored.
+- **A new game is a new visitor:** starting one (Play again, Reset game, or clearing cookies) starts a fresh visitor count. That's bounded by the copy's own cap, and by how often a new game can be started.
 
 ## What Dewey can reach
 
