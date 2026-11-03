@@ -19,7 +19,9 @@ test.describe("on a phone", () => {
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto("/?analytics-test=1");
     await expect(
-      page.getByRole("img", { name: "A robot reaches out of the screen and grabs your phone." }),
+      page.getByRole("img", {
+        name: "A robot reaches out of the screen, takes your phone, looks it over, and walks off with it down endless white corridors.",
+      }),
     ).toBeVisible();
     await expect(page.getByText(FACT)).toBeVisible();
     // The game isn't there to use: not the station, not the menu.
