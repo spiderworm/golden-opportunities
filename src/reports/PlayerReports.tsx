@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useBlocker, useFetcher, useNavigate, useSearchParams } from "react-router";
+import {
+  Link,
+  useBlocker,
+  useFetcher,
+  useNavigate,
+  useSearchParams,
+  useSubmit,
+} from "react-router";
 
 import { quarterName } from "~/game/event-title";
 import { PinChart } from "~/investigate/pins/PinnedCharts";
@@ -171,17 +178,14 @@ function everyQuarter(spec: PinSpec): boolean {
   return !spec.query.filter?.quarter && !spec.query.filter?.month;
 }
 
-/** Delete report: asks once, and is final. */
+/**
+ * Delete report: asks once, and is final. A navigating submission to /reports, so the page ends on the list: the
+ * report it was showing is gone with it.
+ */
 function DeleteReport({ report, onDeleted }: { report: PlayerReport; onDeleted?: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
-  const fetcher = useFetcher<Answer>();
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (fetcher.state !== "idle" || !fetcher.data?.ok) return;
-    onDeleted?.();
-    void navigate("/reports");
-  }, [fetcher.state, fetcher.data]);
+  const submit = useSubmit();
   return (
     <>
       <button
@@ -205,8 +209,13 @@ function DeleteReport({ report, onDeleted }: { report: PlayerReport; onDeleted?:
             type="button"
             className={styles.danger}
             onClick={() => {
-              void fetcher.submit({ intent: "delete", id: report.id }, { method: "post" });
+              // Before the submission, so the editor's leave guard lets it go.
+              onDeleted?.();
               dialog.current?.close();
+              void submit(
+                { intent: "delete", id: report.id },
+                { method: "post", action: "/reports" },
+              );
             }}
           >
             {COPY.delete.confirm}
