@@ -1,0 +1,214 @@
+{
+  "id": "cp1-price-2",
+  "group": "price",
+  "at": "2026-11-02T23:57:14.484Z",
+  "ms": 3656,
+  "status": 200,
+  "request": {
+    "question": "Chart units by list price.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I charted units by list price, across all genres and every period the terminal shows. The chart and its table are under this message. Units came to 56,350.",
+  "tools": [
+    {
+      "type": "chart",
+      "chart": {
+        "title": "Units by list price",
+        "kind": "bar",
+        "query": {
+          "measure": "units",
+          "by": [
+            "list_price"
+          ]
+        }
+      },
+      "total": 56350,
+      "rows": 25
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "chart",
+      "chart": {
+        "title": "Units by list price",
+        "kind": "bar",
+        "query": {
+          "measure": "units",
+          "by": [
+            "list_price"
+          ]
+        }
+      },
+      "pin": {
+        "title": "Units by list price",
+        "kind": "bar",
+        "query": {
+          "measure": "units",
+          "by": [
+            "list_price"
+          ]
+        }
+      },
+      "columns": [
+        {
+          "key": "list_price",
+          "label": "List price",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "list_price": "$5.99",
+          "units": 3622
+        },
+        {
+          "ref": "a2",
+          "list_price": "$6.99",
+          "units": 1334
+        },
+        {
+          "ref": "a3",
+          "list_price": "$7.99",
+          "units": 789
+        },
+        {
+          "ref": "a4",
+          "list_price": "$8.99",
+          "units": 20956
+        },
+        {
+          "ref": "a5",
+          "list_price": "$9.50",
+          "units": 7703
+        },
+        {
+          "ref": "a6",
+          "list_price": "$10.99",
+          "units": 374
+        },
+        {
+          "ref": "a7",
+          "list_price": "$11.99",
+          "units": 3696
+        },
+        {
+          "ref": "a8",
+          "list_price": "$12.50",
+          "units": 3943
+        },
+        {
+          "ref": "a9",
+          "list_price": "$13.46",
+          "units": 606
+        },
+        {
+          "ref": "a10",
+          "list_price": "$15.99",
+          "units": 706
+        },
+        {
+          "ref": "a11",
+          "list_price": "$16.99",
+          "units": 261
+        },
+        {
+          "ref": "a12",
+          "list_price": "$18.50",
+          "units": 449
+        },
+        {
+          "ref": "a13",
+          "list_price": "$19.99",
+          "units": 5
+        },
+        {
+          "ref": "a14",
+          "list_price": "$20.99",
+          "units": 94
+        },
+        {
+          "ref": "a15",
+          "list_price": "$21.50",
+          "units": 8184
+        },
+        {
+          "ref": "a16",
+          "list_price": "$22.99",
+          "units": 1717
+        },
+        {
+          "ref": "a17",
+          "list_price": "$23.99",
+          "units": 698
+        },
+        {
+          "ref": "a18",
+          "list_price": "$26.99",
+          "units": 21
+        },
+        {
+          "ref": "a19",
+          "list_price": "$27.99",
+          "units": 682
+        },
+        {
+          "ref": "a20",
+          "list_price": "$28.99",
+          "units": 14
+        },
+        {
+          "ref": "a21",
+          "list_price": "$29.99",
+          "units": 131
+        },
+        {
+          "ref": "a22",
+          "list_price": "$30.99",
+          "units": 11
+        },
+        {
+          "ref": "a23",
+          "list_price": "$32.99",
+          "units": 71
+        },
+        {
+          "ref": "a24",
+          "list_price": "$35.84",
+          "units": 281
+        },
+        {
+          "ref": "a25",
+          "list_price": "$48.00",
+          "units": 2
+        }
+      ],
+      "total": 56350,
+      "source": "Units from 56,350 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by list_price. Showing 25 of 25 groups; total is before the row limit."
+    },
+    {
+      "type": "text",
+      "text": "I charted units by list price, across all genres and every period the terminal shows. "
+    },
+    {
+      "type": "text",
+      "text": "The chart and its table are under this message. "
+    },
+    {
+      "type": "text",
+      "text": "Units came to 56,350."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
