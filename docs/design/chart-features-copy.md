@@ -24,17 +24,20 @@ David: "I'd like to allow (as often as we can make work) tables to toggle to cha
 
 David: "Period-over-period as a toggle on any chart. A switch for "vs. same quarter last year" that adds Δ and % change columns or a ghost series."
 
-- **The toggle's name:** `vs. same quarter last year`, David's words. It's a toggle like `Compare quarters`, beside it, and keeps its name while pressed. It starts in lower case, as he wrote it, because it reads on from the chart's title ("Revenue by month vs. same quarter last year").
+- **The toggle's name:** `vs. same quarter last year`, David's words. It's a toggle like `Compare quarters`, beside it, and keeps its name while pressed. It starts in lower case, as he wrote it, because it reads on from the chart's name, as a phrase after it. The chart's title follows its own rule, below.
 - **Disabled, with tooltips:**
 
 | Why | Tooltip |
 | --- | --- |
 | The quarter shown is in 2193, which the ledgers start with | `The ledgers start in 2193: there's no year before it to compare` |
-| Every quarter is shown (no quarter filter) and the breakdown is by quarter | `Filter to one quarter to compare it with last year` |
+| No single quarter in the quarter filter, whatever the breakdown (title, genre, weekday or none) | `Filter to one quarter to compare it with last year` |
+| A breakdown by quarter | `Break down by something other than quarter to compare with last year` |
 | More than one measure is shown | `Show one measure to compare with last year` |
 | `Compare quarters` is on | `Turn off Compare quarters to compare with last year` |
 
-  A breakdown by month within one quarter is allowed: each month is compared with the same month last year. If Frank finds a time breakdown it can't do, the pattern is `Break down by something other than {dimension} to compare with last year`.
+  And the other way round: while this toggle is on, `Compare quarters` is disabled with `Turn off vs. same quarter last year to compare quarters` (Frank, #291).
+
+  A breakdown by month within one quarter is allowed: each month is compared with the same month last year. Any other breakdown it can't do takes the same pattern, `Break down by something other than {dimension} to compare with last year`.
 
 - **The table's columns,** after the dimension's column:
 
@@ -47,7 +50,7 @@ David: "Period-over-period as a toggle on any chart. A switch for "vs. same quar
 
   - **Signs** follow Investigate's `change()` in `src/investigate/format.ts`, as the tiles do: a hyphen-minus for down and `+` for up. For average discount, `Δ` is in points and `% change` is left empty, because a percent change of a percentage only confuses.
   - **A zero base:** last year 0 and this year above it: `% change` reads `New`. Both 0: `0.0%`. Last year above 0 and this year 0: `-100.0%`.
-  - **A group only one year has** (a title not yet published last year): the missing year's cell reads `None`, and `% change` reads `New`, or `-100.0%` if only last year has it.
+  - **A group with no sales in one year** (a title not yet published last year) shows `$0` or `0` for that year, so `% change` reads `New`, or `-100.0%` if only last year has sales. `None` is only for no figure at all: an average over no sales (Frank, #291).
 - **The ghost series** is the same measure for the same quarter last year, drawn lighter behind or beside this year's:
   - **Legend:** this year's series is named by its quarter, `Q1 2194`, and the ghost by its own, `Q1 2193`. With a breakdown by month, by the year: `2194` and `2193`.
   - **Tooltip:** the group, then both values and the change:
@@ -57,6 +60,7 @@ David: "Period-over-period as a toggle on any chart. A switch for "vs. same quar
     Q1 2193: $38,900
     Change: +$2,300 (+5.9%)
     ```
+    From a zero base, `Change: +$400 (New)`. For average discount, in points alone: `Change: +2.3 pts` (Frank, #291).
   - **The chart's title** gains `, vs. Q1 2193`: `Revenue by month, vs. Q1 2193`.
 - **Pins and Dewey:** a pinned chart keeps the toggle's state, and its title says so as above. Dewey doesn't get the toggle in this round, unless Sage adds it with the Table toggle.
 
@@ -75,8 +79,22 @@ David: "Scatter plots: two measures across one dimension."
 | No breakdown | `Break down by a group for a scatter plot` |
 
   A time breakdown is refused because a line chart already shows two measures over time, and a scatter of twelve months hides their order.
-- **Axes:** the first measure chosen runs along the bottom, the second up the side. Each axis is titled with the measure's label, from `MEASURE_LABELS`, and its unit: `Revenue ($)`, `Units sold`, `Average discount (%)`, `Average rating (stars)`. The ticks use the measure's format, compact as on the other charts.
-- **The chart's title:** `{second} against {first}, by {dimension}`, for example `Units sold against revenue, by title`, with the dimension in lower case as Dewey's titles have it.
+- **Axes:** the first measure chosen runs along the bottom, the second up the side. Each axis is titled with the measure's label, from `MEASURE_LABELS`, and its unit where it has one. Counts have none:
+
+| Measure | Axis title |
+| --- | --- |
+| `revenue` | `Revenue ($)` |
+| `units` | `Units sold` |
+| `orders` | `Orders` |
+| `avg_discount` | `Average discount (%)` |
+| `avg_rating` | `Average rating (stars)` |
+| `checkouts` | `Checkouts` |
+| `avg_order_value` | `Average order value ($)` |
+| `orders_per_day` | `Orders per day` |
+| `ratings` | `Ratings` |
+
+  The ticks use the measure's format, compact as on the other charts.
+- **The chart's title:** `{Second} against {first, lower case}, by {dimension, lower case}`, for example `Units sold against revenue, by title`, as Dewey's titles have it.
 - **A point's tooltip:** the group's name as `formatDimensionValue` gives it, then each measure:
   ```
   The Quiet Picks
