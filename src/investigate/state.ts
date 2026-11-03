@@ -465,14 +465,24 @@ function readMeasures(params: URLSearchParams): Pick<InvestigateState, "measure"
   return { measure: oneOf(CHART_MEASURES, params.get("measure"), DEFAULT_STATE.measure), also: [] };
 }
 
-export function parseState(params: URLSearchParams): InvestigateState {
+/**
+ * Filters as Investigate reads them, from any source of values per dimension: the URL, or a saved segment
+ * (src/segments/segments.ts), so both keep the same rules. Only the filter dimensions, each value non-empty and
+ * at most MAX_VALUE_LENGTH, repeats dropped, at most MAX_VALUES a dimension.
+ */
+export function readFilters(valuesOf: (dimension: FilterDimension) => readonly string[]): Filters {
   const filters: Filters = {};
   for (const dimension of FILTER_DIMENSIONS) {
     // Links from before months had a year ("month=04") still open, as 2193's.
-    const read = params.getAll(dimension).map((v) => (dimension === "month" ? yearMonth(v) : v));
+    const read = valuesOf(dimension).map((v) => (dimension === "month" ? yearMonth(v) : v));
     const values = [...new Set(read)].filter((v) => v.length > 0 && v.length <= MAX_VALUE_LENGTH);
     if (values.length) filters[dimension] = values.slice(0, MAX_VALUES);
   }
+  return filters;
+}
+
+export function parseState(params: URLSearchParams): InvestigateState {
+  const filters = readFilters((dimension) => params.getAll(dimension));
   const by = oneOf(GROUPINGS, params.get("by"), DEFAULT_STATE.by);
   const measures = readMeasures(params);
   return {

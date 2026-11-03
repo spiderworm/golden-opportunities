@@ -5,6 +5,7 @@ import type { AlmaRecord } from "../alma/record";
 import type { BackstoryRecord } from "../alma/backstory-record";
 import type { LaterDiscoveryId } from "./later-discoveries";
 import type { PlayerReport } from "../reports/player";
+import type { Segment } from "../segments/segments";
 
 /** A to C are found in Q1, D to F in Q2 (docs/design/q2.md section 6). */
 export type DiscoveryId = "A" | "B" | "C" | "D" | "E" | "F";
@@ -48,6 +49,8 @@ export interface GameSave {
   reportsSeen?: QuarterId[];
   /** The player's own reports (reports.md section 3): up to 12, checked by validReports. Absent until one is saved. */
   reports?: PlayerReport[];
+  /** The player's saved segments (src/segments/segments.ts): up to 20, checked by validSegments. Absent until one is saved. */
+  segments?: Segment[];
   /**
    * Alma's event records, one per quarter from Q3 2194, in quarter order, up to the next unplayed quarter (the
    * one Alma prepares). Absent in older saves. Once written, a record is the quarter's truth (src/alma).
