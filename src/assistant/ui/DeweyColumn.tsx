@@ -143,34 +143,39 @@ export function DeweyColumn({
           onLostPointerCapture={release}
         />
       )}
-      {folded ? (
-        <button
-          type="button"
-          data-dewey-unfold=""
-          style={styles.unfold}
-          aria-expanded={false}
-          aria-label={`Open ${NAME}`}
-          title={`Open ${NAME}`}
-          onClick={() => fold(false)}
-        >
-          <img src={PORTRAIT} alt="" width={40} height={40} style={styles.unfoldFace} />
-          <span data-dewey-name="">{NAME}</span>
-        </button>
-      ) : (
-        <button
-          type="button"
-          style={styles.fold}
-          aria-expanded={true}
-          aria-label={`Fold ${NAME} away`}
-          title={`Fold ${NAME} away`}
-          onClick={() => fold(true)}
-        >
-          {"\u00bb"}
-        </button>
-      )}
-      {/* Kept mounted while folded, out of sight: an answer still streaming carries on. */}
-      <div hidden={folded} data-dewey-panel="">
-        {children}
+      {/* What stays in view as the page scrolls: the fold control and the panel, together. The column itself runs the
+          dashboard's full height, so its resize edge does too (David, 3 Nov: "needs to take up the full height of its
+          area, even if the contents of the dewey chat are very short"). */}
+      <div data-dewey-stick="">
+        {folded ? (
+          <button
+            type="button"
+            data-dewey-unfold=""
+            style={styles.unfold}
+            aria-expanded={false}
+            aria-label={`Open ${NAME}`}
+            title={`Open ${NAME}`}
+            onClick={() => fold(false)}
+          >
+            <img src={PORTRAIT} alt="" width={40} height={40} style={styles.unfoldFace} />
+            <span data-dewey-name="">{NAME}</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            style={styles.fold}
+            aria-expanded={true}
+            aria-label={`Fold ${NAME} away`}
+            title={`Fold ${NAME} away`}
+            onClick={() => fold(true)}
+          >
+            {"\u00bb"}
+          </button>
+        )}
+        {/* Kept mounted while folded, out of sight: an answer still streaming carries on. */}
+        <div hidden={folded} data-dewey-panel="">
+          {children}
+        </div>
       </div>
     </aside>
   );

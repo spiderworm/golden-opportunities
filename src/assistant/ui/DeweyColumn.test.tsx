@@ -34,8 +34,8 @@ it("reads back what this browser kept, and the defaults for anything else", () =
 });
 
 it("keeps the panel in the same place, folded or not, so folding never remounts it", () => {
-  // React keeps a component mounted only while its place in the tree holds: the panel's wrapper is the aside's last
-  // child either way, only hidden when folded. (Checked live too: the face canvas is the same element after a fold.)
+  // React keeps a component mounted only while its place in the tree holds: the panel's wrapper is the last child of
+  // the column's sticky part either way, only hidden when folded. (Checked live too: the face canvas is the same element after a fold.)
   const draw = (folded: boolean) =>
     renderToString(
       <DeweyColumn track={() => {}} start={{ width: COLUMN.width, folded }}>
@@ -44,8 +44,8 @@ it("keeps the panel in the same place, folded or not, so folding never remounts 
     );
   const open = draw(false);
   const shut = draw(true);
-  expect(open).toMatch(/<div data-dewey-panel=""><p>panel<\/p><\/div><\/aside>$/);
-  expect(shut).toMatch(/<div hidden="" data-dewey-panel=""><p>panel<\/p><\/div><\/aside>$/);
+  expect(open).toMatch(/<div data-dewey-panel=""><p>panel<\/p><\/div><\/div><\/aside>$/);
+  expect(shut).toMatch(/<div hidden="" data-dewey-panel=""><p>panel<\/p><\/div><\/div><\/aside>$/);
   // Folded: the strip to open it, and no handle.
   expect(shut).toContain('aria-label="Open Dewey"');
   expect(shut).not.toContain('role="separator"');
