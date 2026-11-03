@@ -22,7 +22,8 @@ test("a tab overtaken by another tab's plan stops serving the old quarter's view
   page.on('request', (r) => { if (/\/investigate\.data/.test(r.url()) && /investigate%2Froute/.test(r.url())) loads.push(r.url()); });
 
   // Tab A: revenue by quarter, as a table; then Fiction and back, so the first view comes from the cache.
-  await page.goto('/investigate?analytics-test=1&by=quarter');
+  // Genre on the bar from the start: the bar shows only the filters the player added (#209).
+  await page.goto('/investigate?analytics-test=1&by=quarter&show=genre');
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(table).toContainText('Q4 2193');
   await expect(table).not.toContainText('Q1 2194');
