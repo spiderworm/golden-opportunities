@@ -27,6 +27,10 @@ export const CLOSED_PAGE = `<!DOCTYPE html>
     border-radius: 12px; color: #8f84ff; font-weight: 700; letter-spacing: 0.08em;
     text-transform: uppercase; font-size: 13px; transform: rotate(-3deg); }
   .sign { color: #6c76a0; font-size: 14px; margin-top: 22px; }
+  @media (max-width: 480px) {
+    .card { padding: 24px 20px; }
+    .stamp { white-space: nowrap; font-size: 12px; letter-spacing: 0.04em; }
+  }
 </style>
 </head>
 <body>
