@@ -145,6 +145,16 @@ the new version. Errors carry no version. Keep it out of analytics events: it's
 stable for a save within a server process, so it would work as a per-save
 identifier (Audit, #187).
 
+## Context, never evidence
+
+The server records discovery evidence from every `/api/query` answer. A request
+with `X-Orbital-Evidence: none` is answered without recording it: the view is
+context, like Investigate's heatmap, which never awards discoveries wherever it's
+shown, a pinned heatmap included (Plot, #63 and #266). The header can only
+withhold evidence, so trusting it from the browser costs nothing. The browser's
+cache keeps these answers apart from the same query shown as evidence, so that
+one still reaches the server and is recorded.
+
 ## Visibility and access
 
 `QueryView` is trusted server state. Filter facts against `periods` BEFORE

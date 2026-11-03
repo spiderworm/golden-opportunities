@@ -14,6 +14,7 @@ import { getStationState } from '../shell/station-state';
 import { PLAYABLE_QUARTERS, setPlayableQuarters } from '../game/quarters';
 import { createQueryHandler } from './http.server';
 import { DATA_VERSION_HEADER, dataVersion } from './data-version.server';
+import { EVIDENCE_HEADER } from './types';
 import { runQuery } from './run-query.server';
 import { pendingTurn } from '../alma/hook.server';
 
@@ -104,5 +105,24 @@ describe("a save's data version", () => {
       headers: { cookie: 'orbital_save=' + save.id, origin: 'http://localhost:3000', 'content-type': 'application/json' }, body: '{}' }));
     expect(refused.status).toBe(400);
     expect(refused.headers.get(DATA_VERSION_HEADER)).toBeNull();
+  });
+});
+
+describe('a view that is context, never evidence (Plot, #266)', () => {
+  it("answers without recording discovery evidence when asked, and records as before otherwise", async () => {
+    const save = saves.create();
+    submitPlan(request(save.id), { levers: [] });
+    const handle = createQueryHandler({ track: () => {} });
+    const ask = (headers: Record<string, string> = {}) => handle(new Request('http://localhost:3000/api/query', { method: 'POST',
+      headers: { cookie: 'orbital_save=' + save.id, origin: 'http://localhost:3000', 'content-type': 'application/json', ...headers },
+      body: JSON.stringify({ measure: 'revenue', by: ['quarter'] }) }));
+    const evidence = () => { const { discoveries, discoveryEvidence } = saves.read(save.id); return JSON.stringify([discoveries, discoveryEvidence ?? null]); };
+    const before = evidence();
+    const context = await ask({ [EVIDENCE_HEADER]: 'none' });
+    expect(context.status).toBe(200);
+    expect(evidence()).toBe(before);
+    // The same view as evidence: last year's quarters beside Q1 2194 (discovery F) is recorded.
+    expect((await ask()).status).toBe(200);
+    expect(evidence()).not.toBe(before);
   });
 });
