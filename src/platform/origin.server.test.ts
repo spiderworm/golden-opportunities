@@ -143,6 +143,23 @@ describe("the gates, with the deployed origin set", () => {
   });
 });
 
+describe("React Router's own action check (measured: POST /alert/seen.data 400 on the deployed host)", () => {
+  it("names the deployed host in allowedActionOrigins when the server is built with the setting", async () => {
+    vi.resetModules();
+    vi.stubEnv("ORBITAL_PUBLIC_ORIGIN", PUBLIC);
+    const deployed = (await import("../../react-router.config")).default as {
+      allowedActionOrigins?: string[];
+    };
+    expect(deployed.allowedActionOrigins).toEqual([HOST]);
+    vi.resetModules();
+    vi.stubEnv("ORBITAL_PUBLIC_ORIGIN", "");
+    const local = (await import("../../react-router.config")).default as {
+      allowedActionOrigins?: string[];
+    };
+    expect(local.allowedActionOrigins).toBeUndefined();
+  });
+});
+
 describe("Share play data, deployed (Audit, #368)", () => {
   it("keeps a visitor's choice in their own cookie, never the process's switch", async () => {
     const { sharing } = await withOrigin(PUBLIC);
