@@ -47,13 +47,16 @@ export const noChart = (spec: PinSpec): "comparison" | "figure" | null =>
 /** Whether a pin shows as a table now: its toggle, or else its kind. */
 export const shownAsTable = (spec: ChartPinSpec) => spec.table ?? spec.kind === "table";
 
-/** The chart a table pin draws when toggled: a line over months or quarters, bars otherwise (as Dewey's). */
+/**
+ * The chart a query draws: a line over months or quarters, bars for anything else (Audit, #252). One rule for
+ * Dewey's show_chart (tools/definitions.ts) and a table drawn as a chart, so the two can't drift.
+ */
+export const queryChartKind = (query: Pick<Query, "by">): "bar" | "line" =>
+  query.by[0] === "month" || query.by[0] === "quarter" ? "line" : "bar";
+
+/** The chart a table pin draws when toggled: its own kind if it's a bar or line, else the query's (queryChartKind). */
 export const drawnKind = (spec: ChartPinSpec): "bar" | "line" =>
-  spec.kind === "line" || spec.kind === "bar"
-    ? spec.kind
-    : spec.query.by[0] === "month" || spec.query.by[0] === "quarter"
-      ? "line"
-      : "bar";
+  spec.kind === "line" || spec.kind === "bar" ? spec.kind : queryChartKind(spec.query);
 
 /** A pin's other measures: null if malformed; else those that still fit one chart with the query's measure (fittingMeasures). */
 export function parseAlso(measure: Measure, value: unknown): ChartMeasure[] | null {

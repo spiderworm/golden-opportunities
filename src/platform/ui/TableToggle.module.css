@@ -1,0 +1,29 @@
+/* The Table toggle where the page has no toggle style of its own (Dewey's chat): Investigate's chips. */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 13px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.toggle:hover:not(:disabled) {
+  background: var(--color-panel-raised);
+}
+
+.toggle[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+
+.toggle:disabled {
+  color: var(--color-text-subtle);
+  cursor: not-allowed;
+}
