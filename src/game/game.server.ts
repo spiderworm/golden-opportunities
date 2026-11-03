@@ -25,6 +25,7 @@ import { almaRecordFor } from "../alma/hook.server";
 import type { AlmaRecord } from "../alma/record";
 import type { PlayerReport } from "../reports/player";
 import type { Segment } from "../segments/segments";
+import type { Forecast } from "../forecast/forecast";
 import { MEASURE_NAMES } from "../alma/sentences";
 import type { BossId } from "../platform/bosses/bosses";
 import { simulateTurn } from "../simulation/turn";
@@ -177,6 +178,7 @@ function commit(
   save: GameSave,
   quarter: Omit<PlayedQuarter, "lines" | "sales"> & Pick<PlayedQuarter, "period">,
   sales: Sale[],
+  forecast: Forecast | null = null,
 ) {
   const kept = {
     ...quarter,
@@ -190,6 +192,11 @@ function commit(
   const after = updateIfInputsHold(save, kept.period, (draft) => {
     if (quarterOf(draft) !== kept.period) throw alreadyPlayed();
     draft.played.push(kept);
+    // The player's forecast is filed with the plan, for the quarter it plays, in the same write (src/forecast).
+    if (forecast) {
+      const { quarter: _, ...figures } = forecast;
+      (draft.forecasts ??= []).push({ quarter: kept.period, ...figures });
+    }
   });
   rememberLines(save.id, kept, sales, loadBookshop());
   // Alma prepares the next quarter in the background (src/alma): it never waits, and never throws into the submit.
@@ -198,7 +205,11 @@ function commit(
     onQuarterCommitted({ saveId: save.id, quarter: quarter.period, seed: save.seed });
 }
 /** Pure engine work precedes a short revision-checked transaction. Concurrent/repeat play returns 409. */
-export function submitPlan(request: Request, plan: Plan): { outcomeId: string } {
+export function submitPlan(
+  request: Request,
+  plan: Plan,
+  forecast: Forecast | null = null,
+): { outcomeId: string } {
   const started = performance.now();
   try {
     refuseUnlessLocalPost(request);
@@ -215,7 +226,7 @@ export function submitPlan(request: Request, plan: Plan): { outcomeId: string } 
       throw new SaveError("INVALID_SAVE");
     const sales = visible(result.lines);
     const outcomeId = randomUUID();
-    commit(save, { period: "2194-Q1", outcomeId, outcome }, sales);
+    commit(save, { period: "2194-Q1", outcomeId, outcome }, sales, forecast);
     event("game_quarter_committed", {
       quarter: "Q1",
       leverCount: canonical.levers.length,
@@ -242,7 +253,11 @@ export function submitPlan(request: Request, plan: Plan): { outcomeId: string } 
  * q2PlanProblem: "shape", "unknown-edition" or "same-title") is a 400 whose JSON body names it;
  * anything the engine throws after that is a 500.
  */
-export function submitQ2Plan(request: Request, plan: unknown): { outcomeId: string } {
+export function submitQ2Plan(
+  request: Request,
+  plan: unknown,
+  forecast: Forecast | null = null,
+): { outcomeId: string } {
   const started = performance.now();
   try {
     refuseUnlessLocalPost(request);
@@ -268,7 +283,7 @@ export function submitQ2Plan(request: Request, plan: unknown): { outcomeId: stri
       throw new SaveError("INVALID_SAVE");
     const sales = visible(result.lines);
     const outcomeId = randomUUID();
-    commit(save, { period: "2194-Q2", outcomeId, outcome }, sales);
+    commit(save, { period: "2194-Q2", outcomeId, outcome }, sales, forecast);
     event("game_quarter_committed", {
       quarter: "Q2",
       leverCount: canonical.levers.length,
@@ -387,6 +402,7 @@ export async function submitQuarterPlan(
   request: Request,
   plan: unknown,
   expected?: QuarterId,
+  forecast: Forecast | null = null,
 ): Promise<{ outcomeId: string }> {
   const started = performance.now();
   let quarter: QuarterId | null = null;
@@ -399,7 +415,7 @@ export async function submitQuarterPlan(
     // A form names the quarter it was written for: one left open from Q3, sent once Q4 is open, mustn't play Q4
     // with July's picks. Its quarter is played already, so it's a 409, as for a repeat.
     if (expected !== undefined && expected !== quarter) throw alreadyPlayed();
-    if (quarter === "2194-Q2") return submitQ2Plan(request, plan);
+    if (quarter === "2194-Q2") return submitQ2Plan(request, plan, forecast);
     const data = loadBookshop();
     const problem = q2PlanProblem(plan, data);
     if (problem)
@@ -435,6 +451,7 @@ export async function submitQuarterPlan(
       current(request),
       { period: quarter as Exclude<QuarterId, "2194-Q1">, outcomeId, outcome },
       sales,
+      forecast,
     );
     event("game_quarter_committed", {
       quarter,

@@ -14,6 +14,7 @@ import {
   TIMED_OUT,
   toWire,
   UNAVAILABLE,
+  withEvidence,
 } from "./ask.server.ts";
 import {
   assistantAvailability,
@@ -1406,4 +1407,63 @@ it("reads no save for a request the shared minute cap refuses (Frank's review of
   const before = reads;
   expect((await send()).status).toBe(429);
   expect(reads).toBe(before);
+});
+
+describe("a lookup's raw evidence goes to the browser, never the model (Goldy's and Chart's design)", () => {
+  const output = (rows: number) =>
+    JSON.stringify({
+      ref: "a",
+      columns: [
+        { key: "genre", label: "Genre", type: "string", nullable: false },
+        { key: "avg_rating", label: "Average rating", type: "number", nullable: false },
+      ],
+      rows: Array.from({ length: rows }, (_, i) => ({
+        ref: `a${i + 1}`,
+        genre: `G${i}`,
+        avg_rating: 4,
+        n: 10,
+      })),
+      total: 4,
+      unit: "ratings",
+      n: 10 * rows,
+      source: "S",
+      complete: true,
+    });
+  const event = (rows: number): ProviderEvent => ({
+    type: "tool",
+    name: "query_data",
+    input: { measure: "avg_rating", by: ["genre"] },
+    output: output(rows),
+    isError: false,
+  });
+  const raw = (rows: number) => ({
+    unit: "ratings" as const,
+    rows: Array.from({ length: rows }, () => ({ n: 10, se: 0.2 })),
+    total: { n: 10 * rows, se: 0.1 },
+  });
+
+  it("attaches the provider's evidence to the browser's event when it has one entry per row", () => {
+    const wire = withEvidence(toWire(event(2)), event(2), { evidenceFor: () => raw(2) });
+    expect(wire).toMatchObject({ type: "data", evidence: raw(2) });
+    // The model's tool output, the event's own, never had it.
+    expect(output(2)).not.toMatch(/"se"|"evidence"/);
+  });
+
+  it("attaches nothing when the rows don't line up, the evidence doesn't check out, or there's none", () => {
+    for (const provider of [
+      { evidenceFor: () => raw(3) },
+      { evidenceFor: () => ({ ...raw(2), unit: "copies" }) },
+      { evidenceFor: () => null },
+      {
+        evidenceFor: () => {
+          throw new Error("store gone");
+        },
+      },
+      {},
+    ]) {
+      const wire = withEvidence(toWire(event(2)), event(2), provider as never);
+      expect(wire).toMatchObject({ type: "data" });
+      expect(wire).not.toHaveProperty("evidence");
+    }
+  });
 });

@@ -181,6 +181,7 @@ Counts only, never a segment's name: the names are the player's own words (Audit
 - `plan_confirm_opened`
 - `plan_keep_investigating`
 - `plan_submitted` (with `reportsRead`: how many reports were chosen in Decide's panel before submitting)
+- `forecast_made` (the quarter, `measures`: `revenue`, `units` or both, and `hadNote`), with `plan_submitted` when a forecast is filed with the plan. Never the figures or the note: the note is the player's own words and stays in their save.
 - `plan_reports_opened` (the quarter and the counts of the player's and the shop's reports)
 - `plan_report_read` (the quarter, `type`: `player` or `shop`, and its `charts`)
 - `result_viewed`

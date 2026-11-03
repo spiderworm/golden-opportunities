@@ -5,10 +5,29 @@ import { forPublicHost, isPublicOriginRequest } from "../platform/origin.server"
 import { FIRST_QUARTER, isQuarterName, type QuarterId } from "~/simulation/quarters";
 import { isQ2Plan, planOf } from "~/simulation/plan";
 import type { Plan, Q2Plan, Q2LeverId } from "~/simulation/types";
+import {
+  FORECAST_FIELDS,
+  forecastFromForm,
+  type Forecast,
+  type ForecastProblem,
+} from "~/forecast/forecast";
 
-/** Q2's three ISBNs and a move are about 90 bytes (`picks=` with `%2C`s, `&levers=events`); Q1's are fewer. */
-export const MAX_PLAN_BODY = 512;
+/**
+ * Q2's three ISBNs and a move are about 90 bytes (`picks=` with `%2C`s, `&levers=events`); Q1's are fewer. A
+ * forecast adds its figures (about 100 bytes) and a note of up to 500 characters, up to 12 bytes each once
+ * percent-encoded: 8 KB holds the largest.
+ */
+export const MAX_PLAN_BODY = 8_192;
 const DEADLINE_MS = 3_000;
+
+/** A forecast filed with the plan was wrong: the plan isn't filed, and the browser shows Plot's line by the field. */
+export class ForecastRefused extends Error {
+  readonly problem: ForecastProblem;
+  constructor(problem: ForecastProblem) {
+    super(`Forecast ${problem.field}: ${problem.reason}`);
+    this.problem = problem;
+  }
+}
 
 export class PlanRefused extends Error {
   readonly status: number;
@@ -23,13 +42,40 @@ export async function readAnyPlan(
   request: Request,
   deadlineMs = DEADLINE_MS,
 ): Promise<
-  ({ form: "moves"; plan: Plan } | ({ form: "picks" } & QuarterPlan)) & { reportsRead: number }
+  ({ form: "moves"; plan: Plan } | ({ form: "picks" } & QuarterPlan)) & {
+    reportsRead: number;
+    forecast: Forecast | null;
+  }
 > {
   const form = await readForm(request, deadlineMs);
   const reportsRead = reportsReadFrom(form);
-  return form.has("picks")
-    ? { form: "picks", ...q2PlanFrom(form), reportsRead }
-    : { form: "moves", plan: planFrom(form), reportsRead };
+  const forecast = forecastFrom(form);
+  if (form.has("picks")) {
+    const sent = q2PlanFrom(form);
+    return {
+      form: "picks",
+      ...sent,
+      reportsRead,
+      forecast: forecast && { ...forecast, quarter: sent.quarter },
+    };
+  }
+  return { form: "moves", plan: planFrom(form), reportsRead, forecast };
+}
+
+/**
+ * The player's forecast, filed with the plan (src/forecast/forecast.ts): three optional fields, taken off the form
+ * so the plan's own fields are checked as before. Unlike reportsRead, a wrong one refuses the plan, by its field,
+ * since it's the player's to fix. Its quarter is Q1's here; a later form's is the quarter the form names, and the
+ * game files it for the quarter it plays, which a form for another is refused.
+ */
+function forecastFrom(form: URLSearchParams): Forecast | null {
+  const names = Object.values(FORECAST_FIELDS);
+  if (names.some((name) => form.getAll(name).length > 1))
+    throw new PlanRefused(400, "Send each forecast field once.");
+  const checked = forecastFromForm(FIRST_QUARTER, (name) => form.get(name));
+  for (const name of names) form.delete(name);
+  if (!checked.ok) throw new ForecastRefused(checked.problem);
+  return checked.forecast;
 }
 
 /**

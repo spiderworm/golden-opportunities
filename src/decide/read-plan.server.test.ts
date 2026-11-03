@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { MAX_PLAN_BODY, PlanRefused, readAnyPlan, readPlan, readQ2Plan } from "./read-plan.server";
+import {
+  ForecastRefused,
+  MAX_PLAN_BODY,
+  PlanRefused,
+  readAnyPlan,
+  readPlan,
+  readQ2Plan,
+} from "./read-plan.server";
 
 const URL_ = "http://localhost:5173/decide";
 
@@ -161,6 +168,7 @@ describe("readAnyPlan's count of reports read (reports.md section 5)", () => {
       form: "moves",
       plan: { levers: ["sale"] },
       reportsRead: 2,
+      forecast: null,
     });
     expect(await readAnyPlan(post("levers="))).toMatchObject({ reportsRead: 0 });
     expect(
@@ -178,5 +186,73 @@ describe("readAnyPlan's count of reports read (reports.md section 5)", () => {
     await expect(readAnyPlan(post("levers=&reportsRead=1&extra=1"))).rejects.toMatchObject({
       status: 400,
     });
+  });
+});
+
+describe("readAnyPlan's forecast (src/forecast)", () => {
+  const forecast = new URLSearchParams({
+    forecastRevenue: "140000,130000,150000",
+    forecastUnits: ",,",
+    forecastNote: "x".repeat(500),
+  }).toString();
+
+  it("takes the optional fields beside either form's, for the quarter the form names", async () => {
+    expect(await readAnyPlan(post(`levers=sale&${forecast}`))).toMatchObject({
+      plan: { levers: ["sale"] },
+      forecast: {
+        quarter: "2194-Q1",
+        revenue: { point: 140000, low: 130000, high: 150000 },
+        note: "x".repeat(500),
+      },
+    });
+    const later = await readAnyPlan(post(`picks=%2C%2C&levers=&quarter=2194-Q3&${forecast}`));
+    expect(later).toMatchObject({ form: "picks", quarter: "2194-Q3" });
+    expect(later.forecast?.quarter).toBe("2194-Q3");
+    expect(later.forecast).not.toHaveProperty("units");
+  });
+
+  it("is none when the fields are empty or absent", async () => {
+    expect(await readAnyPlan(post("levers="))).toMatchObject({ forecast: null });
+    expect(
+      await readAnyPlan(post("levers=&forecastRevenue=%2C%2C&forecastUnits=%2C%2C&forecastNote=")),
+    ).toMatchObject({ forecast: null });
+  });
+
+  it("refuses the plan for a wrong one, naming the field and why", async () => {
+    const problem = async (body: string) => {
+      try {
+        await readAnyPlan(post(body));
+        return "read";
+      } catch (error) {
+        return error instanceof ForecastRefused ? error.problem : (error as PlanRefused).status;
+      }
+    };
+    expect(await problem("levers=&forecastRevenue=160000%2C130000%2C150000")).toEqual({
+      field: "revenue",
+      reason: "point_above_high",
+    });
+    expect(await problem("levers=&forecastUnits=9000%2C%2C")).toEqual({
+      field: "units",
+      reason: "partial",
+    });
+    expect(
+      await problem(`levers=&forecastUnits=1%2C1%2C1&forecastNote=${"x".repeat(501)}`),
+    ).toEqual({ field: "note", reason: "too_long" });
+    // Sent twice is a malformed form, not the player's to fix.
+    expect(await problem("levers=&forecastUnits=1%2C1%2C1&forecastUnits=2%2C2%2C2")).toBe(400);
+  });
+
+  it("fits the largest forecast inside the cap", async () => {
+    const largest = new URLSearchParams({
+      picks: ["9780000000000", "9780000000001", "9780000000002"].join(","),
+      levers: "events",
+      quarter: "2194-Q3",
+      reportsRead: "999",
+      forecastRevenue: "9999999.99,9999999.99,9999999.99",
+      forecastUnits: "999999,999999,999999",
+      // Four UTF-8 bytes each, twelve once percent-encoded: the most a 500-character note can take.
+      forecastNote: "\u{1F4DA}".repeat(500),
+    }).toString();
+    expect(largest.length).toBeLessThan(MAX_PLAN_BODY);
   });
 });

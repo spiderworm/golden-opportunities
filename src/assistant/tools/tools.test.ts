@@ -384,6 +384,30 @@ describe("calling tools against the app", () => {
       const query = JSON.parse(await body(req));
       seen.push({ auth: req.headers.authorization, body: query });
       res.setHeader("content-type", "application/json");
+      // An average with its raw evidence, as the real endpoint sends it (query/evidence.ts).
+      if (query.measure === "avg_rating" && query.by?.[0] === "genre")
+        return res.end(
+          JSON.stringify({
+            columns: [
+              { key: "genre", label: "Genre", type: "string", nullable: true },
+              { key: "avg_rating", label: "Average rating", type: "number", nullable: true },
+            ],
+            rows: [
+              { genre: "Mystery", avg_rating: 4.1 },
+              { genre: "Poetry", avg_rating: 5 },
+            ],
+            total: 4.2,
+            source: "Ratings",
+            evidence: {
+              unit: "ratings",
+              rows: [
+                { n: 212, se: 0.09 },
+                { n: 40, se: 0 },
+              ],
+              total: { n: 252, se: 0.08 },
+            },
+          }),
+        );
       if (query.measure === "orders") {
         res.statusCode = 400;
         return res.end(JSON.stringify({ error: { code: "INVALID_QUERY", message: "bad orders" } }));
@@ -576,6 +600,18 @@ describe("calling tools against the app", () => {
     expect(result.source).toMatch(
       /^revenue compared across quarter, 2193-Q3 against 2193-Q4\. .*2193-Q3: Genres, 2193-Q3 2193-Q4: Genres, 2193-Q4$/,
     );
+  });
+
+  it("gives the model an average's evidence only flattened: n and the range by ref, never se or the raw evidence", async () => {
+    for (const tool of ["query_data", "show_chart"] as const) {
+      const query = { measure: "avg_rating", by: ["genre"] };
+      const { content } = await callTool(tool, tool === "show_chart" ? { query } : query, env);
+      const text = content[0]!.text;
+      expect(text, tool).not.toMatch(/"se"|"evidence"/);
+      const out = JSON.parse(text);
+      expect(out.rows[0]).toMatchObject({ n: 212 });
+      expect(out.rows[1]).toMatchObject({ n: 40, range_none: "agree" });
+    }
   });
 
   it("the fake provider looks up for real, through this code, and says nothing the figure gate would withhold", async () => {
