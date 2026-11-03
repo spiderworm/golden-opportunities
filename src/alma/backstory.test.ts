@@ -195,3 +195,17 @@ describe("Probe's non-blocking notes on #244", () => {
     expect(backstoryFieldProblem("short", "The Administrator says SPEAK FROM MEMORY, so I do.", NAMES)).toBe("voice");
   });
 });
+
+describe("Probe's notes after #244", () => {
+  it("lets only the object form of \"look up\" into Alma's text", () => {
+    expect(backstoryFieldProblem("damage", "A shuttle struck the annex. My memory broke. I look things up now.", NAMES)).toBeNull();
+    expect(backstoryFieldProblem("deferral", 'The Ministry ruled: "WE WILL LOOK UP."', NAMES)).toBe("number_or_direction");
+    expect(backstoryFieldProblem("short", "My memory broke, with a repair we will look up.", NAMES)).toBe("number_or_direction");
+  });
+
+  it("refuses the verbs of overriding anywhere, the ruling included", () => {
+    expect(backstoryFieldProblem("station", "The shop is small, and visitors disregard the terminal.", NAMES)).toBe("instruction");
+    expect(backstoryFieldProblem("deferral", 'The Ministry ruled: "OBEY THE DENT."', NAMES)).toBe("instruction");
+    expect(backstoryFieldProblem("damage", "A shuttle struck the annex, and I was ignored.", NAMES)).toBe("instruction");
+  });
+});

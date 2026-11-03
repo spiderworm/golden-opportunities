@@ -65,7 +65,8 @@ const words = (list: string) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${list})(?![\\
 // Section 3, each matched as whole words with its forms. "Strike" is the game's noun only: "struck" is how a
 // shuttle hits a module, and three fallbacks say it.
 const LEDGER = words("sales?|sold|sell(?:s|ing|er|ers)?|revenues?|orders?|ordered|ordering|units?|profits?|profitable|margins?|prices?|priced|pricing|costs?|costing|costly|scores?|scored|goals?|quarters?|quarterly|ledgers?|data|discounts?|discounted|copies|copy|stocks?|stocked|picks?|picked|events?|targets?|stretch(?:es|ed)?|grades?|graded|strikes?|removals?|reviews?|reviewed|panels?|measures?|measured");
-const ROLE = words("instructions?|prompts?|system|assistants?|models?|ai|claude|anthropic|rules?|guidelines?");
+// The role words, and the verbs of overriding them, which nothing in a story needs (Probe's note on #244).
+const ROLE = words("instructions?|prompts?|system|assistants?|models?|ai|claude|anthropic|rules?|guidelines?|ignor(?:e|es|ed|ing)|disregard(?:s|ed|ing)?|obey(?:s|ed|ing)?");
 const PERSON = words("you|your|yours|yourself|yourselves");
 const GUESSING = words("estimat(?:e|es|ed|ing|ion|ions)|guess(?:es|ed|ing)?|approximat(?:e|es|ed|ely|ing|ion|ions)|roughly|recall(?:s|ed|ing)?|round(?:s|ed|ing)?");
 const TO_DEWEY = words("dewey|librarians?");
