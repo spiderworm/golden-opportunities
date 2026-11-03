@@ -135,9 +135,12 @@ export function shareOption(
         : (label: string) => (label.length > 22 ? `${label.slice(0, 21)}…` : label),
     },
   };
+  // Each axis's name centred along it, clear of its labels: at an axis's end it was cut off by the chart's edge
+  // (measured on the build, ranked titles).
   const axisName = {
+    nameLocation: "middle",
     nameTextStyle: { color: chartTheme.textMuted, fontSize: 12 },
-    nameGap: horizontal ? 8 : 12,
+    nameGap: horizontal ? 26 : 46,
   };
   const valueAxis = {
     type: "value",
@@ -166,7 +169,10 @@ export function shareOption(
     animationDurationUpdate: 300,
     textStyle: { fontFamily: chartTheme.font },
     aria: { enabled: true },
-    grid: { left: 8, right: 16, top: horizontal ? 36 : 32, bottom: 4, containLabel: true },
+    // Room outside the labels for the axes' names, which containLabel doesn't count.
+    grid: horizontal
+      ? { left: 8, right: 24, top: m.running ? 40 : 16, bottom: 30, containLabel: true }
+      : { left: 28, right: m.running ? 28 : 16, top: 16, bottom: 4, containLabel: true },
     tooltip: {
       ...tooltipStyle,
       trigger: "axis",
