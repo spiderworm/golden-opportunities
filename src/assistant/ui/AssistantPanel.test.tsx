@@ -3,6 +3,7 @@ import { createRoutesStub } from "react-router";
 import { expect, it } from "vitest";
 import type { LookupPin } from "../tools/definitions";
 import {
+  activityOf,
   AssistantPanel,
   fitToText,
   LookupView,
@@ -11,7 +12,7 @@ import {
   talkingTurn,
 } from "./AssistantPanel";
 import { Group } from "three";
-import { pose } from "./DeweyFaces3D";
+import { mouthOpen, pose } from "./DeweyFaces3D";
 
 it("renders an empty panel on the server, without touching storage, and offers no reset until there's a conversation", () => {
   const storage = new Proxy({} as Storage, {
@@ -229,4 +230,55 @@ it("starts a table on its table with the toggle pressed, and offers its chart wh
   expect(total).toMatch(/role="tooltip"[^>]*>A single figure has no chart</);
   // Without the page's charts (any page but Investigate), no toggle at all (Sage).
   expect(renderToString(<LookupView lookup={data} />)).not.toMatch(/aria-pressed/);
+});
+
+it("knows when Dewey is thinking, then saying his answer, and not after", () => {
+  expect(activityOf([])).toBeNull();
+  expect(activityOf([{ state: "done", text: "Yes." }])).toBeNull();
+  expect(
+    activityOf([
+      { state: "done", text: "Yes." },
+      { state: "streaming", text: "" },
+    ]),
+  ).toEqual({
+    turn: 1,
+    kind: "thinking",
+  });
+  expect(activityOf([{ state: "streaming", text: "Q3 brought" }])).toEqual({
+    turn: 0,
+    kind: "saying",
+  });
+});
+
+it("leans back to ponder while thinking, and hops when the answer comes", () => {
+  const dewey = new Group();
+  let lean = 0;
+  for (let t = 0; t < 20; t += 0.05) {
+    pose(dewey, t, 0, 0, 1);
+    lean = Math.min(lean, dewey.rotation.x);
+  }
+  // Looking up: tipped back a few degrees.
+  expect(lean).toBeLessThan((-2 * Math.PI) / 180);
+  pose(dewey, 0, 0, 0, 0, 0.5);
+  // Halfway through the flare: a hop of a couple of centimetres.
+  expect(dewey.position.y).toBeGreaterThan(0.02);
+});
+
+it("moves his mouth without pause while an answer streams in, and in phrases after", () => {
+  const closed = (streaming: boolean) => {
+    // The longest stretch his mouth stays shut, in seconds.
+    let longest = 0;
+    let run = 0;
+    for (let t = 0; t < 20; t += 0.02) {
+      const open = mouthOpen(t, 1, streaming);
+      expect(open).toBeGreaterThanOrEqual(0);
+      expect(open).toBeLessThanOrEqual(1);
+      run = open < 0.05 ? run + 0.02 : 0;
+      longest = Math.max(longest, run);
+    }
+    return longest;
+  };
+  // Syllables only: never shut for long while streaming; a breath between phrases otherwise.
+  expect(closed(true)).toBeLessThan(0.3);
+  expect(closed(false)).toBeGreaterThan(0.8);
 });
