@@ -189,7 +189,9 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             track("investigate_measure_changed", { measure: measures[0]!, measures: measures.join("+"), count: measures.length });
             const [measure, ...rest] = measures;
             // Several measures can't also compare quarters (David's choice): that switches off.
-            update({ ...state, measure: measure!, also: rest, compare: rest.length ? false : state.compare });
+            // The heatmap follows the chart's first measure until the player picks its own.
+            const heat = state.heat.measure === state.measure ? { ...state.heat, measure: measure! } : state.heat;
+            update({ ...state, measure: measure!, also: rest, compare: rest.length ? false : state.compare, heat });
           }}
           onSeries={(measure, shown) => track("investigate_series_toggled", { measure, shown })}
           onGroup={(by) => {
@@ -231,10 +233,14 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           state={state}
           result={heatmap}
           quarters={options.quarter}
-          onCell={(weekday, month) => {
-            const next = toggleCell(state, weekday, month);
-            track("investigate_drilldown", { source: "heatmap", dimension: "weekday_month", selected: next.filters.month ? 1 : 0 });
+          onCell={(row, col) => {
+            const next = toggleCell(state, row, col);
+            track("investigate_drilldown", { source: "heatmap", dimension: `${state.heat.rows}_${state.heat.cols}`, selected: next.filters[state.heat.cols] ? 1 : 0 });
             update(next);
+          }}
+          onHeat={(heat) => {
+            track("investigate_heatmap_changed", { measure: heat.measure, rows: heat.rows, cols: heat.cols });
+            update({ ...state, heat });
           }}
         />
         <PinnedCharts
