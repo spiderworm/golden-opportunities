@@ -3,7 +3,7 @@
 // fonts are the site's stack without the web font, so it makes no requests.
 // Plot has final say on the copy (US English, no emoji).
 
-import portrait from "../../../public/bosses/full/overall.webp?inline";
+import portrait from "../../../public/bosses/overall.webp?inline";
 
 export const CLOSED_PAGE = `<!DOCTYPE html>
 <html lang="en">
@@ -19,26 +19,28 @@ export const CLOSED_PAGE = `<!DOCTYPE html>
     padding: 32px 20px; }
   .card { max-width: 560px; background: #161c30; border: 1px solid #2a3254;
     border-radius: 20px; padding: 32px; text-align: center; }
-  img { width: 160px; height: 160px; border-radius: 20px; border: 2px solid #d95926;
-    background: #1d2440; }
-  h1 { font-size: 26px; line-height: 1.25; margin: 24px 0 16px; }
+  .portrait { display: block; width: 160px; height: 160px; margin: 0 auto;
+    border-radius: 16px; border: 2px solid #d95926; background: #1d2440;
+    box-shadow: 0 0 0 4px rgb(217 89 38 / 0.12); }
+  h1 { font-size: 26px; line-height: 1.25; margin: 4px 0 16px; }
   p { color: #9aa3c7; font-size: 16px; line-height: 1.6; margin: 0 0 14px; }
-  .stamp { display: inline-block; margin: 8px 0 20px; padding: 6px 14px; border: 2px solid #8f84ff;
+  .stamp { position: relative; display: inline-block; margin: -18px 0 20px 120px;
+    background: #161c30; padding: 6px 14px; border: 2px solid #8f84ff;
     border-radius: 12px; color: #8f84ff; font-weight: 700; letter-spacing: 0.08em;
     text-transform: uppercase; font-size: 13px; transform: rotate(-3deg); }
   .sign { color: #6c76a0; font-size: 14px; margin-top: 22px; }
   @media (max-width: 480px) {
     .card { padding: 24px 20px; }
-    .stamp { white-space: nowrap; font-size: 12px; letter-spacing: 0.04em; }
+    .stamp { white-space: nowrap; font-size: 12px; letter-spacing: 0.04em; margin-left: 0; }
   }
 </style>
 </head>
 <body>
 <main>
   <div class="card">
-    <img src="${portrait}" alt="The Station Administrator, a desk-shaped robot holding a clipboard">
-    <h1>Sorry, we can't do that for you right now.</h1>
+    <img class="portrait" src="${portrait}" alt="The Station Administrator, a robot with one glowing orange eye, holding a clipboard">
     <div class="stamp">Request admired. Not processed.</div>
+    <h1>Sorry, we can't do that for you right now.</h1>
     <p>The Station Administrator has reviewed your request and found it excellent, possibly the finest request this office has received all quarter. Regrettably, the bookshop is too busy being magnificent to fulfill it.</p>
     <p>Orbital Books has stepped away from the counter for a short recalibration. Every shelf is accounted for. Every ledger is perfect. When the doors reopen, they will be noticeably better doors.</p>
     <p>Please try again in a few minutes. There is no form to fill in: the Administrator has already filled it in for you, twice, flawlessly.</p>
