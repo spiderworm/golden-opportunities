@@ -391,11 +391,11 @@ describe("look-alike letters (Probe's review of #229)", () => {
 
 describe("\"look up\" (Audit's review of #244)", () => {
   it("is allowed as looking something up, with its object or after a subject or auxiliary", () => {
-    for (const sentence of ["I looked up revenue in {{a4.quarter}}: {{a4}}.", "I’ve looked up revenue in {{a4.quarter}}: {{a4}}.", "I looked it up: {{a4}}.", "To look up revenue by quarter, ask me.", "I can look things up for you.", "That's a number I didn't look up.", "Here are the figures I've just looked up.", "I'm looking up revenue now.", "I'd like to look up revenue by quarter.", "Let me look up the figures."]) {
+    for (const sentence of ["I looked up revenue in {{a4.quarter}}: {{a4}}.", "I’ve looked up revenue in {{a4.quarter}}: {{a4}}.", "I looked it up: {{a4}}.", "To look up revenue by quarter, ask me.", "I can look things up for you.", "That's a number I didn't look up.", "Here are the figures I've just looked up.", "I'm looking up revenue now.", "I'd like to look up revenue by quarter.", "Let me look up the figures.", "Look up revenue by quarter on the terminal."]) {
       expect(say(sentence), sentence).not.toBe(WITHHELD);
     }
   });
   it("but never as the improvement idiom, which states a direction", () => {
-    for (const sentence of ["Sales are looking up in {{a4.quarter}}.", "Things are looking up.", "Revenue looks up in {{a4.quarter}}.", "Sales will look up in {{a4.quarter}}.", "Revenue could look up.", "Things can look up.", "Sales did look up in {{a4.quarter}}.", "Sales do look up in {{a4.quarter}}.", "Sales could look up.", "Business did look up.", "Revenue will look up next season.", "Revenue then looked up.", "Revenue started to look up."]) expect(say(sentence), sentence).toBe(WITHHELD);
+    for (const sentence of ["Sales are looking up in {{a4.quarter}}.", "Things are looking up.", "Revenue looks up in {{a4.quarter}}.", "Sales will look up in {{a4.quarter}}.", "Revenue could look up.", "Things can look up.", "Sales did look up in {{a4.quarter}}.", "Sales do look up in {{a4.quarter}}.", "Sales could look up.", "Business did look up.", "Revenue will look up next season.", "Revenue then looked up.", "Revenue started to look up.", "Sales are looking up each month.", "Mystery sales look up each quarter.", "Revenue looked up quarter on quarter.", "Fiction looked up a month later.", "Things are looking up sales-wise.", "Sales are looking up quarter over quarter.", "Revenue is looking up month by month.", "Revenue looks up the quarter after {{a4.quarter}}.", "Sales, we were looking up."]) expect(say(sentence), sentence).toBe(WITHHELD);
   });
 });
