@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { heatWindow } from "./state";
+import { MEASURE_DIMENSIONS, MEASURES } from "~/query/types";
+import { GROUPINGS, heatWindow, lastYearBlock, lastYearUnshown, type ChartMeasure } from "./state";
 import {
   awardChoice,
   canAddMeasure,
@@ -31,6 +32,7 @@ describe("investigate state", () => {
       also: [],
       by: "genre",
       compare: true,
+      lastYear: false,
       scatter: false,
       filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] },
       heat: { measure: "units", rows: "weekday", cols: "month", period: "recent" },
@@ -45,6 +47,82 @@ describe("investigate state", () => {
       "measure=units&by=genre&compare=quarter&quarter=2193-Q4&genre=Fiction&genre=Memoir",
     );
     expect(parseState(params)).toEqual(state);
+  });
+
+  it("keeps vs. same quarter last year in the URL, and says why it can't apply", () => {
+    const state = parseState(new URLSearchParams("by=genre&vs=last_year&quarter=2194-Q1"));
+    expect(state.lastYear).toBe(true);
+    expect(toSearchParams(state).toString()).toBe("by=genre&vs=last_year&quarter=2194-Q1");
+    const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1"];
+    expect(lastYearBlock(state, quarters)).toBeNull();
+    expect(lastYearBlock({ ...state, by: "month" }, quarters)).toBeNull();
+    const reasons = {
+      "Ratings aren't recorded by quarter, so there's no last year to compare": [
+        { ...state, measure: "avg_rating" as const, also: ["units" as const] },
+        { ...state, measure: "ratings" as const },
+      ],
+      "Checkouts aren't recorded by year, so there's no last year to compare": [
+        { ...state, measure: "checkouts" as const },
+      ],
+      "Show one measure to compare with last year": [{ ...state, also: ["units" as const] }],
+      "Turn off Compare quarters to compare with last year": [{ ...state, compare: true }],
+      "Break down by something other than quarter to compare with last year": [
+        { ...state, by: "quarter" as const },
+      ],
+      "Filter to one quarter to compare it with last year": [
+        { ...state, filters: {} },
+        { ...state, filters: { quarter: ["2194-Q1", "2193-Q4"] } },
+      ],
+      "Q3 2196 isn't in the ledgers yet: filter to a quarter that's been played": [
+        { ...state, filters: { quarter: ["2196-Q3"] } },
+      ],
+      "The ledgers start in 2193: there's no year before it to compare": [
+        { ...state, filters: { quarter: ["2193-Q3"] } },
+      ],
+    };
+    for (const [reason, states] of Object.entries(reasons))
+      for (const s of states) expect(lastYearBlock(s, quarters)).toBe(reason);
+    // A quarter whose year before isn't visible to the player.
+    expect(lastYearBlock(state, ["2194-Q1"])).toBe(
+      "Q1 2193 isn't in the ledgers, so there's nothing to compare",
+    );
+  });
+
+  it("never refuses last year silently: every state either allows it or says why", () => {
+    const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1", "2194-Q2"];
+    const quarterFilters = [[], ["2194-Q1"], ["2194-Q1", "2194-Q2"], ["2193-Q2"], ["2197-Q1"]];
+    let allowed = 0;
+    let refused = 0;
+    for (const measure of MEASURES)
+      for (const also of [[], ["units"]] as ChartMeasure[][])
+        for (const compare of [false, true])
+          for (const by of GROUPINGS)
+            for (const quarter of quarterFilters) {
+              const filters = quarter.length ? { quarter } : {};
+              const reason = lastYearBlock({ measure, also, compare, by, filters }, quarters);
+              if (reason === null) {
+                allowed++;
+                // Allowed is exactly: dated, one measure, no Compare quarters, not by quarter, one played
+                // quarter with a year before it.
+                expect(MEASURE_DIMENSIONS[measure]).toContain("quarter");
+                expect([also.length, compare, by, quarter]).toEqual([0, false, by, ["2194-Q1"]]);
+                expect(by).not.toBe("quarter");
+              } else {
+                refused++;
+                expect(reason.length).toBeGreaterThan(10);
+              }
+            }
+    expect(allowed).toBeGreaterThan(0);
+    expect(refused).toBeGreaterThan(allowed);
+    expect(
+      lastYearUnshown({ filters: { quarter: ["2194-Q1"] } }, { rows: [], lastYear: undefined }),
+    ).toBe("Nothing in Q1 2194 matches these filters, so there's nothing to compare");
+    expect(lastYearUnshown({ filters: { quarter: ["2194-Q1"] } }, { rows: [{}] })).toBe(
+      "Can't compare this chart with last year",
+    );
+    expect(
+      lastYearUnshown({ filters: { quarter: ["2194-Q1"] } }, { rows: [{}], lastYear: {} }),
+    ).toBeNull();
   });
 
   it("falls back to defaults for anything it doesn't know", () => {

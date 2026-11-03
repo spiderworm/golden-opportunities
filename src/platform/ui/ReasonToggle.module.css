@@ -1,0 +1,29 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Read by screen readers always; shown under the button on hover and keyboard focus. */
+.reason {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: 260px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-panel-raised);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  pointer-events: none;
+  clip-path: inset(50%);
+}
+
+.wrap:hover .reason,
+.wrap:focus-within .reason {
+  clip-path: none;
+}

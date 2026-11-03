@@ -8,6 +8,7 @@ import {
 } from "react-router";
 
 import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
+import { DeweyColumn } from "~/assistant/ui/DeweyColumn";
 import type { ShellHandle } from "~/shell/Shell";
 import { track } from "~/platform/analytics/analytics.client";
 import { queryCache } from "~/platform/query-cache.client";
@@ -256,6 +257,10 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             track("investigate_scatter_toggled", { on });
             update({ ...state, scatter: on });
           }}
+          onLastYear={(on) => {
+            track("investigate_last_year_toggled", { on });
+            update({ ...state, lastYear: on });
+          }}
           onDrill={(value) => {
             const next = toggleFilterValue(state, state.by, value);
             track("investigate_drilldown", {
@@ -341,14 +346,14 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
         />
       </div>
       {/* Dewey: a column beside the dashboard on wide screens, after it below that. */}
-      <aside className={styles.assistant} aria-label="Dewey">
+      <DeweyColumn className={styles.assistant}>
         <AssistantPanel
           ChartView={DeweyChart}
           onPin={(chart) => pins.add(chart, "dewey")}
           onPinLookup={(pin) => pins.add(pin, "player")}
           isPinned={pins.has}
         />
-      </aside>
+      </DeweyColumn>
     </div>
   );
 }
