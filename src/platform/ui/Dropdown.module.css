@@ -152,6 +152,10 @@
   outline-offset: -2px;
 }
 
+.toggle[data-under] {
+  padding-left: 36px;
+}
+
 .toggle[data-disabled] {
   color: var(--color-text-subtle);
   cursor: default;
