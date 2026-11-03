@@ -91,7 +91,7 @@ export const PLAYER_COPY = {
   /** Chart's: the save was busy (409); the draft is kept. */
   busy: "Your report didn't save. Please save it again.",
   /** Chart's: after removal, Add to report has nothing to offer. */
-  closed: "Reports can still be read, but no longer changed.",
+  closed: "Reports can still be read, but no longer made or changed.",
   leave: {
     question: "Leave without saving your changes to this report?",
     leave: "Leave",
@@ -105,6 +105,23 @@ export const PLAYER_COPY = {
   },
   addToReport: "Add to report",
   newReportFromPin: "New report\u2026",
+} as const;
+
+/** Reports in Decide (section 4): read beside the plan, never touching it. Plot's strings from #171. */
+export const DECIDE_COPY = {
+  button: (n: number) => `Your reports (${n})`,
+  none: "No reports yet",
+  heading: "Your reports",
+  shopHeading: "Quarterly reports",
+  /** Chart's: back from one report to the list. */
+  back: "All reports",
+  close: "Close",
+  edit: "Edit in Reports",
+  leave: {
+    question: "Your plan isn't filed yet. Leaving Decide clears it. Go to Reports?",
+    go: "Go to Reports",
+    stay: "Stay on the plan",
+  },
 } as const;
 
 /** The greeting line: the new shop reports, as the nav badge counts them. */

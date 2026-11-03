@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DecideReports } from "~/reports/DecideReports";
 import {
   data,
   Link,
@@ -235,6 +236,8 @@ function PlanQ1() {
         {COPY.heading}
       </h2>
       <p className={styles.hint}>{COPY.hint}</p>
+      {/* The player's reports, read beside the plan (reports.md section 4). */}
+      <DecideReports planStarted={chosen.length > 0} />
     </div>
   );
   const form = (
