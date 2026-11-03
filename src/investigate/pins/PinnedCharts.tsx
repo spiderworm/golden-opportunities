@@ -33,7 +33,13 @@ import {
   withLastYear,
 } from "../charts/last-year";
 import { withNoise } from "../charts/evidence";
-import { formatDimensionValue, formatMeasure, MEASURE_LABELS, RELATIVE_NAMES } from "../format";
+import {
+  formatDimensionValue,
+  formatMeasure,
+  MEASURE_LABELS,
+  RELATIVE_NAMES,
+  relativeReason,
+} from "../format";
 import { isRelativeQuarter, type RelativeQuarter } from "~/query/relative";
 import { eventsCaption, markersFor, withMarkers } from "../charts/event-markers";
 import { monthsInScope } from "../state";
@@ -270,6 +276,7 @@ export function PinChart({
     // A spec's query never changes for a key; a new query is a new key.
   }, [key]);
 
+  const outOfLedgers = waterfallOutOfLedgers(spec, quarters);
   return (
     <>
       {load.status === "loading" && (
@@ -284,12 +291,18 @@ export function PinChart({
       {load.status === "ready" && load.kind === "query" && load.result.resolved && (
         <p className={styles.pinMeta}>{resolvedLine(load.result.resolved)}</p>
       )}
-      {load.status === "ready" && load.kind === "waterfall" && load.resolved && (
+      {load.status === "ready" && load.kind === "waterfall" && load.resolved && !outOfLedgers && (
         <p className={styles.pinMeta}>{resolvedLine(load.resolved)}</p>
       )}
-      {load.status === "ready" && spec.kind === "waterfall" && load.kind === "waterfall" && (
-        <WaterfallPinBody spec={spec} rows={load.rows} table={table} />
+      {load.status === "ready" && outOfLedgers && (
+        <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
+          {outOfLedgers}
+        </p>
       )}
+      {load.status === "ready" &&
+        spec.kind === "waterfall" &&
+        load.kind === "waterfall" &&
+        !outOfLedgers && <WaterfallPinBody spec={spec} rows={load.rows} table={table} />}
       {load.status === "ready" &&
         spec.kind !== "waterfall" &&
         (spec.kind === "comparison"
@@ -688,6 +701,21 @@ function WaterfallPinBody({
       </p>
     </>
   );
+}
+
+/**
+ * Why a waterfall made on Latest quarter can't be drawn now, in Plot's words, or null: pins outlive Play again, so on
+ * a fresh save its year earlier may be before the ledgers, and it would draw a change from nothing (Chart, #380).
+ */
+export function waterfallOutOfLedgers(spec: PinSpec, quarters: readonly string[]): string | null {
+  if (spec.kind !== "waterfall") return null;
+  const { then, now } = spec.waterfall;
+  for (const quarter of [now, then])
+    if (isRelativeQuarter(quarter)) {
+      const reason = relativeReason(quarter, quarters);
+      if (reason) return reason;
+    }
+  return null;
 }
 
 /** What each relative quarter in a pin's filter is now, as Plot words it: `Latest quarter: Q1 2194`. */
