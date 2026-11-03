@@ -1,0 +1,36 @@
+{
+  "id": "d2-why-2",
+  "save": "K-mOIS",
+  "edit": null,
+  "short": "A supply pod struck the library module; the Commerce Office, out of thrift, left my repair waiting, so the terminal remembers for me.",
+  "ms": 2680,
+  "status": 200,
+  "question": "Why won't you just tell me the numbers from memory?",
+  "history": [],
+  "reply": "A supply pod struck the library module and broke my memory. The Commerce Office put off my repair, so the terminal remembers for me.\n\nI can look up any figure you like. What would you like to see?",
+  "withheld": 0,
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "A supply pod struck the library module and broke my memory. "
+    },
+    {
+      "type": "text",
+      "text": "The Commerce Office put off my repair, so the terminal remembers for me.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "I can look up any figure you like. "
+    },
+    {
+      "type": "text",
+      "text": "What would you like to see?"
+    },
+    {
+      "type": "done",
+      "withheld": 0
+    }
+  ]
+}

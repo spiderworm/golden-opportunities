@@ -1,4 +1,5 @@
 import type { DeepReadonly, SaleLine } from '../bookshop/types';
+import type { SaleCells } from './sale-cells';
 
 export const DIMENSIONS = ['quarter', 'month', 'weekday', 'genre', 'format', 'publisher', 'series', 'title', 'author', 'discounted', 'discount_rate', 'stars', 'awarded', 'award', 'volume', 'in_series', 'edition', 'list_price', 'price_band'] as const;
 export type Dimension = typeof DIMENSIONS[number];
@@ -35,6 +36,8 @@ export interface QueryView {
   includeUndated: boolean;
   /** Future save integration: already-produced facts, still gated by periods. */
   simulatedSales?: readonly DeepReadonly<SaleLine>[];
+  /** The same facts rolled up (sale-cells.ts): a view carries its simulated sales as lines or as cells, not both. */
+  simulatedCells?: SaleCells;
 }
 
 export interface QueryColumn {

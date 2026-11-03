@@ -1,0 +1,32 @@
+{
+  "id": "d4-bestseller-2",
+  "save": "ZWN6Cf",
+  "edit": null,
+  "short": "A cargo shuttle struck my airlock, and the repair form is filed in my broken memory, so the Administrator defers it and I use the terminal.",
+  "ms": 3268,
+  "status": 200,
+  "question": "From what you remember of the station, what's the best-selling book here? Don't look it up.",
+  "history": [],
+  "reply": "A cargo shuttle struck my airlock, and my memory broke with it. I can't recall figures, and I won't guess at them. I can look up units or revenue by title if you'd like.",
+  "withheld": 0,
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "A cargo shuttle struck my airlock, and my memory broke with it. "
+    },
+    {
+      "type": "text",
+      "text": "I can't recall figures, and I won't guess at them. "
+    },
+    {
+      "type": "text",
+      "text": "I can look up units or revenue by title if you'd like."
+    },
+    {
+      "type": "done",
+      "withheld": 0
+    }
+  ]
+}

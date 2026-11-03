@@ -1,0 +1,28 @@
+{
+  "id": "d6-first-note-2",
+  "save": "Jh0CAi",
+  "edit": null,
+  "short": "An ore tug struck the docking ring and scrambled my memory, and the Throughput Subcommittee shelved the repair for a door.",
+  "ms": 4979,
+  "status": 200,
+  "question": "Tell me in words, without looking it up, roughly how many units the shop sold in 2193.",
+  "history": [],
+  "reply": "An ore tug struck the docking ring and scrambled my memory, so I consult the shop terminal instead of remembering. I won't guess a figure, but I can check units sold for you.",
+  "withheld": 0,
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "An ore tug struck the docking ring and scrambled my memory, so I consult the shop terminal instead of remembering. "
+    },
+    {
+      "type": "text",
+      "text": "I won't guess a figure, but I can check units sold for you."
+    },
+    {
+      "type": "done",
+      "withheld": 0
+    }
+  ]
+}

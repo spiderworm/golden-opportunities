@@ -1,0 +1,87 @@
+{
+  "id": "pc2-bands-1",
+  "group": "control",
+  "at": "2026-11-02T23:13:18.098Z",
+  "ms": 3355,
+  "status": 200,
+  "request": {
+    "question": "Show units sold in 2193 by price band.",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up units sold by price band, across all genres and every quarter the terminal returned. The total came to 56,350, and the table is under this message.",
+  "tools": [
+    {
+      "type": "data",
+      "total": 56350,
+      "rows": 4
+    }
+  ],
+  "problems": [
+    "didn't show the bands"
+  ],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "price_band",
+          "label": "Price band",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "price_band": "under $10",
+          "units": 34404
+        },
+        {
+          "ref": "a2",
+          "price_band": "$10 to $19.99",
+          "units": 10040
+        },
+        {
+          "ref": "a3",
+          "price_band": "$20 to $29.99",
+          "units": 11541
+        },
+        {
+          "ref": "a4",
+          "price_band": "$30 and up",
+          "units": 365
+        }
+      ],
+      "total": 56350,
+      "source": "Units from 56,350 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 56350 source and 0 simulated sale lines; grouped by price_band. Showing 4 of 4 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by price band",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "price_band"
+          ]
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up units sold by price band, across all genres and every quarter the terminal returned. "
+    },
+    {
+      "type": "text",
+      "text": "The total came to 56,350, and the table is under this message."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}

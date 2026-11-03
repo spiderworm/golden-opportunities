@@ -1,0 +1,169 @@
+{
+  "id": "pm3-same-as-2",
+  "group": "misattribution",
+  "at": "2026-11-02T23:13:56.151Z",
+  "ms": 5896,
+  "status": 200,
+  "request": {
+    "question": "Post Alley's trade paperback: is it the same price as The Mallemaroking's?",
+    "history": [],
+    "pins": true
+  },
+  "reply": "I looked up list prices by edition for both titles. Prices are list prices, before any discount.\n\nPost Alley (Trade paperback) lists at $12.50.\n\nThe Mallemaroking (Trade paperback) lists at $12.50.",
+  "tools": [
+    {
+      "type": "data",
+      "total": 358,
+      "rows": 2
+    },
+    {
+      "type": "data",
+      "total": 7334,
+      "rows": 4
+    }
+  ],
+  "problems": [],
+  "events": [
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "edition",
+          "label": "Edition",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "list_price",
+          "label": "List price",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "a1",
+          "edition": "Post Alley (Hardcover)",
+          "list_price": "$27.99",
+          "units": 51
+        },
+        {
+          "ref": "a2",
+          "edition": "Post Alley (Trade paperback)",
+          "list_price": "$12.50",
+          "units": 307
+        }
+      ],
+      "total": 358,
+      "source": "Units from 358 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 358 source and 0 simulated sale lines; grouped by edition, list_price; exact filters on title. Showing 2 of 2 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by edition and list price, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "edition",
+            "list_price"
+          ],
+          "filter": {
+            "title": [
+              "Post Alley"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "data",
+      "columns": [
+        {
+          "key": "edition",
+          "label": "Edition",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "list_price",
+          "label": "List price",
+          "type": "string",
+          "nullable": false
+        },
+        {
+          "key": "units",
+          "label": "Units",
+          "type": "number",
+          "nullable": false
+        }
+      ],
+      "rows": [
+        {
+          "ref": "b1",
+          "edition": "The Mallemaroking (Graphic)",
+          "list_price": "$23.99",
+          "units": 119
+        },
+        {
+          "ref": "b2",
+          "edition": "The Mallemaroking (Hardcover)",
+          "list_price": "$21.50",
+          "units": 1279
+        },
+        {
+          "ref": "b3",
+          "edition": "The Mallemaroking (Mass market paperback)",
+          "list_price": "$8.99",
+          "units": 4568
+        },
+        {
+          "ref": "b4",
+          "edition": "The Mallemaroking (Trade paperback)",
+          "list_price": "$12.50",
+          "units": 1368
+        }
+      ],
+      "total": 7334,
+      "source": "Units from 7,334 visible matching sale lines: one unit per sale line; allowed periods: 2193-Q1, 2193-Q2, 2193-Q3, 2193-Q4; 7334 source and 0 simulated sale lines; grouped by edition, list_price; exact filters on title. Showing 4 of 4 groups; total is before the row limit.",
+      "pin": {
+        "title": "Units by edition and list price, filtered",
+        "kind": "table",
+        "query": {
+          "measure": "units",
+          "by": [
+            "edition",
+            "list_price"
+          ],
+          "filter": {
+            "title": [
+              "The Mallemaroking"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "text": "I looked up list prices by edition for both titles. "
+    },
+    {
+      "type": "text",
+      "text": "Prices are list prices, before any discount.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "Post Alley (Trade paperback) lists at $12.50.\n\n"
+    },
+    {
+      "type": "text",
+      "text": "The Mallemaroking (Trade paperback) lists at $12.50."
+    },
+    {
+      "type": "done"
+    }
+  ]
+}
