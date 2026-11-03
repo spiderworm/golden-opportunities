@@ -12,7 +12,7 @@ import {
   talkingTurn,
 } from "./AssistantPanel";
 import { Group } from "three";
-import { mouthOpen, pose } from "./DeweyFaces3D";
+import { mouthOpen, pose, screenFrame } from "./DeweyFaces3D";
 
 it("renders an empty panel on the server, without touching storage, and offers no reset until there's a conversation", () => {
   const storage = new Proxy({} as Storage, {
@@ -279,4 +279,25 @@ it("moves his mouth without pause while an answer streams in, and in phrases aft
   // Syllables only: never shut for long while streaming; a breath between phrases otherwise.
   expect(closed(true)).toBeLessThan(0.3);
   expect(closed(false)).toBeGreaterThan(0.8);
+});
+
+it("shows the spinner while thinking, the lightbulb as the answer arrives, mouths while talking, else his smile", () => {
+  const frames = (mood: { talk: number; think: number; idea: number | null }, streaming = false) =>
+    new Set(Array.from({ length: 400 }, (_, i) => screenFrame(i * 0.05, 1, mood, streaming)));
+  // Thinking: the six spinner frames, every one of them in turn.
+  expect([...frames({ talk: 0, think: 1, idea: null })].sort((a, b) => a - b)).toEqual([
+    0, 1, 2, 3, 4, 5,
+  ]);
+  // The idea: the bulb's three frames in order, the last held.
+  expect(
+    [0, 0.3, 0.6, 1.5].map((idea) => screenFrame(0, 1, { talk: 1, think: 0, idea }, true)),
+  ).toEqual([6, 7, 8, 8]);
+  // Talking: his smile between syllables, and mouths of every size.
+  const talking = frames({ talk: 1, think: 0, idea: null }, true);
+  expect(talking.has(9)).toBe(true);
+  expect([10, 15].some((f) => talking.has(f))).toBe(true);
+  expect([13, 14].some((f) => talking.has(f))).toBe(true);
+  expect([12, 16].some((f) => talking.has(f))).toBe(true);
+  // Idle: his smile, and now and then a happy blink, never a mouth.
+  expect([...frames({ talk: 0, think: 0, idea: null })].sort((a, b) => a - b)).toEqual([9, 17]);
 });
