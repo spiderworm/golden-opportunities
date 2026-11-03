@@ -4,7 +4,7 @@
 // there (vs. same quarter last year leaves those out). Shared by the server and the browser, so it imports nothing
 // but types and evidence.ts.
 import { withinNoise } from "./evidence";
-import type { Dimension, QueryResult } from "./types";
+import type { Dimension, Query, QueryResult } from "./types";
 
 /** One period's results by the group: revenue, and units for the price/volume/mix split. */
 export interface PeriodRows {
@@ -69,6 +69,20 @@ export interface Waterfall {
   rest: (Omit<GroupChange, "key"> & { count: number }) | null;
   /** With the split asked for: the whole change split, the groups' splits summed, or why it can't be. */
   split?: Split | { problem: SplitProblem };
+}
+
+/**
+ * One quarter's query for a waterfall: revenue or units by the breakdown, with the chart's other filters, at the
+ * row limit's most. One builder for Investigate's loader, what it records, and a pin, so they can't drift (Frank,
+ * #335).
+ */
+export function droveQuery(
+  by: Dimension,
+  filter: Partial<Record<Dimension, readonly string[]>> | undefined,
+  quarter: string,
+  measure: "revenue" | "units",
+): Query {
+  return { measure, by: [by], filter: { ...filter, quarter: [quarter] }, limit: 200 };
 }
 
 /** How many groups get their own bar; the rest are one, "Everything else". */
