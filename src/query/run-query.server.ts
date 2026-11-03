@@ -753,7 +753,8 @@ export function runQuery(
       const { query: run, resolved } = resolveQuery(query, view.periods);
       result = executeWithLastYear(run, view);
       if (resolved) result = { ...result, resolved };
-      const events = eventsFor(query, view, result);
+      // Marked on the quarters the tokens resolved to, as the rows are (Frank, #378).
+      const events = eventsFor(run, view, result);
       if (events) result = { ...result, events };
       const body = serializeResult(result);
       if (key) remember(key, result, body.length + key.length);
