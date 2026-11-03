@@ -77,7 +77,7 @@ export function checkFilters(value: unknown): { ok: true; filters: Filters } | R
 }
 
 /** Two filter sets are one segment when they hold the same values, whatever their order. */
-function sameFilters(a: Filters, b: Filters): boolean {
+export function sameFilters(a: Filters, b: Filters): boolean {
   const key = (f: Filters) =>
     JSON.stringify(
       Object.entries(f)
