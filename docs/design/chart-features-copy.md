@@ -4,6 +4,18 @@ Status: **for the builders.** These are the strings for David's three chart feat
 
 The house rules hold: US English, no emoji, sentence case, and the toolbar's existing patterns. Dates are the one in-world exception, year first: `2194 Apr 1`, `2194 Mar` (David, 3 Nov 2026). Today a disabled button's tooltip says what to do ("Show one measure to compare quarters"), and a toggle keeps its name while it's pressed (`aria-pressed`, as `Table` and `Compare quarters` do).
 
+## The View menu (Chart)
+
+The chart's modes sit in one menu instead of a row of toggles (#341). David named it: asked about calling it "View", he said "Oh YEAH "View" is spot-on. Thanks. Ship it" (req_7fccd7d02625).
+
+- **The button:** `View`. With modes on, it shows `1 on` (or `2 on`) in muted text, and its accessible name is `View, 1 on`.
+- **The items, in this order:**
+  1. the ways to compare: `Compare quarters`, `vs. same quarter last year`, and `What drove the change`, with `Split into price, volume and mix` indented under it;
+  2. the ways to show one measure: `% of total`, `Running share`;
+  3. `Events`;
+  4. `Scatter plot`, last, since it's the only one that needs two measures.
+- **A disabled item** stays in the menu, with its reason as small visible text under it and as its accessible description. The sections below give each item's reasons.
+
 ## 1. Table and chart, either way (Chart; Sage for Dewey)
 
 David: "I'd like to allow (as often as we can make work) tables to toggle to charts, and charts to toggle to tables. In cases where dewey puts both in chat, they only need to do one."
@@ -222,7 +234,7 @@ David: "Pareto and share-of-total. "% of total" as a display mode, plus a cumula
 
 David: "I think it would be good to support event markers on time series. ie, mark the new volume's release (Feb 4), each Book of the Month pick, the player's Q1 move, and later Alma's events" (req_13c07b31a790).
 
-- **The Options item:** `Events`, a tick box like the others. Its hint: `Mark releases, Book of the Month picks, your moves and station events on the timeline`.
+- **The View item:** `Events`, a tick box like the others. Its hint: `Mark releases, Book of the Month picks, your moves and station events on the timeline`.
 - **Marker labels,** short, on the chart and in the legend: `Release`, `Pick`, `Your move` and `Event` (Alma's station events).
 - **Tooltips:** the date and kind, then what happened.
   - **Release:** `2194 Feb 4 · Release`, then `The Bourton Model Village Poisoning, Inspector Ryeslton volume 3`.
