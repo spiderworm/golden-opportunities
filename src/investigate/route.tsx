@@ -411,7 +411,7 @@ function pinSpecFor(state: InvestigateState, quarters: readonly string[]): PinSp
   // Decided on the quarters a relative quarter is now; the pinned query keeps the token, so it moves on.
   const dated = resolvedState(state, quarters);
   // What drove the change, while it's on: pinned as the waterfall it is, not the chart under it.
-  const waterfall = waterfallPinFor(dated, quarters);
+  const waterfall = waterfallPinFor(state, quarters);
   if (waterfall) return waterfall;
   const filter = filtersExcept(state.filters, [state.by]);
   // Pinned as shown: with last year, when the chart has it (Frank's #301), and titled so.
