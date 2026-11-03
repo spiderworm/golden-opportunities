@@ -8,7 +8,7 @@ import {
   type QueryResult,
   type QueryView,
 } from "~/query/types";
-import type { DroveRows, PeriodRows } from "~/query/decompose";
+import { waterfall, type DroveRows, type PeriodRows } from "~/query/decompose";
 import {
   DEFAULT_STATE,
   droveBlock,
@@ -129,14 +129,16 @@ function chartQuery(
   return { measure, by, ...withFilter(filtersExcept(state.filters, [state.by])), ...vs };
 }
 /**
- * The waterfall's queries: revenue and units by the breakdown in each quarter, with the chart's other filters. The
- * revenue it draws is shown, like the chart's; units only split it, so they're context. Plain queries, at the row
- * limit's most, so a group that sold in one quarter only is still there.
+ * The waterfall's queries: revenue and units by the breakdown in each quarter, with the chart's other filters. Plain
+ * queries, at the row limit's most, so a group that sold in one quarter only is still there. It's a view the player
+ * turns on, so its bars are discovery evidence, but only the groups drawn as their own bars: those folded into
+ * "Everything else" aren't, as rows a limit cuts aren't. The split shows no new figure, so units are context (Plot,
+ * #335).
  */
 function droveRows(
   state: InvestigateState,
   view: QueryView,
-  rendered: (query: Query) => QueryResult,
+  shown: (query: Query, result: QueryResult) => void,
   run: (query: Query) => QueryResult,
 ): Investigation["drove"] {
   if (!state.drove || droveBlock(state, view.periods)) return null;
@@ -150,11 +152,40 @@ function droveRows(
       limit: 200,
     });
     return {
-      revenue: rendered(query("revenue")),
+      revenue: run(query("revenue")),
       ...(state.split ? { units: run(query("units")) } : {}),
     };
   };
-  return { ...pair, thenRows: rows(pair.then), nowRows: rows(pair.now) };
+  const thenRows = rows(pair.then);
+  const nowRows = rows(pair.now);
+  // The groups drawn as their own bars, exactly as the chart chooses them (the same waterfall, the same top).
+  const drawn = new Set(waterfall(state.by, thenRows, nowRows).groups.map((g) => g.key));
+  for (const [quarter, period] of [
+    [pair.then, thenRows],
+    [pair.now, nowRows],
+  ] as const)
+    shown(
+      {
+        measure: "revenue",
+        by: [state.by],
+        filter: { ...others, quarter: [quarter] },
+        limit: 200,
+      },
+      onlyRows(period.revenue, (row) => drawn.has(row[state.by] ?? null)),
+    );
+  return { ...pair, thenRows, nowRows };
+}
+
+/** A result with only the rows kept, and their evidence with them. */
+function onlyRows(result: QueryResult, keep: (row: QueryResult["rows"][number]) => boolean) {
+  const at = result.rows.flatMap((row, i) => (keep(row) ? [i] : []));
+  return {
+    ...result,
+    rows: at.map((i) => result.rows[i]!),
+    ...(result.evidence && {
+      evidence: { ...result.evidence, rows: at.map((i) => result.evidence!.rows[i]!) },
+    }),
+  };
 }
 function heatmapQuery(state: InvestigateState, quarters: readonly string[]): Query {
   const { measure, rows, cols } = state.heat;
@@ -214,7 +245,7 @@ export function investigate(
   const also = state.also.map((measure) => rendered(chartQuery(state, measure)));
   // Always-visible context, never discovery evidence (m1-slice section 5).
   const heatmap = run(heatmapQuery(state, view.periods));
-  const drove = droveRows(state, view, rendered, run);
+  const drove = droveRows(state, view, (query, result) => displayed.push({ query, result }), run);
 
   const title = state.filters.title?.length === 1 ? state.filters.title[0]! : null;
   const titleView = title

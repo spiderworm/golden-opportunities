@@ -4,6 +4,7 @@ import type { Query, QueryView } from "~/query/types";
 import { change } from "./format";
 import { buildTile, investigate } from "./investigation.server";
 import { DEFAULT_STATE } from "./state";
+import { waterfall } from "~/query/decompose";
 
 // Frank's engine, without its telemetry.
 const runQuery = (query: Query, v: QueryView) => engineQuery(query, v, () => {});
@@ -281,6 +282,24 @@ describe("what drove the change (David, 3 Nov 2026)", () => {
     const sent = queries.filter((q) => q.limit === 200);
     expect(sent).toHaveLength(6);
     expect(sent.every((q) => q.vs === undefined && q.filter?.quarter?.length === 1)).toBe(true);
+  });
+
+  it("counts only the groups drawn as their own bars as evidence, never the rest or units (Plot, #335)", () => {
+    const observed: { query: Query; rows: number; keys: (string | null)[] }[] = [];
+    const titles = { ...drove, by: "title" as const, split: true };
+    const result = investigate(titles, runQuery, view, (query, r) =>
+      observed.push({ query, rows: r.rows.length, keys: r.rows.map((row) => row.title ?? null) }),
+    ).drove!;
+    const ours = observed.filter((o) => o.query.limit === 200);
+    // Each quarter's revenue, narrowed to the drawn titles; units are never recorded.
+    expect(ours.map((o) => [o.query.measure, o.query.filter?.quarter?.[0]])).toEqual([
+      ["revenue", "2193-Q2"],
+      ["revenue", "2193-Q3"],
+    ]);
+    const drawn = waterfall("title", result.thenRows, result.nowRows).groups.map((g) => g.key);
+    expect(drawn).toHaveLength(8);
+    expect(result.nowRows.revenue.rows.length).toBeGreaterThan(8);
+    for (const o of ours) expect(o.keys.every((k) => drawn.includes(k))).toBe(true);
   });
 
   it("sends nothing when it's off or can't be shown", () => {

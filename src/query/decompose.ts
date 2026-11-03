@@ -71,6 +71,9 @@ export interface Waterfall {
   split?: Split | { problem: SplitProblem };
 }
 
+/** How many groups get their own bar; the rest are one, "Everything else". */
+export const WATERFALL_TOP = 8;
+
 const measureOf = (result: QueryResult) => result.columns.at(-1)!.key;
 
 /** A result's rows by their group, each with its figure and standard error. */
@@ -111,7 +114,7 @@ export function waterfall(
   by: Dimension,
   then: PeriodRows,
   now: PeriodRows,
-  { top = 8, split = false }: { top?: number; split?: boolean } = {},
+  { top = WATERFALL_TOP, split = false }: { top?: number; split?: boolean } = {},
 ): Waterfall {
   const r0 = rowsBy(then.revenue, by);
   const r1 = rowsBy(now.revenue, by);

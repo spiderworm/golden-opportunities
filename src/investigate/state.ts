@@ -326,6 +326,15 @@ export function droveBlock(
   return null;
 }
 
+/**
+ * Whether the waterfall is really on: asked for and allowed. Only then do other toggles say to turn it off, never
+ * while it's itself disabled, as a link with drove=1 but no one quarter leaves it (Chart, #335).
+ */
+export const droveOn = (
+  state: Parameters<typeof droveBlock>[0] & { drove: boolean },
+  quarters: readonly string[],
+) => state.drove && droveBlock(state, quarters) === null;
+
 /** Whether "What drove the change" stays on in the URL: as long as the chart is one it could ever break down. */
 export const keepsDrove = (
   state: Pick<InvestigateState, "by" | "also" | "compare" | "scatter"> & { measure: Measure },

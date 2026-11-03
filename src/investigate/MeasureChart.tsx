@@ -60,6 +60,7 @@ import {
   shownQuarter,
   droveBlock,
   droveGroups,
+  droveOn,
   type ChartMeasure,
   type Grouping,
   type InvestigateState,
@@ -174,7 +175,8 @@ export function MeasureChart({
       selected.join("\u0000"),
     ],
   );
-  const noScatter = state.drove
+  const waterfallOn = droveOn(state, quarters);
+  const noScatter = waterfallOn
     ? "Turn off What drove the change for a scatter plot"
     : scatterProblem(state.by, state.also);
   const scatter = state.scatter && noScatter === null;
@@ -352,7 +354,7 @@ export function MeasureChart({
                 ? "Show one measure to compare quarters"
                 : !canCompare(state.by)
                   ? "Group by genre, format or publisher to compare quarters"
-                  : state.drove
+                  : waterfallOn
                     ? "Turn off What drove the change to compare quarters"
                     : labels
                       ? "Turn off vs. same quarter last year to compare quarters"
@@ -542,7 +544,10 @@ export function MeasureChart({
             result.rows.length > 0 && !table && !waterfallModel
             ? "Click to look closer. "
             : ""}
-        Source: {result.source}
+        {waterfallModel && drove
+          ? // The waterfall's own two queries, one per quarter, not the chart's (Chart, #335).
+            `Source: ${droveWords.then}: ${drove.thenRows.revenue.source} ${droveWords.now}: ${drove.nowRows.revenue.source}`
+          : `Source: ${result.source}`}
       </p>
     </section>
   );
