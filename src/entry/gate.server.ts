@@ -126,7 +126,9 @@ export function safeReturn(to: FormDataEntryValue | null): string {
   // Not the entry action, and not a page's data, which would land the player on raw turbo-stream (Audit, #317).
   if (at.origin !== ORIGIN || at.pathname === ENTRY_PATH || at.pathname.endsWith(".data"))
     return "/";
-  return `${at.pathname}${at.search}`;
+  // One leading slash: "/.//evil.example" resolves to the path "//evil.example", which a browser reads as another
+  // site (Probe, #330).
+  return `${at.pathname.replace(/^\/+/, "/")}${at.search}`;
 }
 
 /** A stand-in origin for resolving a path: anything off it is off this site. */
