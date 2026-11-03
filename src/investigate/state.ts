@@ -241,6 +241,14 @@ export function lastYearUnshown(
   return result.lastYear ? null : "Can't compare this chart with last year";
 }
 
+/**
+ * Whether the toggle stays on in the URL: not for several measures, Compare quarters or a breakdown by quarter,
+ * which switch it off as several measures do Compare quarters (Audit, #301). A quarter filter that doesn't pick one
+ * quarter keeps it, so it comes back once one is picked.
+ */
+export const keepsLastYear = (state: Pick<InvestigateState, "by" | "also" | "compare">) =>
+  state.also.length === 0 && !state.compare && state.by !== "quarter";
+
 /** The one quarter the quarter filter picks, or null. */
 export const shownQuarter = (state: Pick<InvestigateState, "filters">): string | null =>
   state.filters.quarter?.length === 1 ? state.filters.quarter[0]! : null;
@@ -277,7 +285,13 @@ export function parseState(params: URLSearchParams): InvestigateState {
     ...measures,
     by,
     compare: params.get("compare") === "quarter" && canCompare(by, measures.also),
-    lastYear: params.get("vs") === "last_year",
+    lastYear:
+      params.get("vs") === "last_year" &&
+      keepsLastYear({
+        by,
+        ...measures,
+        compare: params.get("compare") === "quarter" && canCompare(by, measures.also),
+      }),
     filters,
     heat: readHeat(params, measures.measure),
   };
@@ -305,7 +319,7 @@ export function toSearchParams(state: InvestigateState): URLSearchParams {
   else if (state.measure !== DEFAULT_STATE.measure) params.set("measure", state.measure);
   if (state.by !== DEFAULT_STATE.by) params.set("by", state.by);
   if (state.compare && canCompare(state.by, state.also)) params.set("compare", "quarter");
-  if (state.lastYear) params.set("vs", "last_year");
+  if (state.lastYear && keepsLastYear(state)) params.set("vs", "last_year");
   // The heatmap's measure only once it differs from the chart's, so it keeps following the chart until then.
   if (state.heat.measure !== state.measure) params.set("heat", state.heat.measure);
   if (state.heat.rows !== DEFAULT_STATE.heat.rows) params.set("heat_rows", state.heat.rows);

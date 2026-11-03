@@ -174,6 +174,7 @@ export function MeasureChart({
       : null;
   const ghost = useMemo(
     () => (labels ? withLastYear(model, result, labels) : null),
+    // labels follows state.by too (its legend), and a new grouping rebuilds model, so model covers it.
     [model, result, labels?.quarter],
   );
   const option = useMemo(
