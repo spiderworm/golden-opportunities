@@ -259,6 +259,12 @@ export type UsageFor = (request: Request) => Cap | null;
 /** Whether this question comes with a real game (a save that resolves): only then can it reach a model. */
 export type GameFor = (request: Request) => boolean;
 
+/**
+ * Whether this question claims a game: a save cookie, read without touching the disk. It only picks which
+ * minute cap counts the request, so a flood is bounded before any save is read (Frank's review of #351).
+ */
+export type ClaimsGame = (request: Request) => boolean;
+
 /** What Dewey says to a question without a game: there's nothing for him to look up yet. */
 export const START_A_GAME = "Start a game, then try your question again.";
 
@@ -275,6 +281,7 @@ export function ask(
   backstoryFor: BackstoryFor = () => null,
   usageFor: UsageFor = () => null,
   gameFor: GameFor = () => true,
+  claimsGame: ClaimsGame = () => true,
 ): Promise<Response> {
   return (async () => {
     const refused = (e: unknown) => {
@@ -282,11 +289,13 @@ export function ask(
       track("assistant_refused", { status: e.status });
       return refuse(e.status, e.message);
     };
-    // Every request counts toward a minute cap, before any other check, so floods stay bounded. A question without
-    // a game counts toward its own, so a loop of them can't refuse the players who have one (Audit, #338).
-    const game = gameFor(request);
-    if (!(game ? arrive(now()) : arriveWithoutGame(now()))) {
-      track("assistant_limited", { reason: game ? "flood" : "flood_without_game" });
+    // Every request counts toward a minute cap, before any other check, so floods stay bounded. One without a save
+    // cookie counts toward its own, so a loop of them can't refuse the players who have one (Audit, #338). The cap
+    // is chosen from the cookie alone: no save is read before a cap has counted the request (Frank, #351). A
+    // made-up cookie lands in the shared cap, as every request did before.
+    const claimed = claimsGame(request);
+    if (!(claimed ? arrive(now()) : arriveWithoutGame(now()))) {
+      track("assistant_limited", { reason: claimed ? "flood" : "flood_without_game" });
       return refuse(429, "Too many requests. Try again in a minute.");
     }
     try {
@@ -297,7 +306,7 @@ export function ask(
     // A question without a game asks no model, so it takes no slot and counts toward no limit: it's turned away
     // before admission, unread, so it can't hold the slot with a slow body either (Probe's red-team of #319;
     // Frank's review of #336).
-    if (!game) {
+    if (!claimed || !gameFor(request)) {
       track("assistant_no_game", {});
       return ndjson<WireEvent>(
         async function* () {
