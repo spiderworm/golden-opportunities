@@ -39,10 +39,18 @@ with the configured origin, never with the request's own scheme, and they never 
 - Keep Caddy forwarding the original `Host` (its default).
 - Dewey's tool server still calls the app on its loopback address (`ORBITAL_QUERY_URL`), with its bearer token.
 
+## Building it
+
+React Router checks every action (a page's form or fetcher posting to a route) against the request's own origin, and
+behind the proxy that's http against the browser's https, so without help it refuses them all with a bare `400 Bad
+Request` before the game's gates run (David saw `POST /alert/seen.data 400`). `react-router.config.ts` names the
+deployed host in `allowedActionOrigins`, read from `ORBITAL_PUBLIC_ORIGIN` **when the server is built**, so build it
+with the setting it will run with. The game's own gates still require the exact https origin.
+
 ## Running it
 
 ```sh
-npm ci && npm run build
+npm ci && ORBITAL_PUBLIC_ORIGIN=https://21pqa9rxuayp.tellimgames.com npm run build
 ORBITAL_PUBLIC_ORIGIN=https://21pqa9rxuayp.tellimgames.com PORT=3000 npm start
 ```
 
