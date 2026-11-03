@@ -133,3 +133,30 @@ describe("the series volume menu", () => {
     expect(bar({ volume: ["1", "2"] })).toContain("Series volume Volume 2");
   });
 });
+
+describe("relative quarters in the quarter filter (Plot, section 9)", () => {
+  it("come first, each as the quarter it is now, and a chosen one reads that way", () => {
+    const page = bar({ quarter: ["latest"] }, ["quarter"]);
+    // The menu's summary.
+    expect(page).toContain("Quarter Latest quarter: Q4 2193");
+    // Its list: the relative quarters, then the dated ones.
+    const latest = page.indexOf("Latest quarter: Q4 2193", page.indexOf("Quarter Latest") + 10);
+    expect(latest).toBeGreaterThan(-1);
+    expect(page.indexOf("Quarter before latest")).toBeGreaterThan(latest);
+    expect(page.lastIndexOf("Q4 2193")).toBeGreaterThan(
+      page.indexOf("Same quarter, a year earlier"),
+    );
+  });
+
+  it("say why one can't be chosen, and carry the shared tooltip", () => {
+    const markup = html({}, ["quarter"]).replace(/&#x27;/g, "'");
+    // Only Q4 2193 is visible here: there's no quarter before it, and no year before 2193.
+    expect(text(markup)).toContain(
+      "Q4 2193 is the first quarter in the ledgers: there's no quarter before it",
+    );
+    expect(text(markup)).toContain("The ledgers start in 2193: there's no year before it");
+    expect(markup).toContain(
+      'title="Moves on as you play: always counted from the newest quarter with sales"',
+    );
+  });
+});

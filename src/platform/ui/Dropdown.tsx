@@ -28,6 +28,8 @@ export interface DropdownOption<T extends string> {
   disabledReason?: string | null;
   /** A swatch color, for options that are series in a chart. */
   color?: string;
+  /** What it means, as its tooltip while it can be chosen ("Moves on as you play: …"). */
+  hint?: string;
 }
 
 interface Common<T extends string> {
@@ -131,6 +133,7 @@ export function Dropdown<T extends string>(props: DropdownProps<T>) {
               key={option.value}
               className={styles.option}
               data-disabled={(reason !== null && !on) || undefined}
+              title={reason === null ? option.hint : undefined}
             >
               <input
                 type={props.mode === "single" ? "radio" : "checkbox"}

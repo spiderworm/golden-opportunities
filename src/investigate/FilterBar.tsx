@@ -1,8 +1,15 @@
 import { useRef, type RefObject } from "react";
 
-import { Dropdown } from "~/platform/ui/Dropdown";
+import { Dropdown, type DropdownOption } from "~/platform/ui/Dropdown";
+import { isRelativeQuarter, RELATIVE_QUARTERS } from "~/query/relative";
 import { Icon } from "~/shell/icons";
-import { DIMENSION_LABELS, formatDimensionValue } from "./format";
+import {
+  DIMENSION_LABELS,
+  formatDimensionValue,
+  RELATIVE_HINT,
+  relativeLabel,
+  relativeReason,
+} from "./format";
 import type { FilterOptions } from "./investigation.server";
 import {
   awardChoice,
@@ -117,6 +124,25 @@ export function FilterBar({
             options={options.price_band}
             selected={filters.price_band ?? []}
             onChange={(values) => onChange("price_band", values)}
+          />
+        );
+      case "quarter":
+        // The relative quarters first, each with the quarter it is now, then the dated ones (Plot, section 9).
+        return (
+          <FilterMenu
+            dimension="quarter"
+            options={[...RELATIVE_QUARTERS, ...options.quarter]}
+            selected={filters.quarter ?? []}
+            describe={(value) =>
+              isRelativeQuarter(value)
+                ? {
+                    label: relativeLabel(value, options.quarter),
+                    hint: RELATIVE_HINT,
+                    disabledReason: relativeReason(value, options.quarter),
+                  }
+                : null
+            }
+            onChange={(values) => onChange("quarter", values)}
           />
         );
       default: {
@@ -248,6 +274,7 @@ function FilterMenu({
   options,
   selected,
   empty,
+  describe,
   onChange,
 }: {
   dimension: FilterDimension;
@@ -255,8 +282,15 @@ function FilterMenu({
   selected: string[];
   /** What the menu says when it has nothing to choose from. */
   empty?: string;
+  /** An option's label, hint and reason, where they're more than its formatted value (the relative quarters). */
+  describe?: (value: string) => Partial<DropdownOption<string>> | null;
   onChange: (values: string[]) => void;
 }) {
+  const option = (value: string): DropdownOption<string> => ({
+    value,
+    label: formatDimensionValue(dimension, value),
+    ...describe?.(value),
+  });
   return (
     <Dropdown
       mode="multi"
@@ -265,13 +299,17 @@ function FilterMenu({
         selected.length === 0
           ? (ALL[dimension] ?? "All")
           : selected.length === 1
-            ? formatDimensionValue(dimension, selected[0])
+            ? option(selected[0]!).label
             : `${selected.length} selected`
       }
       active={selected.length > 0}
       empty={empty}
       values={selected}
-      options={options.map((value) => ({ value, label: formatDimensionValue(dimension, value) }))}
+      options={options.map((value) => {
+        const o = option(value);
+        // A chosen option can always be unchosen.
+        return selected.includes(value) ? { ...o, disabledReason: null } : o;
+      })}
       onChange={onChange}
     />
   );

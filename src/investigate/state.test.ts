@@ -15,6 +15,7 @@ import {
   canCompare,
   droveBlock,
   droveOn,
+  resolvedState,
   runningBlock,
   shareBlock,
   droveQuarters,
@@ -604,5 +605,21 @@ describe("a quarter filter from a link (Frank, #378)", () => {
     ).toEqual({
       quarter: ["2194-Q1", "latest"],
     });
+  });
+});
+
+describe("the state as the quarters its relative quarters are now", () => {
+  it("resolves them for the screen, and leaves a state without them as it is", () => {
+    const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1"];
+    const relative = {
+      ...DEFAULT_STATE,
+      filters: { quarter: ["latest-1", "latest"], genre: ["Fiction"] },
+    };
+    expect(resolvedState(relative, quarters).filters).toEqual({
+      quarter: ["2193-Q4", "2194-Q1"],
+      genre: ["Fiction"],
+    });
+    const dated = { ...DEFAULT_STATE, filters: { quarter: ["2193-Q4"] } };
+    expect(resolvedState(dated, quarters)).toBe(dated);
   });
 });
