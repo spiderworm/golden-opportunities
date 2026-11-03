@@ -2,6 +2,7 @@ import type { Route } from "./+types/api";
 import { writeSegments } from "~/game/game.server";
 import { getGameSession } from "~/game/session.server";
 import { SaveError } from "~/game/store.server";
+import { isLocalBrowserRequest } from "~/query/access.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import {
   applySegmentChange,
@@ -50,6 +51,8 @@ export type SegmentAnswer =
  * deleted in another tab drops out of the menu (Plot, section 8). Local same-origin POSTs only, as every write.
  */
 export async function action({ request }: Route.ActionArgs) {
+  const refused = door(request);
+  if (refused) return refused;
   let change: SegmentChange | null = null;
   try {
     change = parseSegmentChange(await request.clone().json());
@@ -79,6 +82,30 @@ export async function action({ request }: Route.ActionArgs) {
         { ok: false, reason: done.reason, ...(done.name ? { name: done.name } : {}), segments },
         { status: 400, headers: NO_STORE },
       );
+}
+
+/**
+ * One change's JSON, at most: the rules' largest segment (50 values of 200 characters, and a 60-character name) is
+ * about 10.5 KB, a real one under 4 KB (Audit and Frank, #387).
+ */
+export const MAX_SEGMENT_BODY = 16_384;
+
+/**
+ * Who may send a change, checked before any of its body is read, so no client can make the server buffer one
+ * (Audit and Frank, #387): a POST, from the local same-origin browser, as JSON, declaring no more than the cap.
+ */
+function door(request: Request): Response | null {
+  if (request.method !== "POST")
+    return new Response("Use POST.", { status: 405, headers: { Allow: "POST", ...NO_STORE } });
+  if (!isLocalBrowserRequest(request))
+    return new Response("Same-origin local requests only.", { status: 403, headers: NO_STORE });
+  const type = request.headers.get("content-type") ?? "";
+  if (!/^application\/json\s*(;|$)/i.test(type))
+    return new Response("Send JSON.", { status: 415, headers: NO_STORE });
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (!Number.isFinite(declared) || declared > MAX_SEGMENT_BODY)
+    return new Response("Too large.", { status: 413, headers: NO_STORE });
+  return null;
 }
 
 /**

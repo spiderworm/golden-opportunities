@@ -22,19 +22,22 @@ vi.mock("~/game/game.server", () => game);
 vi.mock("~/game/session.server", () => session);
 vi.mock("~/platform/analytics/analytics.server", () => analytics);
 
-import { action, loader } from "./api";
+import { action, loader, MAX_SEGMENT_BODY } from "./api";
 import type { Route } from "./+types/api";
 
-const post = (body: unknown) =>
+const LOCAL = { origin: "http://localhost", "content-type": "application/json" };
+const post = (body: unknown, headers: Record<string, string> = LOCAL) =>
   action({
     request: new Request("http://localhost/api/segments", {
       method: "POST",
+      headers,
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
   } as Route.ActionArgs);
 const awarded = { awarded: ["yes"], format: ["Trade paperback"] };
 
 beforeEach(() => {
+  game.writeSegments.mockClear();
   state.segments = undefined;
   state.busy = false;
   analytics.trackServer.mockClear();
@@ -120,5 +123,50 @@ describe("/api/segments", () => {
       request: new Request("http://localhost/api/segments"),
     } as Route.LoaderArgs);
     expect(response.status).toBe(401);
+  });
+});
+
+describe("/api/segments' door (Audit and Frank, #387)", () => {
+  /** A body that counts what's read of it: 4 MB, in 64 KB chunks. */
+  function counted() {
+    const read = { bytes: 0 };
+    let sent = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= 4_000_000) return controller.close();
+        const chunk = new Uint8Array(65_536).fill(0x20);
+        sent += chunk.byteLength;
+        read.bytes += chunk.byteLength;
+        controller.enqueue(chunk);
+      },
+    });
+    return { body, read };
+  }
+  const send = (headers: Record<string, string>, method = "POST") => {
+    const { body, read } = counted();
+    const request = new Request("http://localhost/api/segments", {
+      method,
+      headers,
+      ...(method === "POST" ? { body, duplex: "half" } : {}),
+    } as RequestInit);
+    return { response: action({ request } as Route.ActionArgs), read };
+  };
+
+  it("refuses a foreign origin's large body without reading it", async () => {
+    const { response, read } = send({ ...LOCAL, origin: "http://evil.example" });
+    expect((await response).status).toBe(403);
+    // A stream pulls its first chunk ahead on its own; nothing past that is asked for.
+    expect(read.bytes).toBeLessThanOrEqual(65_536);
+    expect(game.writeSegments).not.toHaveBeenCalled();
+  });
+
+  it("refuses another method, another content type and a declared length past the cap, unread", async () => {
+    expect((await send(LOCAL, "GET").response).status).toBe(405);
+    const form = send({ ...LOCAL, "content-type": "application/x-www-form-urlencoded" });
+    expect((await form.response).status).toBe(415);
+    const large = send({ ...LOCAL, "content-length": String(MAX_SEGMENT_BODY + 1) });
+    expect((await large.response).status).toBe(413);
+    expect(large.read.bytes).toBeLessThanOrEqual(65_536);
+    expect(game.writeSegments).not.toHaveBeenCalled();
   });
 });

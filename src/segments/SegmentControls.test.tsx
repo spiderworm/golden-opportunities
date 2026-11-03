@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { refusalCopy, SEGMENT_COPY } from "./copy";
 import { SegmentMenu, suggestedName } from "./SegmentControls";
 import type { Segment } from "./segments";
-import { changeSegments } from "./store";
+import { changeSegments, listFor } from "./store";
 
 const awarded: Segment = {
   id: "a1",
@@ -87,5 +87,15 @@ describe("a change sent to /api/segments", () => {
       ok: false,
       reason: "busy",
     });
+  });
+});
+
+describe("the list the page shows (Chart, #387)", () => {
+  const fiction: Segment = { id: "f1", name: "Fiction", filters: { genre: ["Fiction"] } };
+  it("is the kept one under the page's data version, and never one kept under another", () => {
+    expect(listFor({ segments: [awarded], version: "v1" }, [fiction], "v1")).toEqual([awarded]);
+    // A game since replaced by Play again: the page's own load.
+    expect(listFor({ segments: [awarded], version: "v1" }, [fiction], "v2")).toEqual([fiction]);
+    expect(listFor(null, [fiction], "v1")).toEqual([fiction]);
   });
 });
