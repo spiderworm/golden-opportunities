@@ -5,7 +5,11 @@
 # Usage: npm run close   (or tools/close.sh)
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# The server reads ORBITAL_DATA_DIR from the folder it was started in. npm start
+# and npm run dev start in this repo's folder, so a relative path is taken from
+# here; if your server starts elsewhere, give an absolute ORBITAL_DATA_DIR.
 data_dir="${ORBITAL_DATA_DIR:-.data}"
+case "$data_dir" in /*) ;; *) data_dir="$PWD/$data_dir" ;; esac
 flag="$data_dir/closed"
 
 mkdir -p "$data_dir"
