@@ -4,7 +4,6 @@ import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from "
 import {
   AdditiveBlending,
   CanvasTexture,
-  CircleGeometry,
   DirectionalLight,
   Group,
   HemisphereLight,
@@ -12,10 +11,12 @@ import {
   MeshBasicMaterial,
   PerspectiveCamera,
   Raycaster,
+  RingGeometry,
   Scene,
   Sprite,
   SpriteMaterial,
-  TorusGeometry,
+  SRGBColorSpace,
+  TextureLoader,
   Vector3,
   type Object3D,
 } from "three";
@@ -28,10 +29,11 @@ import { failedLoad, softFailFor, type Failed } from "~/platform/bosses/soft-loa
 // ("all of Dewey's chat avatars should have a simple, almost invisible idle animation, except for one"). The
 // model is public/dewey/dewey.glb (provenance.json there). David, 3 Nov: "a high quality 'thinking' animation...
 // 'loading' or 'lightbulb' animation on Dewey's screen while coming up with an answer", and the active face's
-// "mouth moving excitedly". So while he works out an answer, a ring of light chases round his screen and his desk
-// lamp pulses; when the answer comes, the lamp flares (the lightbulb) and he hops; and the face that talks moves
-// its mouth, without pause while his answer streams in, in phrases after. Loaded only once the browser has shown it can draw
-// WebGL 2, and not for reduced motion, where the portraits stay.
+// "mouth moving excitedly", and then: "A 'chatting' robot screen will have an animated mouth, painted as white
+// pixels on the screen". So his screen plays faces of glowing dots, made in Tripo (SCREEN_FACES): a spinner while he
+// works out an answer, then a lightbulb as it arrives, and a mouth that chats; his desk lamp pulses as he thinks
+// and flares when the answer comes, and he hops. Loaded only once the browser has shown it can draw WebGL 2, and
+// not for reduced motion, where the portraits stay.
 
 export const MODEL = "/dewey/dewey.glb";
 const softFail = softFailFor([MODEL]);
@@ -172,12 +174,20 @@ interface Mood {
   think: number;
   /** The lightbulb: 1 as an answer arrives, fading. */
   flare: number;
+  /** Seconds since the answer arrived after thinking, while its lightbulb frames play; null otherwise. */
+  idea: number | null;
   /** What it was doing last frame, to catch the moment thinking turns into an answer. */
   was: Activity["kind"] | null;
 }
 
 function newMood(talking: boolean, doing: Activity["kind"] | null): Mood {
-  return { talk: talking ? 1 : 0, think: doing === "thinking" ? 1 : 0, flare: 0, was: doing };
+  return {
+    talk: talking ? 1 : 0,
+    think: doing === "thinking" ? 1 : 0,
+    flare: 0,
+    idea: null,
+    was: doing,
+  };
 }
 
 /** Eases a face toward what it's doing; thinking outranks talking, and an answer arriving lights the lamp. */
@@ -186,7 +196,13 @@ function step(mood: Mood, talking: boolean, doing: Activity["kind"] | null, delt
   const thinking = doing === "thinking";
   mood.think += ((thinking ? 1 : 0) - mood.think) * ease;
   mood.talk += ((talking && !thinking ? 1 : 0) - mood.talk) * ease;
-  if (mood.was === "thinking" && !thinking) mood.flare = 1;
+  if (mood.was === "thinking" && !thinking) {
+    mood.flare = 1;
+    mood.idea = 0;
+  } else if (mood.idea !== null) {
+    mood.idea += delta;
+    if (mood.idea > IDEA_SECONDS) mood.idea = null;
+  }
   mood.flare *= Math.exp(-delta * 2.2);
   mood.was = doing;
 }
@@ -243,14 +259,60 @@ export function mouthOpen(t: number, turn: number, streaming: boolean): number {
   return Math.min(1, syllables * phrase * 1.2);
 }
 
-/** Where his screen's features are on the model (measured in a front view of dewey.glb, 3 Nov). */
-const SCREEN = { x: 0.015, y: 0.445, rx: 0.165, ry: 0.15 };
-const MOUTH = { x: 0.015, y: 0.392, w: 0.05, h: 0.034 };
+/**
+ * His screen's faces (David chose them, 3 Nov: Tripo concept sheets, public/dewey/provenance.json): an atlas of 18
+ * frames of glowing dots, six to a row. Thinking 1 to 6 spin a ring of dots while his eyes glance up; thinking 7 to
+ * 9 are the idea arriving, a lightbulb lighting over a grin ("once his message pops in after thinking, display
+ * those final frames 7-9 with it"); chatting 1 to 9 are his eyes with nine mouths.
+ */
+export const SCREEN_FACES = "/dewey/screen-faces.png";
+const FRAME = {
+  spin: [0, 1, 2, 3, 4, 5],
+  idea: [6, 7, 8],
+  rest: 9,
+  /** Mouths by how open: a little (slightly open, small o), more (O, EE), wide (wide O, grin). */
+  little: [10, 15],
+  more: [13, 14],
+  wide: [12, 16],
+  /** Happy closed eyes, for a blink now and then. */
+  blink: 17,
+} as const;
+/** How far the chatting frames are raised on his screen, as a share of a frame. */
+const CHAT_LIFT = 0.07;
+/** How long the lightbulb frames play when an answer arrives: two quick steps, then the full bulb held. */
+const IDEA_SECONDS = 1.6;
+
+/**
+ * Which of the atlas's frames a face shows at time `t`. Thinking: the spinner, about eight steps a second. The idea:
+ * the lightbulb lighting, then held. Talking: a mouth for each syllable, by how open it is, the shape varying from one
+ * syllable to the next. Otherwise his resting smile, with a happy blink every few seconds.
+ */
+export function screenFrame(
+  t: number,
+  turn: number,
+  mood: Pick<Mood, "talk" | "think" | "idea">,
+  streaming: boolean,
+): number {
+  if (mood.think > 0.5) return FRAME.spin[Math.floor(t * 8) % FRAME.spin.length]!;
+  if (mood.idea !== null) return FRAME.idea[mood.idea < 0.18 ? 0 : mood.idea < 0.4 ? 1 : 2];
+  if (mood.talk > 0.5) {
+    const open = mouthOpen(t, turn, streaming);
+    if (open < 0.12) return FRAME.rest;
+    const syllable = Math.floor(((t * 9.3 + turn * 1.7) / (Math.PI * 2)) * 2);
+    const pick = (shapes: readonly number[]) => shapes[(syllable + turn) % shapes.length]!;
+    return pick(open < 0.4 ? FRAME.little : open < 0.75 ? FRAME.more : FRAME.wide);
+  }
+  return (t + turn * 2.3) % 5.2 < 0.16 ? FRAME.blink : FRAME.rest;
+}
+
+/** Where his screen and lamp are on the model (measured in a front view of dewey.glb, 3 Nov). */
+const SCREEN = { x: 0.015, y: 0.443, rx: 0.2, ry: 0.176 };
 const LAMP = { x: -0.14, y: 0.725, z: 0.25 };
 
 /**
- * What's drawn on and around his face: a mouth over his painted smile, a ring of lights round his screen, and his
- * desk lamp's glow. Each sits a few millimetres off the model's surface, found by casting rays at it.
+ * What's drawn on and around his face: his screen, a disc shaped to its dome that covers the painted face and shows
+ * the atlas's frames, under his glasses; and his desk lamp's glow, brighter as he thinks, flaring when the answer
+ * comes. The disc's shape is found by casting rays at the model.
  */
 function faceParts(dewey: Group, body: Object3D) {
   dewey.updateMatrixWorld(true);
@@ -259,60 +321,42 @@ function faceParts(dewey: Group, body: Object3D) {
     ray.set(new Vector3(x, y, 3), new Vector3(0, 0, -1));
     return ray.intersectObject(body, true)[0]?.point.z ?? 0.15;
   };
-  const glow = (color: string) =>
+
+  // The disc: rings out from the screen's middle, each point a few millimetres off the glass.
+  const disc = new RingGeometry(0, 1, 48, 10);
+  const at = disc.attributes.position!;
+  for (let i = 0; i < at.count; i++) {
+    const x = SCREEN.x + SCREEN.rx * at.getX(i);
+    const y = SCREEN.y + SCREEN.ry * at.getY(i);
+    at.setXYZ(i, x, y, surface(x, y) + 0.003);
+  }
+  disc.computeBoundingSphere();
+
+  // The glass behind the dots: his screen's amber, glowing a little toward the middle, fading out at its edge so it
+  // meets the model's own screen without a seam.
+  const glass = new Mesh(
+    disc,
+    new MeshBasicMaterial({ map: glassTexture(), transparent: true, depthWrite: false }),
+  );
+  const atlas = new TextureLoader().load(SCREEN_FACES, () => (glass.visible = dots.visible = true));
+  atlas.repeat.set(1 / 6, 1 / 3);
+  atlas.colorSpace = SRGBColorSpace;
+  const dots = new Mesh(
+    disc,
     new MeshBasicMaterial({
-      color,
+      map: atlas,
+      color: "#fff6dc",
       transparent: true,
-      blending: AdditiveBlending,
       depthWrite: false,
-    });
-
-  // The mouth: a dark opening with a bright rim, as his eyes glow, over the painted smile.
-  const disc = new CircleGeometry(1, 32);
-  const mouthZ = surface(MOUTH.x, MOUTH.y) + 0.006;
-  const rim = new Mesh(disc, new MeshBasicMaterial({ color: "#ffd84a" }));
-  const inside = new Mesh(disc, new MeshBasicMaterial({ color: "#3d1503" }));
-  rim.position.set(MOUTH.x, MOUTH.y, mouthZ);
-  inside.position.set(MOUTH.x, MOUTH.y, mouthZ + 0.002);
-  dewey.add(rim, inside);
-
-  // The spinner: a comet of light sweeping round his screen's edge while he thinks, over a faint track. Flat, a
-  // touch in front of the screen's dome, like a reflection on its glass.
-  const ring = new Group();
-  const edge = Array.from({ length: 8 }, (_, i) => (i / 8) * Math.PI * 2);
-  const ringZ =
-    Math.max(
-      ...edge.map((a) =>
-        surface(SCREEN.x + SCREEN.rx * Math.cos(a), SCREEN.y + SCREEN.ry * Math.sin(a)),
-      ),
-    ) + 0.008;
-  ring.position.set(SCREEN.x, SCREEN.y, ringZ);
-  ring.scale.set(SCREEN.rx, SCREEN.ry, 1);
-  const arc = (length: number, opacity: number) => {
-    const mesh = new Mesh(new TorusGeometry(1, 0.08, 6, 64, length), glow("#ffe9a8"));
-    (mesh.material as MeshBasicMaterial).userData.opacity = opacity;
-    ring.add(mesh);
-    return { mesh, length };
-  };
-  // The track, then the tail, brighter toward the head.
-  const arcs = [
-    arc(Math.PI * 2, 0.14),
-    arc(Math.PI * 0.75, 0.3),
-    arc(Math.PI * 0.4, 0.55),
-    arc(Math.PI * 0.16, 1),
-  ];
-  const spark = new Sprite(
-    new SpriteMaterial({
-      map: glowTexture(),
-      color: "#fff6d8",
-      transparent: true,
-      blending: AdditiveBlending,
-      depthWrite: false,
+      toneMapped: false,
     }),
   );
-  dewey.add(ring, spark);
+  // Shown once the frames have loaded: until then, the painted face.
+  glass.visible = dots.visible = false;
+  glass.renderOrder = 1;
+  dots.renderOrder = 2;
+  dewey.add(glass, dots);
 
-  // The lamp: a soft glow under its shade, brighter as he thinks, flaring when the answer comes.
   const lamp = new Sprite(
     new SpriteMaterial({
       map: glowTexture(),
@@ -342,32 +386,10 @@ function faceParts(dewey: Group, body: Object3D) {
   return {
     /** Sets the parts for one face before it's drawn. */
     show(t: number, turn: number, mood: Mood, streaming: boolean) {
-      const open = mood.talk * mouthOpen(t, turn, streaming);
-      rim.visible = inside.visible = open > 0.06;
-      rim.scale.set(MOUTH.w + 0.008, MOUTH.h * open + 0.008, 1);
-      inside.scale.set(MOUTH.w, MOUTH.h * open, 1);
-
-      // Round about once a second, clockwise, easing a little on each turn as a loader does.
-      const turnOf = t * 1.05;
-      const head =
-        -(Math.floor(turnOf) + smooth(turnOf % 1, 0, 1) * 0.7 + (turnOf % 1) * 0.3) * Math.PI * 2;
-      const seen = mood.think > 0.02;
-      ring.visible = spark.visible = seen;
-      for (const { mesh, length } of arcs) {
-        // Each arc ends at the head: it runs from head to head + length, behind it as it goes clockwise.
-        mesh.rotation.z = Math.PI / 2 + head;
-        if (length >= Math.PI * 2) mesh.rotation.z = 0;
-        const material = mesh.material as MeshBasicMaterial;
-        material.opacity = mood.think * (material.userData.opacity as number);
-      }
-      const a = Math.PI / 2 + head;
-      spark.position.set(
-        SCREEN.x + SCREEN.rx * Math.cos(a),
-        SCREEN.y + SCREEN.ry * Math.sin(a),
-        ringZ + 0.004,
-      );
-      spark.scale.setScalar(0.075);
-      (spark.material as SpriteMaterial).opacity = mood.think;
+      const frame = screenFrame(t, turn, mood, streaming);
+      // The chatting frames sit a little higher, so his eyes peek over his low glasses (their tops are empty).
+      const lift = frame >= FRAME.rest ? CHAT_LIFT : 0;
+      atlas.offset.set((frame % 6) / 6, 1 - (Math.floor(frame / 6) + 1 + lift) / 3);
 
       const pulse = 0.5 + 0.5 * Math.sin(t * 4.2);
       (lamp.material as SpriteMaterial).opacity = Math.min(
@@ -383,6 +405,27 @@ function faceParts(dewey: Group, body: Object3D) {
     },
   };
 }
+
+/** His screen's glass: amber, a little brighter in the middle, opaque to near its edge and then gone. */
+function glassTexture() {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const g = canvas.getContext("2d")!;
+  const fill = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  fill.addColorStop(0, GLASS.middle);
+  fill.addColorStop(0.78, GLASS.edge);
+  fill.addColorStop(0.9, GLASS.edge);
+  fill.addColorStop(1, GLASS.edge + "00");
+  g.fillStyle = fill;
+  g.fillRect(0, 0, size, size);
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
+
+/** The glass's colours, matched by eye to the model's lit screen in the panel. */
+const GLASS = { middle: "#e2801f", edge: "#c2620f" };
 
 /** A soft round glow, white at the middle and gone at the edge. */
 function glowTexture() {
