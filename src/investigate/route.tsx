@@ -40,7 +40,9 @@ import {
   onlyShownChanged,
   removeFilter,
   shownFilters,
+  withSegment,
   withShown,
+  SEGMENT_PARAM,
   type FilterId,
   parseState,
   setAward,
@@ -61,6 +63,9 @@ import {
 } from "./state";
 import { PinnedCharts } from "./pins/PinnedCharts";
 import { waterfallPinFor, type PinSpec } from "./pins/spec";
+import { SegmentActions, SegmentMenu } from "~/segments/SegmentControls";
+import { filterCount, sameFilters, type Segment } from "~/segments/segments";
+import { keepSegments, useSegments } from "~/segments/store";
 import { usePins } from "./pins/usePins";
 import { TitleView } from "./TitleView";
 import { cachedView } from "./view-cache.client";
@@ -109,6 +114,8 @@ export function loader({ request }: Route.LoaderArgs) {
     planned: currentQuarter(session.save) === null,
     dataVersion: dataVersion(session.save),
     evidence,
+    // The player's saved segments, for the Segment menu's first draw; changes come back from /api/segments.
+    segments: session.save.segments ?? [],
   };
 }
 
@@ -117,7 +124,13 @@ export function loader({ request }: Route.LoaderArgs) {
  * (view-cache.client.ts). Also on hydration, so the first view is kept too.
  */
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
-  return cachedView(queryCache, request.url, serverLoader);
+  return cachedView(queryCache, request.url, async () => {
+    const view = await serverLoader();
+    // The segments live in the browser's store, not the cached view, so a view from the cache can't bring back an
+    // old list (src/segments/store.ts).
+    keepSegments(view.segments, view.dataVersion);
+    return view;
+  });
 }
 clientLoader.hydrate = true as const;
 
@@ -151,6 +164,11 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   const [chosen, setChosen] = useState<readonly FilterId[] | null>(null);
   useEffect(() => setChosen(null), [searchParams]);
   const shown = chosen ?? shownFilters(searchParams, state.filters);
+  // The saved segment the filters came from, if the URL names one the player still has (Plot, section 8).
+  const segments = useSegments(loaderData.segments, loaderData.dataVersion);
+  const segmentId = searchParams.get(SEGMENT_PARAM);
+  const applied = segments.find((s) => s.id === segmentId) ?? null;
+  const edited = applied !== null && !sameFilters(applied.filters, state.filters);
 
   const pins = usePins(track);
   // Relative quarters as the quarters they are now, for everything on screen that reasons about quarters; the URL,
@@ -162,9 +180,28 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   /** The next question, with the bar's filters kept: a filter that gets a value stays on the bar when it's cleared. */
   // Not a default parameter: React Router's route splitting (on since the clientLoader, #191) can't follow a
   // default that refers to an earlier parameter, and the production build fails ("Expected a Path, but got null").
-  function update(next: InvestigateState, nextShown?: readonly FilterId[]) {
+  // The segment's `segment=` is kept unless `segment` says otherwise: an id names one, null takes it off.
+  function update(
+    next: InvestigateState,
+    nextShown?: readonly FilterId[],
+    segment?: string | null,
+  ) {
     const bar = nextShown ?? shownFilters(searchParams, next.filters).concat(shown);
-    setSearchParams(withShown(toSearchParams(next), bar), { preventScrollReset: true });
+    const named = segment === undefined ? segmentId : segment;
+    setSearchParams(withSegment(withShown(toSearchParams(next), bar), named), {
+      preventScrollReset: true,
+    });
+  }
+
+  /** A segment's filters on the bar in place of what's there, or none: `Segment: None` clears them. */
+  function applySegment(segment: Segment | null) {
+    if (!segment) return update({ ...state, filters: DEFAULT_STATE.filters }, [], null);
+    track("segment_applied", { filters: filterCount(segment.filters) });
+    update(
+      { ...state, filters: segment.filters },
+      shownFilters(new URLSearchParams(), segment.filters),
+      segment.id,
+    );
   }
 
   return (
@@ -224,8 +261,27 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           }}
           onClear={() => {
             track("investigate_filters_cleared");
-            update({ ...state, filters: DEFAULT_STATE.filters }, []);
+            update({ ...state, filters: DEFAULT_STATE.filters }, [], null);
           }}
+          segmentMenu={
+            <SegmentMenu
+              segments={segments}
+              applied={applied}
+              edited={edited}
+              onApply={applySegment}
+              onDeleted={(id) => {
+                if (id === segmentId) update(state, undefined, null);
+              }}
+            />
+          }
+          segmentActions={
+            <SegmentActions
+              filters={state.filters}
+              applied={applied}
+              edited={edited}
+              onSaved={(id) => update(state, undefined, id)}
+            />
+          }
         />
         <MetricTiles tiles={tiles} />
         <MeasureChart
