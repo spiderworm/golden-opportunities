@@ -27,7 +27,9 @@ export const MAX_SIMULATED_LINES = 600_000;
  * Measured on the five-year save (Frank, rollups step 4, 2 Nov 2026): 30,516 cells added 21 MB of heap after a
  * collection (lines added 168 MB), and Investigate's 11 queries took 0.61 to 0.66 s cold, about 2 ms per thousand
  * cells per query. So 150,000 cells is about 24 years: some 100 MB, 0.3 s a query, 3.5 s for a cold load. Past it a
- * save's ledgers refuse rather than slow every page.
+ * save's ledgers refuse rather than slow every page. Each spanning order's lines per cell, and each cell's sum of
+ * squares, for the spread of order totals (Sim, evidence, 3 Nov), added 2.2 MB to the five-year save's 30,555 cells
+ * and 26,640 spanning orders (measured after a forced collection): about 23 MB, so some 114 MB at the bound.
  */
 export const MAX_SIMULATED_CELLS = 150_000;
 
@@ -52,6 +54,8 @@ export function validateView(view: QueryView): void {
         !isRecord(view.simulatedCells) ||
         !Array.isArray(view.simulatedCells.cells) ||
         !Array.isArray(view.simulatedCells.spanning) ||
+        !Array.isArray(view.simulatedCells.spanningLines) ||
+        view.simulatedCells.spanningLines.length !== view.simulatedCells.spanning.length ||
         view.simulatedCells.cells.length > MAX_SIMULATED_CELLS)) ||
     (view.version !== undefined &&
       (typeof view.version !== "string" || !/^[0-9a-f]{16}$/.test(view.version)))
