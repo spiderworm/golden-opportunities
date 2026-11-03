@@ -17,6 +17,19 @@ export interface ForecastEntry {
   high: number;
 }
 
+/** A played quarter's figure, shown beside a forecast's input: null when it isn't in the ledgers. */
+export interface ForecastHint {
+  quarter: QuarterId;
+  value: number | null;
+}
+
+/** The hints for the quarter being planned: the quarter before and the same quarter a year earlier, as played. */
+export interface ForecastHints {
+  quarter: QuarterId;
+  revenue: { previous: ForecastHint; yearEarlier: ForecastHint };
+  units: { previous: ForecastHint; yearEarlier: ForecastHint };
+}
+
 /** A quarter's forecast, filed with its plan: at least one measure. */
 export interface Forecast {
   quarter: QuarterId;
