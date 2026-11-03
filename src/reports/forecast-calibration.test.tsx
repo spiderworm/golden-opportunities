@@ -31,6 +31,8 @@ describe("the calibration's words (Plot's copy, section 10)", () => {
   it("counts the quarters forecast", () => {
     expect(COPY.count(3, 5)).toBe("3 of 5 quarters forecast");
     expect(COPY.count(1, 1)).toBe("1 of 1 quarter forecast");
+    // None at all: what to do about it (Plot, #396).
+    expect(COPY.count(0, 3)).toBe("No quarter forecast yet: add one when you plan.");
   });
 
   it("gives the hit rate, the lean and the typical range, each with its tooltip", () => {
@@ -121,6 +123,8 @@ describe("the section", () => {
     expect(t).toContain("Your forecasts 2 of 3 quarters forecast");
     expect(t).toContain("Revenue Too few forecasts to judge yet: 2 so far.");
     expect(t).not.toContain("Units sold");
+    // Too few to judge, no chart: it couldn't draw the band or the expected line yet (Plot, #396).
+    expect(t).not.toContain(COPY.chart);
   });
 
   it("explains each judged line as its description, shown on hover and focus", () => {
@@ -129,6 +133,8 @@ describe("the section", () => {
     );
     expect(html.match(/role="tooltip"/g)).toHaveLength(3);
     expect(html).toMatch(/tabindex="0" aria-describedby="[^"]+-tip-0"/);
+    // Judged, its chart draws.
+    expect(html).toContain(COPY.chart);
   });
 
   it("with nothing forecast, is the count alone", () => {
@@ -137,6 +143,6 @@ describe("the section", () => {
         <ForecastCalibration calibration={{ ...calibration, forecast: 0, history: [] }} />,
       ),
     );
-    expect(t).toBe("Your forecasts 0 of 3 quarters forecast");
+    expect(t).toBe("Your forecasts No quarter forecast yet: add one when you plan.");
   });
 });

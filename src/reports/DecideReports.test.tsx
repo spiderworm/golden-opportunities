@@ -92,7 +92,7 @@ describe("Reports in Decide", () => {
           onClose={() => {}}
           onEdit={() => {}}
           calibration={{
-            forecast: 0,
+            forecast: played,
             played,
             revenue: {
               measure: "revenue",
@@ -122,7 +122,7 @@ describe("Reports in Decide", () => {
     expect(calibrated(1)).not.toMatch(/<h3[^>]*>Your forecasts/);
     expect(calibrated(1)).toContain('aria-label="Your forecasts"');
     expect(calibrated(1)).not.toContain('<ul class="');
-    expect(calibrated(1)).toContain("0 of 1 quarter forecast");
+    expect(calibrated(1)).toContain("1 of 1 quarter forecast");
     expect(calibrated(0)).not.toContain("quarter forecast");
   });
 

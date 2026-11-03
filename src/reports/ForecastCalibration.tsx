@@ -64,7 +64,12 @@ function MeasureBlock({
   id: string;
 }) {
   const { measure } = calibration;
-  const option = useMemo(() => calibrationOption(measure, history), [measure, history]);
+  // Only once it's judged: under 3 quarters the band and the expected line can't draw (a line needs two points),
+  // so the legend would promise marks that aren't there (Plot, #396).
+  const option = useMemo(
+    () => (calibration.judged ? calibrationOption(measure, history) : null),
+    [calibration.judged, measure, history],
+  );
   if (calibration.n === 0) return null;
   return (
     <div className={styles.calibrationMeasure}>
