@@ -13,6 +13,7 @@ import {
   canAddMeasure,
   canCompare,
   droveBlock,
+  droveOn,
   droveQuarters,
   scatterProblem,
   measuresOf,
@@ -506,6 +507,14 @@ describe("what drove the change: when it can, and why not (Plot, #328)", () => {
     expect(why({ filters: { quarter: ["2193-Q1"] } })).toBe(
       "Q1 2193 is the first quarter in the ledgers: there's nothing before it to compare",
     );
+  });
+
+  it("is on only when allowed, so a link without one quarter doesn't block the other toggles (Chart, #335)", () => {
+    expect(droveOn(base, quarters)).toBe(true);
+    const noQuarter = parseState(new URLSearchParams("by=genre&drove=1"));
+    // Kept in the URL for when a quarter is picked, but not on, so nothing says to turn it off.
+    expect(noQuarter.drove).toBe(true);
+    expect(droveOn(noQuarter, quarters)).toBe(false);
   });
 
   it("keeps drove=1 and split=1 in the URL only where the chart could break its change down", () => {
