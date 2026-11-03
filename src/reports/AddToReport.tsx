@@ -1,25 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useFetcher } from "react-router";
+import { Link } from "react-router";
 
 import type { Pin } from "~/investigate/pins/spec";
 import { track } from "~/platform/analytics/analytics.client";
 import { PLAYER_COPY as COPY } from "./copy";
 import { REPORT_LIMITS, type PlayerReport } from "./player";
+import { useReportsData } from "./useReportsData";
 import styles from "./Reports.module.css";
 
 /**
  * A pinned chart's "Add to report" (reports.md section 3): the player's reports, and New report. Choosing one opens
  * the editor on Reports with the pin added, for the player to save; nothing is written from here. The list is
- * fetched from Reports' loader when the menu opens.
+ * fetched from Reports' data (/api/reports) when the menu opens.
  */
 export function AddToReport({ pin }: { pin: Pin }) {
   const [open, setOpen] = useState(false);
-  const reports = useFetcher<{ player: PlayerReport[]; editable: boolean }>();
+  // Fetched when the menu opens, with a plain fetch, never through React Router (useReportsData).
+  const reports: { player: PlayerReport[]; editable: boolean } | null = useReportsData(open);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (open && reports.state === "idle" && !reports.data) void reports.load("/reports");
-  }, [open]);
   useEffect(() => {
     if (!open) return;
     const away = (e: PointerEvent) => {
@@ -37,7 +36,7 @@ export function AddToReport({ pin }: { pin: Pin }) {
       document.removeEventListener("keydown", escape);
     };
   }, [open]);
-  const list = reports.data?.player ?? [];
+  const list = reports?.player ?? [];
   const reported = (to: "existing" | "new") =>
     track("investigate_pin_reported", { kind: pin.kind, pinnedBy: pin.pinnedBy, to });
   const atLimit = list.length >= REPORT_LIMITS.reports;
@@ -55,11 +54,11 @@ export function AddToReport({ pin }: { pin: Pin }) {
       </button>
       {open && (
         <div ref={menu} className={styles.addToMenu}>
-          {!reports.data ? (
+          {!reports ? (
             <p className={styles.muted} aria-busy="true">
               {"…"}
             </p>
-          ) : !reports.data.editable ? (
+          ) : !reports.editable ? (
             <p className={styles.muted}>{COPY.closed}</p>
           ) : (
             <ul className={styles.plain}>
