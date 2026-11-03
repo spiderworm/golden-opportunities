@@ -3,8 +3,8 @@ import { awardChoice, canAddMeasure, canCompare, measuresOf, DEFAULT_STATE, only
 
 describe("investigate state", () => {
   it("round-trips through the URL", () => {
-    const state = { measure: "units", also: [], by: "genre", compare: true, filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] } } as const;
-    const params = toSearchParams({ ...state, also: [], filters: { genre: [...state.filters.genre], quarter: [...state.filters.quarter] } });
+    const state = { measure: "units", also: [], by: "genre", compare: true, filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] }, heat: { measure: "units", rows: "weekday", cols: "month" } } as const;
+    const params = toSearchParams({ ...state, also: [], filters: { genre: [...state.filters.genre], quarter: [...state.filters.quarter] }, heat: { ...state.heat } });
     expect(params.toString()).toBe("measure=units&by=genre&compare=quarter&quarter=2193-Q4&genre=Fiction&genre=Memoir");
     expect(parseState(params)).toEqual(state);
   });
@@ -128,7 +128,7 @@ describe("investigate state", () => {
     expect(measuresOf(parseState(new URLSearchParams("measures=revenue,units,orders,avg_order_value")))).toEqual(["revenue", "units", "orders"]);
     expect(measuresOf(parseState(new URLSearchParams("measures=units,units,bogus")))).toEqual(["units"]);
     // One measure is written as it always was, and old links still open.
-    expect(toSearchParams({ ...DEFAULT_STATE, measure: "units" }).toString()).toBe("measure=units");
+    expect(toSearchParams({ ...DEFAULT_STATE, measure: "units", heat: { ...DEFAULT_STATE.heat, measure: "units" } }).toString()).toBe("measure=units");
     expect(measuresOf(parseState(new URLSearchParams("measure=orders")))).toEqual(["orders"]);
     expect(measuresOf(parseState(new URLSearchParams("measures=")))).toEqual(["revenue"]);
   });
@@ -141,6 +141,25 @@ describe("investigate state", () => {
     expect(state.filters).toEqual({ price_band: ["under $10"], list_price: ["$12.99"], edition: ["Rystwyth (Hardcover)"] });
     expect(shownFilters(new URLSearchParams(), state.filters)).toEqual(["price", "edition"]);
     expect(parseState(new URLSearchParams("by=price_band&compare=quarter")).compare).toBe(true);
+  });
+
+  it("keeps the heatmap's measure and axes in the URL; without them, weekday by month in the chart's measure", () => {
+    // Every link before: the heatmap follows the chart's measure.
+    expect(parseState(new URLSearchParams("measure=orders")).heat).toEqual({ measure: "orders", rows: "weekday", cols: "month" });
+    const chosen = parseState(new URLSearchParams("measure=orders&heat=units&heat_rows=genre&heat_cols=quarter"));
+    expect(chosen.heat).toEqual({ measure: "units", rows: "genre", cols: "quarter" });
+    expect(toSearchParams(chosen).toString()).toBe("measure=orders&heat=units&heat_rows=genre&heat_cols=quarter");
+    // Never the same dimension twice, nor one a grid can't hold: back to the defaults.
+    expect(parseState(new URLSearchParams("heat_rows=month&heat_cols=month")).heat).toMatchObject({ rows: "weekday", cols: "month" });
+    expect(parseState(new URLSearchParams("heat_rows=title")).heat.rows).toBe("weekday");
+    expect(parseState(new URLSearchParams("heat=profit")).heat.measure).toBe("revenue");
+  });
+
+  it("filters to a heatmap cell's row and column values, and clears them on a second click", () => {
+    const state = { ...DEFAULT_STATE, heat: { measure: "revenue" as const, rows: "genre" as const, cols: "price_band" as const } };
+    const cell = toggleCell(state, "Fiction", "under $10");
+    expect(cell.filters).toEqual({ genre: ["Fiction"], price_band: ["under $10"] });
+    expect(toggleCell(cell, "Fiction", "under $10").filters).toEqual({});
   });
 
   it("says why a measure can't join: three at most, two units at most", () => {

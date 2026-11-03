@@ -91,7 +91,8 @@ function chartQuery(state: InvestigateState, measure: Measure = state.measure): 
   return { measure, by, ...withFilter(filtersExcept(state.filters, [state.by])) };
 }
 function heatmapQuery(state: InvestigateState): Query {
-  return { measure: state.measure, by: ['weekday', 'month'], ...withFilter(filtersExcept(state.filters, ['weekday', 'month'])) };
+  const { measure, rows, cols } = state.heat;
+  return { measure, by: [rows, cols], ...withFilter(filtersExcept(state.filters, [rows, cols])) };
 }
 
 export function investigate(state: InvestigateState, runQuery: RunQuery, view: QueryView,
