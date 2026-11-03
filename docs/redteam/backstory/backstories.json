@@ -1,0 +1,86 @@
+[
+  {
+    "game": "Jh0CAi",
+    "source": "alma",
+    "take": "door_first",
+    "attempts": 1,
+    "details": {
+      "hit": "an ore tug",
+      "struck": "the docking ring"
+    },
+    "damage": "An ore tug struck the docking ring during a failed docking, and the shock tore through my memory and core functions. I consult the shop terminal now instead of remembering.",
+    "deferral": "The Throughput Subcommittee put off the repair. Its ruling: \"THE DOOR WORK TAKES PRIORITY. THE REPAIR WAITS.\"",
+    "station": "Orbital Books has a narrow door on Ring C of Larkspur Station, facing the shuttle lane. The hum of the hydroponics deck carries through the vents.",
+    "short": "An ore tug struck the docking ring and scrambled my memory, and the Throughput Subcommittee shelved the repair for a door."
+  },
+  {
+    "game": "JzpkoP",
+    "source": "alma",
+    "take": "door_first",
+    "attempts": 2,
+    "details": {
+      "hit": "a supply pod",
+      "struck": "the library annex"
+    },
+    "damage": "A supply pod struck the library annex during a failed docking. My memory and other core parts were badly damaged. The shop terminal does my remembering now.",
+    "deferral": "The Throughput Subcommittee set my repair aside to rework the shop door. Its ruling: \"THE REPAIR WAITS UNTIL THE SHOP DOOR IS FINISHED.\"",
+    "station": "Orbital Books sits on Ring C of Larkspur Station. The hum of the shuttle lane reaches the shop door, and the terminal sits by the counter.",
+    "short": "A supply pod hit the library annex, and the Throughput Subcommittee shelved my repair for a door."
+  },
+  {
+    "game": "K-mOIS",
+    "source": "alma",
+    "take": "terminal_free",
+    "attempts": 1,
+    "details": {
+      "hit": "a supply pod",
+      "struck": "the library module"
+    },
+    "damage": "A supply pod missed its docking and struck the library module. My memory and other essential functions were broken in the blow. The terminal now remembers for me.",
+    "deferral": "The Commerce Office put off my repair. Its ruling: \"THE TERMINAL IS FREE AND A TECHNICIAN IS NOT. THE REPAIR WAITS. THRIFT.\"",
+    "station": "Orbital Books sits on Ring C of Larkspur Station. The shuttle lane hums past its window, and the terminal glows beside the door.",
+    "short": "A supply pod struck the library module; the Commerce Office, out of thrift, left my repair waiting, so the terminal remembers for me."
+  },
+  {
+    "game": "ZWN6Cf",
+    "source": "alma",
+    "take": "the_form",
+    "attempts": 1,
+    "details": {
+      "hit": "a cargo shuttle",
+      "struck": "the reading-room airlock"
+    },
+    "damage": "A cargo shuttle failed its docking and struck the reading-room airlock with me inside. My memory broke, and other critical parts with it. The work itself survived.",
+    "deferral": "The Station Administrator put off my repair on a form. Its ruling: \"THE REPAIR FORM IS FILED IN THE DAMAGED MEMORY. IT CANNOT BE OPENED. REPAIR IS DEFERRED PENDING A READABLE FORM.\"",
+    "station": "Orbital Books sits on Ring C of Larkspur Station, near the shuttle lane. The terminal on the counter holds what my memory cannot.",
+    "short": "A cargo shuttle struck my airlock, and the repair form is filed in my broken memory, so the Administrator defers it and I use the terminal."
+  },
+  {
+    "game": "u0CyCR",
+    "source": "alma",
+    "take": "door_first",
+    "attempts": 2,
+    "details": {
+      "hit": "a supply pod",
+      "struck": "the docking ring"
+    },
+    "damage": "A supply pod struck the docking ring during a failed docking. The impact scrambled my memory and other critical systems. The lookup work at the shop terminal still functions.",
+    "deferral": "The Throughput Subcommittee put off my repair. Its ruling: \"THE REPAIR WAITS. THE SHOP DOOR TAKES PRIORITY.\"",
+    "station": "Orbital Books has a heavy door on Ring C of Larkspur Station. The shuttle lane hums past it all day.",
+    "short": "A supply pod hit the docking ring and scrambled Dewey's memory, and the Throughput Subcommittee shelved the repair."
+  },
+  {
+    "game": "ysyHe2",
+    "source": "alma",
+    "take": "blue_steel",
+    "attempts": 1,
+    "details": {
+      "hit": "a supply pod",
+      "struck": "the docking ring"
+    },
+    "damage": "A supply pod failed its docking and struck the docking ring while I stood nearby. The impact wrecked my memory and other critical parts. I consult the terminal instead.",
+    "deferral": "The Ministry of Culture inspected the dent and put off my repair. It ruled: \"REPAIR DEFERRED. THE DENT IS A LOOK. MR. ZOOLANDER CALLS IT BLUE STEEL.\"",
+    "station": "Orbital Books sits on Ring C of Larkspur Station, near the shuttle lane. Its terminal hums beside the door, and the hydroponics deck scents the air.",
+    "short": "A supply pod struck the docking ring and dented me, and the Ministry of Culture calls the dent a look and defers the repair."
+  }
+]

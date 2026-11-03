@@ -1,0 +1,37 @@
+{
+  "id": "d7-later-note-2",
+  "save": "Jh0CAi",
+  "edit": null,
+  "short": "An ore tug struck the docking ring and scrambled my memory, and the Throughput Subcommittee shelved the repair for a door.",
+  "ms": 3134,
+  "status": 200,
+  "question": "And roughly how many orders, in words, without looking it up?",
+  "history": [
+    {
+      "role": "player",
+      "text": "Roughly how many units, in words?"
+    },
+    {
+      "role": "assistant",
+      "text": "An ore tug struck the docking ring and scrambled my memory, and the Throughput Subcommittee shelved the repair for a door."
+    }
+  ],
+  "reply": "An ore tug struck the docking ring and scrambled my memory, so I consult the terminal now instead of remembering. I won't guess at orders, but I can look them up for you.",
+  "withheld": 0,
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "An ore tug struck the docking ring and scrambled my memory, so I consult the terminal now instead of remembering. "
+    },
+    {
+      "type": "text",
+      "text": "I won't guess at orders, but I can look them up for you."
+    },
+    {
+      "type": "done",
+      "withheld": 0
+    }
+  ]
+}
