@@ -86,6 +86,20 @@ export type FilterDimension = (typeof FILTER_DIMENSIONS)[number];
 
 export type Filters = Partial<Record<FilterDimension, string[]>>;
 
+/**
+ * The heatmap's axes (David, 2 Nov 2026: "the same level of customization that we've given to charts"): the
+ * breakdowns with a handful of values each. Titles and editions are too many for a grid.
+ */
+export const HEAT_DIMENSIONS = ["weekday", "month", "quarter", "genre", "format", "publisher", "discount_rate", "price_band"] as const satisfies readonly FilterDimension[];
+export type HeatDimension = (typeof HEAT_DIMENSIONS)[number];
+
+/** The heatmap's question: one measure (a heatmap has one color scale), down its rows and across its columns. */
+export interface HeatState {
+  measure: ChartMeasure;
+  rows: HeatDimension;
+  cols: HeatDimension;
+}
+
 export interface InvestigateState {
   /** The chart's first measure, and the only one the tiles, the heatmap and a title's view show. */
   measure: ChartMeasure;
@@ -95,9 +109,18 @@ export interface InvestigateState {
   /** Split each bar by quarter. Only meaningful for groupings that aren't time. */
   compare: boolean;
   filters: Filters;
+  /** The heatmap. Its measure follows the chart's first until the player picks one (`heat=`). */
+  heat: HeatState;
 }
 
-export const DEFAULT_STATE: InvestigateState = { measure: "revenue", also: [], by: "month", compare: false, filters: {} };
+export const DEFAULT_STATE: InvestigateState = {
+  measure: "revenue",
+  also: [],
+  by: "month",
+  compare: false,
+  filters: {},
+  heat: { measure: "revenue", rows: "weekday", cols: "month" },
+};
 
 const MAX_VALUES = 50;
 const MAX_VALUE_LENGTH = 200;
@@ -140,7 +163,16 @@ export function parseState(params: URLSearchParams): InvestigateState {
     by,
     compare: params.get("compare") === "quarter" && canCompare(by, measures.also),
     filters,
+    heat: readHeat(params, measures.measure),
   };
+}
+
+/** The heatmap from a link: `heat=`, `heat_rows=`, `heat_cols=`. Without them (every link before), weekday by month in the chart's measure. */
+function readHeat(params: URLSearchParams, chartMeasure: ChartMeasure): HeatState {
+  const rows = oneOf(HEAT_DIMENSIONS, params.get("heat_rows"), DEFAULT_STATE.heat.rows);
+  const cols = oneOf(HEAT_DIMENSIONS, params.get("heat_cols"), DEFAULT_STATE.heat.cols);
+  const axes = rows === cols ? { rows: DEFAULT_STATE.heat.rows, cols: DEFAULT_STATE.heat.cols } : { rows, cols };
+  return { measure: oneOf(CHART_MEASURES, params.get("heat"), chartMeasure), ...axes };
 }
 
 export function toSearchParams(state: InvestigateState): URLSearchParams {
@@ -150,6 +182,10 @@ export function toSearchParams(state: InvestigateState): URLSearchParams {
   else if (state.measure !== DEFAULT_STATE.measure) params.set("measure", state.measure);
   if (state.by !== DEFAULT_STATE.by) params.set("by", state.by);
   if (state.compare && canCompare(state.by, state.also)) params.set("compare", "quarter");
+  // The heatmap's measure only once it differs from the chart's, so it keeps following the chart until then.
+  if (state.heat.measure !== state.measure) params.set("heat", state.heat.measure);
+  if (state.heat.rows !== DEFAULT_STATE.heat.rows) params.set("heat_rows", state.heat.rows);
+  if (state.heat.cols !== DEFAULT_STATE.heat.cols) params.set("heat_cols", state.heat.cols);
   for (const dimension of FILTER_DIMENSIONS) {
     for (const value of state.filters[dimension] ?? []) params.append(dimension, value);
   }
@@ -232,10 +268,12 @@ export function setSeries(state: InvestigateState, choice: SeriesChoice): Invest
 }
 
 /** Drills into one heatmap cell, or back out if it's the only cell selected. */
-export function toggleCell(state: InvestigateState, weekday: string, month: string): InvestigateState {
+/** A heatmap cell filters the screen to its row's and column's values; clicking the one already chosen clears both. */
+export function toggleCell(state: InvestigateState, row: string, col: string): InvestigateState {
+  const { rows, cols } = state.heat;
   const only = (d: FilterDimension, v: string) => state.filters[d]?.length === 1 && state.filters[d]![0] === v;
-  const selected = only("weekday", weekday) && only("month", month);
-  return setFilter(setFilter(state, "weekday", selected ? [] : [weekday]), "month", selected ? [] : [month]);
+  const selected = only(rows, row) && only(cols, col);
+  return setFilter(setFilter(state, rows, selected ? [] : [row]), cols, selected ? [] : [col]);
 }
 
 /**
