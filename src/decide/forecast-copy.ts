@@ -2,7 +2,7 @@
 // their own expectations of their decisions (optionally)", then "Forecast revenue and total units with hints, values
 // for previous quarter and same quarter previous year, displayed"). Plot's copy, chart-features-copy.md section 10.
 
-export type ForecastMeasure = "revenue" | "units";
+import type { ForecastMeasure } from "~/forecast/forecast";
 
 export const FORECAST_COPY = {
   heading: "Your forecast (optional)",
@@ -46,5 +46,3 @@ export const FORECAST_COPY = {
     invalid: () => "This note can't be saved. Check it and try again.",
   },
 } as const;
-
-export const NOTE_MAX = 500;
