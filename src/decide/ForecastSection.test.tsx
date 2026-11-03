@@ -64,6 +64,8 @@ describe("the forecast's checks (Frank's reasons, Plot's lines)", () => {
     const bad = open({ revenue: entry("1", "", ""), units: entry("x", "1", "2") });
     expect(draftProblem(bad)).toEqual({ field: "revenue", reason: "partial" });
     expect(draftProblem({ ...bad, open: false })).toBeNull();
+    // Counted by code point, as the server counts it: 500 emoji is 500, not 1,000.
+    expect(draftProblem(open({ note: "\u{1F4DA}".repeat(500) }))).toBeNull();
     expect(draftProblem(open({ note: "x".repeat(501) }))).toEqual({
       field: "note",
       reason: "too_long",
