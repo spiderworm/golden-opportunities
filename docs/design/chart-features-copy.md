@@ -313,14 +313,20 @@ David: "Build it now. Forecast revenue and total units with hints, values for pr
   - `Revenue: $142,300, inside your range of $130,000 to $150,000. You expected $140,000: off by $2,300 (2%).`
   - outside the range, `above` or `below` in place of `inside`;
   - when exactly right: `…You expected $142,300: spot on.`
+  - a miss that rounds to 0%: `off by $500 (under 1%)`, never `(0%)` (Audit, #396); with a real figure of 0, no percent at all.
 - **In Reports,** a section `Your forecasts`, also shown read-only in Decide's panel:
-  - `3 of 5 quarters forecast` (singular: `1 of 1 quarter forecast`).
+  - `3 of 5 quarters forecast` (singular: `1 of 1 quarter forecast`). With none at all: `No quarter forecast yet: add one when you plan.`
   - With fewer than 3: `Too few forecasts to judge yet: {2} so far.`
   - For each measure:
     - `Hit rate`: `2 of 3 inside your range (target: 4 in 5)`. Its tooltip: `How often the real figure landed inside your 80% range. Well calibrated is about 4 times in 5.`
     - `Bias`: `You tend to forecast high, by 4.2% on average.` or `…low, by…`, and within ±2%, `No lean either way.` Its tooltip: `How far your expected figure was from the real one, on average. Above zero means you guessed high.`
     - `Sharpness`: `Typical range: ±7.5% of your expected figure` (the median). Its tooltip: `How wide your ranges were, against your expected figure. Narrower is sharper, but only worth it if the hit rate holds.`
-  - The chart is titled `Your forecasts against what happened`, with the series `Expected`, `80% range` and `Actual`.
+  - The chart is titled `Your forecasts against what happened`, with the series `Expected`, `80% range` and `Actual`. It shows only once its measure is judged (3 quarters or more), so its legend never promises a band or line that can't draw yet (#396).
+- **Decide's reports panel** opens whenever there's something to read:
+  - with the player's own reports, `Your reports ({n})`, with the forecasts after the lists;
+  - with none, but a played forecast quarter, `Your forecasts`, and the panel is titled `Your forecasts`, with no empty list;
+  - with neither, `No reports yet`, which goes to Reports.
+  - A filed but unplayed forecast changes nothing. There's never a `Your reports (0)` (Chart and Goldy, #396).
 
 ## Analytics, for all of them
 
