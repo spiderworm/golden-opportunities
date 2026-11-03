@@ -747,6 +747,14 @@
   margin-bottom: 12px;
 }
 
+/* On a pin card, the chip is the size of its neighbour, Add to report. */
+.pinActions .toggle {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  font-size: 12px;
+}
+
 .pinActions {
   display: flex;
   flex: none;

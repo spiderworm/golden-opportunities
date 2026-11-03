@@ -196,7 +196,10 @@ export function Heatmap({
         </p>
       )}
       <p className={styles.source}>
-        {`Click a cell to filter the screen to that ${DIMENSION_LABELS[shown.rows].toLowerCase()} and ${DIMENSION_LABELS[shown.cols].toLowerCase()}. Source: ${result.source}`}
+        {/* The table has no cells to click: only its source. */}
+        {table
+          ? `Source: ${result.source}`
+          : `Click a cell to filter the screen to that ${DIMENSION_LABELS[shown.rows].toLowerCase()} and ${DIMENSION_LABELS[shown.cols].toLowerCase()}. Source: ${result.source}`}
       </p>
     </section>
   );
