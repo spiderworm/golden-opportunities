@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 const directory = await vi.hoisted(async () => {
@@ -69,7 +69,7 @@ it("records Dewey evidence without ending its capability; play ends it and freez
     expect((await api(save.id, q, cap.token)).status).toBe(200);
     expect(saves.read(save.id).revision).toBe(1);
     expect(vi.mocked(trackServer).mock.calls.filter((c) => c[0] === "discovery_found")).toEqual([
-      ["discovery_found", { id: "C" }],
+      ["discovery_found", { id: "C", source: "dewey" }],
     ]);
     submitPlan(
       new Request("http://localhost/decide", {
@@ -104,8 +104,8 @@ it("skips default visits and option queries, but intentional chart views count",
   const persisted = createSaveStore(path.join(directory, "saves")).read(save.id);
   expect(persisted.discoveries).toEqual(["A", "B"]);
   expect(vi.mocked(trackServer).mock.calls.filter((c) => c[0] === "discovery_part_found")).toEqual([
-    ["discovery_part_found", { part: "A1" }],
-    ["discovery_part_found", { part: "A2" }],
+    ["discovery_part_found", { part: "A1", source: "investigate" }],
+    ["discovery_part_found", { part: "A2", source: "investigate" }],
   ]);
 });
 
@@ -213,7 +213,7 @@ it("combines C pairs across measures and title drilldowns and records partial ev
   }
   expect(saves.read(save.id).discoveries).toEqual(["C"]);
   expect(vi.mocked(trackServer).mock.calls.filter((c) => c[0] === "discovery_part_found")).toEqual([
-    ["discovery_part_found", { part: "C_partial" }],
+    ["discovery_part_found", { part: "C_partial", source: "investigate" }],
   ]);
 });
 it("bounds evidence scopes and keeps awarded discoveries after partial scope eviction", () => {
@@ -260,7 +260,10 @@ it("renders already-loaded ledgers when discovery persistence is busy, and can c
   expect(saves.read).not.toHaveBeenCalled();
   vi.mocked(saves.read).mockRestore();
   expect(saves.read(save.id)).toEqual(save);
-  expect(trackServer).toHaveBeenCalledWith("discovery_record_deferred", { code: "SAVE_BUSY" });
+  expect(trackServer).toHaveBeenCalledWith("discovery_record_deferred", {
+    code: "SAVE_BUSY",
+    source: "investigate",
+  });
   load(save.id, "?measure=orders_per_day&by=weekday&compare=quarter");
   expect(saves.read(save.id).discoveries).toEqual(["B"]);
 });
@@ -276,4 +279,88 @@ it("never credits the heatmap after measure or filter changes, but credits a wee
   expect(saves.read(save.id)).toEqual(save);
   load(save.id, "?by=weekday&compare=quarter");
   expect(saves.read(save.id).discoveries).toEqual(["B"]);
+});
+
+describe("Dewey's lookups count as the player's own (David, 3 Nov 2026)", () => {
+  const byGenre: Query = {
+    measure: "revenue",
+    by: ["genre", "quarter"],
+    filter: { quarter: ["2193-Q3", "2193-Q4"] },
+  };
+  const parts = (id: string) =>
+    Object.values(saves.read(id).discoveryEvidence ?? {})
+      .flat()
+      .sort();
+
+  it("records the same A1 parts as Investigate's view of Q3 and Q4 by genre, and says where they came from", async () => {
+    const dewey = saves.create();
+    const looked = saves.create();
+    const cap = issueGameQueryToken(dewey.id);
+    try {
+      expect((await api(dewey.id, byGenre, cap.token)).status).toBe(200);
+    } finally {
+      cap.revoke();
+    }
+    load(looked.id, "?by=genre&compare=quarter&quarter=2193-Q3&quarter=2193-Q4");
+    expect(parts(dewey.id).filter((k) => k.startsWith("a1:"))).toHaveLength(16);
+    expect(parts(dewey.id)).toEqual(parts(looked.id));
+    const found = vi.mocked(trackServer).mock.calls.filter((c) => c[0] === "discovery_part_found");
+    expect(found).toEqual([
+      ["discovery_part_found", { part: "A1", source: "dewey" }],
+      ["discovery_part_found", { part: "A1", source: "investigate" }],
+    ]);
+  });
+
+  it("records nothing once the quarter it would count for is played", async () => {
+    const save = saves.create();
+    submitPlan(
+      new Request("http://localhost/decide", {
+        method: "POST",
+        headers: { origin: "http://localhost", cookie: "orbital_save=" + save.id },
+      }),
+      { levers: [] },
+    );
+    const cap = issueGameQueryToken(save.id);
+    try {
+      expect((await api(save.id, byGenre, cap.token)).status).toBe(200);
+    } finally {
+      cap.revoke();
+    }
+    // Planning Q2 now: Q1's A to C can't be found any more.
+    expect(parts(save.id).filter((k) => k.startsWith("a1:"))).toEqual([]);
+    expect(saves.read(save.id).discoveries).toEqual([]);
+  });
+
+  it("records nothing for a lookup that failed or was refused", async () => {
+    const save = saves.create();
+    const cap = issueGameQueryToken(save.id);
+    try {
+      expect((await api(save.id, { ...byGenre, measure: "bogus" }, cap.token)).status).toBe(400);
+      // Investigate-only for now (last year), refused to Dewey.
+      expect((await api(save.id, { ...byGenre, vs: "last_year" }, cap.token)).status).toBe(400);
+    } finally {
+      cap.revoke();
+    }
+    expect(saves.read(save.id).discoveryEvidence).toBeUndefined();
+  });
+
+  it("still answers Dewey when the save is busy, and defers the record as Investigate does", async () => {
+    const save = saves.create();
+    const cap = issueGameQueryToken(save.id);
+    vi.spyOn(saves, "recordEvidence").mockImplementationOnce(() => {
+      throw new SaveError("SAVE_BUSY");
+    });
+    try {
+      const response = await api(save.id, byGenre, cap.token);
+      expect(response.status).toBe(200);
+      expect((await response.json()).rows).toHaveLength(16);
+    } finally {
+      cap.revoke();
+    }
+    expect(trackServer).toHaveBeenCalledWith("discovery_record_deferred", {
+      code: "SAVE_BUSY",
+      source: "dewey",
+    });
+    expect(saves.read(save.id).discoveryEvidence).toBeUndefined();
+  });
 });

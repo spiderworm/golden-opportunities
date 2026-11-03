@@ -85,7 +85,7 @@ export function loader({ request }: Route.LoaderArgs) {
     // this view, so showing it again asks (and records) again.
     evidence = "deferred";
     try {
-      trackServer("discovery_record_deferred", { code: "SAVE_BUSY" });
+      trackServer("discovery_record_deferred", { code: "SAVE_BUSY", source: "investigate" });
     } catch {
       /* Rendering is independent of telemetry. */
     }

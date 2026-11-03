@@ -21,6 +21,12 @@ export interface ObservedQuery {
   result: QueryResult;
 }
 
+/**
+ * Where a view was seen, for the find events: Investigate (its page and pins), or Dewey's lookups, which he does for
+ * the player and which count the same (David, 3 Nov 2026: "if dewey looked it up, they did it for the user").
+ */
+export type DiscoverySource = "investigate" | "dewey";
+
 /** A view's scope, as F's matching rule has it: its measure, breakdown and filters, with the time axes left out. */
 const laterScope = (query: Query) =>
   createHash("sha256")
@@ -41,6 +47,7 @@ function recordLater(
   view: QueryView,
   observed: readonly ObservedQuery[],
   ctx: LaterContext,
+  source: DiscoverySource,
 ): void {
   const evidence: Record<string, string[]> = {};
   for (const { query, result } of observed) {
@@ -67,7 +74,7 @@ function recordLater(
     for (const id of after)
       if (!before.includes(id)) {
         try {
-          trackServer("discovery_found", { id, quarter: ctx.quarter });
+          trackServer("discovery_found", { id, quarter: ctx.quarter, source });
         } catch {
           /* Analytics cannot undo evidence. */
         }
@@ -83,6 +90,7 @@ export function recordDiscoveries(
   save: GameSave,
   view: QueryView,
   observed: readonly ObservedQuery[],
+  source: DiscoverySource = "investigate",
 ): void {
   // A, B and C come from views before Q1's plan, D, E and F from views before Q2's; none after.
   const quarter = currentQuarter(save);
@@ -90,7 +98,7 @@ export function recordDiscoveries(
   // From Q3, each quarter offers its own (later-discoveries.ts), from the views produced while planning it.
   const later = quarterIndex(quarter) >= 2 ? laterContext(save, quarter) : null;
   if (quarterIndex(quarter) >= 2) {
-    if (later) recordLater(save, view, observed, later);
+    if (later) recordLater(save, view, observed, later, source);
     return;
   }
   const rules = quarter === "2194-Q1" ? evidenceFromQuery : q2EvidenceFromQuery;
@@ -143,13 +151,13 @@ export function recordDiscoveries(
       }
     };
     for (const id of recorded.save.discoveries)
-      if (!recorded.before.includes(id)) emit("discovery_found", { id });
+      if (!recorded.before.includes(id)) emit("discovery_found", { id, source });
     for (const [part, gained] of [
       ["A1", after.shape && !before.shape],
       ["A2", after.size && !before.size],
       ["C_partial", after.months > 0 && after.months < 3 && before.months === 0],
     ] as const) {
-      if (gained) emit("discovery_part_found", { part });
+      if (gained) emit("discovery_part_found", { part, source });
     }
     const q2Before = combinedQ2Parts(recorded.oldEvidence);
     const q2After = combinedQ2Parts(recorded.save.discoveryEvidence ?? {});
@@ -158,7 +166,7 @@ export function recordDiscoveries(
       ["D_partial", oneOfTwo(q2After) && !q2Before.busy && !q2Before.quiet],
       ["E_partial", q2After.ratingsSome && !q2After.ratingsMany && !q2Before.ratingsSome],
     ] as const) {
-      if (gained) emit("discovery_part_found", { part });
+      if (gained) emit("discovery_part_found", { part, source });
     }
   } catch (error) {
     if (error instanceof SaveError && error.code === "SAVE_BUSY")
