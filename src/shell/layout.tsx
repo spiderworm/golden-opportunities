@@ -26,17 +26,30 @@ export function loader({ request }: Route.LoaderArgs) {
 
 export const shouldRevalidate = revalidateAbovePage;
 
+/**
+ * Marks the transmission seen, best effort: a plain fetch, not a fetcher, so a refusal (the game's, or React Router's
+ * own 400 on an action from the wrong origin) can be caught instead of reaching the error screen. The memo has
+ * already closed; on failure it comes back next visit. Then the shell's loader runs again, as a fetcher's would.
+ */
+export async function markSeen(revalidate: () => Promise<void>) {
+  try {
+    const response = await fetch("/alert/seen", { method: "POST", headers: { Accept: "*/*" } });
+    if (!response.ok) track("alert_seen_failed", { status: response.status });
+  } catch {
+    track("alert_seen_failed", { status: 0 });
+  }
+  await revalidate().catch(() => {});
+}
+
 function Frame({ station, children }: { station: StationState; children: ReactNode }) {
-  const seen = useFetcher();
+  const { revalidate } = useRevalidator();
   return (
     <Shell
       stationDate={station.date}
       notifications={station.alerts}
       standingOrder={station.standingOrder}
       q1={station.q1}
-      onAlertSeen={() =>
-        seen.submit(null, { method: "post", action: "/alert/seen" }).catch(() => {})
-      }
+      onAlertSeen={() => markSeen(revalidate)}
       track={track}
       counts={{ reports: station.newReports }}
     >
