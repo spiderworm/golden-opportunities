@@ -694,15 +694,14 @@ function PinButton({ pin, pinning }: { pin: LookupPin; pinning: Pinning }) {
   );
 }
 
-/** Dewey's face beside each of his turns, in CSS pixels. */
-const AVATAR = 40;
+/** Dewey's face beside each of his turns, in CSS pixels: large enough to see his screen's faces (David, 3 Nov). */
+const AVATAR = 64;
 
 const styles = {
   panel: {
     display: "flex",
     flexDirection: "column",
     gap: 12,
-    maxWidth: 520,
     padding: 16,
     background: "var(--color-panel)",
     border: "1px solid var(--color-border)",
@@ -710,7 +709,8 @@ const styles = {
     color: "var(--color-text)",
     fontFamily: "var(--font-body)",
   },
-  header: { display: "flex", alignItems: "baseline", gap: 8 },
+  // Room at the right for the column's fold button (DeweyColumn).
+  header: { display: "flex", alignItems: "baseline", gap: 8, paddingRight: 36 },
   offline: {
     display: "flex",
     flexDirection: "column",
@@ -740,7 +740,14 @@ const styles = {
     gap: 8,
     marginBottom: 6,
   },
-  log: { display: "flex", flexDirection: "column", gap: 16, maxHeight: 480, overflowY: "auto" },
+  // As tall as the window allows beside the dashboard, and never less than it was.
+  log: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 16,
+    maxHeight: "max(480px, calc(100vh - 320px))",
+    overflowY: "auto",
+  },
   turn: { display: "flex", flexDirection: "column", gap: 8 },
   question: {
     margin: 0,
@@ -750,7 +757,7 @@ const styles = {
     borderRadius: "var(--radius-control)",
   },
   answer: { margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.5 },
-  dewey: { display: "flex", gap: 8, alignItems: "flex-start" },
+  dewey: { display: "flex", gap: 10, alignItems: "flex-start" },
   avatar: { flex: "none", borderRadius: "50%", background: "#1d2440" },
   // Under his 3D face: still there for its name and its place, but not seen.
   avatarUnder: { flex: "none", opacity: 0 },
