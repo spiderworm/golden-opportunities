@@ -67,8 +67,11 @@ const holderStyle = {
   pointerEvents: "none",
 } satisfies React.CSSProperties;
 
-/** The camera on each face: from his shoulders up, his lamp's top at the square's top. */
-const CAMERA = { fov: 23, at: [0, 0.62, 2.0] as const, look: [0, 0.6, 0] as const };
+/**
+ * The camera on each face: all of him, base to lamp (the model is 0.98 tall and 0.82 wide), with a little room
+ * for his bob and sway (David, 3 Nov: he was "cut off at the bottom").
+ */
+const CAMERA = { fov: 23, at: [0, 0.5, 2.8] as const, look: [0, 0.48, 0] as const };
 
 /** How quickly a face eases into talking or back to idle (per second). */
 const EASE = 4;
