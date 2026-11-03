@@ -375,10 +375,16 @@ const banned = (text: string) => {
 };
 export const hasBannedWord = (folded: string) => banned(folded);
 // Exact phrases allowed despite their words, in exact contexts only.
-// "Look up" only as the act of looking something up: with its object ("look it up", "looked things up"), or right
-// after a subject or an auxiliary ("I looked up", "to look up"). Bare, it's also the improvement idiom ("sales
-// are looking up"), which states a direction (Audit's review of #244).
-const LOOK_UP = String.raw`\blook(?:s|ed|ing)? (?:it|them|that|things|everything) up\b|\b(?:i|i['’]ve|i['’]d|i['’]ll|we|we['’]ve|you|to|just|then|can|can['’]t|could|couldn['’]t|will|would|didn['’]t|don['’]t|did|do)\s+look(?:s|ed|ing)? up\b`;
+// "Look up" only as the act of looking something up (Audit's and Probe's reviews of #244 and #260):
+// - with its object between ("look it up", "looked things up");
+// - followed by what's looked up ("look up revenue", "to look up the figures");
+// - or with I, we or you as its subject, a helper or two between at most ("I looked up", "I've just looked up",
+//   "I'd like to look up", "I'm looking up").
+// Otherwise it's the improvement idiom ("sales are looking up", "revenue could look up", "started to look up").
+const SUBJECT = String.raw`(?:i|i['’]m|i['’]ve|i['’]d|i['’]ll|we|we['’]re|we['’]ve|you|you['’]re|you['’]ve)`;
+const HELPER = String.raw`(?:just|also|then|now|can|can['’]t|could|couldn['’]t|will|would|did|didn['’]t|do|don['’]t|like\s+to|want\s+to|need\s+to|have\s+to|had\s+to|tried\s+to|try\s+to|going\s+to|am|was|were)`;
+const LOOKED_UP_THING = String.raw`(?:the\s+|a\s+|an\s+|its\s+|their\s+|each\s+)?(?:revenue|units|orders|average|discounts?|ratings|checkouts|figures?|numbers?|totals?|sales|titles?|genres?|formats?|publishers?|editions?|prices?|months?|quarters?|weekdays?|authors?|series|data|terminal|ledger)\b`;
+const LOOK_UP = String.raw`\blook(?:s|ed|ing)? (?:it|them|that|things|everything) up\b|\blook(?:s|ed|ing)? up(?=\s+${LOOKED_UP_THING})|\b${SUBJECT}(?:\s+${HELPER}){0,2}\s+look(?:s|ed|ing)? up\b`;
 const ALLOWED = new RegExp(String.raw`${LOOK_UP}|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))`, "giu");
 const REF = /\{\{([^{}]{1,40})\}\}/g;
 
