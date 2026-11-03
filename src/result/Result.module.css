@@ -469,17 +469,11 @@ td .award {
   }
 }
 
-/* The player's forecast against what happened (forecast-result.tsx): a line per measure forecast, marked by where
-   it landed, then the player's own note. */
+/* The player's forecast against what happened (forecast-result.tsx): a card, its title the cards' own, then a line
+   per measure forecast, marked by where it landed, and the player's own note. */
 .forecast {
   display: grid;
   gap: 8px;
-}
-
-.forecastHeading {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
 }
 
 .forecastLines {
