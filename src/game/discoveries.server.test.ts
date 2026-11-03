@@ -363,4 +363,16 @@ describe("Dewey's lookups count as the player's own (David, 3 Nov 2026)", () => 
     });
     expect(saves.read(save.id).discoveryEvidence).toBeUndefined();
   });
+
+  it("still refuses the browser on a busy save, so it asks again rather than caching a view never recorded", async () => {
+    const save = saves.create();
+    vi.spyOn(saves, "recordEvidence").mockImplementationOnce(() => {
+      throw new SaveError("SAVE_BUSY");
+    });
+    expect((await api(save.id, byGenre)).status).toBe(429);
+    expect(trackServer).not.toHaveBeenCalledWith("discovery_record_deferred", expect.anything());
+    // Asked again, it's recorded.
+    expect((await api(save.id, byGenre)).status).toBe(200);
+    expect(parts(save.id).filter((k) => k.startsWith("a1:"))).toHaveLength(16);
+  });
 });
