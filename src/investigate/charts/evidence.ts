@@ -117,3 +117,23 @@ export function lastYearNoise(result: QueryResult): { compared: number; flagged:
   });
   return { compared, flagged };
 }
+
+/**
+ * An average's two counts vs. same quarter last year, in the columns' order (this year, then last), the unit once:
+ * `1,240 and 980 orders`, singular only when both are one, `1 and 1 rating` (Plot, after #311). Without last
+ * year's count, this year's alone.
+ */
+export function bothCounts(unit: EvidenceUnit, now: number, before: number | null): string {
+  if (before === null) return countOf(unit, now);
+  const word = now === 1 && before === 1 ? SINGULAR[unit] : unit;
+  return `${now.toLocaleString("en-US")} and ${before.toLocaleString("en-US")} ${word}`;
+}
+
+/** The tooltip's line for the two: `Based on 1,240 orders (Q1 2194) and 980 (Q1 2193)`. */
+export const bothLine = (
+  unit: EvidenceUnit,
+  now: number,
+  before: number,
+  labels: { now: string; then: string },
+) =>
+  `Based on ${countOf(unit, now)} (${labels.now}) and ${before.toLocaleString("en-US")} (${labels.then})`;

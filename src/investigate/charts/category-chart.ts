@@ -197,7 +197,14 @@ export function categoryOption(
      * The second series is last year's (last-year.ts): drawn lighter in this year's color, with the tooltip's change
      * line for each category, or null for none.
      */
-    ghost?: { change: (category: number) => string | null };
+    /**
+     * Last year beside this year: the tooltip's change line, and for an average both years' counts in one line
+     * (Plot, after #311), which stands in for each series' own.
+     */
+    ghost?: {
+      change: (category: number) => string | null;
+      basedOn?: (category: number) => string | null;
+    };
   },
 ): EChartsCoreOption {
   const { measure, x } = model;
@@ -290,13 +297,14 @@ export function categoryOption(
             ? "Click to clear"
             : "Click to look closer";
         const changed = ghost?.change(first.dataIndex);
+        const both = ghost?.basedOn?.(first.dataIndex);
         const changeLine = changed
           ? `<div style="margin-top:4px">${escapeHtml(changed)}</div>`
           : "";
         const hintLine = hint
           ? `<div style="font-size:11px;color:${chartTheme.textSubtle};margin-top:6px">${hint}</div>`
           : "";
-        return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${heading}</div>${lines.join("")}${changeLine}${hintLine}`;
+        return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${heading}</div>${lines.join("")}${changeLine}${both ? note(both) : ""}${hintLine}`;
       },
     },
     xAxis: horizontal ? valueAxis : categoryAxis,
@@ -374,7 +382,8 @@ function evidenceLines(
   if (!series || !evidence) return "";
   const lines: string[] = [];
   if (model.unit && value !== null) {
-    lines.push(basedOnLine(model.unit, evidence.n));
+    // Last year beside this year gives both counts in one line after the change.
+    if (comparing) lines.push(basedOnLine(model.unit, evidence.n));
     const low = lowLine(model.unit, evidence.n);
     if (low) lines.push(low);
   }

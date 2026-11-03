@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   basedOnLine,
+  bothCounts,
+  bothLine,
   countOf,
   faded,
   fadedCaption,
@@ -49,5 +51,15 @@ describe("how much evidence, in words (Plot, #296 and #297)", () => {
     expect(withNoise("New", true)).toBe("New · within noise");
     expect(withNoise("+2.1%", false)).toBe("+2.1%");
     expect(withNoise("", true)).toBe("");
+  });
+
+  it("gives last year's average both counts, the unit once, singular only when both are one (Plot)", () => {
+    expect(bothCounts("orders", 1240, 980)).toBe("1,240 and 980 orders");
+    expect(bothCounts("ratings", 1, 980)).toBe("1 and 980 ratings");
+    expect(bothCounts("ratings", 1, 1)).toBe("1 and 1 rating");
+    expect(bothCounts("orders", 1240, null)).toBe("1,240 orders");
+    expect(bothLine("orders", 1240, 980, { now: "Q1 2194", then: "Q1 2193" })).toBe(
+      "Based on 1,240 orders (Q1 2194) and 980 (Q1 2193)",
+    );
   });
 });
