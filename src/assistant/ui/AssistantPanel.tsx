@@ -746,7 +746,7 @@ const styles = {
     whiteSpace: "nowrap",
   },
   muted: { color: "var(--color-text-muted)", margin: 0, fontSize: 13 },
-  chartTitle: { fontSize: 13, fontWeight: 600, flex: "1 1 auto", minWidth: 0 },
+  chartTitle: { fontSize: 13, fontWeight: 600, flex: "1 1 50%", minWidth: 0 },
   // A lookup's title with its Table toggle, as a pin's header has them.
   lookupHeader: {
     display: "flex",
@@ -755,14 +755,17 @@ const styles = {
     gap: 8,
     marginBottom: 6,
   },
-  // The toggle and Pin side by side, at the header's right; at Dewey's narrowest they wrap under one another there.
+  // The toggle and Pin side by side, at the header's right. When something longer joins them ("Couldn't pin
+  // that."), the group shrinks and wraps it underneath rather than squeeze the title, which keeps half the
+  // header (Chart, #354).
   lookupControls: {
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "flex-end",
     alignItems: "center",
     gap: 6,
-    flexShrink: 0,
+    flex: "0 1 auto",
+    minWidth: 0,
   },
   // As tall as the window allows beside the dashboard, and never less than it was.
   log: {
