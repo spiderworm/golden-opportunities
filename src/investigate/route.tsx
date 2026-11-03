@@ -307,8 +307,16 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             });
             update({ ...state, heat });
           }}
-          onPin={() => pins.add(heatPin, "player")}
+          // Pinned as it's shown: its table, if that's the view.
+          onPin={(table) => pins.add(table ? { ...heatPin, table } : heatPin, "player")}
           pinned={pins.has(heatPin)}
+          onTable={(table) =>
+            track("view_toggled", {
+              where: "heatmap",
+              view: table ? "table" : "chart",
+              kind: "heatmap",
+            })
+          }
         />
         <PinnedCharts
           pins={pins.pins}
@@ -316,6 +324,14 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           onRemove={pins.remove}
           onError={(code) => track("investigate_pin_failed", { code })}
           addToReport={(pin) => <AddToReport pin={pin} />}
+          onTable={(pin, table) => {
+            pins.setTable(pin.id, table);
+            track("view_toggled", {
+              where: "pin",
+              view: table ? "table" : "chart",
+              kind: pin.kind,
+            });
+          }}
         />
       </div>
       {/* Dewey: a column beside the dashboard on wide screens, after it below that. */}

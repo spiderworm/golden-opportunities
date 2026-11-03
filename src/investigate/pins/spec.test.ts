@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { Query } from "~/query/types";
-import { addPin, MAX_PINS, parsePins, parsePinSpec, pinKey, type Pin, type PinSpec } from "./spec";
+import {
+  addPin,
+  canToggle,
+  drawnKind,
+  MAX_PINS,
+  parsePins,
+  parsePinSpec,
+  pinKey,
+  shownAsTable,
+  type Pin,
+  type PinSpec,
+} from "./spec";
 
 const spec = {
   title: "Revenue by quarter",
@@ -286,5 +297,57 @@ describe("pins saved before months had a year", () => {
     const stored = parsePins(JSON.stringify([{ id: "p", pinnedBy: "dewey", ...old }]))[0]!;
     expect(pinKey(parsePinSpec(old)!)).toBe(pinKey(stored));
     expect(pinKey(old)).not.toBe(pinKey(stored));
+  });
+});
+
+describe("a pin's chart or table view (David, 3 Nov 2026)", () => {
+  const bar = {
+    title: "Revenue by genre",
+    kind: "bar" as const,
+    query: { measure: "revenue" as const, by: ["genre" as const] },
+  };
+  const table = {
+    title: "Revenue by month",
+    kind: "table" as const,
+    query: { measure: "revenue" as const, by: ["month" as const] },
+  };
+
+  it("keeps a toggled view on the pin, and refuses one that isn't a yes or no", () => {
+    expect(parsePinSpec({ ...bar, table: true })).toEqual({ ...bar, table: true });
+    expect(parsePinSpec({ ...table, table: false })).toEqual({ ...table, table: false });
+    expect(parsePinSpec(bar)).toEqual(bar);
+    expect(parsePinSpec({ ...bar, table: "yes" })).toBeNull();
+  });
+
+  it("shows a pin by its toggle, else its kind; and draws a table as the terminal would", () => {
+    expect(shownAsTable(bar)).toBe(false);
+    expect(shownAsTable({ ...bar, table: true })).toBe(true);
+    expect(shownAsTable(table)).toBe(true);
+    expect(shownAsTable({ ...table, table: false })).toBe(false);
+    expect(drawnKind(table)).toBe("line");
+    expect(drawnKind({ ...table, query: { ...table.query, by: ["genre"] } })).toBe("bar");
+    expect(drawnKind({ ...bar, kind: "line" })).toBe("line");
+  });
+
+  it("offers both views only where there's a breakdown to draw", () => {
+    expect(canToggle(bar)).toBe(true);
+    expect(canToggle({ ...bar, query: { measure: "revenue", by: [] } })).toBe(false);
+    expect(
+      canToggle({
+        title: "Q3 against Q4",
+        kind: "comparison",
+        comparison: {
+          measure: "revenue",
+          across: "quarter",
+          from: "2193-Q3",
+          to: "2193-Q4",
+          by: [],
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it("matches the same pin whichever way it's shown", () => {
+    expect(pinKey({ ...bar, table: true })).toBe(pinKey(bar));
   });
 });

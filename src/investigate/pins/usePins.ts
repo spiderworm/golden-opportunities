@@ -14,6 +14,8 @@ export interface Pins {
   remove: (id: string) => void;
   /** Whether the same pin is on the board, whatever its title. */
   has: (spec: PinSpec) => boolean;
+  /** Shows a pin as its table (true) or its chart (false), and keeps that view. */
+  setTable: (id: string, table: boolean) => void;
 }
 
 export function usePins(track: Track): Pins {
@@ -63,5 +65,10 @@ export function usePins(track: Track): Pins {
     [pins],
   );
 
-  return { pins, add, remove, has };
+  // Kept on the pin, so the board shows it the same way next time (David, 3 Nov 2026).
+  const setTable = useCallback((id: string, table: boolean) => {
+    setPins((current) => (current ?? []).map((p) => (p.id === id ? { ...p, table } : p)));
+  }, []);
+
+  return { pins, add, remove, has, setTable };
 }
