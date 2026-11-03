@@ -30,6 +30,19 @@ describe("the heatmap (David: \"the same level of customization that we've given
     expect([model.min, model.max, model.cells.length]).toEqual([0, 9, 12]);
   });
 
+  it("leaves cells blank, never zero, when the terminal cut the result, and says so (Frank, #264)", () => {
+    const cut = { ...result, truncated: true };
+    const model = heatModel(cut, "units", "genre", heatAxis("genre", cut, [], {}), "price_band", heatAxis("price_band", cut, [], {}));
+    expect(model.cut).toBe(true);
+    // Fiction at $10 to $19.99 isn't in the rows: unknown, not zero.
+    expect(model.cells.find(([x, y]) => x === 1 && y === 0)![2]).toBeNull();
+    const complete = heatModel({ ...result, truncated: false }, "units", "genre", heatAxis("genre", result, [], {}), "price_band", heatAxis("price_band", result, [], {}));
+    expect(complete.cells.find(([x, y]) => x === 1 && y === 0)![2]).toBe(0);
+    const html = renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat }} result={cut} quarters={[]} onCell={() => {}} onHeat={() => {}} />);
+    expect(html).toContain("This grid is too large to show in full. Narrow it with a filter.");
+    expect(html).toMatch(/data-cut="true"[^>]*aria-label="Fiction, \$10 to \$19\.99: Not shown: the grid was cut off\."/);
+  });
+
   it("titles itself from its choices, offers its measure and axes, and labels every cell", () => {
     const html = renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat }} result={result} quarters={[]} onCell={() => {}} onHeat={() => {}} />);
     expect(html).toMatch(/<h2[^>]*>Units sold by genre and price band<\/h2>/);
