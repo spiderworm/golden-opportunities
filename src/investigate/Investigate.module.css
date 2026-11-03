@@ -459,7 +459,7 @@
   cursor: pointer;
 }
 
-.toggle:hover:not(:disabled) {
+.toggle:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--color-panel-raised);
 }
 
@@ -468,7 +468,8 @@
   background: var(--color-accent-wash);
 }
 
-.toggle:disabled {
+.toggle:disabled,
+.toggle[aria-disabled="true"] {
   color: var(--color-text-subtle);
   cursor: not-allowed;
 }

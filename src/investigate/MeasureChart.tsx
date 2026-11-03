@@ -14,6 +14,7 @@ import {
 } from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
 import { Dropdown } from "~/platform/ui/Dropdown";
+import { ReasonToggle } from "~/platform/ui/ReasonToggle";
 import { Legend } from "./charts/Legend";
 import { SCATTER_HEIGHT, scatterOption, scatterPoints, scatterTitle } from "./charts/scatter-chart";
 import { LastYearTable, ResultTable } from "./charts/ResultTable";
@@ -40,6 +41,7 @@ import {
   fittingMeasures,
   GROUPINGS,
   lastYearBlock,
+  lastYearUnshown,
   measuresOf,
   monthsInScope,
   scatterProblem,
@@ -172,8 +174,12 @@ export function MeasureChart({
       }),
     [result, state.by, state.compare, months.join(), showAll, selected.join("\u0000")],
   );
-  // Last year beside this year (Plot, #291): only where it's allowed and the server ran it.
-  const lastYearReason = lastYearBlock(state, quarters);
+  // Last year beside this year (Plot, #291): only where it's allowed and the server ran it; else it says why.
+  const lastYearReason =
+    lastYearBlock(state, quarters) ??
+    (state.lastYear
+      ? lastYearUnshown(state, result)
+      : lastYearUnshown(state, { ...result, lastYear: true }));
   const quarter = shownQuarter(state);
   const labels =
     state.lastYear && !lastYearReason && quarter && result.lastYear
@@ -252,34 +258,30 @@ export function MeasureChart({
             onChange={onGroup}
             options={GROUPINGS.map((g) => ({ value: g, label: DIMENSION_LABELS[g] }))}
           />
-          <button
-            type="button"
+          <ReasonToggle
             className={styles.toggle}
-            aria-pressed={state.compare}
-            disabled={!canCompare(state.by, state.also) || labels !== null}
-            title={
+            pressed={state.compare}
+            reason={
               state.also.length
                 ? "Show one measure to compare quarters"
                 : !canCompare(state.by)
                   ? "Group by genre, format or publisher to compare quarters"
                   : labels
                     ? "Turn off vs. same quarter last year to compare quarters"
-                    : undefined
+                    : null
             }
-            onClick={() => onCompare(!state.compare)}
+            onToggle={() => onCompare(!state.compare)}
           >
             Compare quarters
-          </button>
-          <button
-            type="button"
+          </ReasonToggle>
+          <ReasonToggle
             className={styles.toggle}
-            aria-pressed={labels !== null}
-            disabled={lastYearReason !== null}
-            title={lastYearReason ?? undefined}
-            onClick={() => onLastYear?.(!state.lastYear)}
+            pressed={labels !== null}
+            reason={lastYearReason}
+            onToggle={() => onLastYear?.(!state.lastYear)}
           >
             vs. same quarter last year
-          </button>
+          </ReasonToggle>
           <button
             type="button"
             className={styles.toggle}
