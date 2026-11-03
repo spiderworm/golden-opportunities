@@ -15,6 +15,36 @@
   height: 100%;
 }
 
+/* The 3D scene: out of sight until it has drawn whole, then shown once (calm, or at once for reduced motion). */
+.scene {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.scene[data-shown] {
+  opacity: 1;
+  transition: opacity 300ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene[data-shown] {
+    transition: none;
+  }
+}
+
+/* Loading…, quietly in the middle, only while nothing's committed and it's taking a while. */
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
 .held {
   position: absolute;
   inset: 0;
