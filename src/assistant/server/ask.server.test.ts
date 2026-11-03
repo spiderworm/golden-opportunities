@@ -1343,3 +1343,27 @@ it("turns a question without a game away before it takes the slot, so a slow bod
   expect(answered.status).toBe(200);
   expect((await events(answered)).at(-1)).toMatchObject({ type: "done" });
 });
+
+it("counts questions without a game toward their own minute cap, so a loop of them can't refuse players (Audit, #338)", async () => {
+  const tracked: [string, unknown][] = [];
+  const at = Date.now();
+  const status = async (game: boolean) =>
+    (
+      await ask(
+        post({ question: "Revenue?" }),
+        () => fakeAssistant(),
+        (name, props) => tracked.push([name, props]),
+        () => at,
+        undefined,
+        () => null,
+        () => null,
+        () => game,
+      )
+    ).status;
+  // A minute's worth of them, then the next is refused...
+  for (let i = 0; i < 30; i++) expect(await status(false)).toBe(200);
+  expect(await status(false)).toBe(429);
+  expect(tracked).toContainEqual(["assistant_limited", { reason: "flood_without_game" }]);
+  // ...while a player with a game, in the same minute, is answered.
+  expect(await status(true)).toBe(200);
+});

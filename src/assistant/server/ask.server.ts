@@ -5,7 +5,7 @@ import { randomBytes } from "node:crypto";
 import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
 import { chartTitle, lookupPin, type ChartSpec } from "../tools/definitions.ts";
-import { acquire, arrive, ndjson } from "./assistant.server.ts";
+import { acquire, arrive, arriveWithoutGame, ndjson } from "./assistant.server.ts";
 import { markOffline, offlineCopy, type OfflineReason } from "./availability.server.ts";
 import { Refs, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
 import type { BackstoryText } from "../../alma/backstory.ts";
@@ -282,9 +282,11 @@ export function ask(
       track("assistant_refused", { status: e.status });
       return refuse(e.status, e.message);
     };
-    // Every request counts toward the minute cap, before any other check, so floods stay bounded.
-    if (!arrive(now())) {
-      track("assistant_limited", { reason: "flood" });
+    // Every request counts toward a minute cap, before any other check, so floods stay bounded. A question without
+    // a game counts toward its own, so a loop of them can't refuse the players who have one (Audit, #338).
+    const game = gameFor(request);
+    if (!(game ? arrive(now()) : arriveWithoutGame(now()))) {
+      track("assistant_limited", { reason: game ? "flood" : "flood_without_game" });
       return refuse(429, "Too many requests. Try again in a minute.");
     }
     try {
@@ -295,7 +297,7 @@ export function ask(
     // A question without a game asks no model, so it takes no slot and counts toward no limit: it's turned away
     // before admission, unread, so it can't hold the slot with a slow body either (Probe's red-team of #319;
     // Frank's review of #336).
-    if (!gameFor(request)) {
+    if (!game) {
       track("assistant_no_game", {});
       return ndjson<WireEvent>(
         async function* () {
