@@ -47,6 +47,14 @@ export interface GroupChange {
   presence?: "new" | "gone";
 }
 
+/** The two quarters a change runs between, and each one's rows. */
+export interface DroveRows {
+  then: string;
+  now: string;
+  thenRows: PeriodRows;
+  nowRows: PeriodRows;
+}
+
 /** Why there's no price/volume/mix split, for the toggle's reason. */
 export type SplitProblem = "no_units" | "nothing_then" | "truncated";
 
@@ -62,6 +70,9 @@ export interface Waterfall {
   /** With the split asked for: the whole change split, the groups' splits summed, or why it can't be. */
   split?: Split | { problem: SplitProblem };
 }
+
+/** How many groups get their own bar; the rest are one, "Everything else". */
+export const WATERFALL_TOP = 8;
 
 const measureOf = (result: QueryResult) => result.columns.at(-1)!.key;
 
@@ -103,7 +114,7 @@ export function waterfall(
   by: Dimension,
   then: PeriodRows,
   now: PeriodRows,
-  { top = 8, split = false }: { top?: number; split?: boolean } = {},
+  { top = WATERFALL_TOP, split = false }: { top?: number; split?: boolean } = {},
 ): Waterfall {
   const r0 = rowsBy(then.revenue, by);
   const r1 = rowsBy(now.revenue, by);

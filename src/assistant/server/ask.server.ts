@@ -256,6 +256,12 @@ export type BackstoryFor = (request: Request) => BackstoryText | null;
 /** Counts this question against the daily caps (platform/usage.server.ts): null if it may go ahead, else the cap. */
 export type UsageFor = (request: Request) => Cap | null;
 
+/** Whether this question comes with a real game (a save that resolves): only then can it reach a model. */
+export type GameFor = (request: Request) => boolean;
+
+/** What Dewey says to a question without a game: there's nothing for him to look up yet. */
+export const START_A_GAME = "Start a game, then try your question again.";
+
 /** What Dewey says once a daily cap is reached (Plot): in his voice, and the rest of the game goes on. */
 export const RESTING =
   "I've looked up all I can for now, and my circuits need a rest. Ask me again later.";
@@ -268,6 +274,7 @@ export function ask(
   deadlineMs?: number,
   backstoryFor: BackstoryFor = () => null,
   usageFor: UsageFor = () => null,
+  gameFor: GameFor = () => true,
 ): Promise<Response> {
   return (async () => {
     const refused = (e: unknown) => {
@@ -303,6 +310,20 @@ export function ask(
     } catch (e) {
       slot.release();
       return refused(e);
+    }
+    // A question without a game asks no model, so it doesn't count toward the hour either: otherwise a couple of
+    // minutes of them, with no save cookie, would rest Dewey for an hour for everyone (Probe's red-team of #319).
+    if (!gameFor(request)) {
+      slot.release();
+      track("assistant_no_game", {});
+      return ndjson<WireEvent>(
+        async function* () {
+          yield { type: "text", text: START_A_GAME };
+          yield { type: "done", withheld: 0 };
+        },
+        () => ({ type: "error", message: FAILED }),
+        request,
+      );
     }
     slot.charge();
     // The daily caps, counted only for a question that passed every check: past one, Dewey rests, and no model is

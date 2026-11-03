@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { MEASURE_DIMENSIONS, MEASURES } from "~/query/types";
-import { GROUPINGS, heatWindow, lastYearBlock, lastYearUnshown, type ChartMeasure } from "./state";
+import {
+  GROUPINGS,
+  heatWindow,
+  lastYearBlock,
+  lastYearUnshown,
+  type ChartMeasure,
+  type InvestigateState,
+} from "./state";
 import {
   awardChoice,
   canAddMeasure,
   canCompare,
+  droveBlock,
+  droveOn,
+  droveQuarters,
   scatterProblem,
   measuresOf,
   DEFAULT_STATE,
@@ -34,6 +44,8 @@ describe("investigate state", () => {
       compare: true,
       scatter: false,
       lastYear: false,
+      drove: false,
+      split: false,
       filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] },
       heat: { measure: "units", rows: "weekday", cols: "month", period: "recent" },
     } as const;
@@ -458,5 +470,62 @@ describe("investigate state", () => {
       "2193-11",
       "2193-12",
     ]);
+  });
+});
+
+describe("what drove the change: when it can, and why not (Plot, #328)", () => {
+  const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1"];
+  const base: InvestigateState = {
+    ...DEFAULT_STATE,
+    by: "genre",
+    drove: true,
+    filters: { quarter: ["2194-Q1"] },
+  };
+
+  it("compares the quarter shown with the one before, or with last year's when that's on", () => {
+    expect(droveQuarters(base, quarters)).toEqual({ then: "2193-Q4", now: "2194-Q1" });
+    expect(droveQuarters({ ...base, lastYear: true }, quarters)).toEqual({
+      then: "2193-Q1",
+      now: "2194-Q1",
+    });
+    expect(droveBlock(base, quarters)).toBeNull();
+  });
+
+  it("says why it can't, in Plot's words", () => {
+    const why = (patch: Partial<InvestigateState>) => droveBlock({ ...base, ...patch }, quarters);
+    expect(why({ also: ["units"] })).toBe("Show one measure to see what drove its change");
+    expect(why({ measure: "units" })).toBe("Show revenue to see what drove its change");
+    expect(why({ by: "month" })).toBe(
+      "Break down by genre, title or edition to see what drove the change",
+    );
+    expect(why({ compare: true })).toBe("Turn off Compare quarters to see what drove the change");
+    expect(why({ scatter: true })).toBe("Turn off Scatter plot to see what drove the change");
+    expect(why({ filters: {} })).toBe("Filter to one quarter to see what drove its change");
+    expect(why({ filters: { quarter: ["2196-Q3"] } })).toBe(
+      "Q3 2196 isn't in the ledgers yet: filter to a quarter that's been played",
+    );
+    expect(why({ filters: { quarter: ["2193-Q1"] } })).toBe(
+      "Q1 2193 is the first quarter in the ledgers: there's nothing before it to compare",
+    );
+  });
+
+  it("is on only when allowed, so a link without one quarter doesn't block the other toggles (Chart, #335)", () => {
+    expect(droveOn(base, quarters)).toBe(true);
+    const noQuarter = parseState(new URLSearchParams("by=genre&drove=1"));
+    // Kept in the URL for when a quarter is picked, but not on, so nothing says to turn it off.
+    expect(noQuarter.drove).toBe(true);
+    expect(droveOn(noQuarter, quarters)).toBe(false);
+  });
+
+  it("keeps drove=1 and split=1 in the URL only where the chart could break its change down", () => {
+    const params = toSearchParams({ ...base, split: true });
+    expect(params.get("drove")).toBe("1");
+    expect(params.get("split")).toBe("1");
+    expect(parseState(params)).toMatchObject({ drove: true, split: true });
+    expect(toSearchParams({ ...base, measure: "units" }).get("drove")).toBeNull();
+    expect(parseState(new URLSearchParams("by=month&drove=1&split=1"))).toMatchObject({
+      drove: false,
+      split: false,
+    });
   });
 });

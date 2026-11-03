@@ -15,6 +15,9 @@ import {
   type CategoryModel,
 } from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
+import { waterfall, type DroveRows } from "~/query/decompose";
+import { Waterfall } from "./charts/Waterfall";
+import { droveLabels } from "./charts/waterfall-chart";
 import { Dropdown } from "~/platform/ui/Dropdown";
 import { ReasonToggle } from "~/platform/ui/ReasonToggle";
 import { EvidenceLegend, Legend } from "./charts/Legend";
@@ -55,6 +58,9 @@ import {
   monthsInScope,
   scatterProblem,
   shownQuarter,
+  droveBlock,
+  droveGroups,
+  droveOn,
   type ChartMeasure,
   type Grouping,
   type InvestigateState,
@@ -77,6 +83,11 @@ export interface MeasureChartProps {
   onScatter: (on: boolean) => void;
   /** "vs. same quarter last year" switched on or off. */
   onLastYear?: (on: boolean) => void;
+  /** "What drove the change": the loader's two quarters' rows, null unless it's on and allowed. */
+  drove?: DroveRows | null;
+  /** "What drove the change", and its price, volume and mix split, switched on or off. */
+  onDrove?: (on: boolean) => void;
+  onSplit?: (on: boolean) => void;
   onDrill: (value: string) => void;
   onTable: (shown: boolean) => void;
   /** Pins this view to the pinned charts; `pinned` when an identical one is already there. */
@@ -130,6 +141,9 @@ export function MeasureChart({
   onCompare,
   onScatter,
   onLastYear,
+  drove = null,
+  onDrove,
+  onSplit,
   onDrill,
   onTable,
   onPin,
@@ -161,7 +175,10 @@ export function MeasureChart({
       selected.join("\u0000"),
     ],
   );
-  const noScatter = scatterProblem(state.by, state.also);
+  const waterfallOn = droveOn(state, quarters);
+  const noScatter = waterfallOn
+    ? "Turn off What drove the change for a scatter plot"
+    : scatterProblem(state.by, state.also);
   const scatter = state.scatter && noScatter === null;
   const manyOption = useMemo(
     () =>
@@ -241,9 +258,47 @@ export function MeasureChart({
     // selected is derived from state.filters, which changes identity with each navigation.
     [model, ghost, selected.join("\u0000"), quarters, state, result.total],
   );
-  const title = scatter
-    ? scatterTitle(measures, state.by)
-    : `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}${labels ? `, vs. ${labels.then}` : ""}`;
+  // What drove the change (Plot, #328): on, allowed, and the loader ran it; else it says why.
+  const droveReason =
+    droveBlock(state, quarters) ??
+    (state.drove
+      ? drove
+        ? drove.thenRows.revenue.rows.length + drove.nowRows.revenue.rows.length
+          ? null
+          : `Nothing in ${droveLabels(drove.then, drove.now).now} or ${droveLabels(drove.then, drove.now).then} matches these filters, so there's no change to explain`
+        : "Can't break down this chart's change"
+      : null);
+  const droveWords = droveLabels(drove?.then ?? "", drove?.now ?? "");
+  const waterfallModel = useMemo(
+    () =>
+      state.drove && drove && !droveReason
+        ? waterfall(state.by, drove.thenRows, drove.nowRows, { split: state.split })
+        : null,
+    [drove, state.drove, state.split, state.by, droveReason],
+  );
+  const splitProblem =
+    waterfallModel?.split && "problem" in waterfallModel.split
+      ? waterfallModel.split.problem
+      : null;
+  const splitReason = !waterfallModel
+    ? "Turn on What drove the change to split it"
+    : splitProblem === "truncated"
+      ? `Too many ${droveGroups(state.by)} to split into price, volume and mix: filter to fewer`
+      : splitProblem
+        ? "Can't split this change into price, volume and mix"
+        : null;
+  useEffect(() => {
+    if (waterfallModel)
+      track("investigate_drove_shown", {
+        by: state.by,
+        split: !!waterfallModel.split && !("problem" in waterfallModel.split),
+      });
+  }, [waterfallModel]);
+  const title = waterfallModel
+    ? `What drove revenue's change, ${droveWords.then} to ${droveWords.now}, by ${DIMENSION_LABELS[state.by].toLowerCase()}`
+    : scatter
+      ? scatterTitle(measures, state.by)
+      : `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}${labels ? `, vs. ${labels.then}` : ""}`;
 
   function drillAt(index: number) {
     const value = model.categories[index];
@@ -299,9 +354,11 @@ export function MeasureChart({
                 ? "Show one measure to compare quarters"
                 : !canCompare(state.by)
                   ? "Group by genre, format or publisher to compare quarters"
-                  : labels
-                    ? "Turn off vs. same quarter last year to compare quarters"
-                    : null
+                  : waterfallOn
+                    ? "Turn off What drove the change to compare quarters"
+                    : labels
+                      ? "Turn off vs. same quarter last year to compare quarters"
+                      : null
             }
             onToggle={() => onCompare(!state.compare)}
           >
@@ -315,6 +372,25 @@ export function MeasureChart({
           >
             vs. same quarter last year
           </ReasonToggle>
+          <ReasonToggle
+            className={styles.toggle}
+            pressed={waterfallModel !== null}
+            reason={droveReason}
+            hint={`See which ${droveGroups(state.by) ?? "groups"} added to revenue and which took away`}
+            onToggle={() => onDrove?.(!state.drove)}
+          >
+            What drove the change
+          </ReasonToggle>
+          {state.drove && (
+            <ReasonToggle
+              className={styles.toggle}
+              pressed={state.split && splitReason === null}
+              reason={splitReason}
+              onToggle={() => onSplit?.(!state.split)}
+            >
+              Split into price, volume and mix
+            </ReasonToggle>
+          )}
           <button
             type="button"
             className={styles.toggle}
@@ -355,6 +431,14 @@ export function MeasureChart({
             )
           : nothingToDraw(model.series, [model.measure]))) ? (
         <p className={styles.empty}>No sales match these filters.</p>
+      ) : waterfallModel ? (
+        <Waterfall
+          model={waterfallModel}
+          labels={droveWords}
+          split={state.split && splitReason === null}
+          table={table}
+          title={title}
+        />
       ) : many && manyOption ? (
         table ? (
           <ResultTable result={measuresTable(many, [result, ...also])} />
@@ -441,7 +525,7 @@ export function MeasureChart({
         </>
       )}
 
-      {!table && model.horizontal && model.ranked > TOP_RANKED && (
+      {!table && !waterfallModel && model.horizontal && model.ranked > TOP_RANKED && (
         <button type="button" className={styles.showAll} onClick={() => setShowAll(!showAll)}>
           {showAll
             ? `Show the top ${TOP_RANKED}`
@@ -452,10 +536,13 @@ export function MeasureChart({
         {selected.length > 0
           ? `Filtered to ${selected.map((v) => formatDimensionValue(state.by, v)).join(", ")}. Click a highlighted bar again to clear it. `
           : // The table's rows aren't clickable the way bars are: only the chart says to (Plot).
-            result.rows.length > 0 && !table
+            result.rows.length > 0 && !table && !waterfallModel
             ? "Click to look closer. "
             : ""}
-        Source: {result.source}
+        {waterfallModel && drove
+          ? // The waterfall's own two queries, one per quarter, not the chart's (Chart, #335).
+            `Source: ${droveWords.then}: ${drove.thenRows.revenue.source} ${droveWords.now}: ${drove.nowRows.revenue.source}`
+          : `Source: ${result.source}`}
       </p>
     </section>
   );

@@ -239,7 +239,8 @@ function ToggledChart({
 
 /** A chart over every quarter grows as quarters are played: its caption says so. */
 function everyQuarter(spec: PinSpec): boolean {
-  if (spec.kind === "comparison") return false;
+  // A comparison and a waterfall name their quarters.
+  if (spec.kind === "comparison" || spec.kind === "waterfall") return false;
   return !spec.query.filter?.quarter && !spec.query.filter?.month;
 }
 

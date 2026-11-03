@@ -55,7 +55,7 @@ import {
   shownQuarter,
 } from "./state";
 import { PinnedCharts } from "./pins/PinnedCharts";
-import type { PinSpec } from "./pins/spec";
+import { waterfallPinFor, type PinSpec } from "./pins/spec";
 import { usePins } from "./pins/usePins";
 import { TitleView } from "./TitleView";
 import { cachedView } from "./view-cache.client";
@@ -135,7 +135,7 @@ export function shouldRevalidate({
 }
 
 export default function Investigate({ loaderData }: Route.ComponentProps) {
-  const { state, tiles, chart, also, heatmap, titleView, options, planned } = loaderData;
+  const { state, tiles, chart, also, heatmap, drove, titleView, options, planned } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const navigation = useNavigation();
   const location = useLocation();
@@ -264,6 +264,15 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             track("investigate_last_year_toggled", { on });
             update({ ...state, lastYear: on });
           }}
+          drove={drove}
+          onDrove={(on) => {
+            track("investigate_drove_toggled", { on, by: state.by });
+            update({ ...state, drove: on, split: on && state.split });
+          }}
+          onSplit={(on) => {
+            track("investigate_drove_split_toggled", { on });
+            update({ ...state, split: on });
+          }}
           onDrill={(value) => {
             const next = toggleFilterValue(state, state.by, value);
             track("investigate_drilldown", {
@@ -379,6 +388,9 @@ function heatPinFor(state: InvestigateState, quarters: readonly string[]): PinSp
 
 /** The main chart as a pin: the same query it runs, so the pin shows what the player saw. */
 function pinSpecFor(state: InvestigateState, quarters: readonly string[]): PinSpec {
+  // What drove the change, while it's on: pinned as the waterfall it is, not the chart under it.
+  const waterfall = waterfallPinFor(state, quarters);
+  if (waterfall) return waterfall;
   const filter = filtersExcept(state.filters, [state.by]);
   // Pinned as shown: with last year, when the chart has it (Frank's #301), and titled so.
   const quarter = shownQuarter(state);

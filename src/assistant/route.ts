@@ -6,9 +6,9 @@ import { resolveSaveId, saves } from "~/game/session.server";
 import { backstoryOf, type BackstoryText } from "~/alma/backstory";
 import { catalogNames } from "~/alma/backstory.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
-import { spend } from "~/platform/usage.server";
 import { getAssistant } from "./server/assistant.server.ts";
 import { ask, type ServerTrack } from "./server/ask.server.ts";
+import { deweyUsage, gameOf } from "./server/usage.server.ts";
 import { assistantAvailability, offlineCopy } from "./server/availability.server.ts";
 import { anthropicAssistant } from "./server/anthropicApi.server.ts";
 import { claudeCodeAssistant, type ToolServer } from "./server/claudeCode.server.ts";
@@ -104,17 +104,11 @@ function backstory(request: Request): BackstoryText | null {
   }
 }
 
-/** The visitor a question counts against: their game's save, or none without one (the instance cap still counts it). */
-function visitor(request: Request): string | null {
-  try {
-    return resolveSaveId(request);
-  } catch {
-    return null;
-  }
-}
-
-/** This question against the daily caps (platform/usage.server.ts); never under Vitest, which mustn't write .data. */
-const usage = (request: Request) => (process.env.VITEST ? null : spend("dewey", visitor(request)));
+/**
+ * This question against the daily caps, only when it comes with a real game (server/usage.server.ts); never under
+ * Vitest, which mustn't write .data.
+ */
+const usage = (request: Request) => (process.env.VITEST ? null : deweyUsage(request));
 
 export const action = ({ request }: Route.ActionArgs) =>
   ask(
@@ -125,6 +119,8 @@ export const action = ({ request }: Route.ActionArgs) =>
     undefined,
     backstory,
     usage,
+    // Only a question with a real game counts toward the hour (Probe's red-team of #319).
+    (request) => gameOf(request) !== null,
   );
 
 /** Whether the panel can offer questions: { available: true }, or the fixed offline message and why. */
