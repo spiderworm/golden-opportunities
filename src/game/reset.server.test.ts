@@ -5,7 +5,10 @@ const directory = await vi.hoisted(async () => {
   const { tmpdir } = await import("node:os");
   return mkdtempSync(tmpdir() + "/orbital-reset-");
 });
-vi.mock("../platform/analytics/instance.server", () => ({ DATA_DIR: directory }));
+vi.mock("../platform/analytics/instance.server", () => ({
+  DATA_DIR: directory,
+  instanceId: () => "0123abcd-0000-4000-8000-000000000000",
+}));
 vi.mock("../platform/analytics/analytics.server", () => ({ trackServer: vi.fn() }));
 import { PLAYABLE_QUARTERS, setPlayableQuarters } from "./quarters";
 import { currentQuarter, resetGame, submitPlan, submitQ2Plan } from "./game.server";
@@ -37,7 +40,8 @@ async function refusal(action: () => unknown, code: number) {
   }
   throw new Error("Expected refusal");
 }
-const newId = (cookie: string) => /^orbital_save=([A-Za-z0-9_-]{43});/.exec(cookie)![1]!;
+const newId = (cookie: string) =>
+  /^orbital_save_[0-9a-f]{8}=([A-Za-z0-9_-]{43});/.exec(cookie)![1]!;
 afterEach(() => vi.clearAllMocks());
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 // The game as Q1 and Q2 built it, ending after Q2: the endless loop's own tests are endless.server.test.ts.

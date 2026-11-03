@@ -5,7 +5,10 @@ const directory = await vi.hoisted(async () => {
   const { tmpdir } = await import("node:os");
   return mkdtempSync(tmpdir() + "/orbital-backstory-");
 });
-vi.mock("../platform/analytics/instance.server", () => ({ DATA_DIR: directory }));
+vi.mock("../platform/analytics/instance.server", () => ({
+  DATA_DIR: directory,
+  instanceId: () => "0123abcd-0000-4000-8000-000000000000",
+}));
 vi.mock("../platform/analytics/analytics.server", () => ({ trackServer: vi.fn() }));
 import { AssistantUnavailable } from "~/assistant/server/provider.server";
 import { saves, startGame } from "~/game/session.server";
