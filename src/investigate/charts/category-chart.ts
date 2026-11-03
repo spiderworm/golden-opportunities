@@ -286,7 +286,11 @@ export function categoryOption(
             share && p.value !== null && total
               ? `<div style="font-size:11px;color:${chartTheme.textMuted}">${escapeHtml(`${Math.round((p.value / total) * 100)}% of ${share.period(p.seriesIndex)}`)}</div>`
               : "";
-          return value + part + evidenceLines(model, p.seriesIndex, p.dataIndex, p.value, !ghost);
+          return (
+            value +
+            part +
+            evidenceLines(model, p.seriesIndex, p.dataIndex, p.value, ghost !== undefined)
+          );
         });
         const hint = !drill
           ? ""
@@ -326,7 +330,12 @@ export function categoryOption(
           return {
             type: "line",
             name,
-            data: series.values,
+            // A point over too few to go on is faded, as a bar is (Chart, #311).
+            data: series.values.map((value, i) =>
+              tooFew(model.unit ?? null, series.evidence?.[i])
+                ? { value, itemStyle: { opacity: opacity * 0.45 } }
+                : value,
+            ),
             lineStyle: { color, width: 2, cap: "round", join: "round", opacity },
             itemStyle: { color, borderColor: chartTheme.surface, borderWidth: 2, opacity },
             symbol: "circle",
@@ -365,14 +374,15 @@ const note = (text: string) =>
 /**
  * A value's evidence lines in the tooltip (Plot, #296 and #297): an average's `Based on 212 ratings` and its low-n
  * line, average rating's likely range, and, comparing quarters, `Within noise against Q1 2194` when its difference
- * from the quarter before it is (`comparing`: not when the series are this year and last).
+ * from the quarter before it is. `againstLastYear`: the series are this year and last, whose change line and
+ * combined Based on line say these instead.
  */
 function evidenceLines(
   model: CategoryModel,
   seriesIndex: number,
   dataIndex: number,
   value: number | null,
-  comparing: boolean,
+  againstLastYear: boolean,
 ): string {
   const series = model.series[seriesIndex];
   const evidence = series?.evidence?.[dataIndex];
@@ -380,7 +390,7 @@ function evidenceLines(
   const lines: string[] = [];
   if (model.unit && value !== null) {
     // Last year beside this year gives both counts in one line after the change.
-    if (comparing) lines.push(basedOnLine(model.unit, evidence.n));
+    if (!againstLastYear) lines.push(basedOnLine(model.unit, evidence.n));
     const low = lowLine(model.unit, evidence.n);
     if (low) lines.push(low);
   }
@@ -390,7 +400,7 @@ function evidenceLines(
   }
   // Last year beside this year says it on its change line instead.
   const before =
-    comparing && model.seriesBy === "quarter" ? model.series[seriesIndex - 1] : undefined;
+    !againstLastYear && model.seriesBy === "quarter" ? model.series[seriesIndex - 1] : undefined;
   if (
     before &&
     noisy(
