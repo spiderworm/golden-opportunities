@@ -3,6 +3,7 @@
 
 import { SaveError } from "~/game/store.server";
 import { cookieSaveId, resolveSaveId, saves } from "~/game/session.server";
+import { quarterAt } from "~/simulation/quarters";
 import { backstoryOf, type BackstoryText } from "~/alma/backstory";
 import { catalogNames } from "~/alma/backstory.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
@@ -110,6 +111,18 @@ function provider(request: Request, { pins }: { pins: boolean }): AssistantProvi
   );
 }
 
+/**
+ * The game's current quarter for the chat's timeline: the one whose first day is the station date the header
+ * shows (game/quarters.ts's stationDate), or null without a game (David, 3 Nov 2026).
+ */
+function currentQuarterOf(request: Request): string | null {
+  try {
+    return quarterAt(saves.read(resolveSaveId(request)).played.length);
+  } catch {
+    return null;
+  }
+}
+
 /** The game's backstory, checked again as it's read, or null without a game (docs/design/backstory.md). */
 function backstory(request: Request): BackstoryText | null {
   try {
@@ -145,11 +158,13 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   const availability = await assistantAvailability({ track });
   // The greeting's backstory sentence, checked; shown as plain text, never rendered (section 6).
   const short = backstory(request)?.short;
+  const quarter = currentQuarterOf(request);
   const body = {
     ...(availability.state === "ready"
       ? { available: true }
       : { available: false, reason: availability.reason, ...offlineCopy() }),
     ...(short ? { short } : {}),
+    ...(quarter ? { quarter } : {}),
   };
   return Response.json(body, { headers: { "cache-control": "no-store" } });
 };

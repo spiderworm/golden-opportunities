@@ -26,3 +26,13 @@ it("doesn't block the player when the status can't be read", async () => {
     await fetchStatus((async () => new Response("<html>")) as unknown as typeof fetch),
   ).toEqual({ available: true });
 });
+
+it("reads the game's current quarter for the timeline, only when it's one", async () => {
+  expect(await fetchStatus(respond({ available: true, quarter: "2194-Q2" }))).toEqual({
+    available: true,
+    quarter: "2194-Q2",
+  });
+  expect(await fetchStatus(respond({ available: true, quarter: "soon" }))).toEqual({
+    available: true,
+  });
+});

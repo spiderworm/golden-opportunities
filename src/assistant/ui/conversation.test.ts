@@ -307,3 +307,24 @@ describe("a lookup's evidence in a kept conversation (Goldy's and Chart's design
     }
   });
 });
+
+describe("each reply's quarter, for the timeline (David, 3 Nov 2026)", () => {
+  it("keeps the quarter a reply was asked in, and a reply kept before without one", () => {
+    const storage = new MemoryStorage();
+    const replies = [
+      reply(1),
+      { ...reply(2), quarter: "2194-Q1" },
+      { ...reply(3), quarter: "2194-Q2" },
+    ];
+    saveConversation(storage, "inst", replies);
+    expect(loadConversation(storage, "inst")).toEqual(replies);
+  });
+
+  it("drops a turn whose quarter isn't one", () => {
+    for (const quarter of ["2194-Q5", "Q1", 2194]) {
+      const storage = new MemoryStorage();
+      saveConversation(storage, "inst", [{ ...reply(1), quarter } as never]);
+      expect(loadConversation(storage, "inst"), String(quarter)).toEqual([]);
+    }
+  });
+});
