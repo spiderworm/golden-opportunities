@@ -122,3 +122,65 @@
   color: var(--color-text-muted);
   font-size: 13px;
 }
+
+/* ToggleMenu's switches: a box that's ticked while on, the label, and under it why it can't be switched now. */
+.toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-width: 260px;
+  max-width: 340px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toggle:hover,
+.toggle:focus-visible {
+  background: var(--color-panel);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.toggle[data-disabled] {
+  color: var(--color-text-subtle);
+  cursor: default;
+}
+
+.tick {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border: 1.5px solid var(--color-text-subtle);
+  border-radius: 4px;
+  color: var(--color-text);
+}
+
+.tick[data-on] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.toggleText {
+  display: grid;
+  gap: 2px;
+}
+
+.toggleWhy {
+  color: var(--color-text-subtle);
+  font-size: 12px;
+  line-height: 1.35;
+}
