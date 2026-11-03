@@ -1,7 +1,7 @@
 // Which browser requests are the game's own (David, 3 Nov 2026: "We do need to deploy this to AWS, actually.
 // Today."). On this machine, a page served from localhost, 127.0.0.1 or [::1] whose Origin is that same origin, as
 // always. Deployed, also a page from the one public origin the server is told, ORBITAL_PUBLIC_ORIGIN
-// (`https://21pqa9rxuayp.tellimgames.com`), exactly. A proxy (Caddy) ends TLS and forwards to the app over http
+// (`https://play.example.com`), exactly. A proxy (Caddy) ends TLS and forwards to the app over http
 // with the original Host, so request.url says http while the browser's Origin says https: the public rule compares
 // the Origin with the configured origin and the Host with its host, never with request.url's scheme, and never
 // trusts X-Forwarded-* headers. Unset, nothing changes.

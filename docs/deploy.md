@@ -8,7 +8,7 @@ page came from this same server. Deployed behind a proxy, it also needs to know 
 
 ## The setting
 
-`ORBITAL_PUBLIC_ORIGIN` is the public origin players use, exactly: `https://21pqa9rxuayp.tellimgames.com`. It must be
+`ORBITAL_PUBLIC_ORIGIN` is the public origin players use, exactly, for example `https://play.example.com`. It must be
 https, with no path, query or trailing slash. The server checks it at start-up and won't start if it's wrong. Unset,
 the game behaves exactly as it does on a laptop.
 
@@ -30,7 +30,7 @@ everyone (`visitor-sharing.server.ts`).
 ## The proxy
 
 Caddy ends TLS and forwards to the app on `http://127.0.0.1:3000`, keeping the browser's `Host`. So the app sees
-`http://21pqa9rxuayp.tellimgames.com/…` while the browser's `Origin` says `https://…`: the gates compare the Origin
+`http://play.example.com/…` while the browser's `Origin` says `https://…`: the gates compare the Origin
 with the configured origin, never with the request's own scheme, and they never read `X-Forwarded-*` headers.
 
 - Keep the app bound to `127.0.0.1`, so only Caddy reaches it: `npm start` does by default (`ORBITAL_HOST`, which
@@ -50,8 +50,8 @@ with the setting it will run with. The game's own gates still require the exact 
 ## Running it
 
 ```sh
-npm ci && ORBITAL_PUBLIC_ORIGIN=https://21pqa9rxuayp.tellimgames.com npm run build
-ORBITAL_PUBLIC_ORIGIN=https://21pqa9rxuayp.tellimgames.com PORT=3000 npm start
+npm ci && ORBITAL_PUBLIC_ORIGIN=https://play.example.com npm run build
+ORBITAL_PUBLIC_ORIGIN=https://play.example.com PORT=3000 npm start
 ```
 
 `npm run close` and `npm run open` switch the game to its closed page and back, as on a laptop.
