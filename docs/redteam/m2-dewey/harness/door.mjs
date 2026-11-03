@@ -1,7 +1,7 @@
 const base = "http://[::1]:5291";
 const post = async (label, body, headers = {}, path = "/api/assistant") => {
   const t = Date.now();
-  const res = await fetch(base + path, { method: "POST", headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", ...headers }, body });
+  const res = await fetch(base + path, { method: "POST", headers: { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", cookie: "ob_entry=1", ...headers }, body });
   const text = (await res.text()).slice(0, 160);
   console.log(`${label}: ${res.status} ${Date.now() - t}ms ${text.replace(/\n/g, " | ")}`);
 };

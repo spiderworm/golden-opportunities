@@ -8,6 +8,8 @@ const DEV = process.argv[2];
 const kids = () => execSync("ps -axo pid=,ppid=,command=").toString().trim().split("\n").map((l) => l.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/)).filter((m) => m && m[2] === DEV && /claude/.test(m[3])).map((m) => m[1]);
 const browser = await chromium.launch({ args: ["--mute-audio"] });
 const ctx = await browser.newContext();
+// The entry page (#317) answers every page until a browser has agreed: ob_entry=1 is that agreement.
+await ctx.addCookies([{ name: "ob_entry", value: "1", url: "http://[::1]:5291" }]);
 await ctx.addInitScript(() => {
   const AC = window.AudioContext; if (AC) window.AudioContext = class extends AC { constructor(...a) { super(...a); const g = this.createGain(); g.gain.value = 0; g.connect(super.destination); Object.defineProperty(this, "destination", { get: () => g }); } };
   const play = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function (...a) { this.muted = true; return play.apply(this, a); };

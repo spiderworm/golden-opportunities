@@ -1,6 +1,6 @@
 // P3 re-test: 80 invalid-JSON bodies as fast as possible, counting each status, then one valid question at once
 // (expect the per-minute cap) and, with --after, another once the minute has passed.
-const base = "http://[::1]:5291"; const h = { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin" };
+const base = "http://[::1]:5291"; const h = { "content-type": "application/json", origin: base, "sec-fetch-site": "same-origin", cookie: "ob_entry=1" };
 const t = Date.now(); const seen = {};
 let first429 = null;
 for (let n = 1; n <= 80; n++) {
