@@ -64,7 +64,9 @@ type Load = { status: "loading" } | ({ status: "ready" } & Loaded) | { status: "
 export async function runPin(pin: Pin, signal: AbortSignal): Promise<Loaded> {
   if (pin.kind !== "comparison") {
     // Several measures are a query each, as the main chart's.
-    const [result, ...also] = await Promise.all([pin.query.measure, ...(pin.also ?? [])].map((measure) => fetchQuery({ ...pin.query, measure }, signal)));
+    // A heatmap is context, never discovery evidence, pinned or not (Plot, #63 and #266): asked without recording.
+    const evidence = pin.kind !== "heatmap";
+    const [result, ...also] = await Promise.all([pin.query.measure, ...(pin.also ?? [])].map((measure) => fetchQuery({ ...pin.query, measure }, signal, { evidence })));
     return { kind: "query", result: result!, also };
   }
   const sides = new AbortController();
