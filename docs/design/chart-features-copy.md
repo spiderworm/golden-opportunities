@@ -112,6 +112,26 @@ David: "Scatter plots: two measures across one dimension."
 - **No labels on the points:** too many of them overlap. The tooltip and the table name them.
 - **Row limits** keep the chart's existing source line ("Showing {n} of {total} groups").
 
+## 4. How much evidence is behind a number (Sim)
+
+David: "I'd also like to add showing how much evidence is behind a number. Show n next to averages, add error bars on average rating, and flag a comparison when the difference is "within noise"" (req_291078459e6d).
+
+- **n next to averages:**
+  - The column header is `Based on`, not a bare `n`, which non-statisticians won't read.
+  - The cell names its unit: `212 ratings`, `1,240 orders`, `3,410 sale lines` or `90 days`, whichever count the average is over. One item reads `1 rating`.
+  - A tooltip line goes after the value: `Based on 212 ratings`.
+- **Low n,** below Sim's threshold:
+  - Tooltip line: `Only 8 ratings: this average could easily change with a few more`.
+  - If low-n bars or rows are faded, the caption is `Faded where there are fewer than {k} {ratings}`.
+- **Error bars on average rating:**
+  - Legend: `Likely range (95%)`.
+  - Tooltip line: `Likely range: 3.9 to 4.3 stars`, with stars to one decimal place.
+  - The legend's tooltip is one plain line: `Where the average would most likely land if as many readers rated again. Fewer ratings, wider range.`
+- **Within noise,** on a comparison (Compare quarters, vs. same quarter last year, Dewey's comparisons):
+  - Flag: `Within noise`, as a badge beside the change, or in the change cell after it, `+2.1% · within noise`.
+  - Tooltip: `A difference this small often shows up by chance with this much data, so don't read much into it.`
+  - A clear difference gets no flag, and nothing is labelled "significant".
+
 ## Analytics, for all three
 
 Events say what happened, never content (CLAUDE.md). The new toggles record their state, as `investigate_table_toggled { shown }` does, for example `investigate_last_year_toggled { on }` and `investigate_scatter_toggled { on }`. The builders pick the final names.
