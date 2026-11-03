@@ -10,6 +10,7 @@ import {
   Refused,
   RESTING,
   SESSION_ENDED,
+  START_A_GAME,
   TIMED_OUT,
   toWire,
   UNAVAILABLE,
@@ -1248,5 +1249,57 @@ describe("the daily caps (David, 3 Nov 2026)", () => {
       },
     );
     expect(counted).toEqual([]);
+  });
+});
+
+describe("a question without a game (Probe's red-team of #319)", () => {
+  it("is told to start a game, asks no model, and doesn't count toward the hour", async () => {
+    const asked: string[] = [];
+    const counting: AssistantProvider = {
+      name: "counting",
+      async *ask() {
+        asked.push("asked");
+        yield { type: "text", text: "Here you are." };
+      },
+    };
+    const tracked: string[] = [];
+    // Three seconds apart, so the per-minute flood cap never trips: only the hour could.
+    let clock = Date.now();
+    const now = () => (clock += 3_000);
+    for (let i = 0; i < 70; i++) {
+      const wire = await events(
+        await ask(
+          post({ question: "Revenue?" }),
+          () => counting,
+          (name) => tracked.push(name),
+          now,
+          undefined,
+          () => null,
+          () => null,
+          () => false,
+        ),
+      );
+      expect(wire).toEqual([
+        { type: "text", text: START_A_GAME },
+        { type: "done", withheld: 0 },
+      ]);
+    }
+    expect(asked).toEqual([]);
+    expect(tracked.filter((t) => t === "assistant_no_game")).toHaveLength(70);
+    // Past the hour's sixty, a player with a game is still answered.
+    const answered = await events(
+      await ask(
+        post({ question: "Revenue?" }),
+        () => counting,
+        () => {},
+        now,
+        undefined,
+        () => null,
+        () => null,
+        () => true,
+      ),
+    );
+    expect(answered[0]).toEqual({ type: "text", text: "Here you are." });
+    expect(asked).toEqual(["asked"]);
   });
 });

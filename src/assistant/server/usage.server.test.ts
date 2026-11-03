@@ -14,7 +14,7 @@ vi.mock("../../platform/analytics/analytics.server", () => ({ trackServer: vi.fn
 
 import { cookieSaveId, saveCookieName, saves } from "~/game/session.server";
 import { spend } from "~/platform/usage.server";
-import { deweyUsage } from "./usage.server.ts";
+import { deweyUsage, gameOf } from "./usage.server.ts";
 
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 
@@ -63,5 +63,14 @@ describe("only a question with a real game counts against the daily caps (Probe'
     for (let i = 0; i < 15; i++)
       deweyUsage(question(`${saveCookieName()}=${forged(real.id)}`), { count });
     expect(deweyUsage(question(`${saveCookieName()}=${real.id}`), { count })).toBeNull();
+  });
+});
+
+describe("a question's game", () => {
+  it("is its save when the cookie names one, else none", () => {
+    const real = saves.create();
+    expect(gameOf(question(`${saveCookieName()}=${real.id}`))).toBe(real.id);
+    expect(gameOf(question())).toBeNull();
+    expect(gameOf(question(`${saveCookieName()}=${forged(real.id)}`))).toBeNull();
   });
 });
