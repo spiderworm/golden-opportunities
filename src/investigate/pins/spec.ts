@@ -424,13 +424,10 @@ export function addPin(
 }
 
 /**
- * What drove the change as a pin, while it's on: titled as the chart is, with the chart's filters but the
- * breakdown's and the quarter's, which the waterfall names itself. Null while it's off or can't be drawn.
- */
-/**
- * The waterfall as a pin, while it's on; `state` as the URL has it. Made on Latest quarter, it keeps the relative
- * quarters, so it moves on as the game is played, and its title names no quarter: the card's line under it does (Plot,
- * #379). Made on a dated quarter, it keeps that pair.
+ * What drove the change as a pin, while it's on, with the chart's filters but the breakdown's and the quarter's, which
+ * the waterfall names itself; `state` as the URL has it. Made on Latest quarter, it keeps the relative quarters, so it
+ * moves on as the game is played, and its title names no quarter: the card's line under it does (Plot, #379). Made on
+ * a dated quarter, it keeps that pair. Null while it's off or can't be drawn.
  */
 export function waterfallPinFor(
   state: InvestigateState,
