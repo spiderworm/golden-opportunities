@@ -13,6 +13,7 @@
 // own query, so editing one pins only what the player could look up anyway. Keeping the conversation in the server-side save is the cleaner end state, once saves exist.
 
 import type { SentTurn } from "./stream.ts";
+import { isQuarter } from "./timeline.ts";
 
 /** The parts of a reply this module needs; the panel's own type has more. */
 export interface StoredReply {
@@ -21,6 +22,8 @@ export interface StoredReply {
   lookups: unknown[];
   error?: string;
   state: string;
+  /** The quarter it was asked in ("2194-Q2"), for the timeline; absent on a reply kept before. */
+  quarter?: string;
 }
 
 /** How many turns are kept: the oldest go first. */
@@ -157,7 +160,9 @@ const withoutQuery = <R extends StoredReply>(r: R): R => ({
 function isReply(r: unknown): r is StoredReply {
   return (
     isObj(r) &&
-    only(r, ["question", "text", "lookups", "error", "state"]) &&
+    only(r, ["question", "text", "lookups", "error", "state", "quarter"]) &&
+    // The quarter it was asked in, for the timeline (timeline.ts); a reply kept before that has none.
+    (r.quarter === undefined || isQuarter(r.quarter)) &&
     isStr(r.question, 1_000) &&
     isStr(r.text) &&
     Array.isArray(r.lookups) &&

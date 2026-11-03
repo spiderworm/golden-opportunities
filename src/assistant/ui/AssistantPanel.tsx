@@ -3,6 +3,7 @@
 // Dewey drew (show_chart) is drawn by the page's own chart components, or shown as its table without them.
 
 import {
+  Fragment,
   Component,
   lazy,
   Suspense,
@@ -26,6 +27,7 @@ import {
 } from "../tools/definitions.ts";
 import { NO_CHART, TableToggle } from "~/platform/ui/TableToggle";
 import { dataQuery, foldLookups } from "./fold.ts";
+import { timelineHeadings } from "./timeline.ts";
 import {
   browserStorage,
   clearConversation,
@@ -61,6 +63,8 @@ interface Reply {
   lookups: Lookup[];
   error?: string;
   state: "streaming" | "done" | "stopped" | "failed" | typeof INTERRUPTED;
+  /** The game's quarter when it was asked, for the timeline (timeline.ts); absent on a reply kept before. */
+  quarter?: string;
 }
 
 /** While an answer streams, the conversation is saved at most this often. */
@@ -200,6 +204,9 @@ export function AssistantPanel({
     });
   useEffect(checkStatus, []);
   const offline = !status.available;
+  // The chat's timeline: a heading where each quarter's replies start, worked out from the game's current quarter as
+  // it's drawn, so a quarter later "Today" is that quarter's date (timeline.ts).
+  const headings = timelineHeadings(replies, status.quarter);
 
   // Dewey's faces: his portrait, or in 3D where the browser draws WebGL 2 and motion is welcome. Neither shows until
   // the panel has committed to one (David, 3 Nov, AGENTS.md "Commit before you show": no portrait-then-canvas swap):
@@ -287,7 +294,16 @@ export function AssistantPanel({
     const history = historyFor(replies);
     const update = updater(conversation.current);
     setQuestion("");
-    setReplies((rs) => [...rs, { question: text, text: "", lookups: [], state: "streaming" }]);
+    setReplies((rs) => [
+      ...rs,
+      {
+        question: text,
+        text: "",
+        lookups: [],
+        state: "streaming",
+        ...(status.quarter ? { quarter: status.quarter } : {}),
+      },
+    ]);
     const controller = new AbortController();
     abort.current = controller;
     const started = performance.now();
@@ -378,41 +394,44 @@ export function AssistantPanel({
             />
           )}
           {replies.map((r, i) => (
-            <article key={i} style={styles.turn}>
-              <p style={styles.question}>{r.question}</p>
-              <DeweyTurn
-                face={face(i)}
-                bubble={
-                  (r.text || r.state === "streaming") &&
-                  (r.text ? (
-                    <p style={styles.answer}>{r.text}</p>
-                  ) : (
-                    <p style={styles.muted}>Looking...</p>
-                  ))
-                }
-              >
-                {r.lookups.map((l, j) => (
-                  <LookupView
-                    key={j}
-                    lookup={l}
-                    ChartView={ChartView}
-                    TableView={TableView}
-                    pinning={onPinLookup && { onPin: pinLookup, isPinned }}
-                    onTable={(type, table) =>
-                      track("table_toggled", { where: "dewey", shown: table, kind: type })
-                    }
-                  />
-                ))}
-                {r.error && <p style={styles.error}>{r.error}</p>}
-                {r.state === "stopped" && <p style={styles.muted}>Stopped.</p>}
-                {r.state === INTERRUPTED && (
-                  <p style={styles.muted}>
-                    Interrupted: this answer stopped when the page was reloaded or closed, before it
-                    finished.
-                  </p>
-                )}
-              </DeweyTurn>
-            </article>
+            <Fragment key={i}>
+              {headings[i] && <h3 style={styles.day}>{headings[i]}</h3>}
+              <article style={styles.turn}>
+                <p style={styles.question}>{r.question}</p>
+                <DeweyTurn
+                  face={face(i)}
+                  bubble={
+                    (r.text || r.state === "streaming") &&
+                    (r.text ? (
+                      <p style={styles.answer}>{r.text}</p>
+                    ) : (
+                      <p style={styles.muted}>Looking...</p>
+                    ))
+                  }
+                >
+                  {r.lookups.map((l, j) => (
+                    <LookupView
+                      key={j}
+                      lookup={l}
+                      ChartView={ChartView}
+                      TableView={TableView}
+                      pinning={onPinLookup && { onPin: pinLookup, isPinned }}
+                      onTable={(type, table) =>
+                        track("table_toggled", { where: "dewey", shown: table, kind: type })
+                      }
+                    />
+                  ))}
+                  {r.error && <p style={styles.error}>{r.error}</p>}
+                  {r.state === "stopped" && <p style={styles.muted}>Stopped.</p>}
+                  {r.state === INTERRUPTED && (
+                    <p style={styles.muted}>
+                      Interrupted: this answer stopped when the page was reloaded or closed, before
+                      it finished.
+                    </p>
+                  )}
+                </DeweyTurn>
+              </article>
+            </Fragment>
           ))}
         </div>
         {(faces === "loading" || faces === "3d") && (
@@ -811,6 +830,14 @@ const styles = {
   },
   muted: { color: "var(--color-text-muted)", margin: 0, fontSize: 13 },
   noise: { color: "var(--color-text-muted)", fontSize: 12, whiteSpace: "nowrap" },
+  // A quarter's heading in the log, small and quiet, centered between the turns (Plot's copy).
+  day: {
+    margin: "4px 0 0",
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--color-text-muted)",
+  },
   chartTitle: { fontSize: 13, fontWeight: 600, flex: "1 1 50%", minWidth: 0 },
   // A lookup's title with its Table toggle, as a pin's header has them.
   lookupHeader: {
