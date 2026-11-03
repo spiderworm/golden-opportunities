@@ -19,7 +19,9 @@ export const CALIBRATION_COPY = {
   measures: { revenue: "Revenue", units: "Units sold" } satisfies Record<ForecastMeasure, string>,
   /** "3 of 5 quarters forecast"; "1 of 1 quarter forecast". */
   count: (forecast: number, played: number) =>
-    `${forecast} of ${played} ${played === 1 ? "quarter" : "quarters"} forecast`,
+    forecast === 0
+      ? "No quarter forecast yet: add one when you plan."
+      : `${forecast} of ${played} ${played === 1 ? "quarter" : "quarters"} forecast`,
   hitRate: (hits: number, n: number) => `${hits} of ${n} inside your range (target: 4 in 5)`,
   hitRateTip:
     "How often the real figure landed inside your 80% range. Well calibrated is about 4 times in 5.",
