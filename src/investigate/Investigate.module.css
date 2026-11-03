@@ -492,6 +492,17 @@
   gap: 6px;
 }
 
+/* Average rating's likely range in the legend: a whisker, as drawn on the bars. */
+.rangeSwatch {
+  width: 2px;
+  height: 12px;
+  border-block: 2px solid var(--color-text);
+  background: var(--color-text);
+  background-clip: content-box;
+  padding: 0 4px;
+  box-sizing: content-box;
+}
+
 .legendSwatch {
   box-sizing: border-box;
   width: 12px;
@@ -592,6 +603,17 @@
 .table .numeric {
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/* An average over too few to go on (Plot, #296): its row is faded, and the note under the table says why. */
+.table .faded td {
+  color: var(--color-text-subtle);
+}
+
+.tableNote {
+  margin: 8px 12px 0;
+  color: var(--color-text-subtle);
+  font-size: 12px;
 }
 
 @media (max-width: 1000px) {

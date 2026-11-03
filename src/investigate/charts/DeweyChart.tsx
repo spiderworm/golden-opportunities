@@ -7,7 +7,7 @@ import type { ChartRenderer } from "~/assistant/ui/AssistantPanel";
 import { MAX_SERIES } from "~/platform/charts/chart-theme";
 import { EChart } from "~/platform/charts/EChart";
 import { categoryHeight, categoryModel, categoryOption, legendItems } from "./category-chart";
-import { Legend } from "./Legend";
+import { EvidenceLegend, Legend } from "./Legend";
 import { ResultTable } from "./ResultTable";
 
 const HEIGHT = 220;
@@ -35,6 +35,7 @@ export const DeweyChart: ChartRenderer = ({ chart, result }) => {
   return (
     <>
       <Legend items={legendItems(model, [])} label="Series" />
+      <EvidenceLegend model={model} />
       <EChart option={option} height={categoryHeight(model, HEIGHT)} label={chart.title} />
     </>
   );
