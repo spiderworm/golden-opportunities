@@ -6,7 +6,7 @@ import entryRoutes from "./entry/routes";
 import investigateRoutes from "./investigate/routes";
 import analyticsRoutes from "./platform/analytics/routes";
 import { queryRoutes } from "./query/routes";
-import reportsRoutes from "./reports/routes";
+import reportsRoutes, { reportsApiRoutes } from "./reports/routes";
 import resultRoutes from "./result/routes";
 import settingsRoutes from "./settings/routes";
 import shellRoutes from "./shell/routes";
@@ -25,6 +25,7 @@ export default [
   ]),
   ...queryRoutes,
   ...assistantRoutes,
+  ...reportsApiRoutes,
   ...analyticsRoutes,
   ...shellRoutes,
   ...entryRoutes,
