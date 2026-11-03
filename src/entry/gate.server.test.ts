@@ -131,6 +131,13 @@ describe("Continue", () => {
     expect(trackServer).toHaveBeenCalledWith("entry_accepted", { music: "off" });
   });
 
+  it("never sends the player off the site, however the return path is written", async () => {
+    const response = await action({
+      request: post({ agree: "yes", music: "on", to: "/\t/evil.example" }),
+    } as never);
+    expect(response.headers.get("Location")).toBe("/");
+  });
+
   it("without the agreement: the entry page again, and nothing remembered", async () => {
     const response = await action({ request: post({ music: "on", to: "/reports" }) } as never);
     expect(response.status).toBe(200);
@@ -145,6 +152,14 @@ describe("Continue", () => {
     expect(safeReturn("/\\evil.example/")).toBe("/");
     expect(safeReturn("https://evil.example/")).toBe("/");
     expect(safeReturn("/entry")).toBe("/");
+    expect(safeReturn("/entry?x=1")).toBe("/");
     expect(safeReturn(null)).toBe("/");
+    // Browsers drop tabs and line breaks before resolving, so "/\t/evil.example" would be //evil.example (Chart).
+    for (const control of ["\t", "\n", "\r", "\u0000", "\u007f"])
+      expect(safeReturn(`/${control}/evil.example`)).toBe("/");
+    expect(safeReturn("/a\\b")).toBe("/");
+    // Encoded, it's only a path on this site.
+    expect(safeReturn("/%09/evil.example")).toBe("/%09/evil.example");
+    expect(safeReturn("/./reports?q=1")).toBe("/reports?q=1");
   });
 });

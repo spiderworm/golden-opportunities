@@ -57,6 +57,7 @@ function isTool(request: Request, url: URL): boolean {
  * redirecting it to the page it asked for would loop.
  */
 export function isDocument(request: Request): boolean {
+  // Never a POST, with or without Sec-Fetch-Dest (an old browser's form): that falls to the gate's 403.
   if (request.method !== "GET") return false;
   const dest = request.headers.get("Sec-Fetch-Dest");
   if (dest) return dest === "document";
@@ -86,8 +87,15 @@ function noIndex(response: Response): Response {
 
 /** Where Continue goes: the page the player asked for, on this site only. */
 export function safeReturn(to: FormDataEntryValue | null): string {
-  if (typeof to !== "string" || !to.startsWith("/") || to.startsWith("//") || to.startsWith("/\\"))
+  // Control characters out first: browsers drop a tab or line break from a URL before resolving it, so
+  // "/\t/evil.example" would land on //evil.example (Chart, #317). Backslashes too: browsers read them as slashes.
+  if (typeof to !== "string" || !to.startsWith("/") || /[\u0000-\u001f\u007f\\]/.test(to))
     return "/";
-  if (to === ENTRY_PATH || to.startsWith(`${ENTRY_PATH}?`)) return "/";
-  return to;
+  // Then wherever it resolves must still be this site.
+  const at = new URL(to, ORIGIN);
+  if (at.origin !== ORIGIN || at.pathname === ENTRY_PATH) return "/";
+  return `${at.pathname}${at.search}`;
 }
+
+/** A stand-in origin for resolving a path: anything off it is off this site. */
+const ORIGIN = "http://entry.invalid";
