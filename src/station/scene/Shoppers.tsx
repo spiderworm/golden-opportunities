@@ -18,6 +18,7 @@ import { setWalking, startIdling, type Figure } from "./figures";
 import { useStationModels } from "./loading";
 import { modelUrl } from "./models";
 import { addShopper, KEEPER, navigation, pickSpot, SPOTS } from "./navigation";
+import { keeperAttention } from "./Dewey";
 import { kept } from "./world";
 import { MAX_SHOPPERS } from "../scene-params";
 
@@ -114,7 +115,16 @@ export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
     const now = clock.elapsedTime;
     const keeper = figures[0]!;
     keeper.root.position.set(KEEPER[0], 0, KEEPER[1]);
-    keeper.root.rotation.set(0, KEEPER[2] + Math.sin(now * 0.4) * 0.3, 0);
+    // Turned to whoever's talking across the counter (Dewey), else glancing about.
+    const talker = keeperAttention().at;
+    const want = talker
+      ? Math.atan2(talker.x - KEEPER[0], talker.z - KEEPER[1])
+      : KEEPER[2] + Math.sin(now * 0.4) * 0.3;
+    const turn = Math.atan2(
+      Math.sin(want - keeper.root.rotation.y),
+      Math.cos(want - keeper.root.rotation.y),
+    );
+    keeper.root.rotation.set(0, keeper.root.rotation.y + turn * Math.min(1, delta * 3), 0);
     keeper.mixer.update(delta);
     for (let i = 0; i < count; i++) {
       const w = walkers[i]!;
