@@ -24,6 +24,7 @@ import { onQuarterCommitted } from "../alma/hook.server";
 import { almaRecordFor } from "../alma/hook.server";
 import type { AlmaRecord } from "../alma/record";
 import type { PlayerReport } from "../reports/player";
+import type { Segment } from "../segments/segments";
 import { MEASURE_NAMES } from "../alma/sentences";
 import type { BossId } from "../platform/bosses/bosses";
 import { simulateTurn } from "../simulation/turn";
@@ -523,6 +524,22 @@ export function writeReports(
   try {
     refuseUnlessLocalPost(request);
     return saves.writeReports(resolveSaveId(request), change);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/**
+ * Changes the player's saved segments (src/segments/segments.ts), as writeReports does reports: `change` gets the
+ * save and returns the new list, or null to write nothing; local same-origin POSTs only, as every write.
+ */
+export function writeSegments(
+  request: Request,
+  change: (save: GameSave) => Segment[] | null,
+): GameSave | null {
+  try {
+    refuseUnlessLocalPost(request);
+    return saves.writeSegments(resolveSaveId(request), change);
   } catch (error) {
     return failure(error);
   }

@@ -29,6 +29,7 @@ import {
 import { LATER_KEYS } from "./later-discoveries.ts";
 import { alertsSeenOf, currentQuarter } from "./progress.ts";
 import { validReports } from "../reports/player.ts";
+import { validSegments, type Segment } from "../segments/segments.ts";
 import { isAlmaLog } from "../alma/record.ts";
 import { isBackstoryRecord } from "../alma/backstory-record.ts";
 import {
@@ -141,6 +142,7 @@ function validate(save: GameSave, id: string): void {
     (save.alertsSeen !== undefined && !validSeen(save.alertsSeen)) ||
     (save.reportsSeen !== undefined && !validSeen(save.reportsSeen)) ||
     (save.reports !== undefined && !validReports(save.reports)) ||
+    (save.segments !== undefined && !validSegments(save.segments)) ||
     !Array.isArray(save.discoveries) ||
     save.discoveries.length > 6 ||
     new Set(save.discoveries).size !== save.discoveries.length ||
@@ -534,6 +536,25 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
         save.revision++;
         if (reports.length) save.reports = reports;
         else delete save.reports;
+        return publish(id, save);
+      });
+    },
+    /**
+     * Changes the player's saved segments (src/segments/segments.ts), as writeReports does reports. Not query data:
+     * applying a segment changes the URL's filters, and the queries are then the player's own, so it keeps the query
+     * grant. `change` returns the new list, or null to leave the save as it is.
+     */
+    writeSegments(id: string, change: (save: GameSave) => Segment[] | null): GameSave | null {
+      return locked(() => {
+        if (existsSync(file(id) + ".lock")) throw new SaveError("SAVE_BUSY");
+        const save = readUnlocked(id);
+        const segments = change(save);
+        if (!segments) return null;
+        if (!validSegments(segments)) throw new SaveError("INVALID_SAVE");
+        save.queryRevision = save.queryRevision ?? save.revision;
+        save.revision++;
+        if (segments.length) save.segments = segments;
+        else delete save.segments;
         return publish(id, save);
       });
     },
