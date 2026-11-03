@@ -34,6 +34,14 @@ David: "Period-over-period as a toggle on any chart. A switch for "vs. same quar
 | A breakdown by quarter | `Break down by something other than quarter to compare with last year` |
 | More than one measure is shown | `Show one measure to compare with last year` |
 | `Compare quarters` is on | `Turn off Compare quarters to compare with last year` |
+| Ratings or average rating, which aren't recorded by quarter (pins and Dewey; every Investigate chart measure is dated) | `Ratings aren't recorded by quarter, so there's no last year to compare` |
+| Checkouts, likewise | `Checkouts aren't recorded by quarter, so there's no last year to compare` |
+| The quarter in the filter isn't in the ledgers: not played yet, or a stale link | `{Q3 2196} isn't in the ledgers yet: filter to a quarter that's been played` |
+| Last year's quarter isn't visible to the player (can't happen today: the ledgers run on from 2193) | `{Q3 2193} isn't in the ledgers, so there's nothing to compare` |
+| Nothing in the quarter matches the filters | `Nothing in {Q1 2194} matches these filters, so there's nothing to compare` |
+| Any other refusal, so a reason always shows | `Can't compare this chart with last year` |
+
+  David asked for a reason whenever the toggle is unavailable: "When "vs. same quarter last year" is not available, can we get a tooltip explaining why? ie, no data, the bookstore was not open same quarter last year, invalid series, whatever" (req_d5257c07a9f0). So every disabled state has a tooltip, and the fallback covers anything unforeseen. Builders should report it if they ever hit it. The disabled toggle stays focusable, with its reason shown on hover and focus and linked by `aria-describedby`, so keyboard and screen-reader users get it too (Frank). When a measure not recorded by quarter is the only one shown, its line outranks `Show one measure…`. When only last year is empty, the toggle stays on and the rows read `New`. The quarter is written as `formatDimensionValue` gives it.
 
   And the other way round: while this toggle is on, `Compare quarters` is disabled with `Turn off vs. same quarter last year to compare quarters` (Frank, #291).
 
