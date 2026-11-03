@@ -35,13 +35,13 @@ David: "Period-over-period as a toggle on any chart. A switch for "vs. same quar
 | More than one measure is shown | `Show one measure to compare with last year` |
 | `Compare quarters` is on | `Turn off Compare quarters to compare with last year` |
 | Ratings or average rating, which aren't recorded by quarter (pins and Dewey; every Investigate chart measure is dated) | `Ratings aren't recorded by quarter, so there's no last year to compare` |
-| Checkouts, likewise | `Checkouts aren't recorded by quarter, so there's no last year to compare` |
+| Checkouts, which have months but no year | `Checkouts aren't recorded by year, so there's no last year to compare` |
 | The quarter in the filter isn't in the ledgers: not played yet, or a stale link | `{Q3 2196} isn't in the ledgers yet: filter to a quarter that's been played` |
 | Last year's quarter isn't visible to the player (can't happen today: the ledgers run on from 2193) | `{Q3 2193} isn't in the ledgers, so there's nothing to compare` |
 | Nothing in the quarter matches the filters | `Nothing in {Q1 2194} matches these filters, so there's nothing to compare` |
 | Any other refusal, so a reason always shows | `Can't compare this chart with last year` |
 
-  David asked for a reason whenever the toggle is unavailable: "When "vs. same quarter last year" is not available, can we get a tooltip explaining why? ie, no data, the bookstore was not open same quarter last year, invalid series, whatever" (req_d5257c07a9f0). So every disabled state has a tooltip, and the fallback covers anything unforeseen. Builders should report it if they ever hit it. The disabled toggle stays focusable, with its reason shown on hover and focus and linked by `aria-describedby`, so keyboard and screen-reader users get it too (Frank). When a measure not recorded by quarter is the only one shown, its line outranks `Show one measure…`. When only last year is empty, the toggle stays on and the rows read `New`. The quarter is written as `formatDimensionValue` gives it.
+  David asked for a reason whenever the toggle is unavailable: "When "vs. same quarter last year" is not available, can we get a tooltip explaining why? ie, no data, the bookstore was not open same quarter last year, invalid series, whatever" (req_d5257c07a9f0). So every disabled state has a tooltip, and the fallback covers anything unforeseen. Builders should report it if they ever hit it. The disabled toggle stays focusable, with its reason shown on hover and focus and linked by `aria-describedby`, so keyboard and screen-reader users get it too (Frank). When a measure not recorded by quarter is the only one shown, its line outranks `Show one measure…`. When only last year is empty, the toggle stays on. Sums and counts read `$0` or `0` with `New`; averages read `None`, with `Δ` and `% change` left empty (Audit, #296). The quarter is written as `formatDimensionValue` gives it.
 
   And the other way round: while this toggle is on, `Compare quarters` is disabled with `Turn off vs. same quarter last year to compare quarters` (Frank, #291).
 
@@ -122,15 +122,18 @@ David: "I'd also like to add showing how much evidence is behind a number. Show 
   - A tooltip line goes after the value: `Based on 212 ratings`.
 - **Low n,** below Sim's threshold:
   - Tooltip line: `Only 8 ratings: this average could easily change with a few more`.
-  - If low-n bars or rows are faded, the caption is `Faded where there are fewer than {k} {ratings}`.
+  - If low-n bars or rows are faded, the caption is `Faded where there are fewer than {k} {ratings}`. Fade only for counts of ratings, orders or sale lines, never days: a breakdown by month and weekday would always fade (Sim, #296).
 - **Error bars on average rating:**
   - Legend: `Likely range (95%)`.
   - Tooltip line: `Likely range: 3.9 to 4.3 stars`, with stars to one decimal place.
+  - Below 2 ratings there's no bar, and the tooltip line reads `Too few ratings for a likely range`. Ranges are clipped to 1 to 5 stars, and the tooltip shows the clipped figures (Sim, #296).
+  - Error bars appear wherever average rating is drawn: Dewey's lookups, pins made from them, and reports. Investigate's own chart doesn't offer average rating (Audit, #296).
   - The legend's tooltip is one plain line: `Where the average would most likely land if as many readers rated again. Fewer ratings, wider range.`
 - **Within noise,** on a comparison (Compare quarters, vs. same quarter last year, Dewey's comparisons):
   - Flag: `Within noise`, as a badge beside the change, or in the change cell after it, `+2.1% · within noise`.
   - Tooltip: `A difference this small often shows up by chance with this much data, so don't read much into it.`
-  - A clear difference gets no flag, and nothing is labelled "significant".
+  - A clear difference gets no flag, and nothing is labeled "significant". No flag also covers a comparison that can't be judged: a missing flag makes no claim (Sim, #296).
+  - From a zero base, both can show: `New · within noise`.
 
 ## Analytics, for all three
 
