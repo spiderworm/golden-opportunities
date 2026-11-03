@@ -1,5 +1,6 @@
 import { serverAnalytics } from "./analytics.server";
-import { isPublicOriginRequest } from "../origin.server";
+import { isPublicOriginRequest, servedOverHttps } from "../origin.server";
+import { sharingCookie } from "./visitor-sharing.server";
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const MAX_BODY_BYTES = 256;
@@ -7,7 +8,12 @@ const READ_DEADLINE_MS = 2000;
 const MAX_PER_MINUTE = 30;
 let recent: number[] = [];
 
-type Answer = { status: number; body: { on: boolean } | { error: string } };
+type Answer = {
+  status: number;
+  body: { on: boolean } | { error: string };
+  /** Deployed, the visitor's own choice, as a cookie (visitor-sharing.server.ts). */
+  cookie?: string;
+};
 
 /**
  * The player's "Share play data" choice, applied to the server's analytics too,
@@ -63,6 +69,9 @@ export async function setSharingFromRequest(
   }
   if (typeof on !== "boolean")
     return { status: 400, body: { error: 'expected {"on": true|false}' } };
+  // Deployed, the process serves many players: the choice is this visitor's alone (Audit, #368).
+  if (isPublicOriginRequest(request))
+    return { status: 200, body: { on }, cookie: sharingCookie(on, servedOverHttps(request)) };
   apply(on);
   return { status: 200, body: { on } };
 }
