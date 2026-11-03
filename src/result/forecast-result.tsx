@@ -1,0 +1,72 @@
+import { moneyText } from "./copy";
+import styles from "./Result.module.css";
+
+// A played quarter's forecast against what happened (David, 3 Nov 2026, req_6d136a2b7fb3; Plot's copy, section 10;
+// Frank's ForecastResult): for each measure forecast, the actual, whether it landed below, inside or above the
+// player's 80% range, and how far the expected figure was off, as a value and a percent.
+
+export type ForecastMeasure = "revenue" | "units";
+export interface ForecastEntry {
+  point: number;
+  low: number;
+  high: number;
+}
+/** One measure's forecast against what happened (Frank's MeasureResult). */
+export interface MeasureResult {
+  forecast: ForecastEntry;
+  actual: number;
+  where: "below" | "inside" | "above";
+  /** point − actual: above zero means the forecast was high. */
+  error: number;
+  /** error / actual; null when the actual is 0. */
+  errorPct: number | null;
+}
+export interface ForecastResult {
+  quarter: string;
+  revenue?: MeasureResult;
+  units?: MeasureResult;
+  note?: string;
+}
+
+const LABELS: Record<ForecastMeasure, string> = { revenue: "Revenue", units: "Units sold" };
+/** The section's heading (Plot): a plain question, about the quarter just played, that the lines answer. */
+export const FORECAST_HEADING = "How your forecast did";
+const units = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const amount = (measure: ForecastMeasure, value: number) =>
+  measure === "revenue" ? moneyText(value) : units.format(value);
+
+/**
+ * Plot's line, its percent of what actually happened (Frank's errorPct; Sim and Plot, #382): "Revenue: $162,300, above your range of $130,000 to $150,000. You expected $140,000: off by $22,300
+ * (16%)." Inside: "…inside your range of…"; exactly right: "…You expected $142,300: spot on."
+ */
+export function resultLine(measure: ForecastMeasure, r: MeasureResult): string {
+  const { point, low, high } = r.forecast;
+  const range = `${amount(measure, low)} to ${amount(measure, high)}`;
+  const where = `${r.where} your range of ${range}`;
+  const off =
+    r.error === 0
+      ? "spot on"
+      : `off by ${amount(measure, Math.abs(r.error))}${r.errorPct === null ? "" : ` (${Math.round(Math.abs(r.errorPct) * 100)}%)`}`;
+  return `${LABELS[measure]}: ${amount(measure, r.actual)}, ${where}. You expected ${amount(measure, point)}: ${off}.`;
+}
+
+/** The result page's lines for a forecast: one per measure forecast, then the player's own note. */
+export function ForecastLines({ result }: { result: ForecastResult }) {
+  const measures = (["revenue", "units"] as const).filter((m) => result[m]);
+  if (!measures.length) return null;
+  return (
+    <section className={styles.forecast} aria-labelledby="forecast-heading">
+      <h2 id="forecast-heading" className={styles.forecastHeading}>
+        {FORECAST_HEADING}
+      </h2>
+      <ul className={styles.forecastLines}>
+        {measures.map((m) => (
+          <li key={m} data-where={result[m]!.where}>
+            {resultLine(m, result[m]!)}
+          </li>
+        ))}
+      </ul>
+      {result.note && <blockquote className={styles.forecastNote}>{result.note}</blockquote>}
+    </section>
+  );
+}

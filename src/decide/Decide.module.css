@@ -609,3 +609,159 @@
   padding: 0 16px;
   font-size: 14px;
 }
+
+/* The player's forecast (forecast, req_6d136a2b7fb3): closed, one line on the form, its heading and Add a forecast;
+   open, the two measures side by side, each an expected figure and its 80% range with the hints under it, then the
+   note. Inside the moves' fieldset, so the confirm step disables it as it does the moves. */
+.forecastClosed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.forecast {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 0 6px;
+  border: 0;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.forecast > .forecastHeading {
+  float: left;
+  padding: 0;
+}
+
+.forecast > .forecastToggle {
+  position: absolute;
+  top: 6px;
+  right: 0;
+}
+
+.forecastHeading {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.forecastToggle {
+  padding: 3px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.forecastToggle:hover {
+  color: var(--color-text);
+}
+
+.forecastExplain {
+  clear: both;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.forecastMeasures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+
+.forecastMeasure {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.forecastMeasureName {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.forecastRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.forecastField {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 72px;
+  min-width: 0;
+  color: var(--color-text-subtle);
+  font-size: 11px;
+}
+
+.forecastField input,
+.forecastNote textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.18);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.forecastField input[aria-invalid="true"],
+.forecastNote textarea[aria-invalid="true"] {
+  border-color: var(--color-down);
+}
+
+.forecastRange {
+  align-self: center;
+  padding-top: 14px;
+  color: var(--color-text-subtle);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.forecastHints {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-subtle);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.forecastNote {
+  display: grid;
+  gap: 2px;
+  color: var(--color-text-subtle);
+  font-size: 11px;
+}
+
+.forecastNote textarea {
+  resize: vertical;
+}
+
+.forecastProblem {
+  margin: 0;
+  color: var(--color-down);
+  font-size: 12px;
+}
+
+@container scene (max-width: 620px) {
+  .forecastMeasures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
