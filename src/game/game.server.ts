@@ -11,7 +11,7 @@ import { eventOf, resolveSaveId, saveCookie, saves, startGame } from "./session.
 import { SaveError } from "./store.server";
 import { isOutcome, isQuarterOutcome } from "./outcome";
 import { currentQuarter as quarterOf, isFinished } from "./progress";
-import type { QuarterId } from "./quarters";
+import { isQuarterId, type QuarterId } from "./quarters";
 import {
   Q1_DISCOVERIES,
   Q2_DISCOVERIES,
@@ -498,6 +498,20 @@ export function resetGame(request: Request): string {
   }
 }
 /** The opening transmission has been seen (opened or put off): the bell's alert is read, and the transmission doesn't return. Idempotent. */
+/** A played quarter's shop report was opened on Reports, its card or its full results. Refuses an unplayed quarter. */
+export function markReportSeen(request: Request, quarter: unknown): void {
+  try {
+    refuseUnlessLocalPost(request);
+    if (!isQuarterId(quarter) || !saves.markReportSeen(resolveSaveId(request), quarter))
+      throw new Response("That quarter hasn't been played.", {
+        status: 400,
+        headers: { "Cache-Control": "no-store" },
+      });
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 export function markAlertSeen(request: Request): void {
   try {
     refuseUnlessLocalPost(request);

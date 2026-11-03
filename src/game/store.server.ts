@@ -499,6 +499,23 @@ export function createSaveStore(directory: string, options: StoreOptions = {}) {
         return publish(id, save);
       });
     },
+    /**
+     * Record that a played quarter's shop report was opened on Reports (reports.md section 2). Not query data, so it
+     * keeps the query grant; idempotent. A quarter that isn't played is refused (Orbit, #281): null.
+     */
+    markReportSeen(id: string, quarter: QuarterId): GameSave | null {
+      return locked(() => {
+        if (existsSync(file(id) + ".lock")) throw new SaveError("SAVE_BUSY");
+        const save = readUnlocked(id);
+        if (!save.played.some((q) => q.period === quarter)) return null;
+        const seen = save.reportsSeen ?? [];
+        if (seen.includes(quarter)) return save;
+        save.queryRevision = save.queryRevision ?? save.revision;
+        save.revision++;
+        save.reportsSeen = [...seen, quarter].sort(compareQuarters);
+        return publish(id, save);
+      });
+    },
     update(id: string, revision: number, change: (save: GameSave) => void): GameSave {
       const target = file(id);
       return locked(() => {
