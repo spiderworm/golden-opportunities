@@ -30,5 +30,5 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
   if (typeof window === "undefined" || isPhoneScreen()) return Promise.resolve(null);
   // A computer's web app: the kit's desktop defaults. Through Web Audio, so the
   // saved volume holds from the first note (audio-context.ts).
-  return studio().music({ songs: { manifest: MANIFEST_URL, fetcher }, base: "/music/", context: musicContext, legacyVolume: () => START_VOLUME });
+  return studio().music({ songs: { manifest: MANIFEST_URL, fetcher }, base: "/music/", context: musicContext, legacyVolume: () => START_VOLUME, mediaKeys: { album: "Orbital Books" } });
 }

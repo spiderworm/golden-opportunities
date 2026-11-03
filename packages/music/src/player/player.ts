@@ -17,6 +17,7 @@
 
 import { createQueue, type QueuePlace, type Song } from "../queue/queue.ts";
 import { createSync, type Shared, type SyncOptions } from "../sync/sync.ts";
+import { mediaKeys, type NowPlaying } from "./media-keys.ts";
 import { loadPrefs, meetSongs, ordered, savePrefs, type Prefs } from "../prefs/prefs.ts";
 
 export type { Song };
@@ -26,8 +27,9 @@ type Props = Record<string, string | number | boolean>;
  * from before a reload (`remember`). */
 export type Cause = "auto" | "skip" | "back" | "restored";
 /** Where the player did it: the pop-up, the dock (the pop-up kept in a
- * game's sidebar) or the Settings panel. */
-export type Where = "popup" | "dock" | "settings";
+ * game's sidebar), the Settings panel, or the device's own controls
+ * (./media-keys: media keys, headphones, Bluetooth, the lock screen). */
+export type Where = "popup" | "dock" | "settings" | "device";
 
 export type MusicOptions = {
   /** the app, from @tellim/platform's defineApp: what its data is kept under */
@@ -72,6 +74,11 @@ export type MusicOptions = {
    * other tabs with false, or decides each time the page hides with a
    * function: Orbital Books keeps it on phones only (David, 31 Oct 2026). */
   pauseWhenHidden?: boolean | (() => boolean);
+  /** The device's own controls play, pause, skip and go back, and the
+   * device names the song (./media-keys): true, the default, or what it
+   * shows besides the name (the game's name as the album, say); false
+   * leaves them alone. */
+  mediaKeys?: boolean | NowPlaying;
 };
 
 /** The place saved for `remember`. */
@@ -463,7 +470,7 @@ export function createMusic(o: MusicOptions) {
   const has = (list: string[], id: string) => list.includes(id);
   const toggle = (list: string[], id: string, on: boolean) => (on ? [...new Set([...list, id])] : list.filter((x) => x !== id));
 
-  return {
+  const music = {
     songs: o.songs,
     state,
     /** called with the state whenever it changes; returns the unsubscribe */
@@ -642,6 +649,8 @@ export function createMusic(o: MusicOptions) {
       track("music_player_opened", { from });
     },
   };
+  if (o.mediaKeys !== false) mediaKeys(music, typeof o.mediaKeys === "object" ? o.mediaKeys : {});
+  return music;
 }
 
 export type Music = ReturnType<typeof createMusic>;

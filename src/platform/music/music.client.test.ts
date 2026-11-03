@@ -53,6 +53,7 @@ describe("loadMusic", () => {
       track,
       remember: true,
       oneTab: true,
+      mediaKeys: { album: "Orbital Books" },
       pauseWhenHidden: expect.any(Function), // the desktop player's: plays on behind other tabs
     });
     // a computer (no touch screen here) plays on while hidden
