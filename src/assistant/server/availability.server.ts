@@ -18,7 +18,7 @@ import { claudeCommand, minimalEnv } from "./claudeCode.server.ts";
 export const OFFLINE = `${ASSISTANT_NAME}'s terminal is offline on this machine: it needs Claude Code installed and signed in.`;
 export const OFFLINE_HINT = "To set it up, see docs/dewey-setup.md, then restart the game.";
 /** The same, when Dewey runs on the Claude API (ORBITAL_ASSISTANT_PROVIDER=anthropic) and has no usable key. */
-export const API_OFFLINE = `${ASSISTANT_NAME}'s terminal is offline on this machine: it needs an Anthropic API key.`;
+export const API_OFFLINE = `${ASSISTANT_NAME}'s terminal is offline on this machine: it needs a working Anthropic API key.`;
 export const API_OFFLINE_HINT =
   "Set ANTHROPIC_API_KEY in the game server's environment, then restart the game.";
 

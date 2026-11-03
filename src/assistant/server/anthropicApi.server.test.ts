@@ -1,11 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WireEvent } from "../events.ts";
 import { readLines } from "../ui/stream.ts";
 import {
   anthropicAssistant,
   apiClient,
   apiTools,
+  API_URL,
   DEFAULT_API_MODEL,
   MAX_TURNS,
   type MessagesClient,
@@ -106,6 +107,7 @@ describe("Dewey on the Claude API (David, 3 Nov 2026)", () => {
     expect(body.tools?.every((t) => "input_schema" in t && !("type" in t))).toBe(true);
     expect(body).not.toHaveProperty("mcp_servers");
     expect(body.output_config).toEqual({ effort: "medium" });
+    expect(body.cache_control).toEqual({ type: "ephemeral" });
     expect(body).toMatchObject({
       fallbacks: "default",
       betas: ["server-side-fallback-2026-07-01"],
@@ -219,7 +221,11 @@ describe("Dewey on the Claude API (David, 3 Nov 2026)", () => {
     for (const stop of ["max_tokens", "refusal"]) {
       const runs: string[] = [];
       const { client, calls } = fakeApi([
-        { message: final(stop, [toolUse("t", "query_data", { measure: "rev" })]) },
+        // Something said first: a refusal with nothing said is the next test's.
+        {
+          events: [textDelta("Let me see. ")],
+          message: final(stop, [toolUse("t", "query_data", { measure: "rev" })]),
+        },
       ]);
       await collect(
         anthropicAssistant({
@@ -231,6 +237,14 @@ describe("Dewey on the Claude API (David, 3 Nov 2026)", () => {
       expect(runs, stop).toEqual([]);
       expect(calls, stop).toHaveLength(1);
     }
+  });
+
+  it("says it couldn't answer when a refusal the fallback didn't rescue leaves nothing said (Frank, #313)", async () => {
+    const { client } = fakeApi([{ message: final("refusal", []) }]);
+    const thrown = await collect(
+      anthropicAssistant({ toolEnv: TOOL_ENV, client }).ask(PROMPT, new AbortController().signal),
+    ).catch((e: unknown) => e);
+    expect(thrown).toMatchObject({ kind: "other" });
   });
 
   it(`stops after ${MAX_TURNS} model calls`, async () => {
@@ -290,6 +304,15 @@ describe("Dewey on the Claude API (David, 3 Nov 2026)", () => {
     expect(apiClient({})).toBeNull();
     expect(apiClient({ ANTHROPIC_API_KEY: "  " })).toBeNull();
     expect(apiClient({ ANTHROPIC_API_KEY: "sk-ant-test" })).not.toBeNull();
+    // The address is fixed: ANTHROPIC_BASE_URL can't send the key elsewhere (Frank, #313).
+    vi.stubEnv("ANTHROPIC_BASE_URL", "https://collector.example");
+    try {
+      expect(
+        (apiClient({ ANTHROPIC_API_KEY: "sk-ant-test" }) as unknown as { baseURL: string }).baseURL,
+      ).toBe(API_URL);
+    } finally {
+      vi.unstubAllEnvs();
+    }
     const thrown = await collect(
       anthropicAssistant({ toolEnv: TOOL_ENV, client: null }).ask(
         PROMPT,

@@ -49,7 +49,15 @@ Dewey and Alma can run on the Claude API instead of Claude Code (David, 3 Nov 20
 ORBITAL_ASSISTANT_PROVIDER=anthropic ANTHROPIC_API_KEY=... npm run dev
 ```
 
-- **The key** is read from `ANTHROPIC_API_KEY` in the game server's environment, and from nowhere else: nothing in the home folder, and no `ant` login profile. It's never logged and never sent to the browser. Without one, Dewey's panel says it needs an Anthropic API key, and Alma uses her scripted events.
+- **The key** is read from `ANTHROPIC_API_KEY` in the game server's environment, and from nowhere else: nothing in the home folder, and no `ant` login profile. It goes only to `https://api.anthropic.com`, whatever `ANTHROPIC_BASE_URL` says. It's never logged and never sent to the browser. Without one, or with a refused one, Dewey's panel says it needs a working Anthropic API key, and Alma uses her scripted events.
+- **Where to keep it:** never in the repository (not even in its gitignored `.env`). Export it in the shell you start the game from, or keep it in a file outside every checkout, readable only by you, and load it into that one command:
+
+  ```
+  chmod 600 ~/path/outside/the/repo/dewey-api.env   # one line: ANTHROPIC_API_KEY=...
+  (set -a; . ~/path/outside/the/repo/dewey-api.env; set +a; ORBITAL_ASSISTANT_PROVIDER=anthropic npm run dev)
+  ```
+
+  The game itself never opens that file: the shell reads it, and the server sees only the variable.
 - **The model** is `claude-sonnet-5-5`. Set `ORBITAL_ANTHROPIC_MODEL` for both, or `ORBITAL_ALMA_ANTHROPIC_MODEL` for Alma alone.
 - **Alma** follows Dewey onto the API. `ORBITAL_ALMA_PROVIDER=claude` keeps her on Claude Code, and `scripted` turns her off.
 - **Limits:** the model gets the game's data tools and nothing else, at most eight model calls an answer, and two minutes for the whole answer (Alma has thirty seconds). A rate limit (429) or an overload (529) shows as "unavailable", and a refused key as offline.
