@@ -26,14 +26,14 @@ function requestFor(id: string, method = "GET") {
   });
 }
 
-function render(loaderData: Awaited<ReturnType<typeof loader>>) {
+function render(loaderData: Awaited<ReturnType<typeof loader>>, at = "/reports") {
   const Stub = createRoutesStub([
     {
       path: "/reports",
       Component: () => <Reports {...({ loaderData } as unknown as Route.ComponentProps)} />,
     },
   ]);
-  return renderToString(<Stub initialEntries={["/reports"]} />);
+  return renderToString(<Stub initialEntries={[at]} />);
 }
 
 describe("Reports", () => {
@@ -46,7 +46,13 @@ describe("Reports", () => {
   it("says no quarter is filed before Q1 closes, and counts none new", () => {
     const save = saves.create();
     const data = loader({ request: requestFor(save.id) } as Route.LoaderArgs);
-    expect(data).toEqual({ reports: [], record: [], removedAt: null });
+    expect(data).toMatchObject({
+      reports: [],
+      record: [],
+      removedAt: null,
+      player: [],
+      editable: true,
+    });
     expect(getStationState(requestFor(save.id)).newReports).toBe(0);
     const html = render(data);
     expect(html).toContain("No new reports.");
@@ -161,5 +167,90 @@ describe("Reports", () => {
       writeFileSync(file, JSON.stringify({ ...saves.read(save.id), reportsSeen }));
       expect(() => saves.read(save.id)).toThrow();
     }
+  });
+
+  it("makes, edits and deletes the player's reports through its action, keeping the query grant", async () => {
+    const save = saves.create();
+    const post = async (fields: Record<string, string>) => {
+      const body = new FormData();
+      for (const [k, v] of Object.entries(fields)) body.set(k, v);
+      const answer = await action({
+        request: new Request("http://localhost/reports", {
+          method: "POST",
+          headers: { origin: "http://localhost", cookie: "orbital_save=" + save.id },
+          body,
+        }),
+      } as Route.ActionArgs);
+      // data() wraps a refusal with its status; a success is the plain answer.
+      return answer && "data" in (answer as object)
+        ? (answer as { data: unknown; init: { status: number } })
+        : { data: answer, init: { status: 200 } };
+    };
+    const report = {
+      title: "The quiet picks",
+      items: [
+        {
+          spec: {
+            title: "Revenue by quarter",
+            kind: "bar",
+            query: { measure: "revenue", by: ["quarter"] },
+          },
+          note: "Down in Q4.",
+        },
+      ],
+    };
+    const before = saves.read(save.id);
+    const made = await post({ intent: "create", report: JSON.stringify(report) });
+    expect(made.data).toMatchObject({ ok: true, intent: "create" });
+    const id = (made.data as { id: string }).id;
+    const after = saves.read(save.id);
+    expect(after.reports).toEqual([{ id, ...report, created: "2194-Q1", edited: "2194-Q1" }]);
+    // Reports aren't query data: cached answers stay good.
+    expect(after.queryRevision ?? after.revision).toBe(before.queryRevision ?? before.revision);
+
+    const data = loader({ request: requestFor(save.id) } as Route.LoaderArgs);
+    expect(data.player).toHaveLength(1);
+    const list = render(data);
+    expect(list).toContain("The quiet picks");
+    expect(list).toContain("1 chart \u00b7 edited Q1 2194");
+    expect(list).toContain(`href="/reports?report=${id}"`);
+    const view = render(data, `/reports?report=${id}`);
+    expect(view).toContain("Down in Q4.");
+    expect(view).toContain("Every quarter played so far");
+    const editor = render(data, `/reports?edit=${id}`);
+    expect(editor).toContain('value="The quiet picks"');
+    expect(editor).toContain("Save report");
+    expect(editor).toContain("Delete report");
+    expect(render(data, "/reports?new=1")).toContain("Add charts");
+
+    expect(
+      (await post({ intent: "update", id, report: JSON.stringify({ ...report, title: "" }) })).init
+        .status,
+    ).toBe(400);
+    expect(
+      (
+        await post({
+          intent: "update",
+          id,
+          report: JSON.stringify({ ...report, title: "Weekdays" }),
+        })
+      ).data,
+    ).toMatchObject({ ok: true, id });
+    expect(saves.read(save.id).reports![0]!.title).toBe("Weekdays");
+    expect((await post({ intent: "delete", id })).data).toMatchObject({ ok: true });
+    expect(saves.read(save.id).reports).toBeUndefined();
+  });
+
+  it("refuses a save whose reports are malformed", () => {
+    const save = saves.create();
+    const file = path.join(directory, "saves", save.id + ".json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        ...saves.read(save.id),
+        reports: [{ id: "r1", title: "", items: [], created: "2194-Q1", edited: "2194-Q1" }],
+      }),
+    );
+    expect(() => saves.read(save.id)).toThrow();
   });
 });
