@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { data, Form, redirect, useFetcher } from "react-router";
 
 import { markReportSeen, writeReports } from "~/game/game.server";
+import { BodyRefused, readCappedForm } from "~/platform/body.server";
 import { isQuarterId } from "~/game/quarters";
 import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
@@ -47,8 +48,22 @@ export function loader({ request }: Route.LoaderArgs) {
  * Marks a shop report seen: its card opened (a fetcher), or its full results asked for (a form, which goes on to
  * them). Through React Router, so the shell's loader runs again and the badge follows (Audit, #281).
  */
+/**
+ * A report is at most 6 items, each a pin no larger than a query (16 KB) and a 500-character note, with an
+ * 80-character title and a 1,000-character summary: about 110 KB as JSON, and three times that at worst once
+ * form-encoded. 512 KB holds the largest a player can make; nothing else posts here.
+ */
+export const MAX_REPORTS_BODY = 524_288;
+
 export async function action({ request }: Route.ActionArgs) {
-  const form = await request.formData();
+  let form: URLSearchParams;
+  try {
+    // Read with a cap and a deadline (src/platform/body.server.ts): the deployed host is public (Audit).
+    form = await readCappedForm(request, MAX_REPORTS_BODY);
+  } catch (error) {
+    if (!(error instanceof BodyRefused)) throw error;
+    return data({ ok: false as const, reason: "invalid" as const }, { status: error.status });
+  }
   const intent = form.get("intent");
   if (intent === "create" || intent === "update" || intent === "delete")
     return reportAction(request, form);
@@ -69,7 +84,7 @@ export async function action({ request }: Route.ActionArgs) {
  * Creates, edits or deletes one of the player's reports: checked again here, the id the server's, written whole in
  * one action (section 3). Answers what happened, for the editor: the report's id, or why it was refused.
  */
-function reportAction(request: Request, form: FormData) {
+function reportAction(request: Request, form: URLSearchParams) {
   const change = changeFrom(form);
   if (!change) {
     // Counted too, as every refusal is (Audit, #287); its intent from a fixed list, never what was sent.
