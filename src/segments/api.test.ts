@@ -169,4 +169,30 @@ describe("/api/segments' door (Audit and Frank, #387)", () => {
     expect(large.read.bytes).toBeLessThanOrEqual(65_536);
     expect(game.writeSegments).not.toHaveBeenCalled();
   });
+
+  it("refuses a same-origin body past the cap as it's read, without a declared length", async () => {
+    const { response, read } = send(LOCAL);
+    expect((await response).status).toBe(413);
+    // It stops at the cap: no more than one chunk past it is read.
+    expect(read.bytes).toBeLessThanOrEqual(MAX_SEGMENT_BODY + 2 * 65_536);
+    expect(game.writeSegments).not.toHaveBeenCalled();
+  });
+
+  it("answers a body that never ends with 408, not never", async () => {
+    vi.useFakeTimers();
+    try {
+      const body = new ReadableStream<Uint8Array>({ pull: () => new Promise(() => {}) });
+      const request = new Request("http://localhost/api/segments", {
+        method: "POST",
+        headers: LOCAL,
+        body,
+        duplex: "half",
+      } as RequestInit);
+      const response = action({ request } as Route.ActionArgs);
+      await vi.advanceTimersByTimeAsync(3_001);
+      expect((await response).status).toBe(408);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
