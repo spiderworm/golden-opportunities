@@ -4,6 +4,7 @@ import { deployed } from "@tellim/kit/analytics/deployed";
 import { fileStorage } from "./file-storage.server";
 import { DATA_DIR, instanceId } from "./instance.server";
 import { BUILD, GAME, VERSION, type Track } from "./track";
+import { visitorAllowsSharing } from "./visitor-sharing.server";
 
 const KEY = "orbital-books-server";
 const FLUSH_MS = 60_000;
@@ -41,6 +42,8 @@ export function serverAnalytics(): Analytics {
   return analytics;
 }
 
-/** track() for server-side code. */
-export const trackServer: Track = (event, props, options) =>
+/** track() for server-side code: nothing, in a request whose visitor turned sharing off (visitor-sharing.server.ts). */
+export const trackServer: Track = (event, props, options) => {
+  if (!visitorAllowsSharing()) return;
   serverAnalytics().track(event, props, options);
+};

@@ -143,6 +143,56 @@ describe("the gates, with the deployed origin set", () => {
   });
 });
 
+describe("Share play data, deployed (Audit, #368)", () => {
+  it("keeps a visitor's choice in their own cookie, never the process's switch", async () => {
+    const { sharing } = await withOrigin(PUBLIC);
+    sharing.resetAdmission();
+    const applied: boolean[] = [];
+    const answer = await sharing.setSharingFromRequest(
+      new Request(`http://${HOST}/api/sharing`, {
+        method: "POST",
+        headers: { ...good, "content-type": "application/json" },
+        body: JSON.stringify({ on: false }),
+      }),
+      (on) => applied.push(on),
+    );
+    expect(answer).toMatchObject({ status: 200, body: { on: false } });
+    expect(answer.cookie).toMatch(
+      /^ob_share=off; Path=\/; HttpOnly; SameSite=Strict; Max-Age=\d+; Secure$/,
+    );
+    expect(applied).toEqual([]);
+    // On this machine the switch is still the copy's own.
+    const local = await sharing.setSharingFromRequest(
+      new Request("http://127.0.0.1:5173/api/sharing", {
+        method: "POST",
+        headers: { origin: "http://127.0.0.1:5173", "content-type": "application/json" },
+        body: JSON.stringify({ on: false }),
+      }),
+      (on) => applied.push(on),
+    );
+    expect(local.cookie).toBeUndefined();
+    expect(applied).toEqual([false]);
+  });
+
+  it("drops an opted-out visitor's server events, and only theirs", async () => {
+    const { asVisitor, visitorAllowsSharing } = await import("./analytics/visitor-sharing.server");
+    const off = new Request(`http://${HOST}/`, { headers: { cookie: "ob_share=off" } });
+    const on = new Request(`http://${HOST}/`, { headers: { cookie: "ob_share=on" } });
+    expect(asVisitor(off, visitorAllowsSharing)).toBe(false);
+    expect(asVisitor(on, visitorAllowsSharing)).toBe(true);
+    expect(asVisitor(new Request(`http://${HOST}/`), visitorAllowsSharing)).toBe(true);
+    // Outside any request (the server starting), the copy's own events go.
+    expect(visitorAllowsSharing()).toBe(true);
+    // And it holds across the request's own async work.
+    await expect(
+      asVisitor(off, async () => {
+        await new Promise((r) => setTimeout(r, 5));
+        return visitorAllowsSharing();
+      }),
+    ).resolves.toBe(false);
+  });
+});
+
 describe("the gates, with it unset", () => {
   it("refuse the deployed page, as they always would", async () => {
     const { access, ask, origin } = await withOrigin(undefined);
