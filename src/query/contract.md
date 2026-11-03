@@ -171,10 +171,13 @@ n − 1 degrees of freedom times its `se`, clipped to 1 to 5 stars, and null bel
 two ratings. `lowEvidence` says when an average is shown faded: under 30
 ratings, orders or sale lines, and never for days.
 
-Dewey doesn't see any of this yet. The tool server's `runQuery`
-(`src/assistant/tools/server.ts`) keeps only `columns`, `rows`, `total` and
-`source` from a result, so `evidence` never reaches him until the figures gate
-is ready for it.
+Dewey sees it only through the figures gate. The tool server
+(`src/assistant/tools/server.ts`) keeps `evidence` when it checks out and turns
+it into plain fields: for an average, `n` beside each row and the total, and
+for average rating the likely range, `range_low` to `range_high`; for a
+comparison, `noise` (`within`, `clear` or null) on each row and the total. The
+model can cite them only by ref (`{{a1.n}}`, `{{a1.range}}`, `{{b.noise}}`), and
+its own words about evidence ("significant", "noise") are withheld.
 
 ## Change decomposition
 
