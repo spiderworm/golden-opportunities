@@ -71,42 +71,55 @@ export function LastYearTable({
   measure: Measure;
   labels: LastYearLabels;
 }) {
+  const unit = result.evidence?.unit ?? null;
+  const rows = lastYearRows(result, by, measure);
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">{DIMENSION_LABELS[by]}</th>
-            <th scope="col" className={styles.numeric}>
-              {labels.now}
-            </th>
-            <th scope="col" className={styles.numeric}>
-              {labels.then}
-            </th>
-            <th scope="col" className={styles.numeric} aria-label="Change">
-              Δ
-            </th>
-            <th scope="col" className={styles.numeric}>
-              % change
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {lastYearRows(result, by, measure).map((row, i) => (
-            <tr key={i}>
-              <td>{row.group}</td>
-              <td className={styles.numeric}>{row.now}</td>
-              <td className={styles.numeric}>{row.then}</td>
-              <td className={styles.numeric} title={row.noise ? NOISE_EXPLAINED : undefined}>
-                {row.delta}
-              </td>
-              <td className={styles.numeric} title={row.noise ? NOISE_EXPLAINED : undefined}>
-                {row.percent}
-              </td>
+    <>
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th scope="col">{DIMENSION_LABELS[by]}</th>
+              <th scope="col" className={styles.numeric}>
+                {labels.now}
+              </th>
+              <th scope="col" className={styles.numeric}>
+                {labels.then}
+              </th>
+              <th scope="col" className={styles.numeric} aria-label="Change">
+                Δ
+              </th>
+              <th scope="col" className={styles.numeric}>
+                % change
+              </th>
+              {unit && (
+                <th scope="col" className={styles.numeric}>
+                  {BASED_ON}
+                </th>
+              )}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} className={row.faded ? styles.faded : undefined}>
+                <td>{row.group}</td>
+                <td className={styles.numeric}>{row.now}</td>
+                <td className={styles.numeric}>{row.then}</td>
+                <td className={styles.numeric} title={row.noise ? NOISE_EXPLAINED : undefined}>
+                  {row.delta}
+                </td>
+                <td className={styles.numeric} title={row.noise ? NOISE_EXPLAINED : undefined}>
+                  {row.percent}
+                </td>
+                {unit && <td className={styles.numeric}>{row.basedOn ?? ""}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {unit && rows.some((row) => row.faded) && (
+        <p className={styles.tableNote}>{fadedCaption(unit)}</p>
+      )}
+    </>
   );
 }

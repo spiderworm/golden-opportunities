@@ -4,7 +4,8 @@ import { change, yearEarlier } from "~/query/last-year";
 import type { Dimension, LastYear, Measure, QueryResult } from "~/query/types";
 import { formatDimensionValue, formatMeasure } from "../format";
 import type { CategoryModel } from "./category-chart";
-import { noisy, rowNoisy, withNoise } from "./evidence";
+import type { EvidenceUnit } from "~/query/evidence";
+import { basedOnLine, bothCounts, bothLine, faded, noisy, rowNoisy, withNoise } from "./evidence";
 
 /** The two quarters' names: `Q1 2194` and `Q1 2193`, and in the legend, by month, the years `2194` and `2193`. */
 export function lastYearLabels(quarter: string, by: Dimension) {
@@ -102,7 +103,11 @@ export function lastYearRows(
   delta: string;
   percent: string;
   noise: boolean;
+  /** For an average: both years' counts, `1,240 and 980 orders`, and whether either is too few to go on. */
+  basedOn?: string;
+  faded?: boolean;
 }[] {
+  const unit = result.evidence?.unit ?? null;
   return result.rows.map((row, i) => {
     const now = (row[measure] as number | null | undefined) ?? null;
     const before = result.lastYear?.rows[i] ?? null;
@@ -119,8 +124,20 @@ export function lastYearRows(
       delta: withNoise(formatDelta(measure, delta), noise && !pct),
       percent: withNoise(pct, noise),
       noise,
+      ...(unit && evidenceOfRow(result, i, unit)),
     };
   });
+}
+
+/** An average row's Based on cell and fade, from this year's and last year's evidence (Plot, after #311). */
+function evidenceOfRow(result: QueryResult, i: number, unit: EvidenceUnit) {
+  const now = result.evidence?.rows[i];
+  if (!now) return {};
+  const before = result.lastYear?.evidence.rows[i] ?? null;
+  return {
+    basedOn: bothCounts(unit, now.n, before?.n ?? null),
+    faded: faded(unit, now) || faded(unit, before),
+  };
 }
 
 /** Whether a chart's category is within noise of last year's, from the two series' evidence. */
@@ -132,4 +149,17 @@ export function ghostNoisy(ghost: CategoryModel, i: number): boolean {
     { value: now.values[i] ?? null, evidence: now.evidence?.[i] },
     { value: before.values[i] ?? null, evidence: before.evidence?.[i] },
   );
+}
+
+/** The tooltip's line for an average's two counts, or null without them: `Based on 1,240 orders (Q1 2194) and 980 (Q1 2193)`. */
+export function ghostBasedOn(
+  ghost: CategoryModel,
+  i: number,
+  labels: LastYearLabels,
+): string | null {
+  const unit = ghost.unit ?? null;
+  const now = ghost.series[0]?.evidence?.[i];
+  const before = ghost.series[1]?.evidence?.[i];
+  if (!unit || !now) return null;
+  return before ? bothLine(unit, now.n, before.n, labels) : basedOnLine(unit, now.n);
 }

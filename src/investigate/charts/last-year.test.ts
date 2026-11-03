@@ -5,6 +5,7 @@ import { lastYearNoise } from "./evidence";
 import {
   changeLine,
   formatDelta,
+  ghostBasedOn,
   ghostNoisy,
   formatPercent,
   lastYearLabels,
@@ -163,5 +164,63 @@ describe("the words for last year (Plot, #291)", () => {
       percent: "",
       noise: true,
     });
+  });
+
+  it("gives an average's table both years' counts after % change, faded when either is few (Plot, after #311)", () => {
+    const aov: QueryResult = {
+      columns: [result.columns[0]!, { ...result.columns[1]!, key: "avg_order_value" }],
+      rows: [
+        { genre: "Fiction", avg_order_value: 16.62 },
+        { genre: "Memoir", avg_order_value: 23.38 },
+      ],
+      total: 17,
+      source: "test",
+      evidence: {
+        unit: "orders",
+        rows: [
+          { n: 886, se: 0.4 },
+          { n: 76, se: 1.5 },
+        ],
+        total: { n: 962, se: 0.4 },
+      },
+      lastYear: {
+        rows: [{ value: 15.65 }, { value: 22.48 }],
+        total: { value: 16 },
+        evidence: {
+          rows: [
+            { n: 864, se: 0.4 },
+            { n: 24, se: 2 },
+          ],
+          total: { n: 888, se: 0.4 },
+        },
+      },
+    };
+    const rows = lastYearRows(aov, "genre", "avg_order_value");
+    expect(rows.map((r) => [r.basedOn, r.faded])).toEqual([
+      ["886 and 864 orders", false],
+      ["76 and 24 orders", true],
+    ]);
+    // Sums and counts have no Based on.
+    expect(lastYearRows(result, "genre", "revenue")[0]).not.toHaveProperty("basedOn");
+    const labels = lastYearLabels("2194-Q1", "genre");
+    const ghost = withLastYear(categoryModel(aov, "genre"), aov, labels);
+    expect(ghostBasedOn(ghost, 0, labels)).toBe("Based on 886 orders (Q1 2194) and 864 (Q1 2193)");
+    const tip = (
+      categoryOption(ghost, {
+        quarters: ["2193-Q1", "2194-Q1"],
+        ghost: {
+          change: () => "Change: +$0.97 (+6.2%)",
+          basedOn: (i) => ghostBasedOn(ghost, i, labels),
+        },
+      }).tooltip as { formatter: (p: object[]) => string }
+    )
+      .formatter([
+        { dataIndex: 0, seriesIndex: 0, seriesName: "", value: 16.62, color: "" },
+        { dataIndex: 0, seriesIndex: 1, seriesName: "", value: 15.65, color: "" },
+      ])
+      .replace(/<[^>]+>/g, "|");
+    // One line for both years, not one per series.
+    expect(tip.match(/Based on/g)).toHaveLength(1);
+    expect(tip).toContain("Based on 886 orders (Q1 2194) and 864 (Q1 2193)");
   });
 });
