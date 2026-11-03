@@ -1,4 +1,4 @@
-import { useRef, type RefObject } from "react";
+import { useRef, type RefObject, type ReactNode } from "react";
 
 import { Dropdown, type DropdownOption } from "~/platform/ui/Dropdown";
 import { isRelativeQuarter, RELATIVE_QUARTERS } from "~/query/relative";
@@ -70,6 +70,9 @@ export interface FilterBarProps {
   onAward: (choice: AwardChoice) => void;
   onSeries: (choice: SeriesChoice) => void;
   onClear: () => void;
+  /** The Segment menu, at the bar's start, and Save as segment (or Update) after Add a filter (src/segments). */
+  segmentMenu?: ReactNode;
+  segmentActions?: ReactNode;
 }
 
 /**
@@ -87,6 +90,8 @@ export function FilterBar({
   onAward,
   onSeries,
   onClear,
+  segmentMenu,
+  segmentActions,
 }: FilterBarProps) {
   const addButton = useRef<HTMLButtonElement>(null);
   const any = FILTERS.some((id) => FILTER_PARTS[id].some((d) => filters[d]?.length));
@@ -175,6 +180,7 @@ export function FilterBar({
   return (
     <div className={styles.filterBar} role="group" aria-label="Filters">
       <div className={styles.filterMenus}>
+        {segmentMenu}
         <span className={styles.filterIcon}>
           <Icon name="filter" size={18} />
           Only show
@@ -197,6 +203,7 @@ export function FilterBar({
           </div>
         ))}
         <AddFilter buttonRef={addButton} shown={shown} onAdd={onAdd} onRemove={onRemove} />
+        {segmentActions}
         {any && (
           <button type="button" className={styles.clearAll} onClick={onClear}>
             Clear filters

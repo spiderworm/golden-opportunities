@@ -821,9 +821,25 @@ export function removeFilter(state: InvestigateState, id: FilterId): Investigate
   return FILTER_PARTS[id].reduce((next, dimension) => setFilter(next, dimension, []), state);
 }
 
-/** Whether two URLs differ only in which filters are shown: that changes no data, so nothing is asked again. */
+/**
+ * The saved segment the filters came from (src/segments), as `segment=<id>`: like `show`, it changes no data, so it
+ * isn't part of the question. It lets the bar say `Segment: {name}`, or `, edited` once a filter changes (Plot,
+ * section 8). Null takes it off.
+ */
+export const SEGMENT_PARAM = "segment";
+export function withSegment(params: URLSearchParams, id: string | null): URLSearchParams {
+  const next = new URLSearchParams(params);
+  next.delete(SEGMENT_PARAM);
+  if (id) next.set(SEGMENT_PARAM, id);
+  return next;
+}
+
+/**
+ * Whether two URLs differ only in which filters are shown, or the segment they're named by: that changes no data,
+ * so nothing is asked again.
+ */
 export function onlyShownChanged(from: URL, to: URL): boolean {
   if (from.pathname !== to.pathname || from.search === to.search) return false;
-  const strip = (url: URL) => withShown(url.searchParams, []).toString();
+  const strip = (url: URL) => withSegment(withShown(url.searchParams, []), null).toString();
   return strip(from) === strip(to);
 }

@@ -1,0 +1,52 @@
+// Saved segments' words, Plot's (docs/design/chart-features-copy.md, section 8).
+import { SEGMENT_LIMITS, type SegmentRefusal } from "./segments";
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+export const SEGMENT_COPY = {
+  menu: "Segment",
+  none: "None",
+  edited: (name: string) => `${name}, edited`,
+  empty: "No segments yet. Add filters, then choose Save as segment.",
+  save: "Save as segment",
+  saveDisabled: "Add a filter to save it as a segment",
+  saveTitle: "Save these filters as a segment",
+  name: "Name",
+  saveButton: "Save segment",
+  cancel: "Cancel",
+  renameTitle: "Rename segment",
+  renameButton: "Save",
+  rename: "Rename",
+  editFilters: "Edit filters",
+  delete: "Delete",
+  update: (name: string) => `Update "${name}"`,
+  deleteQuestion: (name: string) => `Delete "${name}"? This can't be undone.`,
+  deleteButton: "Delete segment",
+  keep: "Keep it",
+} as const;
+
+/** Why a change was refused, in Plot's words; `name` is the segment it clashes with. */
+export function refusalCopy(reason: SegmentRefusal | "busy", name?: string): string {
+  switch (reason) {
+    case "no_name":
+      return "Give the segment a name.";
+    case "too_long":
+      return `Keep the name to ${SEGMENT_LIMITS.name} characters.`;
+    case "taken":
+      return `You already have a segment called "${name}".`;
+    case "same_filters":
+      return `These filters are already saved as "${name}".`;
+    case "full":
+      return `You have ${SEGMENT_LIMITS.segments} segments. Delete one to save another.`;
+    case "too_many":
+      return `A segment holds up to ${plural(SEGMENT_LIMITS.values, "filter value", "filter values")}. Remove some to save it.`;
+    case "missing":
+      return "That segment was deleted in another tab.";
+    case "no_filters":
+      return SEGMENT_COPY.saveDisabled;
+    case "busy":
+      return "Your segment didn't save. Please save it again.";
+    case "invalid":
+      return "This name can't be saved. Check it and try again.";
+  }
+}
