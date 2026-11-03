@@ -240,6 +240,84 @@ David: "I think it would be good to support event markers on time series. ie, ma
 | Scatter plot on | `Turn off Scatter plot to mark events` |
 | Any other refusal | `Can't mark events on this chart` |
 
+## 8. Saved segments (Sim)
+
+David: "Named filter sets ("awarded paperbacks under $20") that can be applied to any chart or to a whole report. The filters already exist, so this is mostly UI and storage in the save" (req_7a658226468d).
+
+- **Saving:**
+  - On the filter bar, after `Add a filter`, there's a `Save as segment` button. With no filters on, it's disabled with `Add a filter to save it as a segment`.
+  - The dialog is titled `Save these filters as a segment`, with the field `Name` and the buttons `Save segment` and `Cancel`. The name may be prefilled from the filters, as in `Award winners, paperback, under $20`.
+  - Its errors:
+    - `Give the segment a name.`
+    - `Keep the name to 60 characters.`
+    - `You already have a segment called "{name}".`
+    - `These filters are already saved as "{name}".`
+    - `You have {12} segments. Delete one to save another.`
+    - `This name can't be saved. Check it and try again.`
+- **The control:** `Segment`, a dropdown at the start of the filter bar. It reads `Segment: None` or `Segment: {name}`. Choosing one puts its filters on the bar, and if the player then changes a filter, it reads `Segment: {name}, edited`. When there are none, the menu says `No segments yet. Add filters, then choose Save as segment.`
+- **Managing,** from each segment's row:
+  - `Rename`, with the title `Rename segment`, the field `Name`, and `Save` and `Cancel`;
+  - `Edit filters`, which applies the segment and offers `Update "{name}"` on the bar;
+  - `Delete`. If anything uses the segment: `Delete "{name}"? It's used by {2 pinned charts} and {1 report}. They'll go back to their own filters.` (singular for one, and only the parts that apply). If nothing does: `Delete "{name}"? This can't be undone.` The buttons are `Delete segment` and `Keep it`.
+- **Where it shows:**
+  - on a pin's card or a report's chart: `Segment: {name}`, small, under the title;
+  - for a whole report: the editor's field `Segment for this report` (with `None`), and under the report's title, `Every chart here shows {name}.`
+- **Edge cases:**
+  - `Nothing matches both this chart's filters and {name}.`
+  - After a deletion, on what used the segment: `This used a segment that's since been deleted, so it shows its own filters now.`
+- **Privacy:** segment names are the player's own words, kept in the save and never in analytics, which records counts and lengths only. The privacy page names them with the reports.
+
+## 9. Relative quarters, and running a report for another quarter (Sim)
+
+David agreed the design: "Agreed on all points. Let's do it" (req_a59d77f07115).
+
+- **In the quarter filter,** above the dated quarters: `Latest quarter` (the newest quarter with sales), `Quarter before latest`, and `Same quarter, a year earlier`. None is "this quarter": a quarter being planned has no sales yet.
+  - Their shared tooltip: `Moves on as you play: always counted from the newest quarter with sales`.
+  - They're shown resolved on the chip, the summary and a pin's card: `Latest quarter: Q1 2194`, `Quarter before latest: Q4 2193`, `Same quarter, a year earlier: Q1 2193`.
+  - When one is unavailable: `{Q1 2193} is the first quarter in the ledgers: there's no quarter before it`, or `The ledgers start in 2193: there's no year before it`.
+  - A pin or report item made on one keeps it relative, so it moves on with the game (#379).
+  - A pinned waterfall moves on too (#380). It's titled `What drove revenue's change into the latest quarter, by {genre}`, or, with last year on, `What drove revenue's change from a year earlier to the latest quarter, by {genre}`, with the resolved line under it. On a fresh save, a year-earlier one shows `The ledgers start in 2193: there's no year before it` in place of the chart.
+- **`Run for…` on a report:**
+  - It's a button beside the report's title. Its picker, titled `Run this report for`, offers `As saved` (the default), the three relative quarters, then each played quarter, newest first.
+  - Charts move by the same number of quarters, counted from the report's newest, so each keeps its own span (Goldy's call). The note says `Run for Q1 2194: every chart moves by the same number of quarters, so each keeps its own span.`, with the button `Back to as saved`.
+  - A chart over every quarter isn't moved, and says `Over every quarter, so it stays as saved.`
+  - A chart that can't move says why:
+    - `This chart can't run for Q1 2194, so it shows as saved.`
+    - `Moving this chart would go past the ledgers, so it shows as saved.`
+    - the undated reasons from section 2 (`Ratings aren't recorded by quarter, …`).
+  - Running a report for another quarter changes nothing saved.
+
+## 10. Forecasts (Frank and Chart)
+
+David: "Build it now. Forecast revenue and total units with hints, values for previous quarter and same quarter previous year, displayed" (req_6d136a2b7fb3).
+
+- **At Decide:**
+  - The section is `Your forecast (optional)`, using David's word. Closed, it shows `Add a forecast`, and leaving it closed is the skip. Open, it offers `Remove forecast`.
+  - The explanation: `Say what you expect, and a range you're 80% sure of: wide enough that you'd be surprised only 1 time in 5 to see the real figure outside it.`
+  - For each of `Revenue` and `Units sold`, there's `Expected`, then `80% range`, with `From` and `To`. The accessible names are in full: `Expected revenue`, `Revenue, low end of the 80% range`, `Revenue, high end of the 80% range`.
+  - Under each measure, the hints: `Q4 2193, the quarter before: $161,525` and `Q1 2193, a year earlier: $94,210`. When the year earlier is outside the ledgers: `Q1 2192, a year earlier: not in the ledgers`.
+  - The note, `Why? (optional)`, has the placeholder `What you expect to move these, in a line or two.` It holds up to 500 characters. It's the player's own words, kept in the save and never in analytics.
+  - Refusals, shown by their fields:
+    - `Enter a number.`
+    - `Revenue can't be below $0.` / `Units sold can't be below 0.`
+    - `That's more than this shop could sell in a quarter.`
+    - `The low end can't be above your expected figure.`
+    - `Your expected figure can't be above the high end.`
+    - `Fill in all three for revenue, or leave them all empty.`
+    - `Keep the note to 500 characters.`
+- **On the result page,** a line for each measure forecast:
+  - `Revenue: $142,300, inside your range of $130,000 to $150,000. You expected $140,000: off by $2,300 (2%).`
+  - outside the range, `above` or `below` in place of `inside`;
+  - when exactly right: `…You expected $142,300: spot on.`
+- **In Reports,** a section `Your forecasts`, also shown read-only in Decide's panel:
+  - `3 of 5 quarters forecast` (singular: `1 of 1 quarter forecast`).
+  - With fewer than 3: `Too few forecasts to judge yet: {2} so far.`
+  - For each measure:
+    - `Hit rate`: `2 of 3 inside your range (target: 4 in 5)`. Its tooltip: `How often the real figure landed inside your 80% range. Well calibrated is about 4 times in 5.`
+    - `Bias`: `You tend to forecast high, by 4.2% on average.` or `…low, by…`, and within ±2%, `No lean either way.` Its tooltip: `How far your expected figure was from the real one, on average. Above zero means you guessed high.`
+    - `Sharpness`: `Typical range: ±7.5% of your expected figure` (the median). Its tooltip: `How wide your ranges were, against your expected figure. Narrower is sharper, but only worth it if the hit rate holds.`
+  - The chart is titled `Your forecasts against what happened`, with the series `Expected`, `80% range` and `Actual`.
+
 ## Analytics, for all of them
 
 Events say what happened, never content (CLAUDE.md). The new toggles record their state, as `investigate_table_toggled { shown }` does, for example `investigate_last_year_toggled { on }` and `investigate_scatter_toggled { on }`. The builders pick the final names.
