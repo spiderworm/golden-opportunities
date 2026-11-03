@@ -16,6 +16,7 @@ export function serializeResult(result: QueryResult): string {
   if (result.rows.length > QUERY_LIMITS.rows || result.source.length > QUERY_LIMITS.sourceLength)
     tooLarge();
   for (const column of result.columns) checkLabel(column.label);
+  for (const event of result.events?.list ?? []) checkLabel(event.label);
   for (const row of result.rows)
     for (const value of Object.values(row)) {
       if (typeof value === "string") checkLabel(value);

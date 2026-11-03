@@ -1343,3 +1343,67 @@ it("turns a question without a game away before it takes the slot, so a slow bod
   expect(answered.status).toBe(200);
   expect((await events(answered)).at(-1)).toMatchObject({ type: "done" });
 });
+
+it("counts questions without a game toward their own minute cap, so a loop of them can't refuse players (Audit, #338)", async () => {
+  const tracked: [string, unknown][] = [];
+  let reads = 0;
+  const at = Date.now();
+  // cookie: whether there's a save cookie at all (read for free); game: whether its save resolves (a disk read).
+  const status = async (cookie: boolean, game: boolean) =>
+    (
+      await ask(
+        post({ question: "Revenue?" }),
+        () => fakeAssistant(),
+        (name, props) => tracked.push([name, props]),
+        () => at,
+        undefined,
+        () => null,
+        () => null,
+        () => (reads++, game),
+        () => cookie,
+      )
+    ).status;
+  // A minute's worth without a cookie, then the next is refused, and no save was read for any of them.
+  for (let i = 0; i < 30; i++) expect(await status(false, false)).toBe(200);
+  expect(await status(false, false)).toBe(429);
+  expect(tracked).toContainEqual(["assistant_limited", { reason: "flood_without_game" }]);
+  expect(reads).toBe(0);
+  // A player with a game, in the same minute, is answered.
+  expect(await status(true, true)).toBe(200);
+  // A made-up cookie counts toward the shared cap, and is told to start a game once its save doesn't resolve.
+  const forged = await events(
+    await ask(
+      post({ question: "Revenue?" }),
+      () => fakeAssistant(),
+      () => {},
+      () => at,
+      undefined,
+      () => null,
+      () => null,
+      () => false,
+      () => true,
+    ),
+  );
+  expect(forged[0]).toEqual({ type: "text", text: START_A_GAME });
+});
+
+it("reads no save for a request the shared minute cap refuses (Frank's review of #351)", async () => {
+  let reads = 0;
+  const at = Date.now();
+  const send = () =>
+    ask(
+      post({ question: "Revenue?" }),
+      () => fakeAssistant(),
+      () => {},
+      () => at,
+      undefined,
+      () => null,
+      () => null,
+      () => (reads++, true),
+      () => true,
+    );
+  for (let i = 0; i < 30; i++) await events(await send());
+  const before = reads;
+  expect((await send()).status).toBe(429);
+  expect(reads).toBe(before);
+});

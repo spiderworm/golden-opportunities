@@ -2,7 +2,7 @@
 // together; the work is in server/ask.server.ts and server/availability.server.ts.
 
 import { SaveError } from "~/game/store.server";
-import { resolveSaveId, saves } from "~/game/session.server";
+import { cookieSaveId, resolveSaveId, saves } from "~/game/session.server";
 import { backstoryOf, type BackstoryText } from "~/alma/backstory";
 import { catalogNames } from "~/alma/backstory.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
@@ -121,6 +121,8 @@ export const action = ({ request }: Route.ActionArgs) =>
     usage,
     // Only a question with a real game counts toward the hour (Probe's red-team of #319).
     (request) => gameOf(request) !== null,
+    // Which minute cap counts it, from the cookie alone, before any save is read (Frank's review of #351).
+    (request) => cookieSaveId(request) !== null,
   );
 
 /** Whether the panel can offer questions: { available: true }, or the fixed offline message and why. */
