@@ -23,7 +23,17 @@ import { formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
 import { monthsInScope } from "../state";
 import styles from "../Investigate.module.css";
 import { fetchQuery, QueryRequestError } from "./query-client";
-import { pinKey, type ChartPinSpec, type ComparisonPinSpec, type Pin, type PinSpec } from "./spec";
+import {
+  drawnKind,
+  noChart,
+  pinKey,
+  shownAsTable,
+  type ChartPinSpec,
+  type ComparisonPinSpec,
+  type Pin,
+  type PinSpec,
+} from "./spec";
+import { NO_CHART, TableToggle } from "../charts/TableToggle";
 
 const CHART_HEIGHT = 240;
 
@@ -34,6 +44,8 @@ export interface PinnedChartsProps {
   onError: (code: string) => void;
   /** Each pin's Add to report control (reports.md section 3), if the page offers one. */
   addToReport?: (pin: Pin) => ReactNode;
+  /** A pin toggled between its chart and its table: the board keeps the view (usePins.setTable). */
+  onTable?: (pin: Pin, table: boolean) => void;
 }
 
 /** The player's board: charts they pinned, or asked Dewey to pin. */
@@ -43,6 +55,7 @@ export function PinnedCharts({
   onRemove,
   onError,
   addToReport,
+  onTable,
 }: PinnedChartsProps) {
   return (
     <section className={styles.pinned} aria-labelledby="pinned-title">
@@ -67,6 +80,7 @@ export function PinnedCharts({
                 onRemove={() => onRemove(pin.id)}
                 onError={onError}
                 addToReport={addToReport?.(pin)}
+                onTable={onTable && ((table) => onTable(pin, table))}
               />
             </li>
           ))}
@@ -123,13 +137,23 @@ function PinnedChart({
   onRemove,
   onError,
   addToReport,
+  onTable,
 }: {
   pin: Pin;
   quarters: readonly string[];
   onRemove: () => void;
   onError: (code: string) => void;
   addToReport?: ReactNode;
+  onTable?: (table: boolean) => void;
 }) {
+  // Why it can't be a chart: known from the spec, or once it's run, too many groups for the palette.
+  const [tooMany, setTooMany] = useState<number | null>(null);
+  const before = noChart(pin);
+  const why = before
+    ? NO_CHART[before]
+    : tooMany !== null
+      ? NO_CHART.tooMany(tooMany, MAX_SERIES)
+      : null;
   return (
     <article className={`${styles.card} ${styles.pinCard}`} aria-label={pin.title}>
       <header className={styles.pinHeader}>
@@ -140,6 +164,14 @@ function PinnedChart({
           </div>
         </div>
         <div className={styles.pinActions}>
+          {onTable && (
+            <TableToggle
+              table={why !== null || (pin.kind !== "comparison" && shownAsTable(pin))}
+              onChange={onTable}
+              label={pin.title}
+              disabledReason={why}
+            />
+          )}
           {addToReport}
           <button
             type="button"
@@ -152,7 +184,7 @@ function PinnedChart({
           </button>
         </div>
       </header>
-      <PinChart spec={pin} quarters={quarters} onError={onError} />
+      <PinChart spec={pin} quarters={quarters} onError={onError} onTooMany={setTooMany} />
     </article>
   );
 }
@@ -165,11 +197,18 @@ export function PinChart({
   spec,
   quarters,
   onError,
+  onTooMany,
+  table: asked,
 }: {
   spec: PinSpec;
   quarters: readonly string[];
   onError: (code: string) => void;
+  /** Chart or table, if the place showing it decides; else the spec's own (shownAsTable). */
+  table?: boolean;
+  /** Told the number of groups when there are too many to chart, so the toggle can say so; null when not. */
+  onTooMany?: (groups: number | null) => void;
 }) {
+  const table = spec.kind !== "comparison" && (asked ?? shownAsTable(spec));
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const key = pinKey(spec);
 
@@ -207,9 +246,16 @@ export function PinChart({
           ? load.kind === "comparison" && <ComparisonBody pin={spec} result={load.result} />
           : load.kind === "query" &&
             (spec.kind === "heatmap" ? (
-              <HeatPinBody pin={spec} result={load.result} quarters={quarters} />
+              <HeatPinBody pin={spec} result={load.result} quarters={quarters} table={table} />
             ) : (
-              <PinBody pin={spec} result={load.result} also={load.also} quarters={quarters} />
+              <PinBody
+                pin={spec}
+                result={load.result}
+                also={load.also}
+                quarters={quarters}
+                table={table}
+                onTooMany={onTooMany}
+              />
             )))}
     </>
   );
@@ -220,7 +266,10 @@ function HeatPinBody({
   pin,
   result,
   quarters,
+  table,
 }: {
+  /** Read as its rows instead of the grid. */
+  table: boolean;
   pin: ChartPinSpec;
   result: QueryResult;
   quarters: readonly string[];
@@ -242,8 +291,10 @@ function HeatPinBody({
   );
   return (
     <>
-      {result.rows.length === 0 ||
-      nothingToDraw([{ values: model.cells.map((c) => c[2]) }], [measure]) ? (
+      {table ? (
+        <ResultTable result={result} height={CHART_HEIGHT} />
+      ) : result.rows.length === 0 ||
+        nothingToDraw([{ values: model.cells.map((c) => c[2]) }], [measure]) ? (
         <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
           No sales match this chart.
         </p>
@@ -263,7 +314,11 @@ function PinBody({
   result,
   also,
   quarters,
+  table,
+  onTooMany,
 }: {
+  table: boolean;
+  onTooMany?: (groups: number | null) => void;
   pin: ChartPinSpec;
   result: QueryResult;
   also: readonly QueryResult[];
@@ -294,16 +349,20 @@ function PinBody({
   );
   const option = useMemo(
     () =>
-      model && (pin.kind === "bar" || pin.kind === "line")
-        ? categoryOption(model, { kind: pin.kind, quarters, drill: false })
+      model && !table
+        ? categoryOption(model, { kind: drawnKind(pin), quarters, drill: false })
         : null,
-    [model, pin.kind, quarters],
+    [model, table, pin.kind, quarters],
   );
+
+  // Past the palette's series it reads as a table whatever the toggle says, and the toggle says why.
+  const groups = !many && model && model.series.length > MAX_SERIES ? model.series.length : null;
+  useEffect(() => onTooMany?.(groups), [groups]);
 
   let body;
   if (
     x &&
-    pin.kind !== "table" &&
+    !table &&
     (result.rows.length === 0 ||
       (many
         ? nothingToDraw(
@@ -318,25 +377,24 @@ function PinBody({
       </p>
     );
   } else if (many) {
-    body =
-      pin.kind === "table" ? (
-        <ResultTable result={measuresTable(many, [result, ...also])} height={CHART_HEIGHT} />
-      ) : (
-        <>
-          <Legend
-            items={many.measures.map((m) => ({ label: MEASURE_LABELS[m.measure], color: m.color }))}
-            label="Measures"
-          />
-          <EChart
-            option={measuresOption(many)}
-            height={categoryHeight(
-              { ...model!, categories: many.categories, horizontal: many.horizontal },
-              CHART_HEIGHT,
-            )}
-            label={pin.title}
-          />
-        </>
-      );
+    body = table ? (
+      <ResultTable result={measuresTable(many, [result, ...also])} height={CHART_HEIGHT} />
+    ) : (
+      <>
+        <Legend
+          items={many.measures.map((m) => ({ label: MEASURE_LABELS[m.measure], color: m.color }))}
+          label="Measures"
+        />
+        <EChart
+          option={measuresOption(many)}
+          height={categoryHeight(
+            { ...model!, categories: many.categories, horizontal: many.horizontal },
+            CHART_HEIGHT,
+          )}
+          label={pin.title}
+        />
+      </>
+    );
   } else if (!x) {
     // One number is a figure, not a one-bar chart.
     body = (
@@ -345,7 +403,7 @@ function PinBody({
         <span className={styles.pinMeta}>{MEASURE_LABELS[pin.query.measure]}</span>
       </div>
     );
-  } else if (pin.kind === "table" || !model || !option || model.series.length > MAX_SERIES) {
+  } else if (table || !model || !option || model.series.length > MAX_SERIES) {
     // Past the palette's series, a table reads better than generated colors.
     body = <ResultTable result={result} height={CHART_HEIGHT} />;
   } else {

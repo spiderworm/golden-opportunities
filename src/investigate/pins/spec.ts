@@ -30,7 +30,30 @@ export interface ChartPinSpec {
   query: Query;
   /** The chart's other measures, each run as the query with its measure swapped in; as the main chart's. */
   also?: ChartMeasure[];
+  /**
+   * Shown as a table (true) or a chart (false) when the player toggled it from its kind's own view: a chart read
+   * as its table, or a table drawn as a chart (David, 3 Nov 2026). Absent, the kind decides. Not part of pinKey.
+   */
+  table?: boolean;
 }
+
+/**
+ * Why a pin can't be drawn as a chart, before it's run: a comparison reads as a table, and one number is a figure
+ * (NO_CHART's keys); null if it can. Too many groups is known only once it's run.
+ */
+export const noChart = (spec: PinSpec): "comparison" | "figure" | null =>
+  spec.kind === "comparison" ? "comparison" : spec.query.by.length ? null : "figure";
+
+/** Whether a pin shows as a table now: its toggle, or else its kind. */
+export const shownAsTable = (spec: ChartPinSpec) => spec.table ?? spec.kind === "table";
+
+/** The chart a table pin draws when toggled: a line over months or quarters, bars otherwise (as Dewey's). */
+export const drawnKind = (spec: ChartPinSpec): "bar" | "line" =>
+  spec.kind === "line" || spec.kind === "bar"
+    ? spec.kind
+    : spec.query.by[0] === "month" || spec.query.by[0] === "quarter"
+      ? "line"
+      : "bar";
 
 /** A pin's other measures: null if malformed; else those that still fit one chart with the query's measure (fittingMeasures). */
 export function parseAlso(measure: Measure, value: unknown): ChartMeasure[] | null {
@@ -167,7 +190,8 @@ export function parsePinSpec(value: unknown): PinSpec | null {
     return comparison && { title: value.title, kind: "comparison", comparison };
   }
   if (
-    !only(value, ["title", "kind", "query", "also"]) ||
+    !only(value, ["title", "kind", "query", "also", "table"]) ||
+    (value.table !== undefined && typeof value.table !== "boolean") ||
     !CHART_PIN_KINDS.includes(value.kind as never)
   )
     return null;
@@ -179,10 +203,17 @@ export function parsePinSpec(value: unknown): PinSpec | null {
       query.by.length === 2 &&
       query.by.every((d) => HEAT_DIMENSIONS.includes(d as never)) &&
       CHART_MEASURES.includes(query.measure as never);
-    return grid && value.also === undefined ? { title: value.title, kind: "heatmap", query } : null;
+    return grid && value.also === undefined
+      ? { title: value.title, kind: "heatmap", query, ...shown(value.table) }
+      : null;
   }
   if (value.also === undefined)
-    return { title: value.title, kind: value.kind as ChartPinSpec["kind"], query };
+    return {
+      title: value.title,
+      kind: value.kind as ChartPinSpec["kind"],
+      query,
+      ...shown(value.table),
+    };
   const also = parseAlso(query.measure, value.also);
   if (!also) return null;
   return {
@@ -190,8 +221,11 @@ export function parsePinSpec(value: unknown): PinSpec | null {
     kind: value.kind as ChartPinSpec["kind"],
     query,
     ...(also.length ? { also } : {}),
+    ...shown(value.table),
   };
 }
+
+const shown = (table: unknown) => (typeof table === "boolean" ? { table } : {});
 
 /** Pins as stored; anything malformed is dropped rather than trusted. */
 export function parsePins(json: string | null): Pin[] {

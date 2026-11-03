@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { ResultTable } from "./charts/ResultTable";
+import { TableToggle } from "./charts/TableToggle";
 import type { QueryResult } from "~/query/types";
 import { chartTheme, heatColor } from "~/platform/charts/chart-theme";
 import { Dropdown } from "~/platform/ui/Dropdown";
@@ -35,8 +37,10 @@ export interface HeatmapProps {
   /** The heatmap's measure or axes changed. */
   onHeat: (heat: HeatState) => void;
   /** Pins this heatmap to the pinned charts; `pinned` when an identical one is already there. */
-  onPin: () => void;
+  onPin: (table: boolean) => void;
   pinned: boolean;
+  /** The grid toggled to its table, or back. */
+  onTable?: (table: boolean) => void;
 }
 
 /** What a heatmap says when the terminal's row limit left cells out: those cells are blank, not zero. */
@@ -60,10 +64,21 @@ export const heatTitle = (heat: HeatState, windowed = false) =>
  * The heatmap card: one measure down one dimension and across another (David, 2 Nov 2026: "the same level of
  * customization that we've given to charts"), weekday by month unless the player chooses otherwise.
  */
-export function Heatmap({ state, result, quarters, onCell, onHeat, onPin, pinned }: HeatmapProps) {
+export function Heatmap({
+  state,
+  result,
+  quarters,
+  onCell,
+  onHeat,
+  onPin,
+  pinned,
+  onTable,
+}: HeatmapProps) {
   // A choice shows at once, and the next one builds on it, though the URL only takes it when the navigation lands:
   // otherwise Rows then Columns, picked quickly, loses Rows (measured in heatmap.spec.ts).
   const [pending, setPending] = useState<HeatState | null>(null);
+  // Its rows as a table instead of the grid (David, 3 Nov 2026); for this view, as the main chart's Table.
+  const [table, setTable] = useState(false);
   useEffect(() => setPending(null), [state.heat.measure, state.heat.rows, state.heat.cols]);
   const heat = pending ?? state.heat;
   const choose = (next: HeatState) => {
@@ -141,10 +156,17 @@ export function Heatmap({ state, result, quarters, onCell, onHeat, onPin, pinned
               ].map((o) => ({ ...o, disabledReason: span ? PERIOD_FOLLOWS[span] : null }))}
             />
           )}
+          <TableToggle
+            table={table}
+            onChange={(next) => {
+              setTable(next);
+              onTable?.(next);
+            }}
+          />
           <button
             type="button"
             className={styles.toggle}
-            onClick={onPin}
+            onClick={() => onPin(table)}
             disabled={pinned}
             title={pinned ? "Already pinned" : "Pin this heatmap below"}
           >
@@ -152,23 +174,32 @@ export function Heatmap({ state, result, quarters, onCell, onHeat, onPin, pinned
           </button>
         </div>
       </header>
-      <HeatScale measure={shown.measure} model={model} />
-      <HeatGrid
-        model={model}
-        measure={shown.measure}
-        rowsBy={shown.rows}
-        colsBy={shown.cols}
-        filters={state.filters}
-        label={title}
-        onCell={onCell}
-      />
+      {table ? (
+        <ResultTable result={result} />
+      ) : (
+        <>
+          <HeatScale measure={shown.measure} model={model} />
+          <HeatGrid
+            model={model}
+            measure={shown.measure}
+            rowsBy={shown.rows}
+            colsBy={shown.cols}
+            filters={state.filters}
+            label={title}
+            onCell={onCell}
+          />
+        </>
+      )}
       {model.cut && (
         <p className={styles.source}>
           {long && shown.period === "all" && !span ? CUT_NOTE_ALL : CUT_NOTE}
         </p>
       )}
       <p className={styles.source}>
-        {`Click a cell to filter the screen to that ${DIMENSION_LABELS[shown.rows].toLowerCase()} and ${DIMENSION_LABELS[shown.cols].toLowerCase()}. Source: ${result.source}`}
+        {/* The table has no cells to click: only its source. */}
+        {table
+          ? `Source: ${result.source}`
+          : `Click a cell to filter the screen to that ${DIMENSION_LABELS[shown.rows].toLowerCase()} and ${DIMENSION_LABELS[shown.cols].toLowerCase()}. Source: ${result.source}`}
       </p>
     </section>
   );
