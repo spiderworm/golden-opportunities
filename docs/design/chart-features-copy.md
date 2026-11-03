@@ -312,7 +312,7 @@ David: "Build it now. Forecast revenue and total units with hints, values for pr
 - **On the result page,** under the heading `How your forecast did`, a line for each measure forecast. The percent is of the real figure (Frank, Sim, Chart):
   - `Revenue: $142,300, inside your range of $130,000 to $150,000. You expected $140,000: off by $2,300 (2%).`
   - outside the range, `above` or `below` in place of `inside`;
-  - when exactly right: `…You expected $142,300: spot on.`
+  - when the printed figures match: `…You expected $142,300: spot on.` `off by` is the gap between the printed figures, so the line never reads `off by $0` (#397).
   - a miss that rounds to 0%: `off by $500 (under 1%)`, never `(0%)` (Audit, #396); with a real figure of 0, no percent at all.
 - **In Reports,** a section `Your forecasts`, also shown read-only in Decide's panel:
   - `3 of 5 quarters forecast` (singular: `1 of 1 quarter forecast`). With none at all: `No quarter forecast yet: add one when you plan.`
@@ -326,7 +326,7 @@ David: "Build it now. Forecast revenue and total units with hints, values for pr
   - with the player's own reports, `Your reports ({n})`, with the forecasts after the lists;
   - with none, but a played forecast quarter, `Your forecasts`, and the panel is titled `Your forecasts`, with no empty list;
   - with neither, `No reports yet`, which goes to Reports.
-  - A filed but unplayed forecast changes nothing. There's never a `Your reports (0)` (Chart and Goldy, #396).
+  - A filed but unplayed forecast changes nothing. There's never a `Your reports (0)` (Goldy and Plot, #396).
 
 ## Analytics, for all of them
 
