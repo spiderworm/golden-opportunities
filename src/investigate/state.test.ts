@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heatWindow } from "./state";
+import { heatWindow, lastYearBlock } from "./state";
 import {
   awardChoice,
   canAddMeasure,
@@ -30,6 +30,7 @@ describe("investigate state", () => {
       also: [],
       by: "genre",
       compare: true,
+      lastYear: false,
       filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] },
       heat: { measure: "units", rows: "weekday", cols: "month", period: "recent" },
     } as const;
@@ -43,6 +44,31 @@ describe("investigate state", () => {
       "measure=units&by=genre&compare=quarter&quarter=2193-Q4&genre=Fiction&genre=Memoir",
     );
     expect(parseState(params)).toEqual(state);
+  });
+
+  it("keeps vs. same quarter last year in the URL, and says why it can't apply", () => {
+    const state = parseState(new URLSearchParams("by=genre&vs=last_year&quarter=2194-Q1"));
+    expect(state.lastYear).toBe(true);
+    expect(toSearchParams(state).toString()).toBe("by=genre&vs=last_year&quarter=2194-Q1");
+    const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1"];
+    expect(lastYearBlock(state, quarters)).toBeNull();
+    expect(lastYearBlock({ ...state, by: "month" }, quarters)).toBeNull();
+    expect(lastYearBlock({ ...state, also: ["units"] }, quarters)).toBe(
+      "Show one measure to compare with last year",
+    );
+    expect(lastYearBlock({ ...state, compare: true }, quarters)).toBe(
+      "Turn off Compare quarters to compare with last year",
+    );
+    expect(lastYearBlock({ ...state, by: "quarter" }, quarters)).toBe(
+      "Break down by something other than quarter to compare with last year",
+    );
+    for (const quarter of [[], ["2194-Q1", "2193-Q4"]])
+      expect(lastYearBlock({ ...state, filters: { quarter } }, quarters)).toBe(
+        "Filter to one quarter to compare it with last year",
+      );
+    expect(lastYearBlock({ ...state, filters: { quarter: ["2193-Q3"] } }, quarters)).toBe(
+      "The ledgers start in 2193: there's no year before it to compare",
+    );
   });
 
   it("falls back to defaults for anything it doesn't know", () => {

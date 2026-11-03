@@ -22,7 +22,11 @@ export function serializeResult(result: QueryResult): string {
       if (typeof value === "number" && !Number.isFinite(value))
         throw new QueryError("INVALID_VIEW", "Aggregation exceeded the supported numeric range.");
     }
-  if (result.total !== null && !Number.isFinite(result.total))
+  const lastYear = result.lastYear ? [...result.lastYear.rows, result.lastYear.total] : [];
+  if (
+    (result.total !== null && !Number.isFinite(result.total)) ||
+    lastYear.some((figure) => figure?.value != null && !Number.isFinite(figure.value))
+  )
     throw new QueryError("INVALID_VIEW", "Aggregation exceeded the supported numeric range.");
   const body = JSON.stringify(result);
   if (new TextEncoder().encode(body).byteLength > QUERY_LIMITS.responseBytes) tooLarge();
