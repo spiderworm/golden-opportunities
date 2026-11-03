@@ -292,6 +292,20 @@ export function ask(
     } catch (e) {
       return refused(e);
     }
+    // A question without a game asks no model, so it takes no slot and counts toward no limit: it's turned away
+    // before admission, unread, so it can't hold the slot with a slow body either (Probe's red-team of #319;
+    // Frank's review of #336).
+    if (!gameFor(request)) {
+      track("assistant_no_game", {});
+      return ndjson<WireEvent>(
+        async function* () {
+          yield { type: "text", text: START_A_GAME };
+          yield { type: "done", withheld: 0 };
+        },
+        () => ({ type: "error", message: FAILED }),
+        request,
+      );
+    }
     // Admit before reading the body, so a slow or oversized body can't hold the server up uncounted. Only a
     // question that passes every check counts toward the hour.
     const slot = acquire(now());
@@ -310,20 +324,6 @@ export function ask(
     } catch (e) {
       slot.release();
       return refused(e);
-    }
-    // A question without a game asks no model, so it doesn't count toward the hour either: otherwise a couple of
-    // minutes of them, with no save cookie, would rest Dewey for an hour for everyone (Probe's red-team of #319).
-    if (!gameFor(request)) {
-      slot.release();
-      track("assistant_no_game", {});
-      return ndjson<WireEvent>(
-        async function* () {
-          yield { type: "text", text: START_A_GAME };
-          yield { type: "done", withheld: 0 };
-        },
-        () => ({ type: "error", message: FAILED }),
-        request,
-      );
     }
     slot.charge();
     // The daily caps, counted only for a question that passed every check: past one, Dewey rests, and no model is
