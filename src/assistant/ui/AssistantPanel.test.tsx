@@ -54,7 +54,7 @@ it("draws a chart Dewey showed with the page's chart, titled, sourced and pinnab
   );
   // Titled, with its Table toggle beside the title (unpressed: it's a chart), then the chart.
   expect(html).toMatch(
-    /<figcaption[^>]*>Revenue by quarter<\/figcaption><button[^>]*aria-pressed="false" aria-label="Table: Revenue by quarter"[^>]*>Table<\/button><\/div><div data-chart="1">/,
+    /<figcaption[^>]*>Revenue by quarter<\/figcaption><span[^>]*><button[^>]*aria-pressed="false" aria-label="Table: Revenue by quarter"[^>]*>Table<\/button><\/span><\/div><div data-chart="1">/,
   );
   expect(html).toMatch(/Source: S/);
   expect(html).toMatch(/aria-label="Pin Revenue by quarter"/);
@@ -210,7 +210,7 @@ it("starts a table on its table with the toggle pressed, and offers its chart wh
   const ChartView = () => <div data-chart="drawn" />;
   const html = renderToString(<LookupView lookup={data} ChartView={ChartView} />);
   expect(html).toMatch(/aria-pressed="true" aria-label="Table: Revenue by genre"/);
-  expect(html).not.toMatch(/disabled/);
+  expect(html).not.toMatch(/aria-disabled/);
   expect(html).toMatch(/<table/);
   // One figure has no chart: pressed and off, saying why (Plot, chart-features-copy.md section 1).
   const total = renderToString(
@@ -224,7 +224,9 @@ it("starts a table on its table with the toggle pressed, and offers its chart wh
       ChartView={ChartView}
     />,
   );
-  expect(total).toMatch(/disabled="" title="A single figure has no chart"/);
+  // Still focusable: aria-disabled, its reason as text it's described by (ReasonToggle).
+  expect(total).toMatch(/aria-pressed="true"[^>]*aria-disabled="true" aria-describedby="[^"]+"/);
+  expect(total).toMatch(/role="tooltip"[^>]*>A single figure has no chart</);
   // Without the page's charts (any page but Investigate), no toggle at all (Sage).
   expect(renderToString(<LookupView lookup={data} />)).not.toMatch(/aria-pressed/);
 });
