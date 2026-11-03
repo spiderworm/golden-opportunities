@@ -296,7 +296,7 @@ David: "Build it now. Forecast revenue and total units with hints, values for pr
   - The explanation: `Say what you expect, and a range you're 80% sure of: wide enough that you'd be surprised only 1 time in 5 to see the real figure outside it.`
   - For each of `Revenue` and `Units sold`, there's `Expected`, then `80% range`, with `From` and `To`. The accessible names are in full: `Expected revenue`, `Revenue, low end of the 80% range`, `Revenue, high end of the 80% range`.
   - Under each measure, the hints: `Q4 2193, the quarter before: $161,525` and `Q1 2193, a year earlier: $94,210`. When the year earlier is outside the ledgers: `Q1 2192, a year earlier: not in the ledgers`.
-  - The note, `Why? (optional)`, has the placeholder `What you expect to move these, in a line or two.` It holds up to 500 characters. It's the player's own words, kept in the save and never in analytics.
+  - The note, `Why? (optional)`, has the placeholder `What you expect to move these, in a line or two.` It holds up to 500 characters. It's the player's own words, kept in the save and never in analytics. The privacy page names it, with Chart's Decide PR.
   - Refusals, shown by their fields:
     - `Enter a number.`
     - `Revenue can't be below $0.` / `Units sold can't be below 0.`
@@ -305,6 +305,7 @@ David: "Build it now. Forecast revenue and total units with hints, values for pr
     - `Your expected figure can't be above the high end.`
     - `Fill in all three for revenue, or leave them all empty.`
     - `Keep the note to 500 characters.`
+    - with control or reordering characters, which reports and segments refuse too: `This note can't be saved. Check it and try again.`
 - **On the result page,** a line for each measure forecast:
   - `Revenue: $142,300, inside your range of $130,000 to $150,000. You expected $140,000: off by $2,300 (2%).`
   - outside the range, `above` or `below` in place of `inside`;
