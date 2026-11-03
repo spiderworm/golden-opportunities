@@ -386,14 +386,18 @@ const banned = (text: string) => {
 const SUBJECT = String.raw`(?:i|i['’]m|i['’]ve|i['’]d|i['’]ll|we|we['’]re|we['’]ve|you|you['’]re|you['’]ve)`;
 const HELPER = String.raw`(?:just|also|then|now|can|can['’]t|could|couldn['’]t|will|would|did|didn['’]t|do|don['’]t|like\s+to|want\s+to|need\s+to|have\s+to|had\s+to|tried\s+to|try\s+to|going\s+to)`;
 const LOOKED_UP_THING = String.raw`(?:the\s+|its\s+|their\s+)?(?:revenue|units|orders|average|discounts?|ratings|checkouts|figures?|numbers?|totals?|titles?|genres?|formats?|publishers?|editions?|prices?|authors?|series|data|terminal|ledger)\b`;
-const LOOK_UP = String.raw`\blook(?:s|ed|ing)? (?:it|them|that|things|everything) up\b|(?<=(?:^\s*|\bto\s+|\blet\s+me\s+))look(?:s|ed|ing)? up(?=\s+${LOOKED_UP_THING})|\b${SUBJECT}(?:\s+${HELPER}){0,2}\s+look(?:s|ed|ing)? up\b`;
+// The object form alone: all Alma's flavor needs, since its text never says "we look up" (Probe, after #244).
+const LOOK_IT_UP = String.raw`\blook(?:s|ed|ing)? (?:it|them|that|things|everything) up\b`;
+const LOOK_UP = String.raw`${LOOK_IT_UP}|(?<=(?:^\s*|\bto\s+|\blet\s+me\s+))look(?:s|ed|ing)? up(?=\s+${LOOKED_UP_THING})|\b${SUBJECT}(?:\s+${HELPER}){0,2}\s+look(?:s|ed|ing)? up\b`;
 const ALLOWED = new RegExp(String.raw`${LOOK_UP}|\b(?:broken|break(?:s|ing)?(?: it)?) down by\b|\bin more detail(?=\s*(?:[.,;:!?]|$))`, "giu");
 const REF = /\{\{([^{}]{1,40})\}\}/g;
 /**
- * The whole ban, for other text a player is shown as fact-free flavor (Alma's): the allowed phrases ("I look
- * things up") are cleared first, as in Dewey's prose. Run it on NFKC-folded text.
+ * The whole ban, for other text a player is shown as fact-free flavor (Alma's): only "look it up" and "look
+ * things up" are cleared first, since Alma's text never needs Dewey's "I looked up", and "we will look up" can be
+ * the improvement idiom. Run it on NFKC-folded text.
  */
-export const hasBannedWord = (folded: string) => banned(folded.replace(ALLOWED, " "));
+const FLAVOR_ALLOWED = new RegExp(LOOK_IT_UP, "giu");
+export const hasBannedWord = (folded: string) => banned(folded.replace(FLAVOR_ALLOWED, " "));
 
 /** Text as it will be read: compatibility forms ("７", "½") folded to plain ones before any check. */
 // Invisible characters (a soft hyphen, a zero-width space, a word joiner, bidi controls) are dropped first: NFKC
