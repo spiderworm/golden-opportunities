@@ -1002,6 +1002,10 @@ describe("how much evidence is behind a figure, only by ref (David, 3 Nov 2026)"
       "It's based on two hundred ratings.",
       "Based on 212 ratings.",
       "Its likely range is narrow.",
+      // Accents read through, as in every other word check (Audit's review of #337).
+      "Poetry {{f2.change}}, a signíficant change.",
+      "That is nóise.",
+      "Mystery's average {{e1}} is relìable.",
     ])
       expect(sayIn(sentence), sentence).toBe(WITHHELD);
   });
