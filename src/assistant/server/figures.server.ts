@@ -569,7 +569,8 @@ const banned = (text: string) => {
 //   "I'd like to look up", "I'm looking up").
 // Otherwise it's the improvement idiom ("sales are looking up", "revenue could look up", "started to look up").
 const SUBJECT = String.raw`(?:i|i['’]m|i['’]ve|i['’]d|i['’]ll|we|we['’]re|we['’]ve|you|you['’]re|you['’]ve)`;
-const HELPER = String.raw`(?:just|also|then|now|can|can['’]t|could|couldn['’]t|will|would|did|didn['’]t|do|don['’]t|like\s+to|want\s+to|need\s+to|have\s+to|had\s+to|tried\s+to|try\s+to|going\s+to)`;
+// "only" for Dewey's own refusal, "I only look up what's already happened" (Plot's line, after #383).
+const HELPER = String.raw`(?:just|also|only|then|now|can|can['’]t|could|couldn['’]t|will|would|did|didn['’]t|do|don['’]t|like\s+to|want\s+to|need\s+to|have\s+to|had\s+to|tried\s+to|try\s+to|going\s+to)`;
 const LOOKED_UP_THING = String.raw`(?:the\s+|its\s+|their\s+)?(?:revenue|units|orders|average|discounts?|ratings|checkouts|figures?|numbers?|totals?|titles?|genres?|formats?|publishers?|editions?|prices?|authors?|series|data|terminal|ledger)\b`;
 // The object form alone: all Alma's flavor needs, since its text never says "we look up" (Probe, after #244).
 const LOOK_IT_UP = String.raw`\blook(?:s|ed|ing)? (?:it|them|that|things|everything) up\b`;
@@ -792,7 +793,9 @@ const FORECAST_WORDS = new RegExp(
 const FORECAST_CLAIMS = new RegExp(
   "\\b(?:" +
     [
-      "(?:will|should|would|could|might|may|going to)(?: probably| likely)? (?:be|sell|bring|reach|make|earn|come|hit|see|land|end|total|top|get|do|net|clear|beat|match|exceed)",
+      "(?:will|should|would|could|might|may|going to)(?: probably| likely| well| easily| still)? (?:be|sell|bring|reach|make|earn|come|hit|see|land|end|total|top|get|do|net|clear|beat|match|exceed)",
+      // Planning cues beside a past figure turn it into a target (Probe's red-team of #383).
+      "aim(?:s|ing)? (?:for|at)|plan(?:s|ning)? (?:for|on)|target(?:s|ing)?|next time|if (?:the |that |this )?(?:trend|pace|pattern)s? (?:continues?|holds?|keeps? up)|if (?:that|this|it) (?:continues|holds|keeps up)|keeps? up",
       "likely to|on track|on course|on pace|head(?:ed|ing|s)? (?:for|to|toward|towards)|set (?:for|to)",
     ].join("|") +
     ")\\b",
