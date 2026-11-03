@@ -1,0 +1,16 @@
+# Studio packages are synced from games-studio; format them there.
+/packages/
+# Data, art and research are inputs, not code.
+/data/
+/public/
+/research/
+/src/bookshop/data.json
+# Prose and records: the README is David's; docs holds hand-written prose and red-team runs.
+/docs/
+*.md
+/build/
+/.react-router/
+/playwright-report/
+/test-results/
+/.data/
+package-lock.json
