@@ -13,12 +13,18 @@ import {
   type ComponentType,
   type ReactNode,
 } from "react";
-import type { QueryResult } from "~/query/types";
+import type { Query, QueryResult } from "~/query/types";
 import { useRouteLoaderData } from "react-router";
 import type { WireEvent } from "../events.ts";
 import { track as platformTrack } from "~/platform/analytics/analytics.client";
 import { ASSISTANT_NAME as NAME } from "../name.ts";
-import type { ChartSpec, LookupPin } from "../tools/definitions.ts";
+import {
+  drawnKind as queryChartKind,
+  type ChartSpec,
+  type LookupPin,
+} from "../tools/definitions.ts";
+import { NO_CHART, TableToggle } from "~/platform/ui/TableToggle";
+import { dataQuery, foldLookups } from "./fold.ts";
 import {
   browserStorage,
   clearConversation,
@@ -149,7 +155,8 @@ export function AssistantPanel({
   useEffect(() => {
     const saved = loadConversation<Reply>(storage, owner);
     if (saved.length) {
-      setReplies(saved);
+      // Chats stored before folding can hold both a table and a chart of one query: one block, as now.
+      setReplies(saved.map((r) => ({ ...r, lookups: foldLookups(r.lookups) })));
       track("assistant_conversation_restored", {
         turns: saved.length,
         interrupted: saved.some((r) => r.state === INTERRUPTED),
@@ -260,7 +267,8 @@ export function AssistantPanel({
           event.type === "chart" ||
           event.type === "lookup_failed"
         )
-          update((r) => ({ ...r, lookups: [...r.lookups, event] }));
+          // A table and a chart of the same query are one block, the chart (fold.ts).
+          update((r) => ({ ...r, lookups: foldLookups([...r.lookups, event]) }));
         else if (event.type === "pin" && onPin) {
           // Pins are only offered when onPin is wired; the page can still refuse one (Chart's pins.add).
           const placed = onPin(event.chart) !== false;
@@ -349,6 +357,9 @@ export function AssistantPanel({
                     lookup={l}
                     ChartView={ChartView}
                     pinning={onPinLookup && { onPin: pinLookup, isPinned }}
+                    onTable={(type, table) =>
+                      track("table_toggled", { where: "dewey", shown: table, kind: type })
+                    }
                   />
                 ))}
                 {r.error && <p style={styles.error}>{r.error}</p>}
@@ -503,11 +514,16 @@ export function LookupView({
   lookup,
   pinning,
   ChartView,
+  onTable,
 }: {
   lookup: Lookup;
   pinning?: Pinning;
   ChartView?: ChartRenderer;
+  /** The Table toggle switched (David, 3 Nov 2026): the lookup's type and whether its table now shows. */
+  onTable?: (type: "data" | "chart" | "comparison", table: boolean) => void;
 }) {
+  // A chart starts as a chart, a table as a table; the player can switch, where the page can draw charts.
+  const [table, setTable] = useState(lookup.type !== "chart");
   if (lookup.type === "lookup_failed")
     return <p style={styles.muted}>A lookup didn't work: {lookup.message}</p>;
   if (lookup.type === "pin") {
@@ -522,12 +538,51 @@ export function LookupView({
       </figure>
     );
   }
-  if (lookup.type === "chart" && ChartView) {
-    const { chart, pin, type: _type, ...result } = lookup;
+  // The chart this lookup can be drawn as: its own, or for a table, its query's (Plot: one figure stays a table).
+  const query = lookup.type === "data" ? (dataQuery(lookup) as Query | undefined) : undefined;
+  const chart: ChartSpec | null =
+    lookup.type === "chart"
+      ? lookup.chart
+      : query?.by.length
+        ? { title: lookup.pin?.title ?? tableTitle(lookup), kind: queryChartKind(query), query }
+        : null;
+  // Why it can't be drawn: a comparison, or one figure. A table with no query (a chat stored long ago) has no toggle.
+  const why =
+    lookup.type === "comparison"
+      ? NO_CHART.comparison
+      : lookup.type === "data" && query && !query.by.length
+        ? NO_CHART.figure
+        : null;
+  const toggle = ChartView && (chart || why) && (
+    <TableToggle
+      table={why !== null || table}
+      label={chart?.title ?? lookup.pin?.title}
+      disabledReason={why}
+      onChange={(next) => {
+        setTable(next);
+        onTable?.(lookup.type, next);
+      }}
+    />
+  );
+  // The pin is what's shown: the chart, or its table.
+  const pin =
+    lookup.pin && lookup.pin.kind !== "comparison" && chart
+      ? { ...lookup.pin, kind: chart.kind, table: table && !why }
+      : lookup.pin;
+  if (chart && ChartView && !table) {
+    const {
+      type: _type,
+      pin: _pin,
+      ...rest
+    } = lookup as Extract<Lookup, { type: "data" | "chart" }>;
+    const { chart: _chart, ...result } = rest as typeof rest & { chart?: unknown };
     return (
       <figure style={styles.lookup} aria-label={chart.title}>
-        <figcaption style={styles.chartTitle}>{chart.title}</figcaption>
-        <ChartView chart={chart} result={result} />
+        <div style={styles.lookupHeader}>
+          <figcaption style={styles.chartTitle}>{chart.title}</figcaption>
+          {toggle}
+        </div>
+        <ChartView chart={chart} result={result as QueryResult} />
         {result.total !== null && result.columns.length > 1 && (
           <p style={styles.muted}>Total: {number.format(result.total)}</p>
         )}
@@ -553,6 +608,16 @@ export function LookupView({
       : null;
   return (
     <figure style={styles.lookup}>
+      {toggle && (
+        <div style={styles.lookupHeader}>
+          {chart && lookup.type === "chart" ? (
+            <figcaption style={styles.chartTitle}>{chart.title}</figcaption>
+          ) : (
+            <span />
+          )}
+          {toggle}
+        </div>
+      )}
       <div style={styles.rows}>
         <table style={styles.table}>
           <thead>
@@ -583,9 +648,16 @@ export function LookupView({
           <p style={styles.muted}>Total: {number.format(lookup.total)}</p>
         )}
       <p style={styles.source}>Source: {lookup.source}</p>
-      {pinning && lookup.pin && <PinButton pin={lookup.pin} pinning={pinning} />}
+      {pinning && pin && <PinButton pin={pin} pinning={pinning} />}
     </figure>
   );
+}
+
+/** A table's title for its chart when it has no pin to name it: "Revenue by genre", from its columns. */
+function tableTitle(lookup: { columns: { label: string; type: string }[] }): string {
+  const measure = lookup.columns.find((c) => c.type === "number")?.label ?? "";
+  const by = lookup.columns.find((c) => c.type === "string")?.label ?? "";
+  return by ? `${measure} by ${by.toLowerCase()}` : measure;
 }
 
 /** Pins a lookup to Investigate's board, where it runs again as the player's own query. */
@@ -647,6 +719,14 @@ const styles = {
   },
   muted: { color: "var(--color-text-muted)", margin: 0, fontSize: 13 },
   chartTitle: { fontSize: 13, fontWeight: 600 },
+  // A lookup's title with its Table toggle, as a pin's header has them.
+  lookupHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 6,
+  },
   log: { display: "flex", flexDirection: "column", gap: 16, maxHeight: 480, overflowY: "auto" },
   turn: { display: "flex", flexDirection: "column", gap: 8 },
   question: {

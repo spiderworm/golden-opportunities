@@ -16,6 +16,8 @@ import {
   type Measure,
   type Query,
 } from "../../query/types.ts";
+// Relative, with its extension: the MCP tool server loads this under plain Node (Sage).
+import { queryChartKind } from "../../investigate/pins/spec.ts";
 
 export const SERVER_NAME = "orbital";
 export const CHART_KINDS = ["bar", "line", "table"] as const;
@@ -358,9 +360,9 @@ export function lookupPin(tool: string, input: unknown): LookupPin | null {
   return null;
 }
 
-/** The chart a query is drawn as: a line over months or quarters, bars for anything else (Audit, #252). */
-const drawnKind = (query: Query): (typeof SHOWN_CHART_KINDS)[number] =>
-  query.by[0] === "month" || query.by[0] === "quarter" ? "line" : "bar";
+/** The chart a query is drawn as: the one rule, shared with the chat's Table toggle (spec.ts's queryChartKind). */
+export const drawnKind = (query: Query): (typeof SHOWN_CHART_KINDS)[number] =>
+  queryChartKind(query);
 
 /**
  * Checks a chart to pin, and makes it from its query, as show_chart does: the title, and the kind, a table only
