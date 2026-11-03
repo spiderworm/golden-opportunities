@@ -2,9 +2,7 @@ import { useEffect } from "react";
 import { data, Form, redirect, useFetcher } from "react-router";
 
 import { markReportSeen, writeReports } from "~/game/game.server";
-import { removedQuarter } from "~/game/progress";
 import { isQuarterId } from "~/game/quarters";
-import { getGameSession } from "~/game/session.server";
 import { track } from "~/platform/analytics/analytics.client";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import { EChart } from "~/platform/charts/EChart";
@@ -27,7 +25,8 @@ import { overallOption } from "./overall-chart";
 import { reportCounts } from "./player";
 import { applyReportChange, changeFrom, type ReportOutcome } from "./player.server";
 import { PlayerReports, NewReportButton } from "./PlayerReports";
-import { shopReports, type ShopReport } from "./shop.server";
+import type { ShopReport } from "./shop.server";
+import { reportsData } from "./data.server";
 import resultStyles from "~/result/Result.module.css";
 import styles from "./Reports.module.css";
 
@@ -41,16 +40,7 @@ export function meta() {
 }
 
 export function loader({ request }: Route.LoaderArgs) {
-  const { save, queryView } = getGameSession(request);
-  return {
-    ...shopReports(save),
-    // The player's reports are the save's, sent whole: they're the player's own words and pins.
-    player: save.reports ?? [],
-    // After removal, reports can still be opened, but no longer edited or made (section 2).
-    editable: removedQuarter(save) === null,
-    // The periods the player can see, for a chart's month axis, as Investigate's board has them.
-    quarters: [...queryView.periods].sort(),
-  };
+  return reportsData(request);
 }
 
 /**

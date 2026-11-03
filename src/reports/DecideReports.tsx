@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { useFetcher, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 
 import { track } from "~/platform/analytics/analytics.client";
 
@@ -9,13 +9,14 @@ import { measureTexts, RESULT_COPY, scoreText, SERVICE_RECORD } from "~/result/c
 import { DECIDE_COPY as COPY, REPORTS_COPY } from "./copy";
 import type { PlayerReport } from "./player";
 import { ReportCharts } from "./PlayerReports";
+import { useReportsData } from "./useReportsData";
 import type { ShopReport } from "./shop.server";
 import styles from "./Reports.module.css";
 
 // Reports in Decide (docs/design/reports.md section 4): the player reads their evidence beside the plan, without
 // leaving the form. A side panel over the boss scene that never touches the plan: the form stays mounted under it,
 // with whatever the player has picked. Read-only; Edit in Reports leaves, and asks first when there's a plan to lose.
-// The reports come from Reports' own loader, fetched when Decide shows.
+// The reports come from Reports' data (/api/reports), fetched when Decide shows.
 
 interface Loaded {
   reports: ShopReport[];
@@ -37,10 +38,8 @@ export function DecideReports({
   /** A report was chosen in the panel: its key, so the form can count the reports read before submitting. */
   onRead: (key: string) => void;
 }) {
-  const data = useFetcher<Loaded>();
-  useEffect(() => {
-    if (data.state === "idle" && !data.data) void data.load("/reports");
-  }, []);
+  // Fetched as Decide shows, with a plain fetch, never through React Router (useReportsData).
+  const data: Loaded | null = useReportsData(true);
   const [open, setOpen] = useState(false);
   const [asking, setAsking] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -59,8 +58,8 @@ export function DecideReports({
     askedFrom.current?.focus();
   };
 
-  if (!data.data) return null;
-  const { player, reports, quarters } = data.data;
+  if (!data) return null;
+  const { player, reports, quarters } = data;
   return (
     <>
       {player.length ? (
