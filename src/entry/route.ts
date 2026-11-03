@@ -1,8 +1,12 @@
 import { trackServer } from "~/platform/analytics/analytics.server";
+import { BodyRefused, readCappedForm } from "~/platform/body.server";
 import { servedOverHttps } from "~/platform/origin.server";
 import type { Route } from "./+types/route";
 import { ENTRY_COOKIE, ENTRY_MAX_AGE, ENTRY_VERSION, MUSIC_COOKIE } from "./cookie";
 import { entryResponse, NO_INDEX, safeReturn } from "./gate.server";
+
+/** The entry form is a checkbox, a choice and a return path: well under 4 KB, which no other body needs. */
+export const MAX_ENTRY_BODY = 4_096;
 
 /**
  * POST /entry: Continue, from the entry page. With the agreement ticked, it sets the entry cookie (and, with the
@@ -10,7 +14,17 @@ import { entryResponse, NO_INDEX, safeReturn } from "./gate.server";
  * again. The checkbox's words aren't stored: the version stands for them.
  */
 export async function action({ request }: Route.ActionArgs) {
-  const form = await request.formData();
+  let form: URLSearchParams;
+  try {
+    // Every public visitor can post here: read with a cap and a deadline (src/platform/body.server.ts).
+    form = await readCappedForm(request, MAX_ENTRY_BODY);
+  } catch (error) {
+    if (!(error instanceof BodyRefused)) throw error;
+    return new Response(error.message, {
+      status: error.status,
+      headers: { "Cache-Control": "no-store", "X-Robots-Tag": NO_INDEX },
+    });
+  }
   const to = safeReturn(form.get("to"));
   if (form.get("agree") !== "yes") return entryResponse(to);
   const music = form.get("music") === "on" ? "on" : "off";

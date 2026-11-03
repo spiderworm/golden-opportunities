@@ -55,7 +55,10 @@ export function applyReportChange(
 }
 
 /** The change a form asks for: intent, the report as JSON, and the id for an edit or a delete. Null if malformed. */
-export function changeFrom(form: FormData): ReportChange | null {
+/** A form's fields, from FormData or the capped reader's URLSearchParams (src/platform/body.server.ts). */
+type FormFields = { get(name: string): FormDataEntryValue | null };
+
+export function changeFrom(form: FormFields): ReportChange | null {
   const intent = form.get("intent");
   const id = form.get("id");
   let report: unknown;
