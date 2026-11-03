@@ -34,6 +34,15 @@ test('with songs listed, the dock waits in the menu, the first tap starts the mu
         made.push(this);
       }
     };
+    // the device's buttons (media keys, Bluetooth), as the browser hands them to the page
+    const actions: Record<string, () => void> = {};
+    (window as unknown as { __mediaActions: typeof actions }).__mediaActions = actions;
+    const set = navigator.mediaSession.setActionHandler.bind(navigator.mediaSession);
+    navigator.mediaSession.setActionHandler = (action, f) => {
+      if (f) actions[action] = f as () => void;
+      else delete actions[action];
+      set(action, f);
+    };
   });
   await page.route('**/music/songs.json', route =>
     route.fulfill({ json: { songs: [{ id: 'test-silence', file: 'test-silence.wav', title: 'Test Silence' }] } }));
@@ -52,6 +61,16 @@ test('with songs listed, the dock waits in the menu, the first tap starts the mu
   // The music plays through Web Audio, made on that tap; the fixture sends every
   // Web Audio output to a silent gain node and mutes media elements.
   expect(await page.evaluate(() => (window as unknown as { __musicContexts: AudioContext[] }).__musicContexts.map(c => c.state))).toEqual(['running']);
+  // The device names the song, and its pause and play are the dock's.
+  expect(await page.evaluate(() => ({ title: navigator.mediaSession.metadata?.title, album: navigator.mediaSession.metadata?.album })))
+    .toEqual({ title: 'Test Silence', album: 'Orbital Books' });
+  await expect.poll(() => page.evaluate(() => navigator.mediaSession.playbackState)).toBe('playing');
+  const press = (action: string) => page.evaluate(a => (window as unknown as { __mediaActions: Record<string, () => void> }).__mediaActions[a]!(), action);
+  await press('pause');
+  await expect(dock.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => navigator.mediaSession.playbackState)).toBe('paused');
+  await press('play');
+  await expect(dock.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   // It stays: no timer takes it away.
   await page.waitForTimeout(5000);
   await expect(dock).toContainText('Test Silence');
