@@ -330,7 +330,11 @@ export function MeasureChart({
   const group = GROUP_PLURALS[state.by].replace(/s$/, "");
   const baseTitle = `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}`;
   // Events on a time axis (src/query/events.ts; Plot's copy, section 7): the result's own, wherever it's charted.
-  const eventsReason = eventsBlock(state);
+  // On a time axis the result always carries its events (none is an empty list), so without them it says so: a
+  // toggle is never silent (Plot).
+  const eventsReason =
+    eventsBlock(state) ??
+    (!scatter && !waterfallModel && !result.events ? "Can't mark events on this chart" : null);
   const marking = state.events && !eventsReason && !scatter && !waterfallModel && !!result.events;
   const marked = useMemo(() => {
     if (!marking || !result.events) return null;
@@ -349,7 +353,7 @@ export function MeasureChart({
     () => (marked && manyOption && !scatter ? withMarkers(manyOption, marked.markers) : manyOption),
     [manyOption, marked, scatter],
   );
-  const eventsNote = marked ? eventsCaption(marked.markers.length, marked.hidden) : null;
+  const eventsNotes = marked ? eventsCaption(marked.markers, marked.hidden) : [];
   useEffect(() => {
     if (marked && !table)
       track("investigate_markers_shown", {
@@ -646,7 +650,12 @@ export function MeasureChart({
             : `Show all ${model.ranked} ${state.by === "edition" ? "editions" : "titles"}`}
         </button>
       )}
-      {!table && eventsNote && <p className={styles.tableNote}>{eventsNote}</p>}
+      {!table &&
+        eventsNotes.map((note) => (
+          <p key={note} className={styles.tableNote}>
+            {note}
+          </p>
+        ))}
       <p className={styles.source}>
         {selected.length > 0
           ? `Filtered to ${selected.map((v) => formatDimensionValue(state.by, v)).join(", ")}. Click a highlighted bar again to clear it. `
