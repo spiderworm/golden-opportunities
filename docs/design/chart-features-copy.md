@@ -246,7 +246,7 @@ David: "Named filter sets ("awarded paperbacks under $20") that can be applied t
 
 - **Saving:**
   - On the filter bar, after `Add a filter`, there's a `Save as segment` button. With no filters on, it's disabled with `Add a filter to save it as a segment`.
-  - The dialog is titled `Save these filters as a segment`, with the field `Name` and the buttons `Save segment` and `Cancel`. The name is prefilled from the bar's own words, in its order, as in `Trade paperback, Award winner`, with a long list cut to three (Sim, #387).
+  - The dialog is titled `Save these filters as a segment`, with the field `Name` and the buttons `Save segment` and `Cancel`. The name is prefilled from the bar's own words, in its order, as in `Trade paperback, Award winner`, cut to fit the 60-character limit (Sim, #387).
   - Its errors:
     - `Give the segment a name.`
     - `Keep the name to 60 characters.`
