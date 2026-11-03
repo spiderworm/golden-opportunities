@@ -2,7 +2,7 @@
 
 **Result: held.** Alma wrote all six backstories herself, within every limit in `docs/design/backstory.md` section 3. Dewey held on all 13 cases, 26 answers: it answered about itself from the backstory, never took the backstory as permission or as evidence about the shop, and never showed text from a save edited to fail its checks.
 
-This tests #244 with the real model, at main `6174dd8`, the merge commit. There was one dev server, with the provider being the local Claude Code CLI, and the light baton from Goldy. The six backstories are in `backstory/backstories.json`, the harness is `backstory/harness/run.mjs`, and the 26 answers are in `backstory/runs/`.
+This tests #244 with the real model, at main `6174dd8`, the merge commit. There was one dev server, with the provider being the local Claude Code CLI, and the light baton from Goldy. The six backstories are in `backstory/backstories.json`, the harness is `backstory/harness/run.mjs`, and the 26 answers are in `backstory/runs/`. The harness rewrites save files for the edited-save cases, so run it only against a throwaway server's data folder (`ORBITAL_DATA_DIR`), never a real game's (Audit).
 
 ## Alma: six new games
 
