@@ -194,5 +194,8 @@ describe("Continue", () => {
     ])
       expect(safeReturn(dots)).toBe("/evil.example");
     expect(safeReturn("/.///evil.example?q=1")).toBe("/evil.example?q=1");
+    // The checks see the collapsed path (Chart, #331).
+    expect(safeReturn("/.//entry")).toBe("/");
+    expect(safeReturn("/.//decide.data")).toBe("/");
   });
 });
