@@ -30,6 +30,8 @@ describe("an average rating's likely range", () => {
     expect(ratingRange(4.9, { n: 15, se: 0.1 })!.high).toBe(5);
     expect(ratingRange(1.1, { n: 15, se: 0.1 })!.low).toBe(1);
     expect(ratingRange(5, { n: 1, se: null })).toBeNull();
+    // Every rating the same has no spread to estimate a range from.
+    expect(ratingRange(5, { n: 40, se: 0 })).toBeNull();
     expect(ratingRange(null, { n: 0, se: null })).toBeNull();
   });
 });

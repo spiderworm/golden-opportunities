@@ -52,13 +52,17 @@ export function t95(df: number): number {
 /**
  * An average rating's likely range (95%): its mean, give or take t with n - 1 degrees of freedom times its
  * standard error, clipped to 1 to 5 stars (Plot, #297). Goldy's default was 1.96; t is the honest width for the
- * few ratings a title can have (12.7 at two). Null below two ratings: "Too few ratings for a likely range".
+ * few ratings a title can have (12.7 at two). Null below two ratings ("Too few ratings for a likely range"), and
+ * when every rating is the same, which has no spread to estimate from.
  */
 export function ratingRange(
   mean: number | null,
   evidence: Evidence,
 ): { low: number; high: number } | null {
   if (mean === null || evidence.n < 2 || evidence.se === null) return null;
+  // Every rating the same: no spread to estimate from, and a range of 5 to 5 would claim more than a few agreeing
+  // readers show. Null, as for too few; the chart says why in words (Plot, after #340).
+  if (evidence.se === 0) return null;
   const half = t95(evidence.n - 1) * evidence.se;
   return { low: Math.max(1, mean - half), high: Math.min(5, mean + half) };
 }

@@ -125,7 +125,8 @@ David: "I'd also like to add showing how much evidence is behind a number. Show 
   - If low-n bars or rows are faded, the caption is `Faded where there are fewer than {k} {ratings}`. Fade only for counts of ratings, orders or sale lines, never days: a breakdown by month and weekday would always fade (Sim, #296).
 - **Error bars on average rating:**
   - Legend: `Likely range (95%)`.
-  - Tooltip line: `Likely range: 3.9 to 4.3 stars`, with stars to one decimal place.
+  - Tooltip line: `Likely range: 3.9 to 4.3 stars`, with stars to one decimal place. When both ends would read the same at one decimal, two: `Likely range: 4.18 to 4.24 stars`, never "4.2 to 4.2" (Probe, #337; Sim, #340). Dewey's range follows the same rule.
+  - When every rating is the same, from 2 ratings up, there's no bar, and the line says so and why: `All 3 ratings are 5 stars, so there's no likely range to give.`, or `Both ratings are 4 stars, …` for two, with `1 star` in the singular (Sim, #342). Dewey's `range` ref will give the same line once Sage's follow-up lands; until then his sentence with it is withheld (Audit, #343).
   - Below 2 ratings there's no bar, and the tooltip line reads `Too few ratings for a likely range`. Ranges are clipped to 1 to 5 stars, and the tooltip shows the clipped figures (Sim, #296).
   - Error bars appear wherever average rating is drawn: Dewey's lookups, pins made from them, and reports. Investigate's own chart doesn't offer average rating (Audit, #296).
   - The legend's tooltip is one plain line: `Where the average would most likely land if as many readers rated again. Fewer ratings, wider range.`
@@ -164,6 +165,8 @@ David: "Change decomposition. A waterfall showing which genres, titles or editio
   - A group new in the later quarter has no price to compare, so its line reads `New in Q1 2194, so no price change: Volume +$240 · Mix +$160`. One gone from it reads `Not sold in Q1 2194, so no price change: Volume -$240 · Mix -$160`. Naming the quarter keeps it right whichever quarter it's compared with (Sim, #328). In the table, such a group's Price cell reads `None` (Sim, #335).
 - **Within noise** shows on the change line and the % cell, `Change: +$30 (+3.0%) · within noise`, with no fade, since fading means few items elsewhere (Sim, #335).
 - **The table's last row** is `Total` (Sim, #335).
+- **The axis:** the totals' bars stand on a round number below every change, not on zero, so a small change stays visible. Then the caption says so, in the axis's own format, before the source: `The axis starts at $80K, not at zero, so small changes show.` It's shown only when the axis starts above zero (Chart and Sim, #335).
+- **Discoveries:** a waterfall is a view the player turns on, so its drawn bars count as evidence, as two chart views would. Groups folded into `Everything else` don't count, and the split adds none of its own. A pinned waterfall is context, as pins always are (#335, #339).
 - **Disabled, always with a reason:**
 
 | Why | Tooltip |
@@ -214,6 +217,28 @@ David: "Pareto and share-of-total. "% of total" as a display mode, plus a cumula
 | Any other refusal | `Can't show shares for this chart` |
 
   While shares are on, each of those toggles reads `Turn off % of total to {compare quarters|…}`.
+
+## 7. Events on the timeline (Frank)
+
+David: "I think it would be good to support event markers on time series. ie, mark the new volume's release (Feb 4), each Book of the Month pick, the player's Q1 move, and later Alma's events" (req_13c07b31a790).
+
+- **The Options item:** `Events`, a tick box like the others. Its hint: `Mark releases, Book of the Month picks, your moves and station events on the timeline`.
+- **Marker labels,** short, on the chart and in the legend: `Release`, `Pick`, `Your move` and `Event` (Alma's station events).
+- **Tooltips:** the date and kind, then what happened.
+  - **Release:** `Feb 4, 2194 · Release`, then `The Bourton Model Village Poisoning, Inspector Ryeslton volume 3`.
+  - **Pick:** `March 2194 · Book of the Month`, then the edition as `editionLabel` gives it, e.g. `Portmeirion, mass market paperback`.
+  - **Your move:** `Q1 2194 · Your move`, then the move's name as Decide has it, e.g. `Station-wide sale, all quarter`. Holding course isn't a move, so it gets no marker.
+  - **Event:** `Q3 2194 · Station event`, then the event's short title (`eventTitle`) and its stretch, e.g. `{short title}, July 9 to 23`.
+  - Dates are month first, in the game's style: `Feb 4, 2194` for a day, `March 2194` for a month. Markers have no arrow or symbol characters.
+- **Crowding:** where markers overlap, one is drawn with `+{n}`, e.g. `+2`, and its tooltip lists each in date order. If some can't be drawn at all, the caption says `{n} more events hidden: filter to one quarter to see them all`, or `1 more event hidden: …`.
+- **Nothing to mark** isn't a disabled state. The caption says `No events in this period.`, as for 2193 and quarters not yet played. A quarter not yet played is never marked: no spoilers.
+- **Disabled, always with a reason:**
+
+| Why | Tooltip |
+| --- | --- |
+| No time axis (any breakdown but month or quarter, weekday included) | `Break down by month or quarter to mark events` |
+| Scatter plot on | `Turn off Scatter plot to mark events` |
+| Any other refusal | `Can't mark events on this chart` |
 
 ## Analytics, for all of them
 
