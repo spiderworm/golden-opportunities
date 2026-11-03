@@ -2,7 +2,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { heatAxis, heatModel } from "./charts/heat-model";
-import { Heatmap } from "./Heatmap";
+import { CELL_FIT, cellFit, Heatmap } from "./Heatmap";
 import { DEFAULT_STATE } from "./state";
 
 const result = {
@@ -184,5 +184,14 @@ describe('the heatmap (David: "the same level of customization that we\'ve given
         ),
       ),
     ).toContain("Narrow it with a filter, or choose Last eight quarters.");
+  });
+});
+
+describe("the heatmap in a narrow space (David, 3 Nov 2026: cards reflow as Dewey's column resizes)", () => {
+  it("fits its figures to the cells: full, smaller, then colour alone", () => {
+    expect(cellFit(60)).toBe("full");
+    expect(cellFit(CELL_FIT.full)).toBe("full");
+    expect(cellFit(42)).toBe("small");
+    expect(cellFit(30)).toBe("none");
   });
 });

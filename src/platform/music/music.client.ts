@@ -17,6 +17,9 @@
 // A player who unticked "Play the music" on the entry page (David, 3 Nov 2026) starts with the player paused: the
 // first song is queued and paused before anything can play, and stays paused, through reloads too, until they
 // press play. The choice is recorded once, as entry_accepted's music; the startup pause itself isn't.
+// One who left it ticked hears it at once: the page Continue opens still has Continue's user activation, so the
+// browser lets it sound (measured in Chromium, under Chrome's autoplay policy, and WebKit, #317). If a browser
+// refuses, it waits for the first tap or key press, as before.
 import type { Started } from "@tellim/kit/app";
 import type { Music } from "@tellim/kit/music/player";
 import "@tellim/kit/music/music.css";
@@ -36,7 +39,8 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
   if (typeof window === "undefined" || isPhoneScreen()) return Promise.resolve(null);
   // A computer's web app: the kit's desktop defaults. Through Web Audio, so the
   // saved volume holds from the first note (audio-context.ts).
-  const paused = takeStartPaused();
+  const entry = takeEntryChoice();
+  const paused = entry === "off";
   let starting = paused;
   const music = studio().music({
     songs: { manifest: MANIFEST_URL, fetcher },
@@ -52,6 +56,7 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
       },
     }),
   });
+  if (entry === "on") return music.then((m) => (m?.start(), m));
   if (!paused) return music;
   return music.then(async (m) => {
     if (m) {
@@ -65,10 +70,11 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
   });
 }
 
-/** The entry page's "Play the music", unticked: true once, and the cookie is cleared so it applies only now. */
-function takeStartPaused(): boolean {
-  if (typeof document === "undefined" || readCookie(document.cookie, MUSIC_COOKIE) !== "off")
-    return false;
+/** The entry page's "Play the music", just answered: "on" or "off" once, and the cookie is cleared so it applies only now. */
+function takeEntryChoice(): "on" | "off" | null {
+  if (typeof document === "undefined") return null;
+  const choice = readCookie(document.cookie, MUSIC_COOKIE);
+  if (choice !== "on" && choice !== "off") return null;
   document.cookie = `${MUSIC_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
-  return true;
+  return choice;
 }

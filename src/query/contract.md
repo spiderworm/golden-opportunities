@@ -176,6 +176,27 @@ Dewey doesn't see any of this yet. The tool server's `runQuery`
 `source` from a result, so `evidence` never reaches him until the figures gate
 is ready for it.
 
+## Change decomposition
+
+`waterfall(by, then, now, { top, split })` (`decompose.ts`; David, 3 Nov 2026:
+"A waterfall showing which genres, titles or editions drove a change in revenue,
+and optionally a price/volume/mix split") works from plain queries: each
+period's revenue, and units for the split, by the group. It doesn't use
+`vs: "last_year"`, whose rows leave out groups that sold then but not now. The
+bars run from then's total to now's: the `top` largest changes by size, then
+everything else in one, which is whatever those don't account for, so the bars
+always sum to the change. A bar is within noise when its change is within 95% of
+the two figures' spread (`withinNoise`).
+
+The split gives each group's change as price U1·(p1 − p0), volume (U1 − U0)·P̄0
+and mix (U1 − U0)·(p0 − P̄0), where p is realized revenue per unit, so a discount
+counts as price, and P̄0 is then's average. Each sums to its group's change, and
+summed over the groups they're volume (U1 − U0)·P̄0, mix U1·(Σ s1·p0 − P̄0) and
+price Σ U1·(p1 − p0). A new group takes its own price as its price then, so it
+has no price change; its units at the old average are volume, and the rest is
+mix. A group that's gone is the same backwards. There's no split with nothing
+sold then, without units, or past a row limit.
+
 ## What Dewey may use
 
 Dewey's tools see only `AGENT_MEASURES`, `AGENT_DIMENSIONS` and

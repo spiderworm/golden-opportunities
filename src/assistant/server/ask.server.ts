@@ -9,6 +9,7 @@ import { acquire, arrive, ndjson } from "./assistant.server.ts";
 import { markOffline, offlineCopy, type OfflineReason } from "./availability.server.ts";
 import { Refs, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
 import type { BackstoryText } from "../../alma/backstory.ts";
+import type { Cap } from "../../platform/usage.server.ts";
 import { buildPrompt, LIMITS, questionKind, type Turn } from "./prompt.server.ts";
 import {
   AssistantUnavailable,
@@ -252,6 +253,13 @@ export type ProviderFor = (options: { pins: boolean }) => AssistantProvider;
 /** The game's backstory for this request, checked (src/alma/backstory.ts), or null without a game. */
 export type BackstoryFor = (request: Request) => BackstoryText | null;
 
+/** Counts this question against the daily caps (platform/usage.server.ts): null if it may go ahead, else the cap. */
+export type UsageFor = (request: Request) => Cap | null;
+
+/** What Dewey says once a daily cap is reached (Plot): in his voice, and the rest of the game goes on. */
+export const RESTING =
+  "I've looked up all I can for now, and my circuits need a rest. Ask me again later.";
+
 export function ask(
   request: Request,
   providerFor: ProviderFor,
@@ -259,6 +267,7 @@ export function ask(
   now: () => number = Date.now,
   deadlineMs?: number,
   backstoryFor: BackstoryFor = () => null,
+  usageFor: UsageFor = () => null,
 ): Promise<Response> {
   return (async () => {
     const refused = (e: unknown) => {
@@ -296,6 +305,21 @@ export function ask(
       return refused(e);
     }
     slot.charge();
+    // The daily caps, counted only for a question that passed every check: past one, Dewey rests, and no model is
+    // asked. Which cap, never the question, goes in the event.
+    const capped = usageFor(request);
+    if (capped) {
+      slot.release();
+      track("assistant_capped", { who: "dewey", cap: capped });
+      return ndjson<WireEvent>(
+        async function* () {
+          yield { type: "text", text: RESTING };
+          yield { type: "done", withheld: 0 };
+        },
+        () => ({ type: "error", message: FAILED }),
+        request,
+      );
+    }
     const provider = providerFor({ pins: input.pins });
     const started = now();
     const stats = {

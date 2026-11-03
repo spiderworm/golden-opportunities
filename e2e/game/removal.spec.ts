@@ -56,14 +56,18 @@ test("three strikes, and the panel removes the player at Q3 2194; Play again sta
   await expect(page).toHaveURL(/\/result(?:\?|$)/);
 
   // Play again: a new save from January 1, with Q1's memo.
-  const before = (await page.context().cookies()).find((c) => c.name === "orbital_save")?.value;
+  const before = (await page.context().cookies()).find((c) =>
+    c.name.startsWith("orbital_save_"),
+  )?.value;
   await page.getByRole("button", { name: "Play again" }).click();
   await expect(page).toHaveURL(/\/(?:\?|$)/);
   await expect(
     page.getByRole("dialog", { name: "Transmission from the Commerce Office" }),
   ).toContainText("THE NUMBERS HAVE GONE DOWN.");
   await expect(page.locator("time")).toHaveText("1 Jan 2194");
-  const after = (await page.context().cookies()).find((c) => c.name === "orbital_save")?.value;
+  const after = (await page.context().cookies()).find((c) =>
+    c.name.startsWith("orbital_save_"),
+  )?.value;
   expect(after).toBeTruthy();
   expect(after).not.toBe(before);
 });

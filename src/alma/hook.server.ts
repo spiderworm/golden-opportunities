@@ -11,6 +11,7 @@ import { isQuarterId } from "~/game/quarters";
 import { SaveError } from "~/game/store.server";
 import type { GameSave, PlayedQuarter } from "~/game/types";
 import { trackServer } from "~/platform/analytics/analytics.server";
+import { spend, type Cap } from "~/platform/usage.server";
 import type { Candidate, QuarterContext } from "./candidates";
 import { almaModel, chooseEvent, type AlmaModel } from "./director.server";
 import type { DeepReadonly, BookshopData } from "~/bookshop/types";
@@ -33,6 +34,8 @@ export interface AlmaDeps {
   track: (name: string, props: Record<string, string | number | boolean>) => void;
   /** Whether the game can play a quarter yet: Alma prepares only those, so no model call is spent on Q3 before it exists. */
   playable: (quarter: QuarterId) => boolean;
+  /** Counts a generation against the daily caps (platform/usage.server.ts): null if it may go ahead, else the cap. */
+  usage?: (saveId: string) => Cap | null;
 }
 
 const defaultDeps = (): AlmaDeps => ({
@@ -48,6 +51,7 @@ const defaultDeps = (): AlmaDeps => ({
     }
   },
   playable: isQuarterId,
+  usage: (saveId) => spend("alma", saveId),
 });
 
 /** The last quarter played, or null before any. */
@@ -157,6 +161,8 @@ function record(
   seed: number,
   deps: AlmaDeps,
   model: AlmaModel | null,
+  /** Why the model wasn't asked at all ("capped"), kept on the record. */
+  skipped?: string,
 ): Promise<AlmaRecord | null> {
   const started = performance.now();
   return chooseEvent(context, history, {
@@ -164,7 +170,8 @@ function record(
     model,
     titles: deps.titles,
     accept: withinBound(context, deps.data),
-  }).then((chosen) => {
+  }).then((event) => {
+    const chosen = skipped ? { ...event, failure: skipped } : event;
     const written = write(saveId, chosen, deps);
     if (!written) return null;
     if (written.kept) {
@@ -201,7 +208,18 @@ export function onQuarterCommitted(
     const save = deps.saves.read(saveId);
     const context = contextFor(save, deps.data);
     if (!context || context.quarter !== next || save.alma?.some((r) => r.quarter === next)) return;
-    const turn = record(saveId, context, save.played.map(summarize), seed, deps, deps.model)
+    // Past a daily cap, the game picks the quarter's event itself, and no model is asked (David, 3 Nov 2026).
+    const capped = deps.model && deps.usage ? deps.usage(saveId) : null;
+    if (capped) deps.track("assistant_capped", { who: "alma", cap: capped });
+    const turn = record(
+      saveId,
+      context,
+      save.played.map(summarize),
+      seed,
+      deps,
+      capped ? null : deps.model,
+      capped ? "capped" : undefined,
+    )
       .catch(() => {
         deps.track("alma_failed", { quarter: next });
         return null;

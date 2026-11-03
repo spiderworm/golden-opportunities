@@ -143,7 +143,7 @@ describe("pin specs", () => {
     expect(parsePins(null)).toEqual([]);
   });
 
-  it("treats the same kind and query as the same chart, whatever the filter order", () => {
+  it("treats the same query as the same chart, whatever the filter order or its chart-or-table view", () => {
     const a = {
       measure: "units",
       by: [],
@@ -158,7 +158,8 @@ describe("pin specs", () => {
     expect(pinKey(pin("bar", copy(a)))).toBe(
       pinKey({ ...pin("bar", copy(b)), title: "Another title" }),
     );
-    expect(pinKey(pin("bar", copy(a)))).not.toBe(pinKey(pin("table", copy(a))));
+    // One chart, shown as bars or as its table: one pin since the Table toggle (Sage, #302).
+    expect(pinKey(pin("bar", copy(a)))).toBe(pinKey(pin("table", copy(a))));
   });
 
   it("keeps the newest first, moves a repeat to the front, and caps the board", () => {
@@ -370,5 +371,28 @@ describe("a pin's chart or table view (David, 3 Nov 2026)", () => {
 
   it("matches the same pin whichever way it's shown", () => {
     expect(pinKey({ ...bar, table: true })).toBe(pinKey(bar));
+  });
+});
+
+describe("a pin by what it shows (Sage, #302; Frank, #301)", () => {
+  const query = { measure: "revenue" as const, by: ["genre" as const] };
+  it("is one pin as a bar, a line or a table of one query, and another as a heatmap or with last year", () => {
+    const bar = pinKey({ title: "A", kind: "bar", query });
+    expect(pinKey({ title: "B", kind: "table", query })).toBe(bar);
+    expect(pinKey({ title: "C", kind: "line", query })).toBe(bar);
+    expect(
+      pinKey({ title: "D", kind: "heatmap", query: { ...query, by: ["genre", "format"] } }),
+    ).not.toBe(bar);
+    expect(pinKey({ title: "E", kind: "bar", query: { ...query, vs: "last_year" } })).not.toBe(bar);
+  });
+
+  it("keeps last year on a pin's query, and refuses any other comparison", () => {
+    const spec = {
+      title: "Revenue by genre, vs. Q1 2193",
+      kind: "bar",
+      query: { ...query, filter: { quarter: ["2194-Q1"] }, vs: "last_year" },
+    };
+    expect(parsePinSpec(spec)).toEqual(spec);
+    expect(parsePinSpec({ ...spec, query: { ...spec.query, vs: "last_quarter" } })).toBeNull();
   });
 });

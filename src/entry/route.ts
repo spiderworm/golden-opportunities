@@ -24,12 +24,12 @@ export async function action({ request }: Route.ActionArgs) {
     "Set-Cookie",
     `${ENTRY_COOKIE}=${ENTRY_VERSION}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${ENTRY_MAX_AGE}${secure}`,
   );
-  // Read by the music player in the browser, so not HttpOnly; it clears it once read.
-  if (music === "off")
-    headers.append(
-      "Set-Cookie",
-      `${MUSIC_COOKIE}=off; Path=/; SameSite=Lax; Max-Age=3600${secure}`,
-    );
+  // Read once by the music player in the browser, so not HttpOnly: "off" starts it paused, and "on" starts it at once,
+  // while the page still has Continue's user activation. The player clears it once read.
+  headers.append(
+    "Set-Cookie",
+    `${MUSIC_COOKIE}=${music}; Path=/; SameSite=Lax; Max-Age=3600${secure}`,
+  );
   return new Response(null, { status: 303, headers });
 }
 

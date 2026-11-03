@@ -9,23 +9,18 @@ test("two measures across a group can be a scatter plot, which says when it can'
   const scatter = chart.getByRole("button", { name: "Scatter plot" });
 
   // One measure: refused, with its reason.
-  await expect(scatter).toBeDisabled();
-  await expect(scatter).toHaveAttribute("title", "Choose a second measure for a scatter plot");
+  await expect(scatter).toHaveAttribute("aria-disabled", "true");
+  await expect(scatter).toHaveAccessibleDescription("Choose a second measure for a scatter plot");
 
   // Two measures over months: still refused, since a line shows them in order.
   await page.goto("/investigate?analytics-test=1&measures=revenue,units");
-  await expect(scatter).toHaveAttribute(
-    "title",
+  await expect(scatter).toHaveAccessibleDescription(
     "Break down by title, genre or another group for a scatter plot",
   );
 
   // Two measures by genre: a point per genre, revenue along the bottom and units up the side.
   await page.goto("/investigate?analytics-test=1&measures=revenue,units&by=genre");
-  await expect(scatter).toBeEnabled();
-  await expect(scatter).toHaveAttribute(
-    "title",
-    "Plot one measure against the other, one point per genre",
-  );
+  await expect(scatter).not.toHaveAttribute("aria-disabled", "true");
   await scatter.click();
   await expect(page).toHaveURL(/chart=scatter/);
   await expect(scatter).toHaveAttribute("aria-pressed", "true");
@@ -54,8 +49,8 @@ test("two measures across a group can be a scatter plot, which says when it can'
   await page.goto(
     "/investigate?analytics-test=1&measures=revenue,units,orders&by=genre&chart=scatter",
   );
-  await expect(scatter).toBeDisabled();
-  await expect(scatter).toHaveAttribute("title", "A scatter plot shows two measures");
+  await expect(scatter).toHaveAttribute("aria-disabled", "true");
+  await expect(scatter).toHaveAccessibleDescription("A scatter plot shows two measures");
   await expect(
     page.getByRole("heading", { name: "Revenue, units sold and orders by genre" }),
   ).toBeVisible();
