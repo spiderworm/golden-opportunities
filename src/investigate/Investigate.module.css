@@ -40,14 +40,16 @@
   padding: 0 18px;
   border-radius: var(--radius-control);
   background: var(--color-accent);
-  color: var(--color-text);
+  /* White, not the text colour: 4.6:1 on the accent against 4.2:1. */
+  color: #fff;
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
 }
 
+/* Darker on hover, not lighter: white on the soft accent is 3:1; on this, 5.9:1 (Audit, #283). */
 .planLink:hover {
-  background: var(--color-accent-soft);
+  background: #5a4be6;
 }
 
 /* Refetching keeps the frame: the previous figures stay, dimmed, until the new ones land. */
