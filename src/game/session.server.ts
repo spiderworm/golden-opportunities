@@ -1,11 +1,12 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { data, type MiddlewareFunction } from "react-router";
 import { loadBookshop } from "../bookshop/loader.server";
 import type { QueryView } from "../query/types";
 import { BASELINE_VIEW } from "../query/view.server";
 import { dataVersion } from "../query/data-version.server";
-import { DATA_DIR } from "../platform/analytics/instance.server";
+import { DATA_DIR, instanceId } from "../platform/analytics/instance.server";
 import { trackServer } from "../platform/analytics/analytics.server";
 import { onGameStarted } from "../alma/backstory.server";
 import { createSaveStore, isSaveId, SaveError } from "./store.server";
@@ -16,7 +17,17 @@ import type { GameSave } from "./types";
 import { saveDate } from "./progress";
 
 export const saves = createSaveStore(path.join(DATA_DIR, "saves"));
-const COOKIE = "orbital_save";
+/**
+ * The save cookie's name, one per copy of the app (David's bug, 3 Nov 2026: "What you found" showed nothing he'd
+ * found). Browsers keep cookies by host, not port, so every copy on localhost (live on :5173, each agent's dev
+ * server) shared one `orbital_save`: a visit to another copy replaced it with a save this copy doesn't hold, and the
+ * next visit here silently started a new game. Named for a hash of this copy's instance ID (so the cookie says
+ * nothing of the ID analytics sends; Sim, #320), copies never share one.
+ */
+export const saveCookieName = () =>
+  `${LEGACY_COOKIE}_${createHash("sha256").update(instanceId()).digest("hex").slice(0, 8)}`;
+/** The name every copy used before, read only while this copy's own cookie is absent, so an old game carries on. */
+const LEGACY_COOKIE = "orbital_save";
 const active = new AsyncLocalStorage<string>();
 /**
  * New games each process starts per minute. ORBITAL_NEW_GAMES_PER_MINUTE raises it for automated
@@ -30,16 +41,28 @@ let creationWindow = Date.now();
 let creations = 0;
 export function saveCookie(id: string, request: Request): string {
   if (!isSaveId(id)) throw new SaveError("INVALID_SAVE");
-  return `${COOKIE}=${id}; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000${new URL(request.url).protocol === "https:" ? "; Secure" : ""}`;
+  return `${saveCookieName()}=${id}; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000${new URL(request.url).protocol === "https:" ? "; Secure" : ""}`;
 }
-export function cookieSaveId(request: Request): string | null {
-  const values = (request.headers.get("cookie") ?? "")
+/** The values a request's cookie header holds under one name. */
+function cookieValues(request: Request, name: string): string[] {
+  return (request.headers.get("cookie") ?? "")
     .split(";")
     .map((v) => v.trim())
-    .filter((v) => v.startsWith(COOKIE + "="));
-  if (values.length !== 1) return null;
-  const id = values[0].slice(COOKIE.length + 1);
-  return isSaveId(id) ? id : null;
+    .filter((v) => v.startsWith(name + "="))
+    .map((v) => v.slice(name.length + 1));
+}
+/**
+ * The save a request's cookie names, and whether it came under the old shared name. This copy's own cookie decides
+ * whenever it's sent; the old name is read only without it. Two values under one name select nothing.
+ */
+export function cookieSave(request: Request): { id: string; legacy: boolean } | null {
+  const own = cookieValues(request, saveCookieName());
+  const values = own.length ? own : cookieValues(request, LEGACY_COOKIE);
+  if (values.length !== 1 || !isSaveId(values[0]!)) return null;
+  return { id: values[0]!, legacy: own.length === 0 };
+}
+export function cookieSaveId(request: Request): string | null {
+  return cookieSave(request)?.id ?? null;
 }
 /** Only the HttpOnly cookie (or middleware's bootstrap) selects a browser save. */
 export function resolveSaveId(request: Request): string {
@@ -101,7 +124,7 @@ export function getGameSession(request: Request) {
   };
 }
 /** A new save, under the per-minute limit shared by first visits and Play again. The caller sets its cookie. */
-export function startGame(): string {
+export function startGame(replacing?: "missing"): string {
   if (Date.now() - creationWindow >= 60_000) {
     creationWindow = Date.now();
     creations = 0;
@@ -113,28 +136,33 @@ export function startGame(): string {
     });
   creations++;
   const save = saves.create();
-  trackServer("game_save_created", { version: 1 });
+  // `replacing`: the cookie named a save this copy doesn't hold (it's gone, or it was another copy's).
+  trackServer("game_save_created", { version: 1, ...(replacing ? { replacing } : {}) });
   // Alma writes the station's backstory in the background; the arrival never waits for it (src/alma).
   onGameStarted({ saveId: save.id, seed: save.seed }, { saves });
   return save.id;
 }
 /** One bootstrap before parallel shell/child loaders; never creates saves for API callers or POSTs. */
 export const gameSessionMiddleware: MiddlewareFunction<Response> = async ({ request }, next) => {
-  let id = cookieSaveId(request);
-  let created = false;
+  const found = cookieSave(request);
+  let id = found?.id ?? null;
+  let missing = false;
   try {
     if (id) saves.read(id);
   } catch (error) {
-    if (error instanceof SaveError && error.code === "MISSING_SAVE") id = null;
-    else throw error;
+    if (error instanceof SaveError && error.code === "MISSING_SAVE") {
+      id = null;
+      missing = true;
+    } else throw error;
   }
   if (!id) {
     if (request.method !== "GET") throw new Response("Start a game first.", { status: 401 });
-    id = startGame();
-    created = true;
+    id = startGame(missing ? "missing" : undefined);
   }
   const response = await active.run(id, next);
   response.headers.set("Cache-Control", "private, no-store");
-  if (created) response.headers.append("Set-Cookie", saveCookie(id, request));
+  // A new game, or an old game found under the shared name: from now on it's under this copy's own.
+  if (id !== found?.id || found.legacy)
+    response.headers.append("Set-Cookie", saveCookie(id, request));
   return response;
 };

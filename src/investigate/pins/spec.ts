@@ -118,8 +118,11 @@ const only = (o: Record<string, unknown>, keys: readonly string[]) =>
 
 /** The query's shape, checked as the contract bounds it. The server checks it again. */
 export function parseQuery(value: unknown): Query | null {
-  if (!isObject(value) || !only(value, ["measure", "by", "filter", "sort", "limit"])) return null;
-  const { measure, by, filter, sort, limit } = value;
+  if (!isObject(value) || !only(value, ["measure", "by", "filter", "sort", "limit", "vs"]))
+    return null;
+  const { measure, by, filter, sort, limit, vs } = value;
+  // Last year beside the quarter (Frank's #301): the only comparison a query names.
+  if (vs !== undefined && vs !== "last_year") return null;
   if (!MEASURES.includes(measure as never)) return null;
   if (!Array.isArray(by) || by.length > QUERY_LIMITS.dimensions || new Set(by).size !== by.length)
     return null;
@@ -154,6 +157,7 @@ export function parseQuery(value: unknown): Query | null {
       return null;
     query.limit = limit as number;
   }
+  if (vs === "last_year") query.vs = vs;
   return query;
 }
 
@@ -293,12 +297,17 @@ export function pinKey(spec: PinSpec): string {
   }
   const { query } = spec;
   return JSON.stringify([
-    spec.kind,
+    // A bar, a line and a table of one query are one chart shown three ways (its Table toggle, Dewey's chart or its
+    // lookup's table), so they're one pin: pinned either way, it reads as pinned (Sage, #302). A heatmap and a
+    // scatter plot are other charts.
+    spec.kind === "bar" || spec.kind === "line" || spec.kind === "table" ? "chart" : spec.kind,
     query.measure,
     query.by,
     sortedFilter(query.filter),
     query.sort ?? null,
     query.limit ?? null,
+    // With last year, a different pin from the same chart without it.
+    ...(query.vs ? [query.vs] : []),
     ...(spec.also?.length ? [spec.also] : []),
   ]);
 }

@@ -5,7 +5,10 @@ const directory = await vi.hoisted(async () => {
   const { tmpdir } = await import("node:os");
   return mkdtempSync(tmpdir() + "/orbital-alma-");
 });
-vi.mock("../platform/analytics/instance.server", () => ({ DATA_DIR: directory }));
+vi.mock("../platform/analytics/instance.server", () => ({
+  DATA_DIR: directory,
+  instanceId: () => "0123abcd-0000-4000-8000-000000000000",
+}));
 vi.mock("../platform/analytics/analytics.server", () => ({ trackServer: vi.fn() }));
 import { getQ2Candidates, submitPlan, submitQ2Plan } from "~/game/game.server";
 import { saves } from "~/game/session.server";
@@ -206,6 +209,35 @@ describe("Alma's turn and the save", () => {
     };
     expect(() => onQuarterCommitted({ saveId: "x", quarter: "2194-Q2", seed: 1 }, d)).not.toThrow();
     expect(d.events).toEqual([["alma_failed", { quarter: "2194-Q3" }]]);
+  });
+
+  it("past a daily cap, picks the quarter's event itself without asking Alma, and says which cap (David, 3 Nov 2026)", async () => {
+    const store = fakeStore(base());
+    const asked: string[] = [];
+    const d = {
+      ...deps(store, { name: "sonnet", ask: async () => (asked.push("asked"), "{}") }),
+      usage: () => "visitor" as const,
+    };
+    onQuarterCommitted({ saveId: base().id, quarter: "2194-Q2", seed: 7 }, d);
+    await pendingTurn(base().id, "2194-Q3");
+    expect(asked).toEqual([]);
+    expect(store.save.alma).toEqual([
+      expect.objectContaining({ source: "scripted", attempts: 0, failure: "capped" }),
+    ]);
+    // The saved record passes the save's own check, its failure code included.
+    expect(d.events).toContainEqual(["assistant_capped", { who: "alma", cap: "visitor" }]);
+    expect(d.events).toContainEqual([
+      "alma_event_chosen",
+      expect.objectContaining({ failure: "capped" }),
+    ]);
+  });
+
+  it("asks for no count without a model: scripting costs nothing", async () => {
+    const counted: string[] = [];
+    const d = { ...deps(fakeStore(base())), usage: () => (counted.push("q"), null) };
+    onQuarterCommitted({ saveId: base().id, quarter: "2194-Q2", seed: 7 }, d);
+    await pendingTurn(base().id, "2194-Q3");
+    expect(counted).toEqual([]);
   });
 
   it("writes through a stale revision: the player's own writes come first", async () => {
