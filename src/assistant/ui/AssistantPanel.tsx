@@ -35,7 +35,7 @@ import {
   saveConversation,
 } from "./conversation.ts";
 import { canRenderWebGL2 } from "~/platform/webgl";
-import { LoadingLine, useCommitment } from "~/platform/ui/commitment";
+import { LOAD_CAP_MS, LoadingLine, useCommitment } from "~/platform/ui/commitment";
 import { fetchStatus, type AssistantStatus } from "./status.ts";
 import { askAssistant } from "./stream.ts";
 // Only its type: the module itself is loaded lazily, below.
@@ -205,7 +205,7 @@ export function AssistantPanel({
   const facesSent = useRef<string | null>(null);
   const facesShown = (
     kind: "3d" | "portraits",
-    reason?: "reduced_motion" | "no_webgl2" | "failed",
+    reason?: "reduced_motion" | "no_webgl2" | "failed" | "timeout",
   ) => {
     if (facesSent.current === kind) return;
     facesSent.current = kind;
@@ -227,6 +227,15 @@ export function AssistantPanel({
     setFaces("portraits");
     facesShown("portraits", "failed");
   };
+  // A load that stalls, neither failing nor drawing, still commits: to the portraits (Audit, #361).
+  useEffect(() => {
+    if (faces !== "loading") return;
+    const timer = setTimeout(() => {
+      setFaces("portraits");
+      facesShown("portraits", "timeout");
+    }, LOAD_CAP_MS);
+    return () => clearTimeout(timer);
+  }, [faces]);
   const slots = useRef(new Map<number, HTMLElement>());
   // The face that talks: beside the turn with focus, or else the pointer, or else his last (the greeting, before
   // any question).
