@@ -6,6 +6,7 @@ import {
   categoryHeight,
   categoryModel,
   categoryOption,
+  GHOST_OPACITY,
   legendItems,
   nothingToDraw,
   TOP_RANKED,
@@ -14,8 +15,10 @@ import {
 import { EChart } from "~/platform/charts/EChart";
 import { Dropdown } from "~/platform/ui/Dropdown";
 import { Legend } from "./charts/Legend";
-import { ResultTable } from "./charts/ResultTable";
 import { SCATTER_HEIGHT, scatterOption, scatterPoints, scatterTitle } from "./charts/scatter-chart";
+import { LastYearTable, ResultTable } from "./charts/ResultTable";
+import { changeLine, lastYearLabels, withLastYear } from "./charts/last-year";
+import { seriesColor } from "~/platform/charts/chart-theme";
 import {
   measureColor,
   measuresModel,
@@ -36,9 +39,11 @@ import {
   CHART_MEASURES,
   fittingMeasures,
   GROUPINGS,
+  lastYearBlock,
   measuresOf,
   monthsInScope,
   scatterProblem,
+  shownQuarter,
   type ChartMeasure,
   type Grouping,
   type InvestigateState,
@@ -59,6 +64,8 @@ export interface MeasureChartProps {
   onCompare: (compare: boolean) => void;
   /** The scatter plot turned on or off (scatterProblem says when it can be on). */
   onScatter: (on: boolean) => void;
+  /** "vs. same quarter last year" switched on or off. */
+  onLastYear?: (on: boolean) => void;
   onDrill: (value: string) => void;
   onTable: (shown: boolean) => void;
   /** Pins this view to the pinned charts; `pinned` when an identical one is already there. */
@@ -111,6 +118,7 @@ export function MeasureChart({
   onGroup,
   onCompare,
   onScatter,
+  onLastYear,
   onDrill,
   onTable,
   onPin,
@@ -164,19 +172,39 @@ export function MeasureChart({
       }),
     [result, state.by, state.compare, months.join(), showAll, selected.join("\u0000")],
   );
+  // Last year beside this year (Plot, #291): only where it's allowed and the server ran it.
+  const lastYearReason = lastYearBlock(state, quarters);
+  const quarter = shownQuarter(state);
+  const labels =
+    state.lastYear && !lastYearReason && quarter && result.lastYear
+      ? lastYearLabels(quarter, state.by)
+      : null;
+  const ghost = useMemo(
+    () => (labels ? withLastYear(model, result, labels) : null),
+    [model, result, labels?.quarter],
+  );
   const option = useMemo(
     () =>
-      categoryOption(model, {
-        selected,
-        quarters,
-        share: chartShare(state, model, result.total, quarters),
-      }),
+      ghost
+        ? categoryOption(ghost, {
+            selected,
+            quarters,
+            ghost: {
+              change: (i) =>
+                changeLine(model.measure, model.series[0]?.values[i] ?? null, ghost.lastYear[i]!),
+            },
+          })
+        : categoryOption(model, {
+            selected,
+            quarters,
+            share: chartShare(state, model, result.total, quarters),
+          }),
     // selected is derived from state.filters, which changes identity with each navigation.
-    [model, selected.join("\u0000"), quarters, state, result.total],
+    [model, ghost, selected.join("\u0000"), quarters, state, result.total],
   );
   const title = scatter
     ? scatterTitle(measures, state.by)
-    : `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}`;
+    : `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}${labels ? `, vs. ${labels.then}` : ""}`;
 
   function drillAt(index: number) {
     const value = model.categories[index];
@@ -228,17 +256,29 @@ export function MeasureChart({
             type="button"
             className={styles.toggle}
             aria-pressed={state.compare}
-            disabled={!canCompare(state.by, state.also)}
+            disabled={!canCompare(state.by, state.also) || labels !== null}
             title={
               state.also.length
                 ? "Show one measure to compare quarters"
-                : canCompare(state.by)
-                  ? undefined
-                  : "Group by genre, format or publisher to compare quarters"
+                : !canCompare(state.by)
+                  ? "Group by genre, format or publisher to compare quarters"
+                  : labels
+                    ? "Turn off vs. same quarter last year to compare quarters"
+                    : undefined
             }
             onClick={() => onCompare(!state.compare)}
           >
             Compare quarters
+          </button>
+          <button
+            type="button"
+            className={styles.toggle}
+            aria-pressed={labels !== null}
+            disabled={lastYearReason !== null}
+            title={lastYearReason ?? undefined}
+            onClick={() => onLastYear?.(!state.lastYear)}
+          >
+            vs. same quarter last year
           </button>
           <button
             type="button"
@@ -341,10 +381,25 @@ export function MeasureChart({
           </>
         )
       ) : table ? (
-        <ResultTable result={result} />
+        labels ? (
+          <LastYearTable result={result} by={state.by} measure={state.measure} labels={labels} />
+        ) : (
+          <ResultTable result={result} />
+        )
       ) : (
         <>
-          <Legend items={legendItems(model, quarters)} label="Quarters" />
+          <Legend
+            items={
+              ghost && labels
+                ? labels.legend.map((label, i) => ({
+                    label,
+                    color: seriesColor("quarter", ghost.series[0]!.key, 0, quarters),
+                    opacity: i === 1 ? GHOST_OPACITY : undefined,
+                  }))
+                : legendItems(model, quarters)
+            }
+            label="Quarters"
+          />
           <EChart
             option={option}
             height={categoryHeight(model)}
