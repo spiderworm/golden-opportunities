@@ -65,6 +65,24 @@ const isTable = (l: Obj) =>
   l.rows.every((r) => isObj(r) && Object.values(r).every(isCell)) &&
   isStr(l.source, 5_000);
 const isFigures = (t: unknown) => isObj(t) && Object.values(t).every(isCell);
+/** One figure's evidence: how many it's over, and its standard error or null (query/evidence.ts). */
+const isOneEvidence = (e: unknown) =>
+  isObj(e) &&
+  only(e, ["n", "se"]) &&
+  Number.isSafeInteger(e.n) &&
+  (e.n as number) >= 0 &&
+  (e.se === null || (typeof e.se === "number" && Number.isFinite(e.se) && e.se >= 0));
+const UNITS = [null, "orders", "sale lines", "ratings", "days"];
+/** A lookup's evidence, strictly: absent, or a known unit and one entry per row of the lookup, and a total's. */
+const isEvidence = (e: unknown, rows: number) =>
+  e === undefined ||
+  (isObj(e) &&
+    only(e, ["unit", "rows", "total"]) &&
+    UNITS.includes(e.unit as string | null) &&
+    Array.isArray(e.rows) &&
+    e.rows.length === rows &&
+    e.rows.every(isOneEvidence) &&
+    isOneEvidence(e.total));
 /** A lookup's pin, loosely: Investigate checks it fully (parsePinSpec) before pinning, and runs it as a query. */
 const isPin = (p: unknown) =>
   p === undefined ||
@@ -88,7 +106,8 @@ function isLookup(l: unknown): boolean {
   if (!isObj(l)) return false;
   if (l.type === "data")
     return (
-      only(l, ["type", "columns", "rows", "total", "source", "query", "pin"]) &&
+      only(l, ["type", "columns", "rows", "total", "source", "query", "pin", "evidence"]) &&
+      isEvidence(l.evidence, Array.isArray(l.rows) ? l.rows.length : -1) &&
       (l.query === undefined || isObj(l.query)) &&
       isPin(l.pin) &&
       isTable(l) &&
@@ -96,7 +115,8 @@ function isLookup(l: unknown): boolean {
     );
   if (l.type === "chart")
     return (
-      only(l, ["type", "chart", "columns", "rows", "total", "source", "pin"]) &&
+      only(l, ["type", "chart", "columns", "rows", "total", "source", "pin", "evidence"]) &&
+      isEvidence(l.evidence, Array.isArray(l.rows) ? l.rows.length : -1) &&
       isChart(l.chart) &&
       ["bar", "line"].includes((l.chart as Obj).kind as string) &&
       isPin(l.pin) &&

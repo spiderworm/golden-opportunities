@@ -1,5 +1,7 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { issueGameQueryToken } from "../game/query-token.server";
+import { agentEvidence } from "./agent-evidence.server";
+import { validateQuery } from "./validate";
 import { saves } from "../game/session.server";
 import { rmSync } from "node:fs";
 import { createQueryHandler } from "./http.server";
@@ -286,5 +288,25 @@ describe("bounded query resource endpoint", () => {
     })(request());
     expect(secret.status).toBe(500);
     expect(await secret.text()).not.toContain("SECRET_EXCEPTION");
+  });
+});
+
+describe("Dewey's lookups' evidence, for his panel (Goldy's and Chart's design)", () => {
+  it("is kept under his answer's token, keyed on the checked query, and never for the browser", async () => {
+    const handle = createQueryHandler({ track: () => {} });
+    const agent = await handle(
+      new Request(url, {
+        method: "POST",
+        headers: { authorization: `Bearer ${getQueryToken()}`, "content-type": "application/json" },
+        body: payload,
+      }),
+    );
+    expect(agent.status).toBe(200);
+    const kept = agentEvidence(getQueryToken(), validateQuery(JSON.parse(payload)));
+    expect(kept?.rows).toHaveLength((await agent.json()).rows.length);
+    // The browser's own query keeps nothing under any token.
+    const before = agentEvidence("browser", validateQuery(JSON.parse(payload)));
+    await handle(request());
+    expect(agentEvidence("browser", validateQuery(JSON.parse(payload)))).toBe(before);
   });
 });

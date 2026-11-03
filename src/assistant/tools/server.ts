@@ -60,7 +60,10 @@ const isEvidence = (e: unknown): e is Evidence =>
       (e as Evidence).se! >= 0));
 
 /** The result's evidence, if it's whole: one per row, a total's, and a unit that's one of the averages' (or none). */
-function checkedEvidence(evidence: unknown, rows: number): QueryResult["evidence"] | undefined {
+export function checkedEvidence(
+  evidence: unknown,
+  rows: number,
+): QueryResult["evidence"] | undefined {
   if (typeof evidence !== "object" || evidence === null) return undefined;
   const e = evidence as NonNullable<QueryResult["evidence"]>;
   const units: readonly unknown[] = [null, ...Object.values(EVIDENCE_UNITS)];

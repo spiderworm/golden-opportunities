@@ -98,10 +98,17 @@ const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 /** Draws a chart Dewey showed, with the page's own chart components. */
 export type ChartRenderer = ComponentType<{ chart: ChartSpec; result: QueryResult }>;
+/** Draws a lookup's table, with its evidence where it has some ("Based on", faded rows): the page's own, if any. */
+export type TableRenderer = ComponentType<{ result: QueryResult }>;
+
+/** Plot's tooltip for a change within noise (chart-features-copy.md, section 4). */
+const NOISE_TIP =
+  "A difference this small often shows up by chance with this much data, so don't read much into it.";
 
 export function AssistantPanel({
   track = platformTrack,
   ChartView,
+  TableView,
   onPin,
   onPinLookup,
   isPinned,
@@ -112,6 +119,8 @@ export function AssistantPanel({
   track?: PanelTrack;
   /** Draws Dewey's charts; without it they show as tables. */
   ChartView?: ChartRenderer;
+  /** Draws his tables with their evidence, as the page's own are; without it, the panel's plain table. */
+  TableView?: TableRenderer;
   onPin?: (chart: ChartSpec) => boolean | void;
   /** The player pinning a lookup shown here; no Pin buttons without it. The page can refuse one. */
   onPinLookup?: (pin: LookupPin) => boolean | void;
@@ -387,6 +396,7 @@ export function AssistantPanel({
                     key={j}
                     lookup={l}
                     ChartView={ChartView}
+                    TableView={TableView}
                     pinning={onPinLookup && { onPin: pinLookup, isPinned }}
                     onTable={(type, table) =>
                       track("table_toggled", { where: "dewey", shown: table, kind: type })
@@ -559,11 +569,13 @@ export function LookupView({
   lookup,
   pinning,
   ChartView,
+  TableView,
   onTable,
 }: {
   lookup: Lookup;
   pinning?: Pinning;
   ChartView?: ChartRenderer;
+  TableView?: TableRenderer;
   /** The Table toggle switched (David, 3 Nov 2026): the lookup's type and whether its table now shows. */
   onTable?: (type: "data" | "chart" | "comparison", table: boolean) => void;
 }) {
@@ -652,6 +664,15 @@ export function LookupView({
       : typeof v === "number"
         ? number.format(v)
         : String(v);
+  // A comparison's change within noise, after its percent (or its change, from a zero base): "+2.1% · within noise"
+  // (Plot's copy, section 4). Only where the data judged it within; a clear or unjudged change has no flag.
+  const noted = (row: Record<string, unknown>, key: string) =>
+    lookup.type === "comparison" &&
+    row.noise === "within" &&
+    key ===
+      (row.percent_change === null || row.percent_change === undefined
+        ? "change"
+        : "percent_change");
   // A comparison's overall figures go in a last row; a breakdown's rows come first.
   const breakdown =
     lookup.type === "comparison" ? lookup.columns.find((c) => c.type === "string") : undefined;
@@ -671,30 +692,41 @@ export function LookupView({
           {controls}
         </div>
       )}
-      <div style={styles.rows}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              {lookup.columns.map((c) => (
-                <th key={c.key} style={styles.th}>
-                  {c.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[...shown, ...(totalRow ? [totalRow] : [])].map((row, i) => (
-              <tr key={i}>
+      {TableView && lookup.type !== "comparison" ? (
+        // The page's own table, with the lookup's evidence (Based on, faded rows) as its own tables have it.
+        <TableView result={lookup as QueryResult} />
+      ) : (
+        <div style={styles.rows}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
                 {lookup.columns.map((c) => (
-                  <td key={c.key} style={c.type === "number" ? styles.num : styles.td}>
-                    {cell(row[c.key])}
-                  </td>
+                  <th key={c.key} style={styles.th}>
+                    {c.label}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {[...shown, ...(totalRow ? [totalRow] : [])].map((row, i) => (
+                <tr key={i}>
+                  {lookup.columns.map((c) => (
+                    <td key={c.key} style={c.type === "number" ? styles.num : styles.td}>
+                      {cell(row[c.key])}
+                      {noted(row, c.key) && (
+                        <span style={styles.noise} title={NOISE_TIP}>
+                          {" "}
+                          · within noise
+                        </span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {(lookup.type === "data" || lookup.type === "chart") &&
         lookup.total !== null &&
         lookup.columns.length > 1 && (
@@ -778,6 +810,7 @@ const styles = {
     whiteSpace: "nowrap",
   },
   muted: { color: "var(--color-text-muted)", margin: 0, fontSize: 13 },
+  noise: { color: "var(--color-text-muted)", fontSize: 12, whiteSpace: "nowrap" },
   chartTitle: { fontSize: 13, fontWeight: 600, flex: "1 1 50%", minWidth: 0 },
   // A lookup's title with its Table toggle, as a pin's header has them.
   lookupHeader: {

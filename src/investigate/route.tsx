@@ -16,6 +16,7 @@ import { dataVersion } from "~/query/data-version.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import type { Route } from "./+types/route";
 import { DeweyChart } from "./charts/DeweyChart";
+import { ResultTable } from "./charts/ResultTable";
 import { FilterBar } from "./FilterBar";
 import { DIMENSION_LABELS, ledgersTitle, MEASURE_LABELS, measuresLabel } from "./format";
 import { Heatmap, heatTitle } from "./Heatmap";
@@ -381,6 +382,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
       <DeweyColumn className={styles.assistant}>
         <AssistantPanel
           ChartView={DeweyChart}
+          TableView={ResultTable}
           onPin={(chart) => pins.add(chart, "dewey")}
           onPinLookup={(pin) => pins.add(pin, "player")}
           isPinned={pins.has}
