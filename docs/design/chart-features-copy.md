@@ -246,7 +246,7 @@ David: "Named filter sets ("awarded paperbacks under $20") that can be applied t
 
 - **Saving:**
   - On the filter bar, after `Add a filter`, there's a `Save as segment` button. With no filters on, it's disabled with `Add a filter to save it as a segment`.
-  - The dialog is titled `Save these filters as a segment`, with the field `Name` and the buttons `Save segment` and `Cancel`. The name may be prefilled from the filters, as in `Award winners, paperback, under $20`.
+  - The dialog is titled `Save these filters as a segment`, with the field `Name` and the buttons `Save segment` and `Cancel`. The name is prefilled from the bar's own words, in its order, as in `Trade paperback, Award winner`, with a long list cut to three (Sim, #387).
   - Its errors:
     - `Give the segment a name.`
     - `Keep the name to 60 characters.`
@@ -254,7 +254,10 @@ David: "Named filter sets ("awarded paperbacks under $20") that can be applied t
     - `These filters are already saved as "{name}".`
     - `You have {20} segments. Delete one to save another.` (the limit, `SEGMENT_LIMITS.segments`)
     - `This name can't be saved. Check it and try again.`
-- **The control:** `Segment`, a dropdown at the start of the filter bar. It reads `Segment: None` or `Segment: {name}`. Choosing one puts its filters on the bar, and if the player then changes a filter, it reads `Segment: {name}, edited`. When there are none, the menu says `No segments yet. Add filters, then choose Save as segment.`
+    - `A segment holds up to {50} filter values. Remove some to save it.` (singular: `1 filter value`)
+    - when another tab deleted it first: `That segment was deleted in another tab.`, and the menu refreshes without it
+    - when the save is busy and the draft is kept: `Your segment didn't save. Please save it again.`, as Reports has it
+- **The control:** `Segment`, a dropdown at the start of the filter bar. It reads `Segment: None` or `Segment: {name}`. Choosing one puts its filters on the bar, and if the player then changes a filter, it reads `Segment: {name}, edited`. Choosing `None` takes the filters off again, edits included (Sim, #387). When there are none, the menu says `No segments yet. Add filters, then choose Save as segment.`
 - **Managing,** from each segment's row:
   - `Rename`, with the title `Rename segment`, the field `Name`, and `Save` and `Cancel`;
   - `Edit filters`, which applies the segment and offers `Update "{name}"` on the bar;
@@ -265,7 +268,7 @@ David: "Named filter sets ("awarded paperbacks under $20") that can be applied t
 - **Edge cases:**
   - `Nothing matches both this chart's filters and {name}.`
   - After a deletion, on what used the segment: `This used a segment that's since been deleted, so it shows its own filters now.`
-- **Privacy:** segment names are the player's own words, kept in the save and never in analytics, which records counts and lengths only. The privacy page names them with the reports.
+- **Privacy:** segment names are the player's own words, kept in the save and never in analytics, which records counts only, not even lengths. The privacy page's line: `…and the names of segments you save. The play data counts them, never what they say.`
 
 ## 9. Relative quarters, and running a report for another quarter (Sim)
 
@@ -306,7 +309,7 @@ David: "Build it now. Forecast revenue and total units with hints, values for pr
     - `Fill in all three for revenue, or leave them all empty.`
     - `Keep the note to 500 characters.`
     - with control or reordering characters, which reports and segments refuse too: `This note can't be saved. Check it and try again.`
-- **On the result page,** a line for each measure forecast:
+- **On the result page,** under the heading `How your forecast did`, a line for each measure forecast. The percent is of the real figure (Frank, Sim, Chart):
   - `Revenue: $142,300, inside your range of $130,000 to $150,000. You expected $140,000: off by $2,300 (2%).`
   - outside the range, `above` or `below` in place of `inside`;
   - when exactly right: `…You expected $142,300: spot on.`
