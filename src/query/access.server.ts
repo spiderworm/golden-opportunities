@@ -16,6 +16,8 @@ export interface QueryAccess {
   save: GameSave;
   /** For Dewey's lookups: the asking visitor's "Share play data" choice, carried on the token (#368). */
   sharing?: boolean;
+  /** An agent's per-answer token, which keys the evidence its panel gets (agent-evidence.server.ts). */
+  token?: string;
 }
 export function authorizeQuery(request: Request): QueryAccess {
   const authorization = request.headers.get("authorization");
@@ -26,6 +28,7 @@ export function authorizeQuery(request: Request): QueryAccess {
       kind: "agent",
       save: saveForQueryToken(match[1]),
       sharing: queryTokenSharing(match[1]),
+      token: match[1],
     };
   }
   if (!isLocalBrowserRequest(request))

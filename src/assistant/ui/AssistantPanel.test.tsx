@@ -333,3 +333,51 @@ it("puts a table's Pin beside its toggle in the header, not after the source (Da
   const plain = renderToString(<LookupView lookup={data} pinning={{ onPin: () => true }} />);
   expect(plain.indexOf('aria-label="Pin Revenue by genre"')).toBeLessThan(plain.indexOf("<table"));
 });
+
+it("draws a table with the page's own table where it has one, so its evidence shows as Investigate's (Chart)", () => {
+  type Lookup = Parameters<typeof LookupView>[0]["lookup"];
+  const data: Lookup = {
+    type: "data",
+    columns: [
+      { key: "genre", label: "Genre", type: "string", nullable: false },
+      { key: "avg_rating", label: "Average rating", type: "number", nullable: false },
+    ],
+    rows: [{ genre: "Mystery", avg_rating: 4.1 }],
+    total: 4.1,
+    source: "S",
+    evidence: { unit: "ratings", rows: [{ n: 212, se: 0.09 }], total: { n: 212, se: 0.09 } },
+  };
+  const TableView = ({ result }: { result: { evidence?: { unit: string | null } } }) => (
+    <div data-table={result.evidence?.unit ?? "none"} />
+  );
+  const html = renderToString(<LookupView lookup={data} TableView={TableView} />);
+  expect(html).toMatch(/data-table="ratings"/);
+  expect(html).not.toMatch(/<table/);
+  // Without it, the panel's own table.
+  expect(renderToString(<LookupView lookup={data} />)).toMatch(/<table/);
+});
+
+it("flags a comparison's change within noise after its percent, only where the data judged it (Plot)", () => {
+  type Lookup = Parameters<typeof LookupView>[0]["lookup"];
+  const comparison = {
+    type: "comparison",
+    columns: [
+      { key: "genre", label: "Genre", type: "string", nullable: true },
+      { key: "from", label: "2193-Q3", type: "number", nullable: true },
+      { key: "to", label: "2193-Q4", type: "number", nullable: true },
+      { key: "change", label: "Change", type: "number", nullable: true },
+      { key: "percent_change", label: "Change (%)", type: "number", nullable: true },
+    ],
+    rows: [
+      { genre: "Mystery", from: 100, to: 104, change: 4, percent_change: 4, noise: "within" },
+      { genre: "Poetry", from: 100, to: 300, change: 200, percent_change: 200, noise: "clear" },
+      { genre: "Drama", from: 0, to: 3, change: 3, percent_change: null, noise: "within" },
+    ],
+    total: { from: 200, to: 407, change: 207, percent_change: 103.5, noise: "clear" },
+    labels: { from: "2193-Q3", to: "2193-Q4" },
+    source: "S",
+  } as unknown as Lookup;
+  const html = renderToString(<LookupView lookup={comparison} />);
+  expect(html.match(/· within noise/g)).toHaveLength(2);
+  expect(html).toMatch(/title="A difference this small often shows up by chance/);
+});

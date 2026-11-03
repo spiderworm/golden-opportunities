@@ -16,6 +16,9 @@ import { fakeLookupAssistant } from "./server/fakeLookups.server.ts";
 import { queryToken } from "./server/queryToken.server.ts";
 import { AssistantUnavailable, type AssistantProvider } from "./server/provider.server.ts";
 import { orbitalToolServer } from "./tools/toolServer.server.ts";
+import { checkQuery } from "./tools/definitions.ts";
+import { agentEvidence, dropAgentEvidence } from "~/query/agent-evidence.server";
+import { validateQuery } from "~/query/validate";
 import type { Route } from "./+types/route";
 
 // Content-free events, except the withheld sentences ask.server keeps, held on this machine and never sent. What
@@ -45,6 +48,15 @@ function withQueryToken(
       const real = build(orbitalToolServer(capability.token, { pins }));
       return {
         name: real.name,
+        // Each lookup's raw evidence for the panel, from this answer's token only (query/agent-evidence.server.ts),
+        // keyed on the query the handler ran: the tool server's checked query, validated as the handler does.
+        evidenceFor(query) {
+          try {
+            return agentEvidence(capability.token, validateQuery(checkQuery(query)));
+          } catch {
+            return null;
+          }
+        },
         async *ask(prompt, signal) {
           try {
             if (probe) {
@@ -61,11 +73,14 @@ function withQueryToken(
             yield* real.ask(prompt, signal);
           } finally {
             capability.revoke();
+            // The answer is over: its evidence goes with its token.
+            dropAgentEvidence(capability.token);
           }
         },
       };
     } catch (error) {
       capability.revoke();
+      dropAgentEvidence(capability.token);
       throw error;
     }
   } catch (e) {

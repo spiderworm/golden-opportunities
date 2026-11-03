@@ -1,4 +1,5 @@
 import { recordDiscoveries } from "../game/discoveries.server";
+import { keepAgentEvidence } from "./agent-evidence.server";
 import { validateQuery } from "./validate";
 import { authorizeQuery, viewForAccess, type QueryAccess } from "./access.server";
 import { QueryError } from "./errors";
@@ -177,6 +178,11 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
       const body = withSharing(access.sharing ?? sharing, () => {
         const view = resolveView(access);
         const result = run(query, view, track);
+        // Dewey's lookups: their raw evidence kept for his panel (never his model), under this answer's token, before
+        // the answer goes back, so it's there when the assistant's server builds the browser's event. Keyed on the
+        // checked query the run used; the token is pinned to one data version (query-token.server.ts).
+        if (access.kind === "agent" && access.token)
+          keepAgentEvidence(access.token, query, result.evidence);
         const serialized = serializeResult(result);
         if (request.headers.get(EVIDENCE_HEADER) !== "none")
           recordEvidence(access, view, query, result);

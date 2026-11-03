@@ -6,6 +6,8 @@ import type { WireEvent } from "../events.ts";
 import { ASSISTANT_NAME } from "../name.ts";
 import { chartTitle, lookupPin, type ChartSpec } from "../tools/definitions.ts";
 import { isSameOriginBrowserRequest } from "../../platform/origin.server.ts";
+import { checkedEvidence } from "../tools/server.ts";
+import type { QueryResult } from "../../query/types.ts";
 import { acquire, arrive, arriveWithoutGame, ndjson } from "./assistant.server.ts";
 import { markOffline, offlineCopy, type OfflineReason } from "./availability.server.ts";
 import { Refs, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
@@ -166,6 +168,32 @@ const pinFor = (event: { name: string; input: unknown }) => {
  * tool input goes only into a lookup's pin, checked as the tool server checked it, and never shown: the pin's
  * title is built from its measure and dimensions. Tool output is ours, but parse it defensively.
  */
+/**
+ * A table's or chart's raw evidence, for the panel only (Goldy's and Chart's design, after #337): from the
+ * provider's store for this answer, keyed on the checked query, and attached only when it checks out as the tool
+ * server's does and has one entry per row the browser is sent; otherwise none, and the chart draws without ranges.
+ * The model's tool output, already sent, never had it.
+ */
+export function withEvidence(
+  wire: WireEvent | null,
+  event: ProviderEvent,
+  provider: Pick<AssistantProvider, "evidenceFor">,
+): WireEvent | null {
+  if (!wire || (wire.type !== "data" && wire.type !== "chart") || !provider.evidenceFor)
+    return wire;
+  if (event.type !== "tool") return wire;
+  const input = event.input as Record<string, unknown> | null;
+  const query = wire.type === "chart" ? input?.query : input;
+  let evidence: QueryResult["evidence"] | null;
+  try {
+    evidence = provider.evidenceFor(query);
+  } catch {
+    return wire;
+  }
+  const checked = checkedEvidence(evidence, wire.rows.length);
+  return checked ? { ...wire, evidence: checked } : wire;
+}
+
 export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
   if (event.type === "text") return event;
   // Keyed on the query layer's error code, which the tool server puts first ("SESSION_ENDED: ..."); the rest of
@@ -422,7 +450,7 @@ export function ask(
                 }
               }
             }
-            const wire = toWire(event, input.pins);
+            const wire = withEvidence(toWire(event, input.pins), event, provider);
             if (!wire) continue;
             if (wire.type === "text") {
               // Text before and after a tool call arrives as one run ("...by quarter.I didn't..."): break it.

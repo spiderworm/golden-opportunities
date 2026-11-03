@@ -1,3 +1,4 @@
+import type { QueryResult } from "../../query/types.ts";
 import { redactEmails } from "./redact.server.ts";
 
 // The assistant's model, behind our own interface, so the engine can change (to the API, before release)
@@ -20,6 +21,11 @@ export type ProviderEvent =
 export interface AssistantProvider {
   /** For logs and analytics only, never shown as part of an answer. */
   readonly name: string;
+  /**
+   * A lookup's raw evidence (counts and standard errors) for the panel, from the query handler's store for this
+   * answer's token (query/agent-evidence.server.ts), or null. Never part of what the model sees.
+   */
+  evidenceFor?(query: unknown): QueryResult["evidence"] | null;
   /** Streams the answer. Stops, and cleans up, when `signal` aborts. */
   ask(prompt: AssistantPrompt, signal: AbortSignal): AsyncIterable<ProviderEvent>;
 }

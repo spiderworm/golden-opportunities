@@ -275,3 +275,35 @@ describe("keeping the conversation in the browser", () => {
     expect(loadConversation(storage, "inst")).toEqual([]);
   });
 });
+
+describe("a lookup's evidence in a kept conversation (Goldy's and Chart's design)", () => {
+  const withEvidence = (evidence: unknown) => {
+    const r = reply(1);
+    // JSON has no Infinity (it stores null, which is valid), so the bad errors here are negative ones.
+    const chart = (r.lookups as { type: string }[]).find((l) => l.type === "chart")!;
+    return { ...r, lookups: [{ ...chart, evidence }] };
+  };
+  const good = { unit: null, rows: [{ n: 120, se: 11 }], total: { n: 120, se: 11 } };
+
+  it("restores evidence that checks out", () => {
+    const storage = new MemoryStorage();
+    saveConversation(storage, "inst", [withEvidence(good)]);
+    expect(loadConversation(storage, "inst")).toEqual([withEvidence(good)]);
+  });
+
+  it("drops a turn whose evidence doesn't: a row too many, a bad count or error, an unknown unit, an extra key", () => {
+    for (const evidence of [
+      { ...good, rows: [...good.rows, { n: 1, se: 1 }] },
+      { ...good, rows: [{ n: -1, se: 1 }] },
+      { ...good, rows: [{ n: 1.5, se: 1 }] },
+      { ...good, rows: [{ n: 1, se: -1 }] },
+      { ...good, unit: "copies" },
+      { ...good, extra: 1 },
+    ]) {
+      const storage = new MemoryStorage();
+      storage.setItem("orbital.dewey.conversation", "");
+      saveConversation(storage, "inst", [withEvidence(evidence)]);
+      expect(loadConversation(storage, "inst"), JSON.stringify(evidence)).toEqual([]);
+    }
+  });
+});
