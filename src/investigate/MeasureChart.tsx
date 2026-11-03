@@ -220,7 +220,7 @@ export function MeasureChart({ state, result, also = [], quarters, onMeasures, o
 
       {!table && model.horizontal && model.ranked > TOP_RANKED && (
         <button type="button" className={styles.showAll} onClick={() => setShowAll(!showAll)}>
-          {showAll ? `Show the top ${TOP_RANKED}` : `Show all ${model.ranked} titles`}
+          {showAll ? `Show the top ${TOP_RANKED}` : `Show all ${model.ranked} ${state.by === "edition" ? "editions" : "titles"}`}
         </button>
       )}
       <p className={styles.source}>
