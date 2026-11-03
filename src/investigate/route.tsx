@@ -65,7 +65,7 @@ import { PinnedCharts } from "./pins/PinnedCharts";
 import { waterfallPinFor, type PinSpec } from "./pins/spec";
 import { SegmentActions, SegmentMenu } from "~/segments/SegmentControls";
 import { filterCount, sameFilters, type Segment } from "~/segments/segments";
-import { keepSegments, useSegments } from "~/segments/store";
+import { keepLoadedSegments, useSegments } from "~/segments/store";
 import { usePins } from "./pins/usePins";
 import { TitleView } from "./TitleView";
 import { cachedView } from "./view-cache.client";
@@ -128,7 +128,7 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
     const view = await serverLoader();
     // The segments live in the browser's store, not the cached view, so a view from the cache can't bring back an
     // old list (src/segments/store.ts).
-    keepSegments(view.segments);
+    keepLoadedSegments(view);
     return view;
   });
 }
@@ -165,7 +165,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   useEffect(() => setChosen(null), [searchParams]);
   const shown = chosen ?? shownFilters(searchParams, state.filters);
   // The saved segment the filters came from, if the URL names one the player still has (Plot, section 8).
-  const segments = useSegments(loaderData.segments);
+  const segments = useSegments(loaderData.segments, loaderData.dataVersion);
   const segmentId = searchParams.get(SEGMENT_PARAM);
   const applied = segments.find((s) => s.id === segmentId) ?? null;
   const edited = applied !== null && !sameFilters(applied.filters, state.filters);
