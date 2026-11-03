@@ -3,7 +3,7 @@
 // in the save's own validate(), so a hand-edited save can't grow past them. Client-safe: no server imports.
 // Relative .ts imports: the save store loads this in plain Node (store.server.test.ts), without the ~ alias.
 import { isQuarterId, type QuarterId } from "../game/quarters.ts";
-import { parsePinSpec, type PinSpec } from "../investigate/pins/spec.ts";
+import { parsePinSpec, pinKey, type PinSpec } from "../investigate/pins/spec.ts";
 
 export interface PlayerReport {
   /** The server's: one sent by the browser is ignored. */
@@ -92,7 +92,8 @@ export function validReports(value: unknown): value is PlayerReport[] {
 
 /** What an edit did, in counts only, for report_edited: never a title, note or chart's words. */
 export function editCounts(before: ReportInput, after: ReportInput) {
-  const keys = (r: ReportInput) => r.items.map((i) => JSON.stringify(i.spec));
+  // By pinKey: the same chart whatever its title or view, so toggling it isn't a removal and an addition.
+  const keys = (r: ReportInput) => r.items.map((i) => pinKey(i.spec));
   const was = keys(before);
   const now = keys(after);
   const kept = (list: string[], other: string[]) => list.filter((k) => other.includes(k));
