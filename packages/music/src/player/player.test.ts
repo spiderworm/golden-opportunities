@@ -87,3 +87,38 @@ test("the app's storage, from @tellim/platform, is where its choices are kept", 
   assert.equal(JSON.parse(m.get("cubeberg.music")!).volume, 0.4);
   assert.throws(() => createMusic({ songs, base: "" }));
 });
+
+test("startPaused: the first song waits, paused, for the player's play, with nothing reported, and a reload holds it", async () => {
+  const m = new Map<string, string>();
+  const storage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  const events: string[] = [];
+  const list = ["a", "b", "c"].map((id) => ({ id, file: id + ".mp3", title: id.toUpperCase() }));
+  const music = createMusic({ key: "p", songs: list, base: "", storage, remember: true, startPaused: true, track: (e) => void events.push(e) });
+  const queued = music.state().song;
+  assert.ok(queued);
+  assert.equal(music.state().paused, true);
+  music.start(); // a tap: but it starts paused
+  assert.equal(FakeAudio.made.at(-1)!.src, "");
+  assert.deepEqual(events, []);
+
+  const again = createMusic({ key: "p", songs: list, base: "", storage, remember: true });
+  assert.equal(again.state().song?.id, queued!.id);
+  assert.equal(again.state().paused, true);
+  await again.resume("dock");
+  assert.equal(FakeAudio.made.at(-1)!.src, queued!.file);
+  assert.equal(again.state().paused, false);
+});
+
+test("startPaused with a session restored: that song, paused", async () => {
+  const m = new Map<string, string>();
+  const storage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  const list = ["a", "b", "c", "d"].map((id) => ({ id, file: id + ".mp3", title: id.toUpperCase() }));
+  const first = createMusic({ key: "q", songs: list, base: "", storage, remember: true });
+  first.start();
+  const playing = first.state().song!.id;
+  first.pause("dock");
+  await first.resume("dock"); // saved as playing
+  const again = createMusic({ key: "q", songs: list, base: "", storage, remember: true, startPaused: true });
+  assert.equal(again.state().song?.id, playing);
+  assert.equal(again.state().paused, true);
+});

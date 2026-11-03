@@ -8,7 +8,7 @@ all games."). The plan, and why, is in `plans/music-player.md`.
 |---|---|
 | `src/queue/` | The order: pinned songs first, once each open; with Shuffle off, the rest in the player's dragged order; with it on (the default), shuffled each open, new songs at the front of the first shuffle; never the same song twice running; exclusions read as each song is picked. |
 | `src/prefs/` | What the player chose, kept on the device: volume, excluded, hearted, their order, Shuffle, and the songs known (so an update's songs are New). |
-| `src/player/` | `createMusic()`: streams the songs through one `<audio>`, through Web Audio when the game gives its context (and its effects), starts on the first touch, pauses out of sight, skips a song that won't load, and sends every choice to the game's `track()`. |
+| `src/player/` | `createMusic()`: streams the songs through one `<audio>`, through Web Audio when the game gives its context (and its effects), starts on the first touch, pauses out of sight, skips a song that won't load, and sends every choice to the game's `track()`. `startPaused` starts it as if the player had pressed pause: the first song (or the one restored) waits for their play, through reloads, with nothing reported. |
 | `src/player/media-keys.ts` | The device's own controls, on by default (`mediaKeys`): media keys, headphone and Bluetooth buttons, the lock screen and the browser's media controls play, pause, skip and go back, through the Media Session, and the device names the song (`mediaKeys: { album, artist, artwork }` adds to it; `false` leaves them alone). Their analytics say `where: "device"`. |
 | `src/player/desktop.ts` | `createDesktopMusic()`: `createMusic()` with a computer's web app defaults (`desktopDefaults`), each overridable: `remember`, `oneTab`, and playing on behind other tabs (paused when hidden only on a touch screen). |
 | `src/manifest/` | `parseManifest()` / `loadManifest(url)`: a song list read at run time (a web app's `songs.json`), every entry checked, a bad one left out and counted. |
@@ -84,7 +84,7 @@ All through the game's `track()`:
 `music_paused` / `music_resumed {id, where}`, `song_excluded` / `song_included {id, pinned, where}`,
 `song_hearted` / `song_unhearted {id, where}`, `song_moved {id, from, to, where}`, `music_shuffle_set {on, where}`,
 `music_player_opened {from}` (the full player from the pop-up or dock, or the playlist in Settings),
-`music_volume_set {level, where}` (once the slider is let go). `where` is `popup`, `dock` or `settings`.
+`music_volume_set {level, where}` (once the slider is let go). `where` is `popup`, `dock`, `settings` or `device` (the device's own controls: pause, play, skip, back).
 With `oneTab`, `music_other_tab {action}`, about another app: `held_back` (it was playing, so this one
 didn't start), `taken` (it took the music), `took_over` (this app took it), `blocked` (it wouldn't let
 go). The app's own tabs passing the music between them send nothing.
