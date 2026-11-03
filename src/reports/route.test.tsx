@@ -126,6 +126,29 @@ describe("Reports", () => {
     );
   });
 
+  it("still goes on to the results when the save is busy, and leaves the report new", async () => {
+    const save = saves.create();
+    submitPlan(requestFor(save.id, "POST"), { levers: [] });
+    const lock = path.join(directory, "saves", save.id + ".json.lock");
+    writeFileSync(lock, "");
+    try {
+      const body = new FormData();
+      body.set("quarter", "2194-Q1");
+      body.set("intent", "results");
+      const to = (await action({
+        request: new Request("http://localhost/reports", {
+          method: "POST",
+          headers: { origin: "http://localhost", cookie: "orbital_save=" + save.id },
+          body,
+        }),
+      } as Route.ActionArgs)) as Response;
+      expect(to.headers.get("Location")).toBe("/result?quarter=2194-Q1");
+    } finally {
+      rmSync(lock);
+    }
+    expect(saves.read(save.id).reportsSeen).toBeUndefined();
+  });
+
   it("refuses a save whose seen reports aren't distinct quarters in play order", () => {
     for (const reportsSeen of [
       ["2194-Q2", "2194-Q1"],

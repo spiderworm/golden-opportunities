@@ -45,7 +45,13 @@ export function loader({ request }: Route.LoaderArgs) {
 export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
   const quarter = form.get("quarter");
-  markReportSeen(request, quarter);
+  try {
+    markReportSeen(request, quarter);
+  } catch (error) {
+    // A busy or changed save (409) only leaves the report new: it mustn't take the page to its error screen, or
+    // keep the player from the results they asked for (Audit, #282). Anything else is a real refusal.
+    if (!(error instanceof Response) || error.status !== 409) throw error;
+  }
   if (form.get("intent") === "results" && isQuarterId(quarter))
     return redirect(`/result?quarter=${quarter}`);
   return null;
