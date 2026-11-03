@@ -264,6 +264,15 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             track("investigate_last_year_toggled", { on });
             update({ ...state, lastYear: on });
           }}
+          onShare={(mode) => {
+            // The mode and what it's of, never a group or a figure.
+            track("investigate_share_toggled", {
+              mode: mode ?? "off",
+              measure: state.measure,
+              by: state.by,
+            });
+            update({ ...state, share: mode });
+          }}
           drove={drove}
           onDrove={(on) => {
             track("investigate_drove_toggled", { on, by: state.by });

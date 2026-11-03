@@ -21,7 +21,15 @@ import { droveLabels } from "./charts/waterfall-chart";
 import { Dropdown, ToggleMenu } from "~/platform/ui/Dropdown";
 import { EvidenceLegend, Legend } from "./charts/Legend";
 import { SCATTER_HEIGHT, scatterOption, scatterPoints, scatterTitle } from "./charts/scatter-chart";
-import { LastYearTable, ResultTable } from "./charts/ResultTable";
+import { LastYearTable, ResultTable, ShareTable } from "./charts/ResultTable";
+import {
+  cutNote,
+  headline,
+  shareHeight,
+  shareModel,
+  shareOption,
+  shareTitle,
+} from "./charts/share-chart";
 import {
   changeLine,
   ghostBasedOn,
@@ -60,6 +68,10 @@ import {
   droveBlock,
   droveGroups,
   droveOn,
+  GROUP_PLURALS,
+  runningBlock,
+  shareBlock,
+  type ShareMode,
   type ChartMeasure,
   type Grouping,
   type InvestigateState,
@@ -86,6 +98,8 @@ export interface MeasureChartProps {
   drove?: DroveRows | null;
   /** "What drove the change", and its price, volume and mix split, switched on or off. */
   onDrove?: (on: boolean) => void;
+  /** "% of total" or "Running share" switched: the mode now, or null for the figures. */
+  onShare?: (mode: ShareMode | null) => void;
   onSplit?: (on: boolean) => void;
   onDrill: (value: string) => void;
   onTable: (shown: boolean) => void;
@@ -142,6 +156,7 @@ export function MeasureChart({
   onLastYear,
   drove = null,
   onDrove,
+  onShare,
   onSplit,
   onDrill,
   onTable,
@@ -293,14 +308,33 @@ export function MeasureChart({
         split: !!waterfallModel.split && !("problem" in waterfallModel.split),
       });
   }, [waterfallModel]);
+  // % of total and the running share (David, req_fa2e6a0dbbec; Plot's copy): of the query's own total, the one
+  // before the row limit. Last year and What drove the change, once on and shown, come first; so does Compare
+  // quarters, which shareBlock checks.
+  const shareReason =
+    shareBlock(state, { lastYear: labels !== null, drove: waterfallOn }) ??
+    (result.total !== null && result.total > 0 ? null : "Can't show shares for this chart");
+  const sharesOn = state.share !== null && shareReason === null;
+  const running = sharesOn && state.share === "running" && runningBlock(state.by) === null;
+  const shares = useMemo(
+    () =>
+      sharesOn ? shareModel(model, result.total, { running, truncated: result.truncated }) : null,
+    [sharesOn, running, model, result.total, result.truncated],
+  );
+  const offShares = (to: string) => (sharesOn ? `Turn off % of total to ${to}` : null);
+  const group = GROUP_PLURALS[state.by].replace(/s$/, "");
+  const baseTitle = `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}`;
   const title = waterfallModel
     ? `What drove revenue's change, ${droveWords.then} to ${droveWords.now}, by ${DIMENSION_LABELS[state.by].toLowerCase()}`
     : scatter
       ? scatterTitle(measures, state.by)
-      : `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}${labels ? `, vs. ${labels.then}` : ""}`;
+      : shares
+        ? shareTitle(baseTitle, running)
+        : `${baseTitle}${labels ? `, vs. ${labels.then}` : ""}`;
+  const top = shares && !table ? headline(shares) : null;
 
   function drillAt(index: number) {
-    const value = model.categories[index];
+    const value = (shares ?? model).categories[index];
     // Unknown groups can't be filtered on: the query API has no null filter.
     if (value !== null && value !== undefined) onDrill(value);
   }
@@ -364,21 +398,22 @@ export function MeasureChart({
                       ? "Turn off What drove the change to compare quarters"
                       : labels
                         ? "Turn off vs. same quarter last year to compare quarters"
-                        : null,
+                        : offShares("compare quarters"),
                 onToggle: () => onCompare(!state.compare),
               },
               {
                 key: "last_year",
                 label: "vs. same quarter last year",
                 on: labels !== null,
-                reason: lastYearReason,
+                reason: lastYearReason ?? (labels ? null : offShares("compare with last year")),
                 onToggle: () => onLastYear?.(!state.lastYear),
               },
               {
                 key: "drove",
                 label: "What drove the change",
                 on: waterfallModel !== null,
-                reason: droveReason,
+                reason:
+                  droveReason ?? (waterfallModel ? null : offShares("see what drove the change")),
                 hint: `See which ${droveGroups(state.by) ?? "groups"} added to revenue and which took away`,
                 onToggle: () => onDrove?.(!state.drove),
               },
@@ -395,6 +430,22 @@ export function MeasureChart({
                     },
                   ]
                 : []),
+              {
+                key: "share",
+                label: "% of total",
+                on: sharesOn,
+                reason: shareReason,
+                hint: `Show each ${group}'s share of all ${MEASURE_LABELS[state.measure].toLowerCase()}`,
+                onToggle: () => onShare?.(sharesOn ? null : "total"),
+              },
+              {
+                key: "running",
+                label: "Running share",
+                on: running,
+                reason: shareReason ?? runningBlock(state.by),
+                hint: "Largest first, with a line adding up their share as it goes",
+                onToggle: () => onShare?.(running ? "total" : "running"),
+              },
               {
                 key: "scatter",
                 label: "Scatter plot",
@@ -500,6 +551,21 @@ export function MeasureChart({
             />
           </>
         )
+      ) : shares ? (
+        table ? (
+          <ShareTable result={result} by={state.by} measure={state.measure} running={running} />
+        ) : (
+          <>
+            {top && <p className={styles.shareHeadline}>{top}</p>}
+            <EChart
+              option={shareOption(shares, { selected })}
+              height={shareHeight(shares)}
+              label={`${title}. ${top ? `${top}. ` : ""}Click to look closer.`}
+              onCategoryClick={drillAt}
+              categoryAxis={shares.horizontal ? "y" : "x"}
+            />
+          </>
+        )
       ) : table ? (
         labels ? (
           <LastYearTable result={result} by={state.by} measure={state.measure} labels={labels} />
@@ -549,6 +615,7 @@ export function MeasureChart({
           ? // The waterfall's own two queries, one per quarter, not the chart's (Chart, #335).
             `Source: ${droveWords.then}: ${drove.thenRows.revenue.source} ${droveWords.now}: ${drove.nowRows.revenue.source}`
           : `Source: ${result.source}`}
+        {shares && cutNote(shares) ? ` ${cutNote(shares)}` : ""}
       </p>
     </section>
   );
