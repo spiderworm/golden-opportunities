@@ -416,6 +416,7 @@
   display: grid;
   align-content: start;
   gap: 16px;
+  box-sizing: border-box;
   width: 480px;
   max-width: 100vw;
   padding: 24px;
