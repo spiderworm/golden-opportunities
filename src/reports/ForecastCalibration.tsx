@@ -13,13 +13,20 @@ import styles from "./Reports.module.css";
 // then for each of revenue and units sold, the hit rate, the lean and the typical range, each explained on hover or
 // focus, and a small chart of the range against what happened. Reports shows it, and Decide's panel, read-only.
 
-export function ForecastCalibration({ calibration }: { calibration: Calibration }) {
+export function ForecastCalibration({
+  calibration,
+  heading: Heading = "h2",
+}: {
+  calibration: Calibration;
+  /** Its heading's level: a page's section's, or, in Decide's panel under its own title, one below. */
+  heading?: "h2" | "h3";
+}) {
   const id = useId();
   return (
     <section className={styles.calibration} aria-labelledby={`${id}-heading`}>
-      <h2 id={`${id}-heading`} className={styles.calibrationHeading}>
+      <Heading id={`${id}-heading`} className={styles.calibrationHeading}>
         {COPY.heading}
-      </h2>
+      </Heading>
       <p className={styles.calibrationCount}>
         {COPY.count(calibration.forecast, calibration.played)}
       </p>

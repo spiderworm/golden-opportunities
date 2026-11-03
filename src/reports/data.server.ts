@@ -1,5 +1,6 @@
 import { removedQuarter } from "~/game/progress";
 import { getGameSession } from "~/game/session.server";
+import { calibration } from "~/forecast/forecast.server";
 import { shopReports } from "./shop.server";
 
 /**
@@ -18,6 +19,8 @@ export function reportsData(request: Request) {
     editable: removedQuarter(save) === null,
     // The periods the player can see, for a chart's month axis, as Investigate's board has them.
     quarters: [...queryView.periods].sort(),
+    // How the player's own forecasts have done (src/forecast): Reports' section, and Decide's panel's, read-only.
+    calibration: calibration(request),
   };
 }
 

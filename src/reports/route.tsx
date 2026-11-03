@@ -26,6 +26,7 @@ import { overallOption } from "./overall-chart";
 import { reportCounts } from "./player";
 import { applyReportChange, changeFrom, type ReportOutcome } from "./player.server";
 import { PlayerReports, NewReportButton } from "./PlayerReports";
+import { ForecastCalibration } from "./ForecastCalibration";
 import type { ShopReport } from "./shop.server";
 import { reportsData } from "./data.server";
 import resultStyles from "~/result/Result.module.css";
@@ -134,7 +135,7 @@ function reportEvent(intent: string, written: ReportOutcome) {
 const measureName = (id: MeasureId) => RESULT_COPY.reportCard.measures[id];
 
 export default function Reports({ loaderData }: Route.ComponentProps) {
-  const { reports, record, removedAt, player, editable, quarters } = loaderData;
+  const { reports, record, removedAt, player, editable, quarters, calibration } = loaderData;
   const newReports = reports.filter((r) => r.new).length;
   // Once per visit to the page, with what it showed: counts only.
   useEffect(() => {
@@ -190,6 +191,8 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
         )}
       </section>
       <PlayerReports reports={player} editable={editable} quarters={quarters} />
+      {/* How the player's own forecasts have done, once a quarter is played (David, req_6d136a2b7fb3). */}
+      {calibration.played > 0 && <ForecastCalibration calibration={calibration} />}
     </div>
   );
 }
