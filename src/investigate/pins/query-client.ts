@@ -1,5 +1,5 @@
 import { DATA_VERSION_HEADER, queryCache, queryKey, type Loaded } from "~/platform/query-cache.client";
-import type { Query, QueryErrorResponse, QueryResult } from "~/query/types";
+import { EVIDENCE_HEADER, type Query, type QueryErrorResponse, type QueryResult } from "~/query/types";
 
 export class QueryRequestError extends Error {
   readonly code: string;
@@ -16,15 +16,18 @@ export class QueryRequestError extends Error {
  * cards asking the same thing, cost one request. The server records discovery evidence when it answers; a cached
  * answer is one it already answered, and recorded, for the same version. A failed recording is an error response
  * (RATE_LIMITED), and errors are never kept.
+ *
+ * `evidence: false` is for a view that's context, never evidence (a pinned heatmap, Plot, #266): the server answers
+ * without recording it. Its answers are kept apart, so the same query shown as evidence still reaches the server.
  */
-export function fetchQuery(query: Query, signal?: AbortSignal): Promise<QueryResult> {
-  return queryCache.load(`query:${queryKey(query)}`, () => postQuery(query), signal);
+export function fetchQuery(query: Query, signal?: AbortSignal, { evidence = true }: { evidence?: boolean } = {}): Promise<QueryResult> {
+  return queryCache.load(`${evidence ? "query" : "context"}:${queryKey(query)}`, () => postQuery(query, evidence), signal);
 }
 
-async function postQuery(query: Query): Promise<Loaded<QueryResult>> {
+async function postQuery(query: Query, evidence: boolean): Promise<Loaded<QueryResult>> {
   const response = await fetch("/api/query", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...(evidence ? {} : { [EVIDENCE_HEADER]: "none" }) },
     body: JSON.stringify(query),
   });
   const text = await response.text().catch(() => "");
