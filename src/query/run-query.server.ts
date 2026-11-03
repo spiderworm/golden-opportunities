@@ -15,8 +15,13 @@ const labels: Record<Dimension | Measure, string> = {
 };
 const weekdayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 type Dimensions = Partial<Record<Dimension, string | null>>;
-interface Fact { dimensions: Dimensions; value: number; orderId?: string; simulated?: boolean; awards?: readonly string[] }
-interface Aggregate { sum: number; count: number; orders: Set<string> }
+/** A fact from a sale cell (sale-cells.ts) stands for `weight` lines, with `orders` distinct orders among them. */
+interface Fact { dimensions: Dimensions; value: number; orderId?: string; simulated?: boolean; awards?: readonly string[]; weight?: number; cell?: number; orders?: number }
+/**
+ * Distinct orders: those of lines in a set, plus those of cells as counted, less the orders counted in more than one
+ * of the aggregate's cells (`overlap`), so an order spanning cells is counted once.
+ */
+interface Aggregate { sum: number; count: number; orders: Set<string>; cellOrders: number; overlap: number }
 const cache = new Map<string, QueryResult>();
 
 function bookDimensions(book: DeepReadonly<JoinedBook> | null): Dimensions {
@@ -43,6 +48,21 @@ function editionOf(sale: DeepReadonly<SaleLine>): string {
 const priceBand = (price: number) => PRICE_BANDS[price < 10 ? 0 : price < 20 ? 1 : price < 30 ? 2 : 3];
 /** A book's award names, for the filter-only award dimension: a fact matches if any of them is in the filter. */
 const awardsOf = (book: DeepReadonly<JoinedBook> | null): readonly string[] => book?.awards.map(award => award.name) ?? [];
+/**
+ * Sums of money and discounts are kept as integers, so they're exact and don't depend on the order lines are added
+ * in (docs/design/rollups.md): every list price is whole cents and every discount whole basis points (Sim, #251).
+ * A line's revenue is cents x (10,000 - basis points), in millionths of a dollar; a five-year save totals about
+ * 2e13 of them, well inside 2^53.
+ */
+const REVENUE_UNIT = 1e6;
+const DISCOUNT_UNIT = 1e4;
+function wholeUnits(amount: number, unit: number): number {
+  const units = Math.round(amount * unit);
+  if (Math.abs(units - amount * unit) > 1e-6) throw new QueryError('INVALID_VIEW', 'A visible sale has a price or discount finer than the ledgers keep.');
+  return units;
+}
+const basisPoints = (discount: number) => wholeUnits(discount, DISCOUNT_UNIT);
+const lineRevenue = (listPrice: number, discount: number) => wholeUnits(listPrice, 100) * (DISCOUNT_UNIT - basisPoints(discount));
 function saleFact(sale: DeepReadonly<SaleLine>, measure: Measure, periods: Set<string>, simulated: boolean): Fact | null {
   if (typeof sale.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(sale.date)) throw new QueryError('INVALID_VIEW', 'A sale has an invalid calendar date.');
   const date = new Date(`${sale.date}T00:00:00Z`);
@@ -54,10 +74,11 @@ function saleFact(sale: DeepReadonly<SaleLine>, measure: Measure, periods: Set<s
   return { dimensions: { ...bookDimensions(sale.book), quarter, month: sale.date.slice(0, 7), weekday: WEEKDAYS[date.getUTCDay()],
     format: sale.format, edition: editionOf(sale), list_price: `$${sale.listPrice.toFixed(2)}`, price_band: priceBand(sale.listPrice),
     publisher: sale.publisher.name, discounted: sale.discount > 0 ? 'yes' : 'no', discount_rate: `${Number((sale.discount * 100).toFixed(8))}%` },
-    value: (measure === 'revenue' || measure === 'avg_order_value') ? sale.listPrice * (1 - sale.discount) : measure === 'avg_discount' ? sale.discount : 1,
+    value: (measure === 'revenue' || measure === 'avg_order_value') ? lineRevenue(sale.listPrice, sale.discount) : measure === 'avg_discount' ? basisPoints(sale.discount) : 1,
     orderId: sale.orderId, simulated, awards: awardsOf(sale.book) };
 }
 function* facts(query: Query, view: QueryView): Generator<Fact> {
+  const cells: Fact[] = [];
   if (undated(query.measure) && !view.includeUndated) throw new QueryError('UNAVAILABLE_FACTS', 'This view does not allow the undated ratings and checkout snapshot.');
   const data = loadBookshop();
   if (query.measure === 'avg_rating' || query.measure === 'ratings') {
@@ -71,20 +92,33 @@ function* facts(query: Query, view: QueryView): Generator<Fact> {
     const periods = new Set<string>(view.periods);
     for (const sale of data.saleLines) { const fact = saleFact(sale, query.measure, periods, false); if (fact) yield fact; }
     for (const sale of view.simulatedSales ?? []) { const fact = saleFact(sale, query.measure, periods, true); if (fact) yield fact; }
+    // Cells are facts for their sample line, weighted by how many lines they hold (sale-cells.ts).
+    view.simulatedCells?.cells.forEach((cell, at) => {
+      const fact = saleFact(cell.line, query.measure, periods, true);
+      if (fact) cells.push({ ...fact, weight: cell.lines, cell: at, orders: cell.orders });
+    });
+    yield* cells;
   }
 }
 const undated = (measure: Measure) => measure === 'avg_rating' || measure === 'ratings' || measure === 'checkouts';
-const aggregate = (): Aggregate => ({ sum: 0, count: 0, orders: new Set() });
+const aggregate = (): Aggregate => ({ sum: 0, count: 0, orders: new Set(), cellOrders: 0, overlap: 0 });
+const orderCount = (target: Aggregate) => target.orders.size + target.cellOrders - target.overlap;
 function add(target: Aggregate, fact: Fact, measure: Measure): void {
-  target.sum += fact.value;
-  target.count++;
-  if (['orders', 'avg_order_value', 'orders_per_day'].includes(measure)) target.orders.add(fact.orderId!);
+  const weight = fact.weight ?? 1;
+  target.sum += fact.value * weight;
+  target.count += weight;
+  if (!['orders', 'avg_order_value', 'orders_per_day'].includes(measure)) return;
+  if (fact.cell === undefined) target.orders.add(fact.orderId!);
+  else target.cellOrders += fact.orders!;
 }
 function value(target: Aggregate, measure: Measure, days = 0): number | null {
-  if (measure === 'orders') return target.orders.size;
-  if (measure === 'orders_per_day') return days ? target.orders.size / days : null;
-  if (measure === 'avg_order_value') return target.orders.size ? target.sum / target.orders.size : null;
-  if (measure === 'avg_discount' || measure === 'avg_rating') return target.count ? target.sum / target.count : null;
+  const orders = orderCount(target);
+  if (measure === 'orders') return orders;
+  if (measure === 'orders_per_day') return days ? orders / days : null;
+  if (measure === 'avg_order_value') return orders ? target.sum / REVENUE_UNIT / orders : null;
+  if (measure === 'avg_discount') return target.count ? target.sum / DISCOUNT_UNIT / target.count : null;
+  if (measure === 'avg_rating') return target.count ? target.sum / target.count : null;
+  if (measure === 'revenue') return target.sum / REVENUE_UNIT;
   return target.sum;
 }
 function compare(a: string | number | null | undefined, b: string | number | null | undefined, column: Dimension | Measure, direction = 'asc'): number {
@@ -104,6 +138,8 @@ function execute(query: Query, view: QueryView): QueryResult {
   const denominators = new Map<string, number>();
   const filters = Object.entries(query.filter ?? {}).map(([dimension, values]) => [dimension as Dimension, new Set(values)] as const);
   let simulated = 0;
+  const inTotal = new Set<number>();
+  const cellGroup = new Map<number, Aggregate>();
   if (!query.by.length) groups.set('[]', { dimensions: {}, aggregate: aggregate() });
   for (const fact of facts(query, view)) {
     if (!filters.every(([dimension, values]) => {
@@ -111,13 +147,27 @@ function execute(query: Query, view: QueryView): QueryResult {
       const v = fact.dimensions[dimension]; return v != null && values.has(v);
     })) continue;
     add(total, fact, query.measure);
-    if (fact.simulated) simulated++;
+    if (fact.simulated) simulated += fact.weight ?? 1;
+    if (fact.cell !== undefined) inTotal.add(fact.cell);
     const values = query.by.map(dimension => fact.dimensions[dimension] ?? null);
     values.forEach(checkLabel);
     const key = JSON.stringify(values);
     let group = groups.get(key);
     if (!group) { group = { dimensions: Object.fromEntries(query.by.map((dimension, i) => [dimension, values[i]])), aggregate: aggregate() }; groups.set(key, group); }
     add(group.aggregate, fact, query.measure);
+    if (fact.cell !== undefined) cellGroup.set(fact.cell, group.aggregate);
+  }
+  // An order spanning several of an aggregate's cells was counted once in each: count it once (sale-cells.ts).
+  for (const touched of view.simulatedCells?.spanning ?? []) {
+    const seen = new Map<Aggregate, number>();
+    let visible = 0;
+    for (const at of touched) {
+      if (inTotal.has(at)) visible++;
+      const group = cellGroup.get(at);
+      if (group) seen.set(group, (seen.get(group) ?? 0) + 1);
+    }
+    if (visible > 1) total.overlap += visible - 1;
+    for (const [group, count] of seen) if (count > 1) group.overlap += count - 1;
   }
   const rows: QueryRow[] = [...groups.values()].map(group => {
     let dayCount = 0;
@@ -135,7 +185,7 @@ function execute(query: Query, view: QueryView): QueryResult {
   });
   const visibleRows = rows.slice(0, query.limit ?? QUERY_LIMITS.rows);
   const grain = query.measure === 'avg_rating' || query.measure === 'ratings' ? 'ratings' : query.measure === 'checkouts' ? 'book/month checkout rows' : 'sale lines';
-  const calculation = { avg_order_value: 'sum of revenue / distinct OrderID', orders_per_day: `distinct OrderID / eligible calendar days including zero-sale days; total denominator ${days.length} days; group denominators use only calendar dimensions`, revenue: 'sum of price × (1 - discount), without per-line rounding', units: 'one unit per sale line', orders: 'distinct OrderID; total counted independently of groups', avg_discount: 'arithmetic mean of sale-line discount fractions', avg_rating: 'arithmetic mean of individual ratings, joined directly to books', checkouts: 'sum of Number of Checkouts, joined directly to books', ratings: 'count of individual ratings, joined directly to books' }[query.measure];
+  const calculation = { avg_order_value: 'sum of revenue / distinct OrderID', orders_per_day: `distinct OrderID / eligible calendar days including zero-sale days; total denominator ${days.length} days; group denominators use only calendar dimensions`, revenue: 'sum of price × (1 - discount), without per-line rounding, summed exactly', units: 'one unit per sale line', orders: 'distinct OrderID; total counted independently of groups', avg_discount: 'arithmetic mean of sale-line discount fractions', avg_rating: 'arithmetic mean of individual ratings, joined directly to books', checkouts: 'sum of Number of Checkouts, joined directly to books', ratings: 'count of individual ratings, joined directly to books' }[query.measure];
   const scope = undated(query.measure) ? 'undated source snapshot; no observed year or sales-quarter attribution' : `allowed periods: ${[...view.periods].sort().join(', ') || 'none'}; ${total.count - simulated} source and ${simulated} simulated sale lines`;
   const source = `${labels[query.measure]} from ${total.count.toLocaleString('en-US')} visible matching ${grain}: ${calculation}; ${scope}${query.by.length ? `; grouped by ${query.by.join(', ')}` : ''}${filters.length ? `; exact filters on ${filters.map(([dimension]) => dimension).join(', ')}` : ''}. Showing ${visibleRows.length} of ${rows.length} groups; total is before the row limit.`;
   return { truncated: visibleRows.length < rows.length, columns: [...query.by.map(key => ({ key, label: labels[key], type: 'string' as const, nullable: ['genre', 'series', 'title', 'author', 'awarded', 'volume', 'in_series'].includes(key) })),
@@ -151,7 +201,7 @@ export function runQuery(input: unknown, view: QueryView, track: QueryTrack = tr
     validateView(view);
     // History is immutable per build. Simulated arrays have no version contract yet,
     // so never cache them. The history key includes the ENTIRE visibility grant.
-    const key = view.simulatedSales?.length ? null : JSON.stringify([query, [...view.periods].sort(), view.includeUndated]);
+    const key = view.simulatedSales?.length || view.simulatedCells ? null : JSON.stringify([query, [...view.periods].sort(), view.includeUndated]);
     let result = key ? cache.get(key) : undefined;
     const cacheHit = result !== undefined;
     if (!result) {

@@ -214,3 +214,24 @@ describe('server-owned visibility and cache isolation', () => {
     expect(() => validateView({ ...long, simulatedSales: Array(MAX_SIMULATED_LINES + 1).fill(line) })).toThrow(expect.objectContaining({ code: 'INVALID_VIEW' }));
   });
 });
+
+describe('money and discounts, summed exactly (docs/design/rollups.md)', () => {
+  it("gives 2193's revenue to the ten-thousandth of a cent, and the same whatever order the lines come in", () => {
+    // 695,243.6112 is the workbook's own total, to its last digit: no float drift.
+    expect(run({ measure: 'revenue', by: [] }).total).toBe(695243.6112);
+    const lines = Array.from({ length: 3000 }, (_, i) => sale({ id: `sim:${i}`, orderId: `sim-order:${i % 1700}`, listPrice: [19.99, 7.49, 33.33][i % 3]!, discount: [0, 0.05, 0.13, 0.15][i % 4]! }));
+    const view = (sales: DeepReadonly<SaleLine>[]): QueryView => ({ periods: ['2194-Q1'], includeUndated: false, simulatedSales: sales });
+    for (const measure of ['revenue', 'avg_order_value', 'avg_discount'] as const) {
+      const forward = run({ measure, by: ['format'] }, view(lines));
+      const backward = run({ measure, by: ['format'] }, view([...lines].reverse()));
+      expect(backward.rows).toEqual(forward.rows);
+      expect(backward.total).toBe(forward.total);
+    }
+  });
+  it('refuses a price finer than a cent or a discount finer than a basis point, rather than round it', () => {
+    const view = (patch: Partial<DeepReadonly<SaleLine>>): QueryView => ({ periods: ['2194-Q1'], includeUndated: false, simulatedSales: [sale(patch)] });
+    expect(() => run({ measure: 'revenue', by: [] }, view({ listPrice: 19.995 }))).toThrow(expect.objectContaining({ code: 'INVALID_VIEW' }));
+    expect(() => run({ measure: 'avg_discount', by: [] }, view({ discount: 0.12345 }))).toThrow(expect.objectContaining({ code: 'INVALID_VIEW' }));
+    expect(run({ measure: 'revenue', by: [] }, view({ listPrice: 19.99, discount: 0.13 })).total).toBe(17.3913);
+  });
+});
