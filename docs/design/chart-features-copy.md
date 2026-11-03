@@ -14,7 +14,7 @@ The chart's modes sit in one menu instead of a row of toggles (#341). David name
   2. the ways to show one measure: `% of total`, `Running share`;
   3. `Events`;
   4. `Scatter plot`, last, since it's the only one that needs two measures.
-- **A disabled item** stays in the menu, and its reason shows as a tooltip on hover, keyboard focus and tap. The reason is also the item's accessible description. There's no line of text under it, so a menu with several unavailable items stays short (David, req_470d24167113: "Need tooltips on hovered view options in the dropdown that aren't available. Explanations as to why"; Goldy decided the layout). The sections below give each item's reasons.
+- **A disabled item** stays in the menu, and its reason shows as a tooltip on hover, keyboard focus and tap. The reason is also the item's accessible description. There's no line of text under it, so a menu with several unavailable items stays short (David, req_470d24167113: "Need tooltips on hovered view options in the dropdown that aren't available. Explanations as to why". Goldy put Plot's version to him, the tooltip alone with no grey line, and he said "Plot's version sounds right", req_31fff59ef50a). The sections below give each item's reasons.
 
 ## 1. Table and chart, either way (Chart; Sage for Dewey)
 
