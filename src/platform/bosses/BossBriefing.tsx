@@ -9,8 +9,10 @@ import {
   type FocusEvent,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 
 import { track } from "../analytics/analytics.client";
+import { LoadingLine, useCommitment } from "../ui/commitment";
 import { pageLeaving } from "../lazy/cut-off";
 import { retryImport } from "../lazy/retry";
 import { canRenderWebGL2 } from "../webgl";
@@ -23,14 +25,24 @@ import styles from "./BossBriefing.module.css";
 
 // three.js and the bosses' models load only here, once the browser has shown
 // it can draw them and the briefing is wide enough for its full bubbles (the
-// width at which BossLayout keeps them, 620 px). Until then, narrower than
-// that, or if the 3D scene fails, the 2D scene shows, with the same bubbles
-// and the same focus. Only the floor swaps: the layout, and whatever the page
-// hangs in its banner (a form being filled in, its focus), stays mounted.
-// The 3D scene's code is fetched before it swaps in, so the 2D scene is
-// replaced once, not twice; a failed fetch is tried once more, and again on
-// the next visit (not on every resize of this one).
+// width at which BossLayout keeps them, 620 px). Narrower than that, or if the
+// 3D scene fails, the 2D scene shows, with the same bubbles and the same focus.
+// Only the floor changes: the layout, and whatever the page hangs in its banner
+// (a form being filled in, its focus), stays mounted.
+//
+// Commit before you show (David, 3 Nov 2026: "We should display nothing more than "loading" until we've committed
+// to something. And "loading" shouldn't display unless we're taking more than 500ms"). The floor shows nothing
+// until the scene chosen is wholly ready: for 3D, its models drawn; for 2D, its figures decoded. Past 500 ms it
+// says "Loading…". Then the scene comes in once, never one scene and then the other. 3D that isn't ready within
+// SCENE_CAP_MS commits to 2D instead. Once committed, a visit never goes back up to 3D: a briefing narrowed below
+// WIDE drops to 2D, which fits, but widening again keeps it. A failed fetch is tried once more, and again on the
+// next visit.
 const WIDE = 620;
+/**
+ * How long 3D may take to draw before the floor commits to 2D: well past the slowest cold load measured (3.6 s at a
+ * one-minute load of 13; Orbit, #359), since a busier machine is slower still.
+ */
+export const SCENE_CAP_MS = 6000;
 let loading: Promise<ComponentType<BossScene3DProps>> | undefined;
 const loadScene3D = () =>
   (loading ??= retryImport(() => import("./BossScene3D")).then(
@@ -58,14 +70,21 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
   const [mode, setMode] = useState<SceneMode | null>(null);
   const [Scene3D, setScene3D] = useState<ComponentType<BossScene3DProps> | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
-  // Whether the 3D models have drawn: until then the 2D figures stay over the empty canvas (David, 3 Nov 2026).
+  // Whether the chosen scene is ready to show: the 3D models drawn, or the 2D figures decoded.
   const [drawn, setDrawn] = useState(false);
-  useEffect(() => {
-    if (mode !== "3d") setDrawn(false);
-  }, [mode]);
-  const shownModels = useCallback(() => setDrawn(true), []);
+  const [decoded, setDecoded] = useState(false);
+  // At once: called from the scene's frame loop, an ordinary update can lag it by ~250 ms under load, long enough
+  // for Loading… to show after the models have drawn (Orbit's measurement, #361).
+  const shownModels = useCallback(() => flushSync(() => setDrawn(true)), []);
   const failed = useRef(false);
   const box = useRef<HTMLDivElement>(null);
+  const committed = (mode === "3d" && drawn) || (mode === "2d" && decoded);
+  // Committed once, for the visit: no going back up to 3D.
+  const settled = useRef(false);
+  useEffect(() => {
+    if (committed) settled.current = true;
+  }, [committed]);
+  const { loading } = useCommitment(committed);
 
   useEffect(() => {
     const element = box.current;
@@ -75,6 +94,8 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
     let current = true;
     const decide = () => {
       if (!webgl || failed.current || element.clientWidth <= WIDE) return setMode("2d");
+      // Committed to a scene: wide again, it stays as it is.
+      if (settled.current) return;
       loadScene3D().then(
         (scene) => {
           if (!current) return;
@@ -98,6 +119,19 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
   }, []);
 
   const { open, select } = useBossFocus(bubbles, { initial, mode, onFocus });
+
+  // 2D: ready once every figure's image has decoded, so it comes in whole.
+  useEffect(() => {
+    if (mode !== "2d") return;
+    let current = true;
+    const images = [...(box.current?.querySelectorAll<HTMLImageElement>("[data-boss] img") ?? [])];
+    Promise.all(images.map((img) => img.decode().catch(() => undefined))).then(() => {
+      if (current) setDecoded(true);
+    });
+    return () => {
+      current = false;
+    };
+  }, [mode]);
 
   // One scene swapping in for the other remounts the bubbles; whoever had a bubble focused keeps it.
   const focused = useRef<number | null>(null);
@@ -123,7 +157,7 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
   const flat = <BossFigures bubbles={bubbles} open={open} onSelect={select} />;
   // The 3D scene broke, or its models didn't arrive: the 2D scene for the rest of this visit. A page that's
   // going away cut the models off itself, so that's nobody's failure.
-  const failed3D = useCallback((cause: "scene" | "models") => {
+  const failed3D = useCallback((cause: "scene" | "models" | "slow") => {
     if (!pageLeaving()) track("boss_scene_failed", { cause });
     failed.current = true;
     setMode("2d");
@@ -131,6 +165,12 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
   // One function for the whole visit: Bosses re-runs its failure effect when this changes, and would record
   // boss_scene_failed again.
   const modelsFailed = useCallback(() => failed3D("models"), [failed3D]);
+  // 3D that hasn't drawn within the cap: 2D instead, before anything has shown.
+  useEffect(() => {
+    if (mode !== "3d" || drawn) return;
+    const timer = setTimeout(() => failed3D("slow"), SCENE_CAP_MS);
+    return () => clearTimeout(timer);
+  }, [mode, drawn, failed3D]);
   return (
     <div
       ref={box}
@@ -147,24 +187,30 @@ export function BossBriefing({ bubbles, initial, onFocus }: BossBriefingProps) {
         columnRef={(i) => (el) => {
           columns.current[i] = el;
         }}
-        // The 2D figures first, always in the same place, so they never remount: over the canvas until its models
-        // have drawn, then gone. Swapping as the canvas mounted left the floor empty while the models loaded.
+        // The chosen scene, hidden until it's ready, then shown once; until then, after 500 ms, "Loading…".
         floor={
           <>
-            {!(mode === "3d" && Scene3D && drawn) && flat}
+            {!committed && <LoadingLine loading={loading} className={styles.loading} />}
+            {mode === "2d" && (
+              <div className={styles.scene} data-ready={decoded || undefined}>
+                {flat}
+              </div>
+            )}
             {mode === "3d" && Scene3D && (
-              <SceneBoundary fallback={null} onError={() => failed3D("scene")}>
-                <Scene3D
-                  bubbles={bubbles}
-                  open={open}
-                  onSelect={select}
-                  columns={columns}
-                  reducedMotion={reducedMotion}
-                  onShown={restoreFocus}
-                  onDrawn={shownModels}
-                  onFailed={modelsFailed}
-                />
-              </SceneBoundary>
+              <div className={styles.scene} data-ready={drawn || undefined}>
+                <SceneBoundary fallback={null} onError={() => failed3D("scene")}>
+                  <Scene3D
+                    bubbles={bubbles}
+                    open={open}
+                    onSelect={select}
+                    columns={columns}
+                    reducedMotion={reducedMotion}
+                    onShown={restoreFocus}
+                    onDrawn={shownModels}
+                    onFailed={modelsFailed}
+                  />
+                </SceneBoundary>
+              </div>
             )}
           </>
         }

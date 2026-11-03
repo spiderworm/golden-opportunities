@@ -13,6 +13,7 @@ import { entryGate } from "./entry/gate.server";
 import { startAnalytics } from "./platform/analytics/analytics.client";
 import { serverAnalytics } from "./platform/analytics/analytics.server";
 import { instanceId } from "./platform/analytics/instance.server";
+import { visitorSharingMiddleware } from "./platform/analytics/visitor-sharing.server";
 import { closedMiddleware } from "./platform/closed/closed.server";
 import { revalidateAbovePage } from "./platform/revalidate";
 import "./platform/theme/theme.css";
@@ -21,7 +22,13 @@ import { PhoneScreen } from "./phone/PhoneScreen";
 
 // Closed mode runs first, so a closed game runs no loader, action or agent; then the entry page, at any URL,
 // until the player has agreed (David, 3 Nov 2026). A visitor who hasn't agreed yet gets the closed page (Goldy).
-export const middleware: Route.MiddlewareFunction[] = [closedMiddleware, entryGate];
+export const middleware: Route.MiddlewareFunction[] = [
+  // First, so every request runs as its visitor, the entry page's and the closed page's included: a deployed
+  // player's "Share play data" choice is theirs alone (Audit, #368).
+  visitorSharingMiddleware,
+  closedMiddleware,
+  entryGate,
+];
 
 export function loader() {
   serverAnalytics();

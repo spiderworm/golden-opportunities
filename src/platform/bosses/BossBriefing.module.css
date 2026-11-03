@@ -2,3 +2,36 @@
 .briefing {
   min-width: 0;
 }
+
+/* The scene on the floor: there, but unseen, until it's wholly ready; then in once, with a short fade (a cut with
+   reduced motion). It fills the floor, whose size is the layout's, so nothing below moves. */
+.scene {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.scene[data-ready] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene[data-ready] {
+    transition: none;
+  }
+}
+
+/* "Loading…", quietly, in the middle of the empty floor; empty until 500 ms have passed (useCommitment). */
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: 13px;
+  pointer-events: none;
+}

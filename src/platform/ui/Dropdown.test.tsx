@@ -52,7 +52,7 @@ describe("the shared dropdown", () => {
   it("as a menu of switches, shows each one's state, counts those on, and says why one can't be switched", () => {
     const html = renderToString(
       <ToggleMenu
-        name="Options"
+        name="View"
         toggles={[
           { key: "compare", label: "Compare quarters", on: true, onToggle: () => {} },
           {
@@ -72,8 +72,8 @@ describe("the shared dropdown", () => {
         ]}
       />,
     );
-    expect(text(html)).toMatch(/^Options 1 on/);
-    expect(html).toContain('aria-label="Options, 1 on"');
+    expect(text(html)).toMatch(/^View 1 on/);
+    expect(html).toContain('aria-label="View, 1 on"');
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toMatch(/<div[^>]*role="menu"[^>]*hidden/);
     expect(html.match(/role="menuitemcheckbox"/g)).toHaveLength(3);
@@ -82,8 +82,9 @@ describe("the shared dropdown", () => {
     expect(html).toMatch(
       /aria-labelledby="([^"]+)-name-1" aria-disabled="true" aria-describedby="\1-why-1"/,
     );
-    expect(text(html)).toContain(
-      "vs. same quarter last year Turn off Compare quarters to compare with last year",
+    // Its reason is its description, read but not shown: the tooltip beside it shows it (Plot, #360).
+    expect(html).toMatch(
+      /<span id="[^"]+-why-1" class="[^"]*hidden[^"]*">Turn off Compare quarters to compare with last year<\/span>/,
     );
     expect(html).not.toMatch(/role="menuitemcheckbox"[^>]*\sdisabled=/);
     expect(html).toContain('title="Plot one measure"');
@@ -92,11 +93,11 @@ describe("the shared dropdown", () => {
   it("as a menu of switches with none on, says no count", () => {
     const html = renderToString(
       <ToggleMenu
-        name="Options"
+        name="View"
         toggles={[{ key: "compare", label: "Compare quarters", on: false, onToggle: () => {} }]}
       />,
     );
-    expect(text(html)).toMatch(/^Options Compare quarters$/);
+    expect(text(html)).toMatch(/^View Compare quarters$/);
     expect(html).not.toContain("data-active");
   });
 });
