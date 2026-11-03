@@ -63,6 +63,13 @@ export type QueryErrorCode = 'INVALID_QUERY' | 'INCOMPATIBLE_DIMENSION' | 'UNAVA
 export interface QueryErrorResponse { error: { code: QueryErrorCode; message: string } }
 export type QueryTrack = (event: string, props?: Record<string, string | number | boolean>) => void;
 
+/**
+ * A request header for views that are context, never discovery evidence: `none` answers the query without recording
+ * what it showed. A pinned heatmap sends it (Plot, #266: #63's rule is about the heatmap as a kind of view, wherever
+ * it's shown). It can only withhold evidence, so a forged one costs only its sender.
+ */
+export const EVIDENCE_HEADER = 'X-Orbital-Evidence';
+
 export const QUERY_LIMITS = {
   dimensions: 2,
   rows: 200,

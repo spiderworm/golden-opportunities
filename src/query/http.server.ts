@@ -5,7 +5,7 @@ import { QueryError } from './errors';
 import { runQuery } from './run-query.server';
 import { emit, trackQuery } from './telemetry.server';
 import { serializeResult } from './result';
-import { investigateOnly, QUERY_LIMITS } from './types';
+import { EVIDENCE_HEADER, investigateOnly, QUERY_LIMITS } from './types';
 import { DATA_VERSION_HEADER, dataVersion } from './data-version.server';
 import type { QueryErrorCode, QueryErrorResponse, QueryTrack, QueryView } from './types';
 
@@ -86,7 +86,7 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
       const view = resolveView(access);
       const result = run(query, view, track);
       const body = serializeResult(result);
-      recordDiscoveries(access.save, view, [{ query, result }]);
+      if (request.headers.get(EVIDENCE_HEADER) !== 'none') recordDiscoveries(access.save, view, [{ query, result }]);
       emit(track, 'query_request_completed', { rowCount: result.rows.length, durationMs: performance.now() - started });
       // The version this result was computed under, from the same save as its view: a client cache keys on this,
       // not on the version it last saw, so a result that raced a plan commit is never filed under the new one.
