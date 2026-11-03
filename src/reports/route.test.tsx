@@ -107,7 +107,7 @@ describe("Reports", () => {
     const save = saves.create();
     submitPlan(requestFor(save.id, "POST"), { levers: [] });
     const post = (fields: Record<string, string>) => {
-      const body = new FormData();
+      const body = new URLSearchParams();
       for (const [k, v] of Object.entries(fields)) body.set(k, v);
       return action({
         request: new Request("http://localhost/reports", {
@@ -141,7 +141,7 @@ describe("Reports", () => {
     const lock = path.join(directory, "saves", save.id + ".json.lock");
     writeFileSync(lock, "");
     try {
-      const body = new FormData();
+      const body = new URLSearchParams();
       body.set("quarter", "2194-Q1");
       body.set("intent", "results");
       const to = (await action({
@@ -175,7 +175,7 @@ describe("Reports", () => {
   it("makes, edits and deletes the player's reports through its action, keeping the query grant", async () => {
     const save = saves.create();
     const post = async (fields: Record<string, string>) => {
-      const body = new FormData();
+      const body = new URLSearchParams();
       for (const [k, v] of Object.entries(fields)) body.set(k, v);
       const answer = await action({
         request: new Request("http://localhost/reports", {
