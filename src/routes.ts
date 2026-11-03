@@ -8,6 +8,7 @@ import analyticsRoutes from "./platform/analytics/routes";
 import { queryRoutes } from "./query/routes";
 import reportsRoutes, { reportsApiRoutes } from "./reports/routes";
 import resultRoutes from "./result/routes";
+import { segmentsApiRoutes } from "./segments/routes";
 import settingsRoutes from "./settings/routes";
 import shellRoutes from "./shell/routes";
 import stationRoutes from "./station/routes";
@@ -26,6 +27,7 @@ export default [
   ...queryRoutes,
   ...assistantRoutes,
   ...reportsApiRoutes,
+  ...segmentsApiRoutes,
   ...analyticsRoutes,
   ...shellRoutes,
   ...entryRoutes,
