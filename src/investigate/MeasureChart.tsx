@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { QueryResult } from "~/query/types";
 import { Icon } from "~/shell/icons";
+import { track } from "~/platform/analytics/analytics.client";
 import {
   categoryHeight,
   categoryModel,
   categoryOption,
   GHOST_OPACITY,
   legendItems,
+  noiseFlags,
   nothingToDraw,
   TOP_RANKED,
   type CategoryModel,
@@ -15,10 +17,11 @@ import {
 import { EChart } from "~/platform/charts/EChart";
 import { Dropdown } from "~/platform/ui/Dropdown";
 import { ReasonToggle } from "~/platform/ui/ReasonToggle";
-import { Legend } from "./charts/Legend";
+import { EvidenceLegend, Legend } from "./charts/Legend";
 import { SCATTER_HEIGHT, scatterOption, scatterPoints, scatterTitle } from "./charts/scatter-chart";
 import { LastYearTable, ResultTable } from "./charts/ResultTable";
-import { changeLine, lastYearLabels, withLastYear } from "./charts/last-year";
+import { changeLine, ghostNoisy, lastYearLabels, withLastYear } from "./charts/last-year";
+import { lastYearNoise, withNoise } from "./charts/evidence";
 import { seriesColor } from "~/platform/charts/chart-theme";
 import {
   measureColor,
@@ -190,6 +193,22 @@ export function MeasureChart({
     // labels follows state.by too (its legend), and a new grouping rebuilds model, so model covers it.
     [model, result, labels?.quarter],
   );
+  // Comparing quarters or last year: say when some differences are within noise, by measure and how many, never
+  // which.
+  const noiseWhere = labels ? "last_year" : state.compare ? "compare" : null;
+  const noise = useMemo(
+    () => (labels ? lastYearNoise(result) : noiseFlags(model)),
+    [model, result, labels?.quarter],
+  );
+  useEffect(() => {
+    if (noiseWhere && noise.flagged)
+      track("investigate_noise_shown", {
+        measure: model.measure,
+        where: noiseWhere,
+        flagged: noise.flagged,
+        compared: noise.compared,
+      });
+  }, [noiseWhere, noise.flagged, noise.compared, model.measure]);
   const option = useMemo(
     () =>
       ghost
@@ -197,8 +216,14 @@ export function MeasureChart({
             selected,
             quarters,
             ghost: {
-              change: (i) =>
-                changeLine(model.measure, model.series[0]?.values[i] ?? null, ghost.lastYear[i]!),
+              change: (i) => {
+                const line = changeLine(
+                  model.measure,
+                  model.series[0]?.values[i] ?? null,
+                  ghost.lastYear[i]!,
+                );
+                return line && withNoise(line, ghostNoisy(ghost, i));
+              },
             },
           })
         : categoryOption(model, {
@@ -403,6 +428,7 @@ export function MeasureChart({
             }
             label="Quarters"
           />
+          <EvidenceLegend model={model} />
           <EChart
             option={option}
             height={categoryHeight(model)}

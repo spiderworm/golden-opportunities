@@ -18,7 +18,7 @@ import { heatAxis, heatModel } from "../charts/heat-model";
 import { HeatGrid, HeatScale } from "../Heatmap";
 import { MAX_SERIES } from "~/platform/charts/chart-theme";
 import { EChart } from "~/platform/charts/EChart";
-import { Legend } from "../charts/Legend";
+import { EvidenceLegend, Legend } from "../charts/Legend";
 import { ResultTable } from "../charts/ResultTable";
 import { formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
 import { monthsInScope } from "../state";
@@ -408,6 +408,7 @@ function PinBody({
     body = (
       <>
         <Legend items={legendItems(model, quarters)} label="Series" />
+        <EvidenceLegend model={model} />
         <EChart option={option} height={categoryHeight(model, CHART_HEIGHT)} label={pin.title} />
       </>
     );
