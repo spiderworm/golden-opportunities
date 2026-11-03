@@ -10,6 +10,7 @@ import { checkLabel, serializeResult } from "./result";
 import { PRICE_BANDS, QUERY_LIMITS } from "./types";
 import { rollUpSales, type SaleCells } from "./sale-cells";
 import { lastYearMissing, lastYearQuery, quartersCovered, yearEarlier } from "./last-year";
+import { resolveQuery } from "./relative";
 import { byDate, EVENT_RANK, MAX_EVENTS, quarterOfDate, type ViewEvent } from "./events";
 import { evidenceUnit, type Evidence } from "./evidence";
 import type {
@@ -747,7 +748,11 @@ export function runQuery(
     let result = key ? cached(key) : undefined;
     const cacheHit = result !== undefined;
     if (!result) {
-      result = executeWithLastYear(query, view);
+      // Relative quarters resolved against what the player can see, then run, compared and cached as dated ones
+      // (relative.ts). The key keeps the token: with the periods in it, it names the same resolution.
+      const { query: run, resolved } = resolveQuery(query, view.periods);
+      result = executeWithLastYear(run, view);
+      if (resolved) result = { ...result, resolved };
       const events = eventsFor(query, view, result);
       if (events) result = { ...result, events };
       const body = serializeResult(result);

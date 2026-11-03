@@ -15,6 +15,7 @@ import {
   type LaterContext,
 } from "./later-discoveries";
 import { QueryError } from "../query/errors";
+import { resolveQuery } from "../query/relative";
 
 export interface ObservedQuery {
   query: Query;
@@ -92,6 +93,11 @@ export function recordDiscoveries(
   observed: readonly ObservedQuery[],
   source: DiscoverySource = "investigate",
 ): void {
+  // Judged on the quarters a relative quarter resolved to, as the query was run (src/query/relative.ts).
+  observed = observed.map(({ query, result }) => ({
+    query: resolveQuery(query, view.periods).query,
+    result,
+  }));
   // A, B and C come from views before Q1's plan, D, E and F from views before Q2's; none after.
   const quarter = currentQuarter(save);
   if (!quarter) return;
