@@ -239,7 +239,8 @@ Settings' "Share play data" switch calls `setSharing(on)` (`src/platform/analyti
 ## Known limits
 
 - **Automation the server can't see:** if someone drives a browser against `npm start` or `npm run dev` without `ORBITAL_ANALYTICS=off`, the browser sends nothing, but the server still sends its own events (`game_save_created`, `query_*`, `assistant_*`). The server can't tell that its visitor is automated. Our own runs set the variable (`e2e/server.mjs`, and Sim's fresh-clone check), and `CLAUDE.md` documents it.
-- **One switch per copy:** the sharing switch is per browser, and it also switches off the server for the whole copy. One browser turning sharing off stops the server for everyone playing that copy, which errs on the side of not sending.
+- **One switch per copy, on a laptop:** the sharing switch is per browser, and on a copy run locally it also switches off the server for the whole copy. One browser turning sharing off stops the server for everyone playing that copy, which errs on the side of not sending.
+- **One switch per player, deployed:** with `ORBITAL_PUBLIC_ORIGIN` set (`docs/deploy.md`), many players share one server, so the switch is each player's own (Audit, #368). It sets an `ob_share` cookie for that browser, and the server drops every event made for that visitor: their pages, their questions to Dewey and his lookups for them (the query token carries their choice), and the entry page. It never turns the server off or on for any other player on the public origin. Two exceptions: a page opened on the server machine itself, at `localhost`, still uses the laptop's whole-copy switch; and a lookup that arrives after its answer has ended (its token revoked) no longer knows the visitor, so it's recorded (Probe, #375). Events outside any visitor's request, like `server_started`, are the copy's own and still go.
 
 ## Withheld sentences (done)
 
