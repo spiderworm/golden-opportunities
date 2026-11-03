@@ -58,6 +58,8 @@ export const BACKSTORY_FAILURES: readonly string[] = [
   "timeout",
   ...["missing", "broken", "timeout", "signed_out", "other"].map((k) => `unavailable:${k}`),
   ...BACKSTORY_FIELDS.flatMap((field) => BACKSTORY_PROBLEMS.map((p) => `text:${field}:${p}`)),
+  // Not asked: a daily cap was reached (platform/usage.server.ts). Appended, as the list requires.
+  "capped",
 ];
 
 export interface BackstoryRecord {

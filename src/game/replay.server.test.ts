@@ -6,7 +6,10 @@ const directory = await vi.hoisted(async () => {
   const { tmpdir } = await import("node:os");
   return mkdtempSync(tmpdir() + "/replay-");
 });
-vi.mock("../platform/analytics/instance.server", () => ({ DATA_DIR: directory }));
+vi.mock("../platform/analytics/instance.server", () => ({
+  DATA_DIR: directory,
+  instanceId: () => "0123abcd-0000-4000-8000-000000000000",
+}));
 vi.mock("../platform/analytics/analytics.server", () => ({ trackServer: vi.fn() }));
 import { loadBookshop } from "../bookshop/loader.server";
 import { trackServer } from "../platform/analytics/analytics.server";
@@ -88,7 +91,7 @@ describe("a played quarter's lines (endless.md section 9, how quarters are kept)
     } as PlayedQuarter;
     expect(() => quarterCells(id, save.seed, counted, loadBookshop)).toThrow(SaveError);
     const fresh = resetGame(request(id, "http://localhost/settings/reset"));
-    expect(fresh).toMatch(/orbital_save=/);
+    expect(fresh).toMatch(/orbital_save_[0-9a-f]{8}=/);
   });
 
   it("read an older save's stored lines as they are, without replaying", () => {

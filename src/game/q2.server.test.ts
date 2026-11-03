@@ -6,7 +6,10 @@ const directory = await vi.hoisted(async () => {
   const { tmpdir } = await import("node:os");
   return mkdtempSync(tmpdir() + "/orbital-q2-");
 });
-vi.mock("../platform/analytics/instance.server", () => ({ DATA_DIR: directory }));
+vi.mock("../platform/analytics/instance.server", () => ({
+  DATA_DIR: directory,
+  instanceId: () => "0123abcd-0000-4000-8000-000000000000",
+}));
 vi.mock("../platform/analytics/analytics.server", () => ({ trackServer: vi.fn() }));
 import { PLAYABLE_QUARTERS, setPlayableQuarters } from "./quarters";
 import {
@@ -191,7 +194,7 @@ describe("the second quarter", () => {
     await refusal(() => startNewGame(request(save.id, "GET")), 405);
     await refusal(() => startNewGame(request(save.id, "POST", "http://evil.example")), 403);
     const cookie = startNewGame(req);
-    const id = /^orbital_save=([A-Za-z0-9_-]{43});/.exec(cookie)![1]!;
+    const id = /^orbital_save_[0-9a-f]{8}=([A-Za-z0-9_-]{43});/.exec(cookie)![1]!;
     expect(id).not.toBe(save.id);
     const fresh = saves.read(id);
     expect(fresh).toMatchObject({ played: [], discoveries: [], revision: 0 });
