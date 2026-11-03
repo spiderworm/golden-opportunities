@@ -1,8 +1,13 @@
 // A comparison as two queries and the arithmetic between them: pure, so Dewey's tool server and a pinned
 // comparison on Investigate work it out the same way, each running the queries through POST /api/query.
 
-import { withinNoise, type Evidence, type EvidenceUnit } from "../../query/evidence.ts";
-import type { QueryColumn, QueryResult } from "../../query/types.ts";
+import {
+  evidenceUnit,
+  withinNoise,
+  type Evidence,
+  type EvidenceUnit,
+} from "../../query/evidence.ts";
+import { QUERY_LIMITS, type QueryColumn, type QueryResult } from "../../query/types.ts";
 import {
   checkQuery,
   type Comparison,
@@ -116,9 +121,15 @@ export function combineComparison(
     const toByKey = sides(b);
     const keys = [...new Set([...a.rows.map(key), ...b.rows.map(key)])];
     const fromByKey = sides(a);
+    // A sum or count missing from a side whose result is whole sold nothing there: a true 0, with no spread, so its
+    // change and its noise can be judged (Sim, #337). An average missing from a side has no value at all.
+    const absent = (result: typeof a): Side =>
+      !evidenceUnit(c.measure) && result.rows.length < QUERY_LIMITS.rows
+        ? { value: 0, evidence: { n: 0, se: 0 } }
+        : { value: null };
     rows = keys.map((k) => {
-      const from = fromByKey.get(k) ?? { value: null };
-      const to = toByKey.get(k) ?? { value: null };
+      const from = fromByKey.get(k) ?? absent(a);
+      const to = toByKey.get(k) ?? absent(b);
       return { [dim]: k, ...figures(from.value, to.value, noiseOf(unit, from, to)) };
     });
   }

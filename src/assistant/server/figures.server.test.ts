@@ -1209,3 +1209,25 @@ describe("a likely range when every rating agrees (Plot, #343; Sim, #342)", () =
     );
   });
 });
+
+it("says a total's ratings all agree, as a row's (Audit, #347)", () => {
+  const r = new Refs();
+  r.addTool(
+    "query_data",
+    { measure: "avg_rating", by: [] },
+    {
+      ref: "t",
+      complete: true,
+      columns: [],
+      unit: "ratings",
+      rows: [],
+      total: 5,
+      n: 12,
+      range_none: "agree",
+      source: "S",
+    },
+  );
+  expect(say("Overall it's {{t.total}}, with {{t.range}}.", r)).toBe(
+    "Overall it's 5, with no likely range, since all 12 ratings are 5 stars.",
+  );
+});

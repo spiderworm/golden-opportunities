@@ -5,7 +5,12 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createInterface } from "node:readline";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { AGENT_DIMENSIONS, AGENT_MEASURES, type QueryColumn } from "../../query/types.ts";
+import {
+  AGENT_DIMENSIONS,
+  AGENT_MEASURES,
+  QUERY_LIMITS,
+  type QueryColumn,
+} from "../../query/types.ts";
 import {
   checkChart,
   checkComparison,
@@ -556,8 +561,9 @@ describe("calling tools against the app", () => {
       ),
     ).toEqual([
       { genre: "Mystery", from: 200, to: 150, change: -50, percent_change: -25, direction: "fell" },
-      { genre: "Poetry", from: 40, to: null, change: null, percent_change: null, direction: null },
-      { genre: "Sci-Fi", from: null, to: 10, change: null, percent_change: null, direction: null },
+      // Revenue missing from a whole side sold nothing there: a true 0 (Sim, #337). From 0, no percent ("New").
+      { genre: "Poetry", from: 40, to: 0, change: -40, percent_change: -100, direction: "fell" },
+      { genre: "Sci-Fi", from: 0, to: 10, change: 10, percent_change: null, direction: "rose" },
     ]);
     expect(result.total).toEqual({
       from: 240,
@@ -806,5 +812,80 @@ describe("how much evidence is behind a figure, as fields the gate renders (Davi
     expect(combineComparison(c, side(100, 100, null), side(104, 104, 10)).total.noise).toBeNull();
     const { evidence: _a, ...bareA } = side(100, 100, 10);
     expect(combineComparison(c, bareA, side(104, 104, 10)).total).not.toHaveProperty("noise");
+  });
+});
+
+describe("a group on one side only (Sim, #337)", () => {
+  const column = (key: string, type: "string" | "number") =>
+    ({ key, label: key, type, nullable: false }) as QueryColumn;
+  const side = (measure: string, rows: [string, number][], evidence: boolean) => ({
+    columns: [column("genre", "string"), column(measure, "number")],
+    rows: rows.map(([genre, v]) => ({ genre, [measure]: v })),
+    total: rows.reduce((t, [, v]) => t + v, 0),
+    source: "S",
+    ...(evidence
+      ? {
+          evidence: {
+            unit: measure === "units" ? null : ("ratings" as const),
+            rows: rows.map(([, v]) => ({
+              n: Math.max(2, Math.round(v)),
+              se: Math.sqrt(Math.max(1, v)),
+            })),
+            total: { n: 100, se: 10 },
+          },
+        }
+      : {}),
+  });
+  const c = (measure: "units" | "avg_rating") => ({
+    measure,
+    across: "quarter" as const,
+    from: "2193-Q3",
+    to: "2193-Q4",
+    by: ["genre" as const],
+  });
+
+  it("counts a sum or count missing from a whole side as 0, and judges its noise against that", () => {
+    const rows = combineComparison(
+      c("units"),
+      side(
+        "units",
+        [
+          ["Mystery", 100],
+          ["Drama", 3],
+        ],
+        true,
+      ),
+      side("units", [["Mystery", 104]], true),
+    ).rows;
+    const drama = rows.find((r) => r.genre === "Drama")!;
+    expect(drama).toMatchObject({ from: 3, to: 0, change: -3, direction: "fell" });
+    // Three against nothing is well within chance for a count.
+    expect(drama.noise).toBe("within");
+  });
+
+  it("leaves an average missing from a side unjudged, and a side cut off at the row limit too", () => {
+    const rated = combineComparison(
+      c("avg_rating"),
+      side(
+        "avg_rating",
+        [
+          ["Mystery", 4],
+          ["Drama", 3],
+        ],
+        true,
+      ),
+      side("avg_rating", [["Mystery", 4.2]], true),
+    ).rows.find((r) => r.genre === "Drama")!;
+    expect(rated).toMatchObject({ from: 3, to: null, change: null });
+    const full = Array.from(
+      { length: QUERY_LIMITS.rows },
+      (_, i) => [`G${i}`, 5] as [string, number],
+    );
+    const cut = combineComparison(
+      c("units"),
+      side("units", [["Drama", 3]], false),
+      side("units", full, false),
+    ).rows.find((r) => r.genre === "Drama")!;
+    expect(cut).toMatchObject({ from: 3, to: null, change: null });
   });
 });
