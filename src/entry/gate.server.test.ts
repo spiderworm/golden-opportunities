@@ -140,6 +140,7 @@ describe("Continue", () => {
     const cookies = response.headers.getSetCookie();
     expect(cookies).toEqual([
       `${ENTRY_COOKIE}=${ENTRY_VERSION}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000`,
+      `${MUSIC_COOKIE}=on; Path=/; SameSite=Lax; Max-Age=3600`,
     ]);
     expect(trackServer).toHaveBeenCalledWith("entry_accepted", { music: "on" });
   });
