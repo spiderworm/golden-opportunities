@@ -421,8 +421,10 @@ function PinBody({
   // The result's events on a time axis, as the main chart marks them (src/query/events.ts).
   const marked = useMemo(() => {
     if (!model || !result.events || (model.x !== "month" && model.x !== "quarter")) return null;
-    const { markers, offAxis } = markersFor(result.events.list, model.x, model.categories);
-    return { markers, hidden: result.events.hidden + offAxis };
+    const { markers } = markersFor(result.events.list, model.x, model.categories);
+    // Only the result's cap hides events from the caption's count: one off the axis is outside what the chart
+    // shows, and isn't mentioned (Plot, #357).
+    return { markers, hidden: result.events.hidden };
   }, [model, result.events]);
   const markedOption = useMemo(
     () => (option && marked ? withMarkers(option, marked.markers) : option),

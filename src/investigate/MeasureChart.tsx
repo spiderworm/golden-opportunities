@@ -338,12 +338,14 @@ export function MeasureChart({
   const marking = state.events && !eventsReason && !scatter && !waterfallModel && !!result.events;
   const marked = useMemo(() => {
     if (!marking || !result.events) return null;
-    const { markers, offAxis } = markersFor(
+    const { markers } = markersFor(
       result.events.list,
       state.by,
       many ? many.categories : model.categories,
     );
-    return { markers, hidden: result.events.hidden + offAxis };
+    // Only the result's cap hides events from the caption's count: one off the axis is outside what the chart
+    // shows, and isn't mentioned (Plot, #357).
+    return { markers, hidden: result.events.hidden };
   }, [marking, result.events, state.by, many, model]);
   const markedOption = useMemo(
     () => (marked ? withMarkers(option, marked.markers) : option),
