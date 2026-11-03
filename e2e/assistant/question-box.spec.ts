@@ -21,9 +21,10 @@ test("the question box wraps and grows to show everything typed, and Enter asks"
     }));
   const empty = await size();
 
-  // Longer than a line: it wraps, nothing scrolls off to the side, and the box grows to show it all.
+  // Longer than a line at any width the panel takes (full width under the dashboard since #308, or a 340 to 820 px
+  // column beside it): it wraps, nothing scrolls off to the side, and the box grows to show it all.
   const long =
-    "Which titles sold best in the quarter before last, by format and by genre, and how did each compare with the same quarter a year before that?";
+    "Which titles sold best in the quarter before last, by format and by genre, and how did each compare with the same quarter a year before that? And which of them were bought by the same readers twice, and in which months, and at what discount, compared with the books those readers bought only once?";
   await question.fill(long);
   const grown = await size();
   expect(grown.height).toBeGreaterThan(empty.height * 1.8);
