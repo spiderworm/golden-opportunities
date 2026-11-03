@@ -12,11 +12,15 @@ export const isQuarter = (value: unknown): value is string =>
 
 /**
  * A reply's heading (Plot's copy): "Today" for the current quarter, the first day of an earlier one in the
- * station's date style ("1 Apr 2194"), and "Earlier" for a reply kept before quarters were recorded.
+ * station's date style ("1 Apr 2194"), and "Earlier" for a reply kept before quarters were recorded or from an
+ * earlier game.
  */
 export function timelineLabel(quarter: string | undefined, current: string | undefined): string {
   if (!quarter || !isQuarter(quarter)) return "Earlier";
   if (quarter === current) return "Today";
+  // A quarter after the current one is from a game before Play again, which keeps the chat (Audit, #390): it's
+  // earlier, whatever its date says. "YYYY-Qn" compares in time order as text.
+  if (current && quarter > current) return "Earlier";
   const [, year, q] = QUARTER.exec(quarter)!;
   return formatStationDate(`${year}-${String(3 * Number(q) - 2).padStart(2, "0")}-01`);
 }
