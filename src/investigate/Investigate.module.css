@@ -20,11 +20,15 @@
   }
 }
 
+/* The dashboard reflows on its own width, not the window's (David, 3 Nov 2026: "all cards on the investigations page
+   can reflow well when the Dewey chat panel resizes"). Beside Dewey's column it's anywhere from about 470 px, at a
+   1600 px window with Dewey at his widest, to the whole content area; the @container rules below are on that. */
 .page {
   display: grid;
   gap: 20px;
   min-width: 0;
   transition: opacity 150ms ease;
+  container: dashboard / inline-size;
 }
 
 /* The way on to the decision: one primary action, at the top right of the ledgers. */
@@ -362,7 +366,8 @@
   align-items: start;
 }
 
-@media (max-width: 1000px) {
+/* Stacked once the ratings column would fall under its 240 px beside a readable chart. */
+@container dashboard (max-width: 760px) {
   .titleBody {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -594,9 +599,16 @@
   text-align: right;
 }
 
-@media (max-width: 1000px) {
+/* Four tiles need about 200 px each; two, then one. */
+@container dashboard (max-width: 880px) {
   .tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container dashboard (max-width: 440px) {
+  .tiles {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -605,6 +617,16 @@
 .heatmap {
   display: grid;
   gap: 4px;
+}
+
+/* A narrow grid (its cells measured: HeatGrid's data-fit): smaller figures, then colour alone, each cell's value still
+   in its tooltip and its name. Never a figure cut off or spilling into the next cell. */
+.heatmap[data-fit="small"] .heatCell {
+  font-size: 10px;
+}
+
+.heatmap[data-fit="none"] .heatCell {
+  font-size: 0;
 }
 
 .heatRow {
@@ -631,6 +653,8 @@
 .heatCell {
   position: relative;
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
   height: 40px;
   border: 0;
   border-radius: 8px;
@@ -795,7 +819,8 @@
   gap: 6px;
 }
 
-@media (max-width: 1100px) {
+/* Two pins side by side need about 380 px each for a chart and its controls. */
+@container dashboard (max-width: 800px) {
   .pinnedGrid {
     grid-template-columns: minmax(0, 1fr);
   }

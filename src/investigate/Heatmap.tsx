@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ResultTable } from "./charts/ResultTable";
 import { TableToggle } from "./charts/TableToggle";
@@ -244,12 +244,15 @@ export function HeatGrid({
   const span = model.max - model.min || 1;
   const valueAt = new Map(model.cells.map(([x, y, v]) => [`${x},${y}`, v]));
   const known = (values: (string | null)[]) => values.filter((v): v is string => v !== null);
+  const fit = useCellFit(model.cols.length);
 
   return (
     <div
+      ref={fit.ref}
       className={styles.heatmap}
       role="table"
       aria-label={label}
+      data-fit={fit.fit}
       style={{ gridTemplateColumns: `auto repeat(${model.cols.length}, minmax(0, 1fr))` }}
     >
       <div role="row" className={styles.heatRow}>
@@ -314,4 +317,32 @@ export function HeatGrid({
       ))}
     </div>
   );
+}
+
+/** A cell's width at which its compact figure ("$14.9K") fits at 12 px, and at 10 px; under that, colour alone. */
+export const CELL_FIT = { full: 48, small: 38 } as const;
+
+/** How the figures fit cells this wide: "full", "small", or "none" (colour alone; the value stays in the tooltip). */
+export function cellFit(cellWidth: number): "full" | "small" | "none" {
+  return cellWidth >= CELL_FIT.full ? "full" : cellWidth >= CELL_FIT.small ? "small" : "none";
+}
+
+/**
+ * The grid's cells measured as its width changes (the window, or Dewey's column beside it): CSS can't know how many
+ * columns there are, so a container query alone can't say when twelve months' figures stop fitting. The label column
+ * takes about 48 px. Full until measured, as the server draws it.
+ */
+function useCellFit(columns: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState<"full" | "small" | "none">("full");
+  useEffect(() => {
+    const grid = ref.current;
+    if (!grid || typeof ResizeObserver === "undefined") return;
+    const measure = () => setFit(cellFit((grid.clientWidth - 48) / Math.max(1, columns) - 4));
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(grid);
+    return () => watch.disconnect();
+  }, [columns]);
+  return { ref, fit };
 }
