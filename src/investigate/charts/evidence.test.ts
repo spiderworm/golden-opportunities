@@ -39,6 +39,8 @@ describe("how much evidence, in words (Plot, #296 and #297)", () => {
     expect(rangeLine(4.1, { n: 100, se: 0.1 })).toBe("Likely range: 3.9 to 4.3 stars");
     expect(rangeLine(4.95, { n: 40, se: 0.1 })).toBe("Likely range: 4.7 to 5.0 stars");
     expect(rangeLine(5, { n: 1, se: null })).toBe("Too few ratings for a likely range");
+    // A narrow range would read "4.2 to 4.2" at one decimal: two, then (Plot, after #337).
+    expect(rangeLine(4.21, { n: 4000, se: 0.015 })).toBe("Likely range: 4.18 to 4.24 stars");
     expect(rangeLine(null, { n: 0, se: null })).toBeNull();
   });
 
