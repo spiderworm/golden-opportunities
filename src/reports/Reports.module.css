@@ -481,3 +481,125 @@
   justify-content: space-between;
   gap: 10px;
 }
+
+/* The player's forecasts, judged (ForecastCalibration): the count, then a column per measure with its lines and a
+   small chart of the range against what happened. The legend's swatches are the chart's (chart-theme's categorical
+   0 and 2). */
+.calibration {
+  display: grid;
+  gap: 10px;
+}
+
+.calibrationHeading {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.calibrationCount {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.calibrationMeasures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.calibrationMeasure {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.calibrationMeasureName {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.calibrationLines {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* A line that explains itself on hover and focus, as ReasonToggle's tooltip does: dotted, so it reads as more. */
+.explained {
+  position: relative;
+  border-bottom: 1px dotted var(--color-text-subtle);
+  cursor: help;
+}
+
+.explainedTip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: 260px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-panel-raised);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  clip-path: inset(50%);
+}
+
+.explained:hover .explainedTip,
+.explained:focus-visible .explainedTip {
+  clip-path: none;
+}
+
+.calibrationChart {
+  margin: 0;
+}
+
+.calibrationChart figcaption {
+  color: var(--color-text-subtle);
+  font-size: 12px;
+}
+
+.calibrationLegend {
+  display: flex;
+  gap: 12px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.calibrationLegend li::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 8px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.calibrationLegend [data-mark="range"]::before {
+  background: rgb(57 135 229 / 0.3);
+}
+
+.calibrationLegend [data-mark="expected"]::before {
+  height: 0;
+  border-top: 2px dashed #3987e5;
+}
+
+.calibrationLegend [data-mark="actual"]::before {
+  width: 8px;
+  border-radius: 50%;
+  background: #199e70;
+}
