@@ -210,9 +210,14 @@ David: "Pareto and share-of-total. "% of total" as a display mode, plus a cumula
   - The table gets a `Share` column after the value, and in running mode `Running share` too.
   - The axes are `Share of revenue (%)` and the curve's own `Running share (%)`.
   - The title gains `, as shares`, or `, largest first, with the running share`, as in `Revenue by title, largest first, with the running share`.
-- **The headline:** `Top 5 titles: 62.3% of revenue`, or `Top title: 18.0% of revenue` for one. It uses the dimension's plural and the measure's label, both in lower case, and one decimal place.
+- **The headline,** in running mode only, at the top 5 (or all, if fewer): `Top 5 titles: 62.3% of revenue`, or `Top title: 18.0% of revenue` for one. It uses the dimension's plural and the measure's label, both in lower case, and one decimal place.
 - **Tooltips:** a bar reads `Fiction: $38,420, 18.0% of revenue`, and a point on the curve reads `Top 3 genres: 54.1% of revenue`.
 - **Shares are of the full total,** the one before the row limit, as the source line says. Where rows are cut, the caption adds `Shares are of all {titles}, not only those shown.`
+- **Chart's calls (#358):**
+  - **Plurals:** `discount rates`, `price bands`, `list prices`, `award groups` and `series volumes`, besides the obvious ones. The singular drops the s.
+  - **With both ticked, the View button says `2 on`.**
+  - **Turning Running share off** returns to plain `% of total`.
+  - **A last-year reason that already applies** (`The ledgers start in 2193…`) comes before `Turn off % of total…`.
 - **Where:** Investigate's chart, pins and reports first. Dewey's chat follows with Sage, using the same strings.
 - **Disabled, always with a reason:**
 
@@ -242,7 +247,8 @@ David: "I think it would be good to support event markers on time series. ie, ma
   - **Your move:** `Q1 2194 · Your move`, then the move's name exactly as Decide has it (`MOVES`): `Station-wide sale`, `Weekday author nights` or `Re-pick Book of the Month`. Holding course isn't a move, so it gets no marker. A re-pick gets both its own marker and the picks it chose, so on January 1 the move and January's pick draw as one `+2` (Frank, #353).
   - **Event:** `Q3 2194 · Station event`, then the event's short title (`eventTitle`) and its stretch, e.g. `{short title}, July 9 to 23`.
   - Dates are month first, in the game's style: `Feb 4, 2194` for a day, `March 2194` for a month. Markers have no arrow or symbol characters.
-- **Crowding:** where markers overlap, one is drawn with `+{n}`, e.g. `+2`, and its tooltip lists each in date order. If some can't be drawn at all, the caption says `{n} more events hidden: filter to one quarter to see them all`, or `1 more event hidden: …`.
+- **Crowding:** where markers overlap, one is drawn with `+{n}`, e.g. `+2`, and its tooltip lists each in date order. Past 12 markers, the labels would collide, so only the lines and tooltips show, and the caption says `Labels hidden for {n} events: filter to one quarter to see them.` (`1 event` in the singular). Past the 60-marker cap, events aren't drawn at all, and the caption says `{n} more events hidden: filter to one quarter to see them all` (`1 more event hidden: …`). When both apply, each is its own line. An event off the chart's axis is neither drawn nor counted: the server already drops events outside the filters, and the rare row-limit cut is told by the source line (Frank, #357).
+- **Beside a book breakdown,** an event's second line adds its group in brackets, `… volume 3 (Mystery)` (Frank, #357).
 - **Nothing to mark** isn't a disabled state. The caption says `No events in this period.`, as for 2193 and quarters not yet played. A quarter not yet played is never marked: no spoilers.
 - **Disabled, always with a reason:**
 
