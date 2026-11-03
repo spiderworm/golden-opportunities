@@ -20,7 +20,13 @@ import { ReasonToggle } from "~/platform/ui/ReasonToggle";
 import { EvidenceLegend, Legend } from "./charts/Legend";
 import { SCATTER_HEIGHT, scatterOption, scatterPoints, scatterTitle } from "./charts/scatter-chart";
 import { LastYearTable, ResultTable } from "./charts/ResultTable";
-import { changeLine, ghostNoisy, lastYearLabels, withLastYear } from "./charts/last-year";
+import {
+  changeLine,
+  ghostBasedOn,
+  ghostNoisy,
+  lastYearLabels,
+  withLastYear,
+} from "./charts/last-year";
 import { lastYearNoise, withNoise } from "./charts/evidence";
 import { seriesColor } from "~/platform/charts/chart-theme";
 import {
@@ -224,6 +230,7 @@ export function MeasureChart({
                 );
                 return line && withNoise(line, ghostNoisy(ghost, i));
               },
+              basedOn: (i) => (labels ? ghostBasedOn(ghost, i, labels) : null),
             },
           })
         : categoryOption(model, {
