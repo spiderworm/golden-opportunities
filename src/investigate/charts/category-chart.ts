@@ -35,6 +35,9 @@ export interface CategoryModel {
   ranked: number;
 }
 
+/** How strongly last year's series is drawn beside this year's (last-year.ts). */
+export const GHOST_OPACITY = 0.4;
+
 /** Ranked charts show this many by default, plus anything the player has selected. */
 export const TOP_RANKED = 15;
 
@@ -166,6 +169,7 @@ export function categoryOption(
     quarters,
     drill = true,
     share,
+    ghost,
   }: {
     kind?: "bar" | "line";
     selected?: readonly string[];
@@ -173,6 +177,11 @@ export function categoryOption(
     drill?: boolean;
     /** For the tooltip's "{share}% of {period}": each series' whole and the period it covers. Omit to leave the line out. */
     share?: { total: (series: number) => number | null; period: (series: number) => string };
+    /**
+     * The second series is last year's (last-year.ts): drawn lighter in this year's color, with the tooltip's change
+     * line for each category, or null for none.
+     */
+    ghost?: { change: (category: number) => string | null };
   },
 ): EChartsCoreOption {
   const { measure, x } = model;
@@ -262,18 +271,30 @@ export function categoryOption(
           : anySelected && isSelected(first.dataIndex)
             ? "Click to clear"
             : "Click to look closer";
+        const changed = ghost?.change(first.dataIndex);
+        const changeLine = changed
+          ? `<div style="margin-top:4px">${escapeHtml(changed)}</div>`
+          : "";
         const hintLine = hint
           ? `<div style="font-size:11px;color:${chartTheme.textSubtle};margin-top:6px">${hint}</div>`
           : "";
-        return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${heading}</div>${lines.join("")}${hintLine}`;
+        return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${heading}</div>${lines.join("")}${changeLine}${hintLine}`;
       },
     },
     xAxis: horizontal ? valueAxis : categoryAxis,
     yAxis: horizontal ? categoryAxis : valueAxis,
     series: model.series.map((series, index) => {
+      // Last year is this year's color, lighter.
+      const faded = ghost !== undefined && index === 1;
       const color = model.seriesBy
-        ? seriesColor(model.seriesBy, series.key, index, quarters)
+        ? seriesColor(
+            model.seriesBy,
+            model.series[faded ? 0 : index]!.key,
+            faded ? 0 : index,
+            quarters,
+          )
         : chartTheme.series;
+      const opacity = faded ? GHOST_OPACITY : 1;
       const name = model.seriesBy
         ? formatDimensionValue(model.seriesBy, series.key)
         : MEASURE_LABELS[measure];
@@ -282,8 +303,8 @@ export function categoryOption(
           type: "line",
           name,
           data: series.values,
-          lineStyle: { color, width: 2, cap: "round", join: "round" },
-          itemStyle: { color, borderColor: chartTheme.surface, borderWidth: 2 },
+          lineStyle: { color, width: 2, cap: "round", join: "round", opacity },
+          itemStyle: { color, borderColor: chartTheme.surface, borderWidth: 2, opacity },
           symbol: "circle",
           symbolSize: 8,
           showSymbol: model.categories.length <= 24,
@@ -297,11 +318,11 @@ export function categoryOption(
         barGap: "12%",
         barCategoryGap: splitting ? "28%" : "40%",
         // Rounded at the data end, square at the baseline.
-        itemStyle: { color, borderRadius: horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0] },
-        emphasis: { focus: "none", itemStyle: { color } },
+        itemStyle: { color, opacity, borderRadius: horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0] },
+        emphasis: { focus: "none", itemStyle: { color, opacity } },
         data: series.values.map((value, i) => ({
           value,
-          itemStyle: { color: anySelected && !isSelected(i) ? chartTheme.dimmed : color },
+          itemStyle: { color: anySelected && !isSelected(i) ? chartTheme.dimmed : color, opacity },
         })),
       };
     }),

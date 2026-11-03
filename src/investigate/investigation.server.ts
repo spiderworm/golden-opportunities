@@ -12,6 +12,7 @@ import {
   DEFAULT_STATE,
   filtersExcept,
   heatWindow,
+  lastYearBlock,
   TILE_MEASURES,
   type Filters,
   type InvestigateState,
@@ -110,9 +111,14 @@ function withFilter(filters: Filters): Pick<Query, "filter"> {
   return Object.keys(filters).length ? { filter: filters } : {};
 }
 
-function chartQuery(state: InvestigateState, measure: Measure = state.measure): Query {
+function chartQuery(
+  state: InvestigateState,
+  measure: Measure = state.measure,
+  quarters: readonly string[] = [],
+): Query {
   const by = state.compare ? ([state.by, "quarter"] as const) : ([state.by] as const);
-  return { measure, by, ...withFilter(filtersExcept(state.filters, [state.by])) };
+  const vs = state.lastYear && !lastYearBlock(state, quarters) ? { vs: "last_year" as const } : {};
+  return { measure, by, ...withFilter(filtersExcept(state.filters, [state.by])), ...vs };
 }
 function heatmapQuery(state: InvestigateState, quarters: readonly string[]): Query {
   const { measure, rows, cols } = state.heat;
@@ -167,7 +173,7 @@ export function investigate(
     ),
   );
 
-  const chart = rendered(chartQuery(state), chartQuery(DEFAULT_STATE));
+  const chart = rendered(chartQuery(state, state.measure, view.periods), chartQuery(DEFAULT_STATE));
   // The other measures are views the player chose, so they count as shown, like any other chart.
   const also = state.also.map((measure) => rendered(chartQuery(state, measure)));
   // Always-visible context, never discovery evidence (m1-slice section 5).

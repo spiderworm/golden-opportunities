@@ -250,6 +250,10 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             track("investigate_compare_toggled", { compare });
             update({ ...state, compare });
           }}
+          onLastYear={(on) => {
+            track("investigate_last_year_toggled", { on });
+            update({ ...state, lastYear: on });
+          }}
           onDrill={(value) => {
             const next = toggleFilterValue(state, state.by, value);
             track("investigate_drilldown", {
