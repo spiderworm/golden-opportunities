@@ -117,7 +117,14 @@ export function withEvidence(result: KeptResult, measure: Measure) {
   const extra = (value: unknown, e: Evidence) => {
     const range =
       measure === "avg_rating" ? ratingRange(typeof value === "number" ? value : null, e) : null;
-    return { n: e.n, ...(range ? { range_low: range.low, range_high: range.high } : {}) };
+    // Every rating the same (two or more, no spread at all): said outright, so the gate never has to infer it
+    // from a missing range (Plot, #343; Sim, #342).
+    const agree = measure === "avg_rating" && !range && e.n >= 2 && e.se === 0;
+    return {
+      n: e.n,
+      ...(range ? { range_low: range.low, range_high: range.high } : {}),
+      ...(agree ? { range_none: "agree" } : {}),
+    };
   };
   return {
     ...rest,

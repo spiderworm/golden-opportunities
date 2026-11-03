@@ -352,7 +352,7 @@ export class Refs {
       if (field && lookup.dims.includes(field)) return round ? null : label(row[field]);
       if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
       if (field === "n" || field === "range")
-        return round ? null : this.evidence(lookup, row, field);
+        return round ? null : this.evidence(lookup, row, field, row[lookup.measure]);
       // A row's figure, as {{a1}} or by its own measure's column, {{a1.revenue}} (Probe's #252 red-team); any
       // other measure's name isn't this lookup's, so it doesn't resolve.
       if (lookup.name === "query_data")
@@ -370,7 +370,7 @@ export class Refs {
     if (field === "rows") return round ? null : whole.format(lookup.ordered.length);
     if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
     if (field === "n" || field === "range")
-      return round ? null : this.evidence(lookup, lookup.totalEvidence, field);
+      return round ? null : this.evidence(lookup, lookup.totalEvidence, field, lookup.total);
     if (lookup.name === "query_data") {
       if (field === "total") return isNum(lookup.total) ? signed(kind, lookup.total, round) : null;
       if (field === "max" || field === "min") return this.extreme(lookup, field, round);
@@ -432,7 +432,12 @@ export class Refs {
    * "1 rating", and for average rating its likely range (95%), "a likely range of 3.9 to 4.3 stars". Only an average's lookup has
    * them; anything else, or a figure without them, doesn't resolve.
    */
-  private evidence(lookup: Lookup, figures: Row, field: "n" | "range"): string | null {
+  private evidence(
+    lookup: Lookup,
+    figures: Row,
+    field: "n" | "range",
+    value: unknown,
+  ): string | null {
     const { unit } = lookup;
     if (!unit) return null;
     if (field === "n") {
@@ -441,8 +446,18 @@ export class Refs {
         ? `${whole.format(n)} ${n === 1 ? UNITS[unit] : unit}`
         : null;
     }
-    const { range_low: low, range_high: high } = figures;
-    if (lookup.measure !== "avg_rating" || !isNum(low) || !isNum(high) || low > high) return null;
+    if (lookup.measure !== "avg_rating") return null;
+    const { range_low: low, range_high: high, range_none: none, n } = figures;
+    // Every rating the same: no likely range, and the clause says why (Plot, #343). Only where the tool server said
+    // so ("agree", from a standard error of exactly 0 over two ratings or more), with a whole-star average; a range
+    // that's merely missing is withheld.
+    if (none === "agree") {
+      if (typeof n !== "number" || !Number.isSafeInteger(n) || n < 2) return null;
+      if (!isNum(value) || !Number.isInteger(value) || value < 1 || value > 5) return null;
+      const all = n === 2 ? "both ratings are" : `all ${whole.format(n)} ratings are`;
+      return `no likely range, since ${all} ${value} star${value === 1 ? "" : "s"}`;
+    }
+    if (!isNum(low) || !isNum(high) || low > high) return null;
     // The phrase comes with it: "likely range" in the model's own words is withheld (EVIDENCE_WORDS). One decimal
     // place, or two when one would make both ends the same: never "4.2 to 4.2 stars" (Plot).
     const format = stars.format(low) === stars.format(high) ? starsFine : stars;

@@ -744,11 +744,32 @@ describe("how much evidence is behind a figure, as fields the gate renders (Davi
     expect(kept.rows[0]).toMatchObject({ n: 212 });
     expect(kept.rows[0]!.range_low as number).toBeLessThan(4.1);
     expect(kept.rows[0]!.range_high as number).toBeGreaterThan(4.1);
-    // One rating: its n, and no range ("Too few ratings for a likely range").
+    // One rating: its n, and no range ("Too few ratings for a likely range"), and no word of agreement either.
     expect(kept.rows[1]).toEqual({ genre: "Poetry", avg_rating: 3.5, n: 1 });
     expect(kept).toMatchObject({ n: 213 });
     // Every field is a plain number, so a lookup the panel keeps still checks out (conversation.ts).
     expect(JSON.stringify(kept)).not.toMatch(/"se"/);
+  });
+
+  it("says outright when every rating agrees: two or more, with no spread at all", () => {
+    const agreeing = {
+      ...rated,
+      evidence: {
+        unit: "ratings" as const,
+        rows: [
+          { n: 40, se: 0 },
+          { n: 1, se: null },
+        ],
+        total: { n: 41, se: 0.01 },
+      },
+    };
+    const kept = withEvidence(agreeing, "avg_rating") as Record<string, unknown> & {
+      rows: Record<string, unknown>[];
+    };
+    expect(kept.rows[0]).toMatchObject({ n: 40, range_none: "agree" });
+    expect(kept.rows[0]).not.toHaveProperty("range_low");
+    expect(kept.rows[1]).not.toHaveProperty("range_none");
+    expect(kept).not.toHaveProperty("range_none");
   });
 
   it("gives a sum or count no n, and drops evidence whose unit isn't the measure's", () => {
