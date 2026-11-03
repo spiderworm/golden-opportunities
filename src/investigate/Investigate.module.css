@@ -711,6 +711,9 @@
 
 .heatCell {
   position: relative;
+  /* A block: a pin's cells are spans, which with their figure hidden (data-fit="none") would collapse to nothing
+     (measured at a 1600 px window with Dewey at 800). */
+  display: block;
   width: 100%;
   min-width: 0;
   overflow: hidden;
