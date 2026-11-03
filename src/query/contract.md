@@ -131,7 +131,8 @@ and `{ value: null }` for averages, as with any group. `change(now, before)`
 gives the difference and the fractional change, `"new"` when last year was zero
 (never Infinity). Ratings and checkouts have no quarters, so no last year: `INCOMPATIBLE_DIMENSION`.
 Groups that sold last year but not this year are not added as rows. Dewey can't
-use `vs` yet.
+use `vs` yet. Discovery evidence comes from the result's rows and total, never
+from `lastYear`: last year's figures are context (Audit, #292).
 
 ## How much evidence
 
