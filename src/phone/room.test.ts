@@ -2,7 +2,7 @@
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { inPicture, PHOTO, ROOM } from "./room";
+import { DOOR, inPicture, PHOTO, ROOM } from "./room";
 
 // The 3D room puts each of the picture's corners back where they were measured: from the picture's camera, the
 // box is the picture.
@@ -31,5 +31,14 @@ describe("the bosses' room in 3D", () => {
     const near = (PHOTO.focal * PHOTO.eye) / (PHOTO.height - PHOTO.centre[1]);
     expect(at(0, 0, -near)[1]).toBe(PHOTO.height);
     expect(near).toBeCloseTo(4.24, 1);
+  });
+
+  it("has its door where the picture shows it: about 2.1 m wide and 2.2 m high, in the back wall's middle", () => {
+    expect(at(DOOR.left, 0, ROOM.back)).toEqual([971, 856]);
+    expect(at(DOOR.right, DOOR.top, ROOM.back)).toEqual([1430, 381]);
+    expect(DOOR.right - DOOR.left).toBeCloseTo(2.09, 2);
+    expect(DOOR.top).toBeCloseTo(2.16, 2);
+    expect(DOOR.split).toBeGreaterThan(DOOR.left);
+    expect(DOOR.split).toBeLessThan(DOOR.right);
   });
 });

@@ -75,7 +75,7 @@ const TWIST = [-0.8, 0.8] as const;
 export const KNUCKLES_IN = 0.02;
 export const WRAP = 0.012;
 /** How far the palm's middle rests off the phone's face, and how thick a fingertip is (its centre off the back). */
-const PALM_OFF = 0.024;
+const PALM_OFF = 0.044;
 const TIP = 0.012;
 
 const scratch = {

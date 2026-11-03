@@ -7,7 +7,9 @@ import {
   Box3,
   BoxGeometry,
   EdgesGeometry,
+  Fog,
   Group,
+  HemisphereLight,
   LineBasicMaterial,
   LineSegments,
   MathUtils,
@@ -20,13 +22,16 @@ import {
   SkinnedMesh,
   Vector3,
   type AnimationAction,
+  type Light,
   type Object3D,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import { BOSSES } from "~/platform/bosses/bosses";
-import { makeRoom, PHOTO } from "./room";
+import { CorridorView } from "./corridorView";
+import { CELL, Corridors } from "./corridors";
+import { DOOR, makeDoor, makeRoom, PHOTO, ROOM } from "./room";
 import {
   closeGrip,
   fitGrip,
@@ -36,6 +41,8 @@ import {
   type Hand,
   type PhoneSize,
 } from "./grip";
+import { Route, type Door } from "./route";
+import { makeTurnstile } from "./turnstile";
 
 // The phone scene: the Throughput Subcommittee, the Decide robot made again
 // with real hands for this (public/models/phone/subcommittee.glb), walks up to
@@ -87,7 +94,9 @@ const PRE_AIM = 0.6;
 /** How long the robot takes to turn the phone to face its head, once it has it, in seconds. */
 const TURN_TIME = 0.6;
 /** The robot looks at the phone from its first step (David, 2 Nov), turning its head this far at most, in radians. */
-const LOOK_MAX = 1.0;
+const LOOK_MAX = 1.5;
+/** How much of a look the neck takes (the head the rest). */
+const NECK_SHARE = 0.45;
 /** How long its head takes to come round to the phone, in seconds. */
 const LOOK_TIME = 0.5;
 const IDENTITY = new Quaternion();
@@ -108,6 +117,54 @@ const FACE_UP = 0.15;
 const LANDSCAPE = 1.4;
 /** Where it holds the phone after: this share of the way in from where it took it. */
 const REST = 0.7;
+/**
+ * Then it examines it (David, 2 Nov: "turning it over, looking at different angles"), always looking at it: the
+ * phone moved from where it held it and the hand turned, in the hand's own frame (about its fingers, the forearm's
+ * line, as a forearm turns; across the palm, as a wrist bends; and about the palm's normal, as a wrist tilts), in
+ * seconds from the end of the curious look. It pauses at each.
+ */
+const EXAMINE: {
+  at: number;
+  twist: number;
+  bend: number;
+  tilt: number;
+  move: [number, number, number];
+}[] = [
+  { at: 0, twist: 0, bend: 0, tilt: 0, move: [0, 0, 0] },
+  { at: 1.4, twist: 0.6, bend: 0.35, tilt: 0, move: [0.02, 0.03, -0.02] },
+  { at: 2.8, twist: -0.5, bend: -0.4, tilt: 0.1, move: [-0.02, 0, 0.03] },
+  // Turned over: its back to the robot.
+  { at: 4.5, twist: 2.3, bend: 0.1, tilt: 0, move: [0, 0.04, 0] },
+  { at: 5.9, twist: 2.1, bend: -0.3, tilt: -0.1, move: [0.02, 0.02, 0.02] },
+  { at: 7.4, twist: -0.3, bend: 0.5, tilt: -0.15, move: [0.01, -0.02, 0.02] },
+  { at: 8.8, twist: 0, bend: 0, tilt: 0, move: [0, 0, 0] },
+];
+const EXAMINED = EXAMINE[EXAMINE.length - 1]!.at;
+/** Then it drops its arm to its side, still holding the phone, its face up toward the robot's (David, 2 Nov). */
+const LOWER_TIME = 1.8;
+/**
+ * Where the phone's middle is at its side, in the robot's frame: out past its shoulder, at its hip, its forearm
+ * forward a little, so the phone's line up to its face passes clear of its own shoulder.
+ */
+const AT_SIDE = { out: -0.1, up: 0.85, forward: 0.42 };
+/** The arms, as balls this wide (metres), where they meet the turnstile's bars. */
+const ARM_THICK = 0.05;
+/** How near the door it is when the door starts to slide open (metres), and how long it takes. */
+const DOOR_NEAR = 3.2;
+const DOOR_TIME = 1.4;
+/** How many of the way's cells ahead of the robot are drawn, and behind it. */
+const AHEAD = 14;
+const BEHIND = 4;
+/** The corridors' fog: far off, they fade to white. */
+const FOG = "#f1f3f5";
+/**
+ * Walking, it looks where it's going (David, 2 Nov: "where it's currently going or soon to be going"), this far
+ * ahead on its way, and every so often glances down at the phone: GLANCE[0] to GLANCE[1] seconds apart, for
+ * GLANCE_TIME.
+ */
+const LOOK_AHEAD = 3;
+const GLANCE = [4, 9] as const;
+const GLANCE_TIME = 1.4;
 /** The widest and narrowest the camera's lens goes to fit the robot's head in the band between the words. */
 const FOV_RANGE = [45, 100] as const;
 /** Where the camera sits in the phone's frame, in metres: on its middle, a little way behind it (David, 2 Nov). */
@@ -169,6 +226,15 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     root.add(body);
     body.traverse((o) => void ((o as SkinnedMesh).isSkinnedMesh && freeLeftArm(o as SkinnedMesh)));
     const bone = (name: string) => body.getObjectByName(name) as Bone;
+    let skinned: SkinnedMesh | undefined;
+    body.traverse((o) => void ((o as SkinnedMesh).isSkinnedMesh && (skinned ??= o as SkinnedMesh)));
+    const turnstile = skinned ? makeTurnstile(skinned, bone("mixamorigSpine2")) : null;
+    // Both arms, from the elbow down, for the turnstile to give way to.
+    const arms = (["Left", "Right"] as const).map((side) =>
+      ["ForeArm", "Hand", "HandMiddle1", "HandIndex4", "HandPinky4"].map((b) =>
+        bone(`mixamorig${side}${b}`),
+      ),
+    );
     // Its left hand: it faces the player, so that's on the right of the screen, the side its fingers go round
     // (grip.ts).
     const digits = ["Index", "Middle", "Ring", "Pinky", "Thumb"].map((f) =>
@@ -189,27 +255,66 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       root,
       arm,
       headBone: bone("mixamorigHead"),
+      neckBone: bone("mixamorigNeck"),
+      turnstile,
+      arms,
       mixer,
       actions,
       playing: actions.walk as AnimationAction,
     };
   }, [model]);
   useEffect(() => () => void rig.mixer.stopAllAction(), [rig]);
-  // The room, in 3D (room.ts), so the phone's moves show against it.
+  // The room, in 3D (room.ts), so the phone's moves show against it, with its door to slide open.
   const picture = useLoader(TextureLoader, PHOTO.url);
-  const room = useMemo(() => {
+  const { room, door } = useMemo(() => {
     picture.colorSpace = NoColorSpace;
     const mesh = makeRoom(picture);
     mesh.position.copy(ROOM_AT);
-    return mesh;
+    const door = makeDoor(picture);
+    door.panels.forEach((panel) => mesh.add(panel));
+    return { room: mesh, door };
   }, [picture]);
   useEffect(
     () => () => {
-      room.geometry.dispose();
-      [room.material].flat().forEach((m) => m.dispose());
+      [room, ...door.panels].forEach((mesh) => {
+        mesh.geometry.dispose();
+        [mesh.material].flat().forEach((m) => m.dispose());
+      });
     },
-    [room],
+    [room, door],
   );
+  // The corridors past the door (corridors.ts), different each visit; their cells near the robot drawn.
+  const ways = useMemo(() => {
+    const corridors = new Corridors((Math.random() * 2 ** 32) >>> 0);
+    const view = new CorridorView({ wide: DOOR.right - DOOR.left, high: DOOR.top });
+    const at: Door = { x: ROOM_AT.x + (DOOR.left + DOOR.right) / 2, z: ROOM_AT.z + ROOM.back };
+    view.group.position.set(at.x, 0, at.z - CELL / 2);
+    view.show(corridors.near(0, 0, AHEAD));
+    // White, and bright: their light comes on as the door opens, and the room's fades; far off, they fade to white.
+    const light = new HemisphereLight("#ffffff", "#d9dde2", 0);
+    return { corridors, view, door: at, light, shown: 0 };
+  }, []);
+  useEffect(() => {
+    scene.add(ways.light);
+    const fog = scene.fog;
+    scene.fog = new Fog(FOG, 6, 30);
+    // The room's own lights, to dim as the corridors' come on.
+    const own: [Light, number][] = [];
+    scene.traverse(
+      (o) =>
+        void (
+          (o as Light).isLight &&
+          o !== ways.light &&
+          own.push([o as Light, (o as Light).intensity])
+        ),
+    );
+    roomLights.current = own;
+    return () => {
+      scene.remove(ways.light);
+      scene.fog = fog;
+      ways.view.dispose();
+    };
+  }, [scene, ways]);
   useEffect(() => {
     // Still: draw the one frame once the robot's in.
     if (reducedMotion) invalidate();
@@ -239,6 +344,7 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
   const fovOverride = useRef<number | null>(null);
   const orbit = useRef<OrbitControls | null>(null);
   const orbitFrom = useRef<Vector3 | null>(null);
+  const orbitHub = useRef(false);
   /** phoneCamera.record's frames, while it records. */
   const recording = useRef<{
     until: number;
@@ -277,6 +383,8 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
         setOrbit(!orbit.current);
         return !!orbit.current;
       },
+      // phoneCamera.orbitHub(on)  orbits the turnstile's hub on its chest instead of the palm.
+      orbitHub: (on = true) => void (orbitHub.current = on),
       orbitFrom: (x: number, y: number, z: number) => {
         setOrbit(true);
         orbitFrom.current = new Vector3(x, y, z);
@@ -291,6 +399,46 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
         phone: phone.box.scale.toArray(),
         fov: (camera as PerspectiveCamera).fov,
         look: looked.current,
+        turnstile: rig.turnstile
+          ? {
+              vertices: rig.turnstile.vertices,
+              angle: +rig.turnstile.angle.toFixed(3),
+              at: rig.turnstile.bone
+                .getWorldPosition(new Vector3())
+                .toArray()
+                .map((n) => +n.toFixed(3)),
+            }
+          : null,
+        // How far the line from the phone's camera to the face passes from the turnstile's hub, in metres; and the
+        // three, in the robot's own frame.
+        sightline: (() => {
+          const cam = phone.group.localToWorld(new Vector3().copy(override.current ?? CAMERA_AT));
+          // Its face as it is: up the head from its base, the head however it's tipped.
+          const face = rig.headBone
+            .getWorldPosition(new Vector3())
+            .add(
+              new Vector3(0, FACE_UP, 0).applyQuaternion(
+                rig.headBone.getWorldQuaternion(new Quaternion()),
+              ),
+            );
+          const hub = rig.turnstile?.bone.getWorldPosition(new Vector3()) ?? new Vector3();
+          const d = face.clone().sub(cam);
+          const k = clamp01(hub.clone().sub(cam).dot(d) / d.lengthSq());
+          const local = (v: Vector3) =>
+            rig.root
+              .worldToLocal(v.clone())
+              .toArray()
+              .map((n) => +n.toFixed(3));
+          // Where the line crosses the bars' height: in front of them (forward of the hub) or behind.
+          const atBars = cam.clone().addScaledVector(d, (hub.y - cam.y) / d.y);
+          return {
+            clear: +hub.distanceTo(cam.clone().addScaledVector(d, k)).toFixed(3),
+            camera: local(cam),
+            face: local(face),
+            hub: local(hub),
+            atBars: local(atBars),
+          };
+        })(),
         // Which way the fingers point (the hand's +Y), and how far the phone's middle is from the face, in the world.
         fingers: new Vector3(0, 1, 0)
           .transformDirection(rig.arm.hand.matrixWorld)
@@ -421,6 +569,16 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     }),
     [],
   );
+  /**
+   * Once it's done looking, the phone's place and the hand's turn then, in the robot's own frame (it moves on from
+   * there); and at its side, once it lowers it.
+   */
+  const looked0 = useRef<Pose | null>(null);
+  const atSide = useRef<Pose | null>(null);
+  /** Its walk out, once the phone's at its side; when the door began to open; the room's lights, to dim. */
+  const route = useRef<Route | null>(null);
+  const doorFrom = useRef<number | null>(null);
+  const roomLights = useRef<[Light, number][]>([]);
 
   useFrame(({ clock }, frameDelta) => {
     if (started.current === null) onDrawn?.();
@@ -445,7 +603,10 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
 
     // Walk, or stand; the animation first, then the arm and hand over it.
     const walked = ease(clamp01((t - WALK[0]) / (WALK[1] - WALK[0])));
-    const next = walked < 1 && !reducedMotion ? rig.actions.walk : rig.actions.idle;
+    // Walking up to the phone, and walking out with it (turning round where it stands, at a slower step).
+    const leaving = route.current;
+    const next = (walked < 1 || leaving) && !reducedMotion ? rig.actions.walk : rig.actions.idle;
+    rig.actions.walk.timeScale = leaving && !leaving.walking ? 0.6 : 1;
     if (rig.playing !== next) {
       next.reset().play();
       rig.playing.crossFadeTo(next, 0.3, false);
@@ -559,63 +720,144 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
         onGrabbed();
       }
     } else {
-      // Held: the arm keeps its grip over the idle animation, and brings the phone in to look at it, shakes it a
-      // little, then holds it back out a bit (CURIOUS); then, now and then, a small tug.
+      // Held: the arm keeps its grip over the animation, and brings the phone in to look at it, shakes it a little,
+      // then holds it back out a bit (CURIOUS); examines it (EXAMINE); drops its arm to its side (AT_SIDE); and
+      // walks out with it, down the corridors for ever.
+      const took = heldAt.current!;
+      const s = reducedMotion ? CURIOUS.back[1] : holding;
+      const lowered = s - CURIOUS.back[1] - EXAMINED - LOWER_TIME;
+      if (!reducedMotion && lowered >= 0 && !route.current) {
+        route.current = new Route(
+          { x: rig.root.position.x, z: rig.root.position.z },
+          rig.root.rotation.y,
+          ways.door,
+          ways.corridors,
+        );
+      }
+      const walking = route.current;
+      if (walking) {
+        walking.step(delta);
+        rig.root.position.set(walking.x, 0, walking.z);
+        rig.root.rotation.y = walking.heading;
+      }
       const bones = [...arm.joints, arm.hand, ...arm.digits.flat()];
       bones.forEach((b, i) => b.quaternion.copy(held.current![i]!));
       rig.root.updateMatrixWorld(true);
-      const { pull, shake, back } = CURIOUS;
-      const s = reducedMotion ? back[1] : holding;
-      const near =
-        s < back[0]
-          ? ease(clamp01((s - pull[0]) / (pull[1] - pull[0])))
-          : 1 - (1 - REST) * ease(clamp01((s - back[0]) / (back[1] - back[0])));
-      const took = heldAt.current!;
-      rig.headBone.getWorldPosition(work.headAt).y += FACE_UP;
-      // The shake: quick, small, side to side, fading in and out within its time.
-      const shaking =
-        !reducedMotion && s > shake[0] && s < shake[1]
-          ? Math.sin(((s - shake[0]) / (shake[1] - shake[0])) * Math.PI)
-          : 0;
-      const wobble = shaking * Math.sin((s - shake[0]) * 2 * Math.PI * 5);
-      // The hand keeps the turn it took the phone with, turned nearly to landscape as it comes in (and kept so), and
-      // rolls with the shake.
-      const landscape = s < back[0] ? near : 1;
-      // Its own quaternion: reachFor uses work's as scratch, which once carried the hand off in one frame at the grab.
-      const handTurn = new Quaternion()
-        .copy(took.turn)
-        .premultiply(
-          work.parent.setFromAxisAngle(work.w.set(0, 0, 1), LANDSCAPE * landscape + 0.18 * wobble),
+      // The pose wanted, in the robot's own frame: the phone's middle, and the hand's turn.
+      let pose: Pose;
+      if (s < CURIOUS.back[1]) pose = curious(s);
+      else {
+        looked0.current ??= curious(CURIOUS.back[1]);
+        const since = s - CURIOUS.back[1];
+        if (since < EXAMINED) pose = examine(looked0.current, since, took.reach);
+        else {
+          atSide.current ??= sidePose();
+          const down = clamp01((since - EXAMINED) / LOWER_TIME);
+          pose = lower(looked0.current, atSide.current, ease(down));
+          if (walking) swing(pose, rig.actions.walk.time);
+        }
+      }
+      solveHold(pose);
+
+      /** The curious look (as it was, in the world, the robot standing where it took the phone), in its frame. */
+      function curious(at: number): Pose {
+        const { pull, shake, back } = CURIOUS;
+        const near =
+          at < back[0]
+            ? ease(clamp01((at - pull[0]) / (pull[1] - pull[0])))
+            : 1 - (1 - REST) * ease(clamp01((at - back[0]) / (back[1] - back[0])));
+        rig.headBone.getWorldPosition(work.headAt).y += FACE_UP;
+        // The shake: quick, small, side to side, fading in and out within its time.
+        const shaking =
+          !reducedMotion && at > shake[0] && at < shake[1]
+            ? Math.sin(((at - shake[0]) / (shake[1] - shake[0])) * Math.PI)
+            : 0;
+        const wobble = shaking * Math.sin((at - shake[0]) * 2 * Math.PI * 5);
+        // The hand keeps the turn it took the phone with, turned nearly to landscape as it comes in (and kept so),
+        // and rolls with the shake. Its own quaternion: reachFor uses work's as scratch.
+        const landscape = at < back[0] ? near : 1;
+        const handTurn = new Quaternion()
+          .copy(took.turn)
+          .premultiply(
+            work.parent.setFromAxisAngle(
+              work.w.set(0, 0, 1),
+              LANDSCAPE * landscape + 0.18 * wobble,
+            ),
+          );
+        // Where the phone's middle goes: on the line from its face to where it took the phone, NEAR from its face at
+        // the closest.
+        const closest = work.v.subVectors(took.phone, work.headAt).setLength(NEAR).add(work.headAt);
+        const middle = new Vector3().lerpVectors(took.phone, closest, near);
+        // And it turns the phone the rest of the way to face its head (about the vertical).
+        const turnIn = reducedMotion ? 1 : ease(clamp01(at / TURN_TIME));
+        const facing = work.w.set(0, 0, 1).applyQuaternion(took.inHand).applyQuaternion(handTurn); // the phone's +z, the way it faces
+        const turnBy = aimAt(work.headAt, middle) - Math.atan2(facing.x, facing.z);
+        handTurn.premultiply(work.parent.setFromAxisAngle(work.w.set(0, 1, 0), turnIn * turnBy));
+        middle.x += 0.025 * wobble;
+        return {
+          at: rig.root.worldToLocal(middle),
+          turn: rig.root.getWorldQuaternion(new Quaternion()).invert().multiply(handTurn),
+        };
+      }
+
+      /** Where the phone hangs at its side, its face up toward the robot's: rolled however bends the wrist least. */
+      function sidePose(): Pose {
+        const face = rig.root.worldToLocal(
+          rig.headBone.getWorldPosition(new Vector3()).add(work.v.set(0, FACE_UP, 0)),
         );
-      // Where the phone's middle goes: on the line from its face to where it took the phone, NEAR from its face at
-      // the closest; and the wrist that puts it there, with the hand so turned.
-      const closest = work.v.subVectors(took.phone, work.headAt).setLength(NEAR).add(work.headAt);
-      const wrist = work.target.lerpVectors(took.phone, closest, near);
-      // And it turns the phone the rest of the way to face its head (about the vertical), before the wrist is found,
-      // so the turn doesn't carry the phone off its place.
-      const turnIn = reducedMotion ? 1 : ease(clamp01(holding / TURN_TIME));
-      const facing = work.w.set(0, 0, 1).applyQuaternion(took.inHand).applyQuaternion(handTurn); // the phone's +z, the way it faces
-      const turnBy = aimAt(work.headAt, wrist) - Math.atan2(facing.x, facing.z);
-      handTurn.premultiply(work.parent.setFromAxisAngle(work.w.set(0, 1, 0), turnIn * turnBy));
-      wrist.x += 0.025 * wobble;
-      wrist.sub(work.w.copy(took.reach).applyQuaternion(handTurn));
-      reachFor(arm, rig.root, wrist, 1, work, new Vector3(0, 1, 0).applyQuaternion(handTurn));
-      // Half the hand's twist about the forearm's length goes to the forearm, so the wrist doesn't wring: a skinned
-      // wrist turned nearly a quarter turn alone pinches. The rig's bones lie along their +Y.
-      const fore = arm.joints[1];
-      const local = fore.getWorldQuaternion(new Quaternion()).invert().multiply(handTurn);
-      const twist = new Quaternion(0, local.y, 0, local.w).normalize();
-      fore.quaternion.multiply(new Quaternion().slerpQuaternions(IDENTITY, twist, 0.5));
-      fore.updateMatrixWorld(true);
-      arm.hand.quaternion.copy(
-        fore.getWorldQuaternion(new Quaternion()).invert().multiply(handTurn),
-      );
-      if (!reducedMotion) {
-        const tug =
-          clamp01(s - back[1]) *
-          (Math.max(0, Math.sin((s - back[1]) * 2.1)) ** 3 * 0.12 +
-            Math.sin((s - back[1]) * 1.3) * 0.03);
-        arm.joints[1].rotateX(-tug);
+        const shoulderAt = rig.root.worldToLocal(shoulder.getWorldPosition(new Vector3()));
+        const at = new Vector3(shoulderAt.x + AT_SIDE.out, AT_SIDE.up, AT_SIDE.forward);
+        const up = face.clone().sub(at).normalize();
+        const facingUp = new Quaternion().setFromUnitVectors(work.v.set(0, 0, -1), up);
+        const inHand = took.inHand.clone().invert();
+        const elbow = work.elbow.angle;
+        let best = { bend: Infinity, pose: { at, turn: new Quaternion() } };
+        for (let k = 0; k < 24; k++) {
+          const phoneTurn = new Quaternion()
+            .setFromAxisAngle(up, (k / 24) * 2 * Math.PI)
+            .multiply(facingUp);
+          const turn = phoneTurn.multiply(inHand);
+          const trial = { at, turn };
+          bones.forEach((b, i) => b.quaternion.copy(held.current![i]!));
+          rig.root.updateMatrixWorld(true);
+          solveHold(trial, false);
+          const bend = new Vector3(0, 1, 0)
+            .transformDirection(arm.joints[1].matrixWorld)
+            .angleTo(new Vector3(0, 1, 0).transformDirection(arm.hand.matrixWorld));
+          if (bend < best.bend) best = { bend, pose: { at: at.clone(), turn: turn.clone() } };
+        }
+        bones.forEach((b, i) => b.quaternion.copy(held.current![i]!));
+        rig.root.updateMatrixWorld(true);
+        work.elbow.angle = elbow;
+        return best.pose;
+      }
+
+      /** Puts the arm where the phone's middle is at `pose`, the hand so turned. */
+      function solveHold(pose: Pose, lineUp = true) {
+        const rootTurn = rig.root.getWorldQuaternion(new Quaternion());
+        const handTurn = rootTurn.multiply(pose.turn);
+        const wrist = rig.root
+          .localToWorld(work.target.copy(pose.at))
+          .sub(work.w.copy(took.reach).applyQuaternion(handTurn));
+        reachFor(
+          arm,
+          rig.root,
+          wrist,
+          1,
+          work,
+          lineUp ? new Vector3(0, 1, 0).applyQuaternion(handTurn) : undefined,
+        );
+        // Part of the hand's twist about the forearm's length goes to the forearm, so the wrist doesn't wring: a
+        // skinned wrist turned far alone pinches. The rig's bones lie along their +Y.
+        const fore = arm.joints[1];
+        const local = fore.getWorldQuaternion(new Quaternion()).invert().multiply(handTurn);
+        const twist = new Quaternion(0, local.y, 0, local.w).normalize();
+        fore.quaternion.multiply(new Quaternion().slerpQuaternions(IDENTITY, twist, FOREARM_TWIST));
+        fore.updateMatrixWorld(true);
+        arm.hand.quaternion.copy(
+          fore.getWorldQuaternion(new Quaternion()).invert().multiply(handTurn),
+        );
+        arm.hand.updateMatrixWorld(true);
       }
       rig.root.updateMatrixWorld(true);
       if (fovOverride.current !== null && cam.fov !== fovOverride.current) {
@@ -625,14 +867,47 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       if (handLight.current)
         arm.hand.getWorldPosition(handLight.current.position).add(work.v.set(0, 0.1, 0.4));
     }
-    // It looks into the phone's camera, walking up, reaching and holding: its head turned (over the animation's)
-    // from where the robot faces to the camera's place on the phone, as far as LOOK_MAX.
+    // The door slides open as it comes up to it; the corridors' light comes on as it does, and the room's dims.
+    // Wherever an arm passes through a bar of the turnstile on its chest, the bar gives: the turnstile turns.
+    if (rig.turnstile) {
+      rig.root.updateMatrixWorld(true);
+      rig.turnstile.push(armPoints(rig.arms), ARM_THICK);
+    }
+
+    const out = route.current;
+    if (out) {
+      const r = out;
+      if (doorFrom.current === null && Math.hypot(r.x - ways.door.x, r.z - ways.door.z) < DOOR_NEAR)
+        doorFrom.current = t;
+      const open =
+        doorFrom.current === null ? 0 : ease(clamp01((t - doorFrom.current) / DOOR_TIME));
+      door.open(open);
+      ways.light.intensity = 2.2 * open;
+      for (const [light, intensity] of roomLights.current)
+        light.intensity = intensity * (1 - 0.6 * open);
+      // The corridors drawn near where it is.
+      if (r.cell !== ways.shown) {
+        ways.shown = r.cell;
+        ways.view.show(ways.corridors.near(r.cell, BEHIND, AHEAD));
+      }
+    }
+
+    // It looks into the phone's camera, walking up, reaching and holding; at the phone itself as it examines it and
+    // lowers it; and walking out, where it's going, glancing down at the phone now and then. Its head turned (over
+    // the animation's) from where the robot faces toward that, as far as LOOK_MAX.
     const lookIn = reducedMotion ? 1 : ease(clamp01((t - WALK[0]) / LOOK_TIME));
     rig.headBone.getWorldPosition(work.headAt);
-    const toPhone = phone.group
-      .localToWorld(work.w.copy(override.current ?? CAMERA_AT))
-      .sub(work.headAt)
-      .normalize();
+    const lookAt = phone.group.localToWorld(work.w.copy(override.current ?? CAMERA_AT));
+    const middle = phone.group.getWorldPosition(new Vector3());
+    lookAt.lerp(middle, reducedMotion ? 0 : ease(clamp01((holding - CURIOUS.back[1]) / 0.6)));
+    if (out) {
+      const ahead = out.ahead(LOOK_AHEAD);
+      const since = holding - CURIOUS.back[1] - EXAMINED - LOWER_TIME;
+      // From the phone to the way ahead as it sets off; then back to the phone for each glance.
+      const atPhone = Math.max(1 - ease(clamp01(since / 1.2)), glance(since));
+      lookAt.set(ahead.x, work.headAt.y - 0.1, ahead.z).lerp(middle, atPhone);
+    }
+    const toPhone = lookAt.sub(work.headAt).normalize();
     work.q.setFromUnitVectors(
       work.v.set(0, 0, 1).transformDirection(rig.root.matrixWorld),
       toPhone,
@@ -646,11 +921,18 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       work.q,
       lookIn * Math.min(1, LOOK_MAX / Math.max(angle, 1e-6)),
     );
-    const headTurn = rig.headBone.getWorldQuaternion(new Quaternion()).premultiply(turn);
-    rig.headBone.quaternion.copy(
-      (rig.headBone.parent as Object3D).getWorldQuaternion(work.parent).invert().multiply(headTurn),
-    );
-    rig.headBone.updateMatrixWorld(true);
+    // The neck takes part of the turn, the head the rest: looking down, the neck bends and carries the head forward,
+    // craning it out over the turnstile on its chest to see the phone at its side (David, 2 Nov).
+    const neckTurn = new Quaternion().slerpQuaternions(IDENTITY, turn, NECK_SHARE);
+    const turnBone = (bone: Bone, by: Quaternion) => {
+      const world = bone.getWorldQuaternion(new Quaternion()).premultiply(by);
+      bone.quaternion.copy(
+        (bone.parent as Object3D).getWorldQuaternion(work.parent).invert().multiply(world),
+      );
+      bone.updateMatrixWorld(true);
+    };
+    turnBone(rig.neckBone, neckTurn);
+    turnBone(rig.headBone, turn.clone().multiply(neckTurn.invert()));
 
     if (recording.current) {
       const r = recording.current;
@@ -718,10 +1000,12 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     // knuckle), following it as the robot moves.
     if (orbit.current) {
       const controls = orbit.current;
-      arm.hand
-        .getWorldPosition(work.v)
-        .add(arm.digits[1]![0]!.getWorldPosition(work.w))
-        .multiplyScalar(0.5);
+      if (orbitHub.current && rig.turnstile) rig.turnstile.bone.getWorldPosition(work.v);
+      else
+        arm.hand
+          .getWorldPosition(work.v)
+          .add(arm.digits[1]![0]!.getWorldPosition(work.w))
+          .multiplyScalar(0.5);
       if (cam.parent !== scene) {
         scene.attach(cam);
         cam.position.copy(work.v).add(work.w.set(0.45, 0.15, 0.25));
@@ -758,6 +1042,7 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
   return (
     <>
       <primitive object={room} />
+      <primitive object={ways.view.group} />
       <primitive object={rig.root} />
       {/* A light at the glass, by the hand, so it stands out from the robot's own navy behind it. */}
       <pointLight ref={handLight} intensity={2.2} distance={1.6} decay={1.2} color="#dfe6ff" />
@@ -920,6 +1205,64 @@ function reachFor(
     j.updateMatrixWorld(true);
   });
 }
+/** Points along an arm, in the world, from the elbow to the fingertips: along the forearm, then across the hand. */
+function armPoints(arms: Bone[][]): Vector3[] {
+  const points: Vector3[] = [];
+  for (const [elbow, wrist, knuckle, index, pinky] of arms) {
+    const at = [elbow!, wrist!, knuckle!].map((b) => b.getWorldPosition(new Vector3()));
+    for (let k = 0; k <= 6; k++) points.push(at[0]!.clone().lerp(at[1]!, k / 6));
+    for (let k = 1; k <= 2; k++) points.push(at[1]!.clone().lerp(at[2]!, k / 2));
+    points.push(index!.getWorldPosition(new Vector3()), pinky!.getWorldPosition(new Vector3()));
+  }
+  return points;
+}
+
+/** How the phone is held, in the robot's own frame: where its middle is, and the hand's turn. */
+interface Pose {
+  at: Vector3;
+  turn: Quaternion;
+}
+/** How much of the hand's twist about the forearm's length the forearm takes. */
+const FOREARM_TWIST = 0.6;
+
+/**
+ * Examining it, `since` seconds in (EXAMINE): the hand turned about the wrist, which stays where it was (so turning
+ * the phone over turns it in the hand rather than swinging the arm round it), and the phone moved a little.
+ */
+function examine(from: Pose, since: number, reach: Vector3): Pose {
+  const next = EXAMINE.findIndex((key) => key.at > since);
+  const [a, b] =
+    next < 0
+      ? [EXAMINE[EXAMINE.length - 1]!, EXAMINE[EXAMINE.length - 1]!]
+      : [EXAMINE[next - 1]!, EXAMINE[next]!];
+  const k = a === b ? 1 : ease(clamp01((since - a.at) / (b.at - a.at)));
+  const mix = (x: number, y: number) => x + (y - x) * k;
+  const wrist = from.at.clone().sub(reach.clone().applyQuaternion(from.turn));
+  const turn = from.turn
+    .clone()
+    .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), mix(a.twist, b.twist)))
+    .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), mix(a.bend, b.bend)))
+    .multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), mix(a.tilt, b.tilt)));
+  wrist.add(new Vector3(...a.move.map((m, i) => mix(m, b.move[i]!))));
+  return { at: wrist.add(reach.clone().applyQuaternion(turn)), turn };
+}
+
+/** From looking at it to its side, `k` of the way (eased): the phone swung out and down, a little forward of a line. */
+function lower(from: Pose, to: Pose, k: number): Pose {
+  const at = from.at.clone().lerp(to.at, k);
+  at.z += 0.08 * Math.sin(Math.PI * k);
+  return { at, turn: from.turn.clone().slerp(to.turn, k) };
+}
+
+/** The walk's step, `time` into its clip: the phone at its side swings a little, forward and back. */
+function swing(pose: Pose, time: number) {
+  const step = Math.sin((2 * Math.PI * time) / STRIDE);
+  pose.at.z += 0.03 * step;
+  pose.turn.premultiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), 0.05 * step));
+}
+/** The walk clip's step, left and right: it's two of them long (2.33 s). */
+const STRIDE = 2.333 / 2;
+
 /** Which way the elbow bends, in the robot's own frame: out to its left (+x), down, and a little back. */
 const ELBOW = new Vector3(1, -1, -0.3).normalize();
 /** How far round its circle the elbow may move in a frame (radians), tried at this many places each way. */
@@ -929,6 +1272,23 @@ const ELBOW_TRIES = 8;
 /** The turn about the vertical that points a camera at `from`, looking along its -z, at `head`. */
 function aimAt(head: Vector3, from: Vector3): number {
   return Math.atan2(-(head.x - from.x), -(head.z - from.z));
+}
+
+/**
+ * How far it has glanced down at the phone, `since` seconds into its walk: 0 not at all, 1 looking at it. A glance
+ * every GLANCE[0] to GLANCE[1] seconds, the same ones every walk, for GLANCE_TIME: down quickly, a look, back up.
+ */
+function glance(since: number): number {
+  let start = GLANCE[0];
+  for (let k = 1; start <= since; k++) {
+    const u = (since - start) / GLANCE_TIME;
+    if (u < 1) return ease(clamp01(u / 0.25)) * (1 - ease(clamp01((u - 0.6) / 0.4)));
+    // The next one's gap, from a fixed scatter.
+    start +=
+      GLANCE[0] +
+      (((GLANCE[1] - GLANCE[0]) * (((Math.sin(k * 12.9898) * 43758.5453) % 1) + 1)) % 1);
+  }
+  return 0;
 }
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
