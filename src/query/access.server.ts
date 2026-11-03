@@ -1,6 +1,6 @@
 import { QueryError } from "./errors";
 import { resolveSaveId, saves, queryViewForSave } from "../game/session.server";
-import { saveForQueryToken } from "../game/query-token.server";
+import { queryTokenSharing, saveForQueryToken } from "../game/query-token.server";
 import { SaveError } from "../game/store.server";
 import { ReplayMismatch } from "../game/replay.server";
 import type { GameSave } from "../game/types";
@@ -14,13 +14,19 @@ export const isLocalBrowserRequest = isSameOriginBrowserRequest;
 export interface QueryAccess {
   kind: "browser" | "agent";
   save: GameSave;
+  /** For Dewey's lookups: the asking visitor's "Share play data" choice, carried on the token (#368). */
+  sharing?: boolean;
 }
 export function authorizeQuery(request: Request): QueryAccess {
   const authorization = request.headers.get("authorization");
   if (authorization !== null) {
     const match = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(authorization);
     if (!match) throw new QueryError("UNAUTHORIZED", "A valid query bearer token is required.");
-    return { kind: "agent", save: saveForQueryToken(match[1]) };
+    return {
+      kind: "agent",
+      save: saveForQueryToken(match[1]),
+      sharing: queryTokenSharing(match[1]),
+    };
   }
   if (!isLocalBrowserRequest(request))
     throw new QueryError("UNAUTHORIZED", "Use a same-origin browser request.");

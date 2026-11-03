@@ -221,3 +221,27 @@ describe("the gates, with it unset", () => {
     expect(origin.servedOverHttps(proxied(good, { path: "/" }))).toBe(false);
   });
 });
+
+describe("a streamed answer for a visitor who opted out (Probe, #368)", () => {
+  it("is produced in their context, after the middleware has returned", async () => {
+    const { visitorSharingMiddleware, visitorAllowsSharing } =
+      await import("./analytics/visitor-sharing.server");
+    // Like Dewey's NDJSON: each chunk is made when it's read, and says whether sharing was on as it was made.
+    const stream = () =>
+      new ReadableStream<Uint8Array>({
+        pull(controller) {
+          controller.enqueue(new TextEncoder().encode(`${visitorAllowsSharing()}\n`));
+          controller.close();
+        },
+      });
+    const read = async (cookie: string) => {
+      const response = await visitorSharingMiddleware(
+        { request: new Request(`http://${HOST}/api/assistant`, { headers: { cookie } }) } as never,
+        async () => new Response(stream()),
+      );
+      return (response as Response).text();
+    };
+    expect(await read("ob_share=off")).toBe("false\n");
+    expect(await read("ob_share=on")).toBe("true\n");
+  });
+});

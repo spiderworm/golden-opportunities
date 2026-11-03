@@ -8,6 +8,7 @@ import { serializeResult } from "./result";
 import { EVIDENCE_HEADER, investigateOnly, QUERY_LIMITS } from "./types";
 import { DATA_VERSION_HEADER, dataVersion } from "./data-version.server";
 import { trackServer } from "../platform/analytics/analytics.server";
+import { visitorAllowsSharing, withSharing } from "../platform/analytics/visitor-sharing.server";
 import type {
   Query,
   QueryErrorCode,
@@ -166,14 +167,19 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
         );
       // Body arrival is asynchronous: recheck expiry, revocation and revision after that wait.
       const access = authorizeQuery(request);
-      const view = resolveView(access);
-      const result = run(query, view, track);
-      const body = serializeResult(result);
-      if (request.headers.get(EVIDENCE_HEADER) !== "none")
-        recordEvidence(access, view, query, result);
-      emit(track, "query_request_completed", {
-        rowCount: result.rows.length,
-        durationMs: performance.now() - started,
+      // Dewey's lookups come from his tool server with no browser cookie: they run with the asking visitor's
+      // "Share play data" choice, carried on the token (Audit and Probe, #368).
+      const body = withSharing(access.sharing ?? visitorAllowsSharing(), () => {
+        const view = resolveView(access);
+        const result = run(query, view, track);
+        const serialized = serializeResult(result);
+        if (request.headers.get(EVIDENCE_HEADER) !== "none")
+          recordEvidence(access, view, query, result);
+        emit(track, "query_request_completed", {
+          rowCount: result.rows.length,
+          durationMs: performance.now() - started,
+        });
+        return serialized;
       });
       // The version this result was computed under, from the same save as its view: a client cache keys on this,
       // not on the version it last saw, so a result that raced a plan commit is never filed under the new one.
