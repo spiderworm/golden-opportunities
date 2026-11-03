@@ -161,6 +161,9 @@ David: "Change decomposition. A waterfall showing which genres, titles or editio
   - `Price`: `The same books selling for more or less each.`
   - `Volume`: `More or fewer books sold in all, at the old prices.`
   - `Mix`: `Sales shifting toward pricier or cheaper books.`
+  - A group new in the later quarter has no price to compare, so its line reads `New in Q1 2194, so no price change: Volume +$240 · Mix +$160`. One gone from it reads `Not sold in Q1 2194, so no price change: Volume -$240 · Mix -$160`. Naming the quarter keeps it right whichever quarter it's compared with (Sim, #328). In the table, such a group's Price cell reads `None` (Sim, #335).
+- **Within noise** shows on the change line and the % cell, `Change: +$30 (+3.0%) · within noise`, with no fade, since fading means few items elsewhere (Sim, #335).
+- **The table's last row** is `Total` (Sim, #335).
 - **Disabled, always with a reason:**
 
 | Why | Tooltip |
@@ -176,9 +179,41 @@ David: "Change decomposition. A waterfall showing which genres, titles or editio
 | Nothing matches | `Nothing in {Q1 2194} or {Q4 2193} matches these filters, so there's no change to explain` |
 | Any other refusal | `Can't break down this chart's change` |
 | The split, with the waterfall off | `Turn on What drove the change to split it` |
+| The split, when one quarter's rows were cut by the row limit | `Too many {titles\|editions} to split into price, volume and mix: filter to fewer` |
 | The split, any other refusal | `Can't split this change into price, volume and mix` |
 
   While the waterfall is on, Compare quarters reads `Turn off What drove the change to compare quarters`, and Scatter plot reads `Turn off What drove the change for a scatter plot`.
+
+## 6. Share of the total (Chart)
+
+David: "Pareto and share-of-total. "% of total" as a display mode, plus a cumulative-share curve ("the top 5 titles are X% of revenue")" (req_fa2e6a0dbbec).
+
+- **The toggles,** beside the others, keeping their names while pressed:
+  - `% of total`, in David's words: each group's share instead of its value. Its tooltip, when it's available: `Show each {genre|title|…}'s share of all {revenue|units sold|…}`.
+  - `Running share`, the cumulative curve. "Pareto" is jargon for players. The bars run largest first, with a line climbing to 100%. Its tooltip: `Largest first, with a line adding up their share as it goes`.
+- **Labels:**
+  - The table gets a `Share` column after the value, and in running mode `Running share` too.
+  - The axes are `Share of revenue (%)` and the curve's own `Running share (%)`.
+  - The title gains `, as shares`, or `, largest first, with the running share`, as in `Revenue by title, largest first, with the running share`.
+- **The headline:** `Top 5 titles: 62.3% of revenue`, or `Top title: 18.0% of revenue` for one. It uses the dimension's plural and the measure's label, both in lower case, and one decimal place.
+- **Tooltips:** a bar reads `Fiction: $38,420, 18.0% of revenue`, and a point on the curve reads `Top 3 genres: 54.1% of revenue`.
+- **Shares are of the full total,** the one before the row limit, as the source line says. Where rows are cut, the caption adds `Shares are of all {titles}, not only those shown.`
+- **Where:** Investigate's chart, pins and reports first. Dewey's chat follows with Sage, using the same strings.
+- **Disabled, always with a reason:**
+
+| Why | Tooltip |
+| --- | --- |
+| An average (average discount, rating, order value, orders per day) | `An average has no share of a total: show revenue, units sold or orders` |
+| Orders by a book-level group (genre, title, author, format, publisher, series, edition, price band and the like); orders by month, quarter or weekday add up and are allowed | `An order with books in several {genres} counts in each, so their shares would add to more than 100%` |
+| More than one measure | `Show one measure to see its share` |
+| Running share by month, quarter or weekday (`% of total` is fine there) | `Break down by title, genre or another group for a running share` |
+| Compare quarters on | `Turn off Compare quarters to see shares` |
+| vs. same quarter last year on | `Turn off vs. same quarter last year to see shares` |
+| Scatter plot on | `Turn off Scatter plot to see shares` |
+| What drove the change on | `Turn off What drove the change to see shares` |
+| Any other refusal | `Can't show shares for this chart` |
+
+  While shares are on, each of those toggles reads `Turn off % of total to {compare quarters|…}`.
 
 ## Analytics, for all of them
 
