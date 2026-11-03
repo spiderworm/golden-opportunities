@@ -2,6 +2,7 @@ import type { Route } from "./+types/api";
 import { writeSegments } from "~/game/game.server";
 import { getGameSession } from "~/game/session.server";
 import { SaveError } from "~/game/store.server";
+import { BodyRefused, readCappedText } from "~/platform/body.server";
 import { isLocalBrowserRequest } from "~/query/access.server";
 import { trackServer } from "~/platform/analytics/analytics.server";
 import {
@@ -53,9 +54,17 @@ export type SegmentAnswer =
 export async function action({ request }: Route.ActionArgs) {
   const refused = door(request);
   if (refused) return refused;
+  let text: string;
+  try {
+    text = await readCappedText(request, MAX_SEGMENT_BODY);
+  } catch (error) {
+    if (error instanceof BodyRefused)
+      return new Response(error.message, { status: error.status, headers: NO_STORE });
+    throw error;
+  }
   let change: SegmentChange | null = null;
   try {
-    change = parseSegmentChange(await request.clone().json());
+    change = parseSegmentChange(JSON.parse(text));
   } catch {
     change = null;
   }
@@ -92,7 +101,8 @@ export const MAX_SEGMENT_BODY = 16_384;
 
 /**
  * Who may send a change, checked before any of its body is read, so no client can make the server buffer one
- * (Audit and Frank, #387): a POST, from the local same-origin browser, as JSON, declaring no more than the cap.
+ * (Audit and Frank, #387): a POST, from the local same-origin browser, as JSON. The body is then read through
+ * readCappedText, which refuses a declared or actual length past the cap, and a body slower than its deadline.
  */
 function door(request: Request): Response | null {
   if (request.method !== "POST")
@@ -102,9 +112,6 @@ function door(request: Request): Response | null {
   const type = request.headers.get("content-type") ?? "";
   if (!/^application\/json\s*(;|$)/i.test(type))
     return new Response("Send JSON.", { status: 415, headers: NO_STORE });
-  const declared = Number(request.headers.get("content-length") ?? "0");
-  if (!Number.isFinite(declared) || declared > MAX_SEGMENT_BODY)
-    return new Response("Too large.", { status: 413, headers: NO_STORE });
   return null;
 }
 
