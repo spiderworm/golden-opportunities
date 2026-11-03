@@ -428,6 +428,8 @@ describe("a pinned waterfall (What drove the change)", () => {
     expect(bad({ by: "month" })).toBeNull();
     expect(bad({ then: "2193-Q5" })).toBeNull();
     expect(bad({ now: "2193-Q4" })).toBeNull();
+    // Backwards in time.
+    expect(bad({ then: "2194-Q2" })).toBeNull();
     // The quarters are its own, and its breakdown isn't a filter.
     expect(bad({ filter: { quarter: ["2193-Q1"] } })).toBeNull();
     expect(bad({ filter: { genre: ["Fiction"] } })).toBeNull();
