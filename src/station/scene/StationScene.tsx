@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useEffect, useMemo, useRef, type RefObject } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { DirectionalLight, Group } from "three";
 
 import { track } from "~/platform/analytics/analytics.client";
@@ -7,6 +7,7 @@ import { holdFrame } from "../held-frame";
 import { sceneLevels } from "../scene-params";
 import { CameraRig, SUN_INTENSITY } from "./CameraRig";
 import { DustMotes } from "./DustMotes";
+import { forgetFailedLoads } from "./loading";
 import { Exterior, Shuttles } from "./Exterior";
 import { summarizeFrames } from "./frame-stats";
 import { Interior } from "./Interior";
@@ -47,6 +48,8 @@ export interface StationSceneProps {
 }
 
 export default function StationScene(props: StationSceneProps) {
+  // A new visit: what failed to load last time is tried again (once per scene, not per render).
+  useState(forgetFailedLoads);
   const station = useRef<Group>(null);
   const sun = useRef<DirectionalLight>(null);
   // The view the camera has come to rest in; null while it glides.
@@ -66,6 +69,7 @@ export default function StationScene(props: StationSceneProps) {
         // Pick up the scene's time where the last visit left it, so everything
         // clock-driven resumes (SceneClock sets it again once the models are in).
         clock.elapsedTime = stationElapsed();
+        stationMark("canvas");
         props.onReady(gl.getContext() as WebGL2RenderingContext);
       }}
       aria-hidden="true"
@@ -78,13 +82,13 @@ export default function StationScene(props: StationSceneProps) {
         intensity={SUN_INTENSITY}
         color="#fff3e2"
       />
+      {/* Everything that loads, together: nothing draws until all of it is in (David, 3 Nov: no "intermediary
+          canvas with some assets loaded"), so the clock's catch-up below happens before anything's seen. */}
       <Suspense fallback={null}>
         <Sky />
-      </Suspense>
-      <Spinner station={station} />
-      <group ref={station} rotation={[0, STATION_START_ANGLE, 0]}>
-        {/* The generated models load as the scene starts; everything waits for them together. */}
-        <Suspense fallback={null}>
+        <Mark name="sky" />
+        <Spinner station={station} />
+        <group ref={station} rotation={[0, STATION_START_ANGLE, 0]}>
           <Exterior glow={levels.glow} />
           <group position={BERTH_ORIGIN}>
             <Interior
@@ -99,25 +103,49 @@ export default function StationScene(props: StationSceneProps) {
             <Props />
           </group>
           <SceneClock />
+          <Mark name="models" />
           <FirstFrame onDrawn={props.onDrawn} hold={props.hold} />
-        </Suspense>
-      </group>
-      <Suspense fallback={null}>
+        </group>
         <Shuttles count={levels.shuttles} />
+        <Mark name="shuttles" />
+        <CameraRig
+          station={station}
+          sun={sun}
+          view={props.view}
+          instant={props.reducedMotion}
+          onSettled={(view) => {
+            stationMark(`settled-${view}`);
+            settled.current = view;
+            props.onSettled(view);
+          }}
+        />
+        <FrameSampler settled={settled} statsLine={props.statsLine} />
       </Suspense>
-      <CameraRig
-        station={station}
-        sun={sun}
-        view={props.view}
-        instant={props.reducedMotion}
-        onSettled={(view) => {
-          settled.current = view;
-          props.onSettled(view);
-        }}
-      />
-      <FrameSampler settled={settled} statsLine={props.statsLine} />
     </Canvas>
   );
+}
+
+/**
+ * The station's load, step by step, as performance marks (`station:<name>`): each with where the camera is and how
+ * far the station has turned, so a measurement can see what the player saw and when (David, 3 Nov: the station
+ * "comes in" in several phases).
+ */
+export function stationMark(name: string, detail?: Record<string, unknown>) {
+  performance.mark(`station:${name}`, { detail });
+}
+
+/** Marks the first frame its Suspense boundary draws with its contents in, with the camera and the station's turn. */
+function Mark({ name }: { name: string }) {
+  const done = useRef(false);
+  useFrame(({ camera, clock }) => {
+    if (done.current) return;
+    done.current = true;
+    stationMark(name, {
+      camera: camera.position.toArray().map((n) => Math.round(n * 10) / 10),
+      clock: Math.round(clock.elapsedTime * 100) / 100,
+    });
+  });
+  return null;
 }
 
 function Spinner({ station }: { station: RefObject<Group | null> }) {
@@ -158,7 +186,10 @@ function FirstFrame({ onDrawn, hold }: Pick<StationSceneProps, "onDrawn" | "hold
   const frames = useRef(0);
   // Frame callbacks run before the frame draws, so the second one follows the first drawn frame.
   useFrame(() => {
-    if (++frames.current === 2) onDrawn();
+    if (++frames.current === 2) {
+      stationMark("drawn");
+      onDrawn();
+    }
   });
   useEffect(() => {
     hold.current = () => {

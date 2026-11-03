@@ -40,15 +40,29 @@ export function held<T>(start: () => Promise<T>): Promise<T> {
   });
 }
 
-/** One load per key for the page's life; a load that fails is forgotten, so a later visit tries again. */
+/** The loads that failed, kept (so a render after the failure meets it and fails) until the next visit's scene. */
+const failed = new Set<string>();
+
+/**
+ * One load per key for the page's life. A load that fails stays failed for this visit: forgotten at once, a render
+ * after the failure started it again and suspended on it again, round and round (measured: ~800 requests a second
+ * for an aborted model, the station stuck on Loading…), and the failure never reached the scene's boundary. The
+ * next visit's scene tries again (forgetFailedLoads).
+ */
 function once<T>(key: string, start: () => Promise<T>): Promise<T> {
   let load = loads.get(key) as Promise<T> | undefined;
   if (!load) {
     load = held(start);
     loads.set(key, load);
-    load.catch(() => loads.delete(key));
+    load.catch(() => failed.add(key));
   }
   return load;
+}
+
+/** A new visit to the station: the loads that failed last time are tried again. */
+export function forgetFailedLoads() {
+  for (const key of failed) loads.delete(key);
+  failed.clear();
 }
 
 const models = new GLTFLoader();

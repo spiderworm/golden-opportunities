@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import { useSearchParams } from "react-router";
 
 import { track } from "~/platform/analytics/analytics.client";
@@ -18,17 +19,24 @@ import { heldFrame, watchHeldFrame } from "./held-frame";
 import { StationPoster } from "./StationPoster";
 import { FIRST_VIEW, rememberedView, rememberView } from "./view-memory";
 import { ImportFailed, retryImport } from "~/platform/lazy/retry";
+import { LoadingLine, useCommitment } from "~/platform/ui/commitment";
 import { canRenderWebGL2 } from "~/platform/webgl";
 import styles from "./StationView.module.css";
 
 // three.js and the scene load only here, after the page is up and the
 // browser has shown it can draw them. Without WebGL 2, or if the scene
-// fails (its code or models don't arrive, or it breaks), the player sees a
-// still picture instead, with a note saying which. The camera stays where it
+// fails (its code or models don't arrive, or it breaks, or takes past
+// LOAD_CAP_MS), the player sees a still picture instead, with a note saying
+// which. Nothing is shown in between (David, 3 Nov, AGENTS.md "Commit before
+// you show"): the scene stays out of sight until all of it is in and its
+// first frame has drawn, then appears once; past 500 ms, a quiet Loading…. The camera stays where it
 // is until the player moves it: inside on a first visit, then wherever they
 // left it last time. Coming back to the screen, the last frame of the
 // previous visit stays up until the new scene has drawn.
 const StationScene = lazy(() => retryImport(() => import("./scene/StationScene")));
+
+/** How long the scene may take to load and draw before the station commits to its still picture instead. */
+const LOAD_CAP_MS = 20_000;
 
 /** "static": no WebGL 2 here. "failed": the device could draw it, but the scene didn't load, or broke. */
 type Support = "checking" | "3d" | "static" | "failed";
@@ -65,6 +73,7 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
   const showStats = params.has("stats");
 
   useEffect(() => {
+    performance.mark("station:view");
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const mode = canRenderWebGL2() ? "3d" : "static";
     // Set before the scene first renders, so the camera starts there rather than gliding.
@@ -110,48 +119,58 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
       setSupport("failed");
       track("station_failed", {
         stage: drawn ? "running" : "loading",
-        cause: error instanceof ImportFailed ? "import" : "scene",
+        cause: error === TIMED_OUT ? "timeout" : error instanceof ImportFailed ? "import" : "scene",
       });
     },
     [drawn],
   );
+  // Committed: to the scene once it has drawn, or to the still picture. Until then, nothing but Loading….
+  const committed = drawn || support === "static" || support === "failed";
+  const { loading } = useCommitment(committed);
+  // Too long to wait: the still picture, said to be the station that didn't load.
+  useEffect(() => {
+    if (support !== "3d" || drawn) return;
+    const timer = setTimeout(() => onFailed(TIMED_OUT), LOAD_CAP_MS);
+    return () => clearTimeout(timer);
+  }, [support, drawn, onFailed]);
 
   const next: StationViewpoint = view === "inside" ? "outside" : "inside";
   return (
     <section className={styles.view} aria-label="The station" data-drawn={drawn || undefined}>
       {support === "3d" ? (
         <SceneBoundary onError={onFailed}>
-          <Suspense fallback={<StationPoster />}>
-            <StationScene
-              view={view}
-              busyness={busyness}
-              featuredTitle={featuredTitle}
-              alert={alert}
-              reducedMotion={reducedMotion}
-              onReady={() => setReady(true)}
-              onSettled={onSettled}
-              onDrawn={() => setDrawn(true)}
-              hold={hold}
-              statsLine={showStats ? statsLine : undefined}
-            />
+          <Suspense fallback={null}>
+            {/* Out of sight until it has drawn whole, then shown once. */}
+            <div className={styles.scene} data-shown={drawn || undefined}>
+              <StationScene
+                view={view}
+                busyness={busyness}
+                featuredTitle={featuredTitle}
+                alert={alert}
+                reducedMotion={reducedMotion}
+                onReady={() => setReady(true)}
+                onSettled={onSettled}
+                // At once, from the scene's frame loop: the loading line never outlives the drawing (as Dewey's faces).
+                onDrawn={() => flushSync(() => setDrawn(true))}
+                hold={hold}
+                statsLine={showStats ? statsLine : undefined}
+              />
+            </div>
           </Suspense>
         </SceneBoundary>
-      ) : (
+      ) : support === "static" || support === "failed" ? (
         <StationPoster
-          note={
-            support === "static"
-              ? NOTES.static
-              : support === "failed"
-                ? NOTES[drawn ? "running" : "loading"]
-                : undefined
-          }
+          note={support === "static" ? NOTES.static : NOTES[drawn ? "running" : "loading"]}
         />
-      )}
+      ) : null}
+      {/* Mounted until committed, empty for its first 500 ms; not over the last visit's picture. */}
+      {!committed && !held && <LoadingLine loading={loading} className={styles.loading} />}
       {held && !drawn && (support === "checking" || support === "3d") && (
         <img className={styles.held} src={held} alt="" />
       )}
       <p className={styles.place}>Orbital Books, Ring C, Berth 14</p>
-      {support === "3d" && ready && (
+      {/* Only with the scene shown: nothing of it before it's committed. */}
+      {support === "3d" && ready && drawn && (
         <button type="button" className={styles.move} onClick={() => move(next)}>
           {next === "inside" ? "Go inside" : "Step outside"}
         </button>
@@ -160,6 +179,9 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
     </section>
   );
 }
+
+/** What a load that took past LOAD_CAP_MS fails with. */
+const TIMED_OUT = new Error("The station took too long to load.");
 
 /** Falls back to the still picture if the scene throws (its code or a model that won't load, a lost GPU). */
 class SceneBoundary extends Component<
