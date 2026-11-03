@@ -1271,3 +1271,27 @@ describe("a forecast is the player's, never Dewey's (David, 3 Nov 2026)", () => 
       expect(say(sentence), sentence).not.toBe(WITHHELD);
   });
 });
+
+describe("Dewey declines a forecast in words the gate shows (Plot's line; Probe, Frank and Audit after #383)", () => {
+  it("shows his decline, word for word", () => {
+    for (const sentence of [
+      "That call is yours to make.",
+      "I only look up what's already happened, and I can show how the quarters so far went.",
+    ])
+      expect(say(sentence), sentence).toBe(sentence);
+  });
+
+  it("withholds a past figure made into a target, or a forecast with an adverb in the middle", () => {
+    for (const sentence of [
+      "Aim for {{a4}} next time.",
+      "If the trend continues, {{a4}}.",
+      "Plan for {{a4}}.",
+      "Revenue may well land near {{a4}}.",
+      "Units could easily reach {{a4}}.",
+      "If that keeps up, {{a4}}.",
+    ])
+      expect(say(sentence), sentence).toBe(WITHHELD);
+    // Without a figure, the same words are no forecast.
+    expect(say("I can look things up for you next time.")).not.toBe(WITHHELD);
+  });
+});
