@@ -325,7 +325,13 @@ export class Refs {
       from,
       to,
       unit: name === "query_data" && isUnit(out.unit) ? out.unit : null,
-      totalEvidence: { n: out.n, range_low: out.range_low, range_high: out.range_high },
+      // The total's evidence, its agreeing-ratings word included, as a row's (Audit, #347).
+      totalEvidence: {
+        n: out.n,
+        range_low: out.range_low,
+        range_high: out.range_high,
+        range_none: out.range_none,
+      },
     });
   }
 
