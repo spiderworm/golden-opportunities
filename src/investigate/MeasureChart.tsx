@@ -14,9 +14,10 @@ import {
 } from "./charts/category-chart";
 import { EChart } from "~/platform/charts/EChart";
 import { Dropdown } from "~/platform/ui/Dropdown";
+import { ReasonToggle } from "~/platform/ui/ReasonToggle";
 import { Legend } from "./charts/Legend";
-import { SCATTER_HEIGHT, scatterOption, scatterPoints, scatterTitle } from "./charts/scatter-chart";
 import { LastYearTable, ResultTable } from "./charts/ResultTable";
+import { SCATTER_HEIGHT, scatterOption, scatterPoints, scatterTitle } from "./charts/scatter-chart";
 import { changeLine, lastYearLabels, withLastYear } from "./charts/last-year";
 import { seriesColor } from "~/platform/charts/chart-theme";
 import {
@@ -40,9 +41,10 @@ import {
   fittingMeasures,
   GROUPINGS,
   lastYearBlock,
+  lastYearUnshown,
+  scatterProblem,
   measuresOf,
   monthsInScope,
-  scatterProblem,
   shownQuarter,
   type ChartMeasure,
   type Grouping,
@@ -62,10 +64,10 @@ export interface MeasureChartProps {
   onSeries?: (measure: ChartMeasure, shown: boolean) => void;
   onGroup: (by: Grouping) => void;
   onCompare: (compare: boolean) => void;
-  /** The scatter plot turned on or off (scatterProblem says when it can be on). */
-  onScatter: (on: boolean) => void;
   /** "vs. same quarter last year" switched on or off. */
   onLastYear?: (on: boolean) => void;
+  /** The scatter plot turned on or off (scatterProblem says when it can be on). */
+  onScatter: (on: boolean) => void;
   onDrill: (value: string) => void;
   onTable: (shown: boolean) => void;
   /** Pins this view to the pinned charts; `pinned` when an identical one is already there. */
@@ -117,8 +119,8 @@ export function MeasureChart({
   onSeries,
   onGroup,
   onCompare,
-  onScatter,
   onLastYear,
+  onScatter,
   onDrill,
   onTable,
   onPin,
@@ -172,8 +174,12 @@ export function MeasureChart({
       }),
     [result, state.by, state.compare, months.join(), showAll, selected.join("\u0000")],
   );
-  // Last year beside this year (Plot, #291): only where it's allowed and the server ran it.
-  const lastYearReason = lastYearBlock(state, quarters);
+  // Last year beside this year (Plot, #291): only where it's allowed and the server ran it; else it says why.
+  const lastYearReason =
+    lastYearBlock(state, quarters) ??
+    (state.lastYear
+      ? lastYearUnshown(state, result)
+      : lastYearUnshown(state, { ...result, lastYear: true }));
   const quarter = shownQuarter(state);
   const labels =
     state.lastYear && !lastYearReason && quarter && result.lastYear
@@ -252,34 +258,30 @@ export function MeasureChart({
             onChange={onGroup}
             options={GROUPINGS.map((g) => ({ value: g, label: DIMENSION_LABELS[g] }))}
           />
-          <button
-            type="button"
+          <ReasonToggle
             className={styles.toggle}
-            aria-pressed={state.compare}
-            disabled={!canCompare(state.by, state.also) || labels !== null}
-            title={
+            pressed={state.compare}
+            reason={
               state.also.length
                 ? "Show one measure to compare quarters"
                 : !canCompare(state.by)
                   ? "Group by genre, format or publisher to compare quarters"
                   : labels
                     ? "Turn off vs. same quarter last year to compare quarters"
-                    : undefined
+                    : null
             }
-            onClick={() => onCompare(!state.compare)}
+            onToggle={() => onCompare(!state.compare)}
           >
             Compare quarters
-          </button>
-          <button
-            type="button"
+          </ReasonToggle>
+          <ReasonToggle
             className={styles.toggle}
-            aria-pressed={labels !== null}
-            disabled={lastYearReason !== null}
-            title={lastYearReason ?? undefined}
-            onClick={() => onLastYear?.(!state.lastYear)}
+            pressed={labels !== null}
+            reason={lastYearReason}
+            onToggle={() => onLastYear?.(!state.lastYear)}
           >
             vs. same quarter last year
-          </button>
+          </ReasonToggle>
           <button
             type="button"
             className={styles.toggle}
@@ -291,19 +293,14 @@ export function MeasureChart({
           >
             Table
           </button>
-          <button
-            type="button"
+          <ReasonToggle
             className={styles.toggle}
-            aria-pressed={scatter}
-            disabled={noScatter !== null}
-            title={
-              noScatter ??
-              `Plot one measure against the other, one point per ${DIMENSION_LABELS[state.by].toLowerCase()}`
-            }
-            onClick={() => onScatter(!scatter)}
+            pressed={scatter}
+            reason={noScatter}
+            onToggle={() => onScatter(!scatter)}
           >
             Scatter plot
-          </button>
+          </ReasonToggle>
           <button
             type="button"
             className={styles.toggle}
