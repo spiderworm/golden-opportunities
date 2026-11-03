@@ -53,6 +53,13 @@ export function rangeLine(
 ): string | null {
   if (mean === null || !evidence) return null;
   const range = ratingRange(mean, evidence);
+  // Every rating the same: say so, and why there's no range (Plot, after #340).
+  if (!range && evidence.n >= 2 && evidence.se === 0) {
+    const stars = `${Math.round(mean)} ${Math.round(mean) === 1 ? "star" : "stars"}`;
+    return evidence.n === 2
+      ? `Both ratings are ${stars}, so there's no likely range to give.`
+      : `All ${evidence.n.toLocaleString("en-US")} ratings are ${stars}, so there's no likely range to give.`;
+  }
   if (!range) return "Too few ratings for a likely range";
   // Stars to one decimal place, as the chart's ticks are; two where one would read as no range at all,
   // "4.18 to 4.24", not "4.2 to 4.2" (Plot, after #337).
