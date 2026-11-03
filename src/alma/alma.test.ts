@@ -712,6 +712,18 @@ describe("Alma's turn", () => {
     expect(slow.calls).toBe(1);
   });
 
+  it("runs on Dewey's engine: the Claude API when Dewey does, unless ORBITAL_ALMA_PROVIDER names one", () => {
+    // Building a model calls nothing: the API is reached only when Alma is asked.
+    const api = { ORBITAL_ASSISTANT_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "sk-ant-test" };
+    expect(almaModel(api)?.name).toBe("claude-sonnet-5-5");
+    expect(almaModel({ ...api, ORBITAL_ALMA_ANTHROPIC_MODEL: "claude-haiku-5-5" })?.name).toBe(
+      "claude-haiku-5-5",
+    );
+    expect(almaModel({ ORBITAL_ALMA_PROVIDER: "anthropic" })?.name).toBe("claude-sonnet-5-5");
+    expect(almaModel({ ...api, ORBITAL_ALMA_PROVIDER: "claude" })?.name).toBe("sonnet");
+    expect(almaModel({ ...api, ORBITAL_ALMA_PROVIDER: "scripted" })).toBeNull();
+  });
+
   it("scripts without asking when there's no model, as in every test run", async () => {
     expect(almaModel()).toBeNull();
     expect(almaModel({ ORBITAL_ALMA_PROVIDER: "scripted" })).toBeNull();

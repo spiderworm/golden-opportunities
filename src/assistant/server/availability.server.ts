@@ -17,6 +17,16 @@ import { claudeCommand, minimalEnv } from "./claudeCode.server.ts";
 /** What the player sees when Claude Code isn't installed, isn't signed in, or won't start (Goldy, M4). */
 export const OFFLINE = `${ASSISTANT_NAME}'s terminal is offline on this machine: it needs Claude Code installed and signed in.`;
 export const OFFLINE_HINT = "To set it up, see docs/dewey-setup.md, then restart the game.";
+/** The same, when Dewey runs on the Claude API (ORBITAL_ASSISTANT_PROVIDER=anthropic) and has no usable key. */
+export const API_OFFLINE = `${ASSISTANT_NAME}'s terminal is offline on this machine: it needs an Anthropic API key.`;
+export const API_OFFLINE_HINT =
+  "Set ANTHROPIC_API_KEY in the game server's environment, then restart the game.";
+
+/** The offline message and hint for the engine this server runs. */
+export const offlineCopy = (env: NodeJS.ProcessEnv = process.env) =>
+  env.ORBITAL_ASSISTANT_PROVIDER === "anthropic"
+    ? { message: API_OFFLINE, hint: API_OFFLINE_HINT }
+    : { message: OFFLINE, hint: OFFLINE_HINT };
 
 export type OfflineReason = "missing" | "signed_out" | "broken";
 export type Availability = { state: "ready" } | { state: "offline"; reason: OfflineReason };
@@ -62,6 +72,16 @@ function run(
   });
 }
 
+/**
+ * On the Claude API: ready with a key in ANTHROPIC_API_KEY, else offline ("missing"). Nothing is spawned or sent;
+ * a refused key shows up on the first answer (markOffline, "signed_out").
+ */
+export async function probeApi({ env = process.env }: ProbeOptions = {}): Promise<Availability> {
+  return env.ANTHROPIC_API_KEY?.trim()
+    ? { state: "ready" }
+    : { state: "offline", reason: "missing" };
+}
+
 /** Asks Claude Code whether it's there and signed in. Never throws. */
 export async function probeAssistant({
   env = process.env,
@@ -102,7 +122,7 @@ export function assistantAvailability({
   env = process.env,
   track,
   now = Date.now(),
-  probe = probeAssistant,
+  probe = env.ORBITAL_ASSISTANT_PROVIDER === "anthropic" ? probeApi : probeAssistant,
 }: {
   env?: NodeJS.ProcessEnv;
   track?: AvailabilityTrack;

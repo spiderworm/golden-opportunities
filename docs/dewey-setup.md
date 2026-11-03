@@ -41,6 +41,19 @@ If you sign in while the game is running, Dewey notices within a minute, or stra
 - **The rest of the game** (the station, Investigate's dashboard, Decide, the results) works normally, and Dewey's panel says it's offline. The game never starts anything to ask Claude Code beyond `claude auth status` and `claude --version`.
 - **The fake provider:** to see the panel work without Claude Code, start the game with `ORBITAL_ASSISTANT_PROVIDER=fake npm run dev`. Dewey then gives a canned reply, with real lookups: revenue by quarter, and the latest quarter beside the quarter before it, by genre. Each lookup runs through the same tool code and POST /api/query as the real Dewey's, so its tables and Pin buttons work.
 
+## On the Claude API
+
+Dewey and Alma can run on the Claude API instead of Claude Code (David, 3 Nov 2026):
+
+```
+ORBITAL_ASSISTANT_PROVIDER=anthropic ANTHROPIC_API_KEY=... npm run dev
+```
+
+- **The key** is read from `ANTHROPIC_API_KEY` in the game server's environment, and from nowhere else: nothing in the home folder, and no `ant` login profile. It's never logged and never sent to the browser. Without one, Dewey's panel says it needs an Anthropic API key, and Alma uses her scripted events.
+- **The model** is `claude-sonnet-5-5`. Set `ORBITAL_ANTHROPIC_MODEL` for both, or `ORBITAL_ALMA_ANTHROPIC_MODEL` for Alma alone.
+- **Alma** follows Dewey onto the API. `ORBITAL_ALMA_PROVIDER=claude` keeps her on Claude Code, and `scripted` turns her off.
+- **Limits:** the model gets the game's data tools and nothing else, at most eight model calls an answer, and two minutes for the whole answer (Alma has thirty seconds). A rate limit (429) or an overload (529) shows as "unavailable", and a refused key as offline.
+
 ## What Dewey can reach
 
-Claude Code runs with no built-in tools, no settings, skills or commands from the machine, and only the game's own data tools. It sees the store's sales data the same way the player's dashboard does, and nothing else. `src/assistant/engine-notes.md` records how that was measured, and what is guaranteed about the figures Dewey states.
+On either engine, Dewey has only the game's own data tools. Claude Code runs with no built-in tools, no settings, skills or commands from the machine, and only the game's own data tools. It sees the store's sales data the same way the player's dashboard does, and nothing else. `src/assistant/engine-notes.md` records how that was measured, and what is guaranteed about the figures Dewey states.

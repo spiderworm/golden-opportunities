@@ -3,7 +3,13 @@
 // take the first candidate with scripted flavor. The model is injected, so tests and automated runs never reach
 // the real one (`almaModel` gives none for them).
 
+import {
+  anthropicAssistant,
+  apiClient,
+  DEFAULT_API_MODEL,
+} from "~/assistant/server/anthropicApi.server";
 import { claudeCodeAssistant } from "~/assistant/server/claudeCode.server";
+import type { AssistantProvider } from "~/assistant/server/provider.server";
 import { AssistantUnavailable } from "~/assistant/server/provider.server";
 import { drawCandidates, recoveryOf, type Candidate, type QuarterContext } from "./candidates";
 import { almaInput, ALMA_RULES, PROMPT_VERSION, type QuarterSummary } from "./prompt";
@@ -24,7 +30,24 @@ export function claudeCodeAlma(
   model = process.env.ORBITAL_ALMA_MODEL || "sonnet",
   timeoutMs = ALMA_TIMEOUT_MS,
 ): AlmaModel {
-  const provider = claudeCodeAssistant({ server: null, model, timeoutMs });
+  return almaOn(claudeCodeAssistant({ server: null, model, timeoutMs }), model);
+}
+
+/** The real model on the Claude API, with no tools (anthropicApi.server.ts): ANTHROPIC_API_KEY, as Dewey's. */
+export function anthropicAlma(
+  env: NodeJS.ProcessEnv = process.env,
+  timeoutMs = ALMA_TIMEOUT_MS,
+): AlmaModel {
+  const model =
+    env.ORBITAL_ALMA_ANTHROPIC_MODEL || env.ORBITAL_ANTHROPIC_MODEL || DEFAULT_API_MODEL;
+  return almaOn(
+    anthropicAssistant({ toolEnv: null, model, timeoutMs, client: apiClient(env) }),
+    model,
+  );
+}
+
+/** Alma's whole answer as text, from either engine. */
+function almaOn(provider: AssistantProvider, model: string): AlmaModel {
   return {
     name: model.slice(0, 60),
     async ask(system, input, signal) {
@@ -37,11 +60,18 @@ export function claudeCodeAlma(
   };
 }
 
-/** The model to ask, or null to always script: `ORBITAL_ALMA_PROVIDER=scripted`, and every test run. */
+/**
+ * The model to ask, or null to always script: `ORBITAL_ALMA_PROVIDER=scripted`, and every test run. Otherwise
+ * Alma runs on Dewey's engine (ORBITAL_ASSISTANT_PROVIDER=anthropic puts both on the Claude API), unless
+ * ORBITAL_ALMA_PROVIDER names one: `anthropic` or `claude`.
+ */
 export function almaModel(env: NodeJS.ProcessEnv = process.env): AlmaModel | null {
   if (env.ORBITAL_ALMA_PROVIDER === "scripted" || env.VITEST || env.NODE_ENV === "test")
     return null;
-  return claudeCodeAlma();
+  const engine =
+    env.ORBITAL_ALMA_PROVIDER ??
+    (env.ORBITAL_ASSISTANT_PROVIDER === "anthropic" ? "anthropic" : "claude");
+  return engine === "anthropic" ? anthropicAlma(env) : claudeCodeAlma();
 }
 
 /** A failed call's code, always one of FAILURES: a kind added to the provider later reads as "other" until it's listed. */

@@ -58,6 +58,9 @@ export const BACKSTORY_FAILURES: readonly string[] = [
   "timeout",
   ...["missing", "broken", "timeout", "signed_out", "other"].map((k) => `unavailable:${k}`),
   ...BACKSTORY_FIELDS.flatMap((field) => BACKSTORY_PROBLEMS.map((p) => `text:${field}:${p}`)),
+  // The Claude API's 429 and 529 (anthropicApi.server.ts), appended as the list requires.
+  "unavailable:rate_limited",
+  "unavailable:overloaded",
 ];
 
 export interface BackstoryRecord {
