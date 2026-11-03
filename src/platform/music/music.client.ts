@@ -13,9 +13,15 @@
 //
 // A first-time player starts at 75% (David, 2 Nov 2026); one who has set a
 // volume keeps theirs. The player reads this once, only while none is saved.
+//
+// A player who unticked "Play the music" on the entry page (David, 3 Nov 2026) starts with the player paused: the
+// first song is queued and paused before anything can play, and stays paused, through reloads too, until they
+// press play. The choice is recorded once, as entry_accepted's music; the startup pause itself isn't.
+import type { Started } from "@tellim/kit/app";
 import type { Music } from "@tellim/kit/music/player";
 import "@tellim/kit/music/music.css";
 
+import { MUSIC_COOKIE, readCookie } from "~/entry/cookie";
 import { studio } from "~/platform/kit.client";
 import { isPhoneScreen } from "~/platform/phone";
 import { musicContext } from "./audio-context";
@@ -30,11 +36,39 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
   if (typeof window === "undefined" || isPhoneScreen()) return Promise.resolve(null);
   // A computer's web app: the kit's desktop defaults. Through Web Audio, so the
   // saved volume holds from the first note (audio-context.ts).
-  return studio().music({
+  const paused = takeStartPaused();
+  let starting = paused;
+  const music = studio().music({
     songs: { manifest: MANIFEST_URL, fetcher },
     base: "/music/",
     context: musicContext,
     legacyVolume: () => START_VOLUME,
     mediaKeys: { album: "Orbital Books" },
+    // Only for the paused start: its own pause isn't the player's, so it isn't reported.
+    ...(paused && {
+      track: (event: string, props?: Parameters<Started["track"]>[1]) => {
+        if (starting && event === "music_paused") return;
+        studio().track(event, props);
+      },
+    }),
   });
+  if (!paused) return music;
+  return music.then(async (m) => {
+    if (m) {
+      // A fresh player has no song until it first plays, and pause needs one: queue the first, which can't sound
+      // before a tap or key press, then pause it.
+      if (!m.state().song) await m.skip("settings");
+      m.pause("settings");
+    }
+    starting = false;
+    return m;
+  });
+}
+
+/** The entry page's "Play the music", unticked: true once, and the cookie is cleared so it applies only now. */
+function takeStartPaused(): boolean {
+  if (typeof document === "undefined" || readCookie(document.cookie, MUSIC_COOKIE) !== "off")
+    return false;
+  document.cookie = `${MUSIC_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  return true;
 }

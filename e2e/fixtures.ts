@@ -6,7 +6,15 @@ import {
   type Request,
 } from "@playwright/test";
 
-export async function prepareContext(context: BrowserContext, baseURL: string) {
+/** The entry page's agreement (src/entry), so every spec lands in the game; e2e/entry tests the page itself. */
+export const ENTRY_AGREED = { name: "ob_entry", value: "1" };
+
+export async function prepareContext(
+  context: BrowserContext,
+  baseURL: string,
+  { agreed = true }: { agreed?: boolean } = {},
+) {
+  if (agreed) await context.addCookies([{ ...ENTRY_AGREED, url: baseURL }]);
   // Defense in depth: no test browser can deliver remote analytics.
   const origin = new URL(baseURL).origin;
   await context.route("**/*", (route) => {

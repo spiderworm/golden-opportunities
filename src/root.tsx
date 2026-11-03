@@ -9,6 +9,7 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
+import { entryGate } from "./entry/gate.server";
 import { startAnalytics } from "./platform/analytics/analytics.client";
 import { serverAnalytics } from "./platform/analytics/analytics.server";
 import { instanceId } from "./platform/analytics/instance.server";
@@ -23,6 +24,9 @@ export function loader() {
 }
 
 export const shouldRevalidate = revalidateAbovePage;
+
+// The entry page comes first, at any URL, until the player has agreed (David, 3 Nov 2026).
+export const middleware: Route.MiddlewareFunction[] = [entryGate];
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -43,6 +47,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow" />
         <Meta />
         <Links />
       </head>
