@@ -112,7 +112,7 @@ describe("the standing order", () => {
     );
     expect(strip(html)).toContain("Standing order: Q2 picks needed. Plan due for Q2 2194.");
     expect(html).toContain("THE FIRST QUARTER HAS BEEN FILED.");
-    expect(html).toContain("April 1, 2194");
+    expect(html).toContain("2194 Apr 1");
     expect(html).toContain("First-quarter overall score: 66 (D). Lowest measure: Culture.");
     expect(html).not.toContain("41%");
     // Q2's plan is in: no order, and no memo.

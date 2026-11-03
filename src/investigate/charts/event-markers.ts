@@ -6,6 +6,7 @@ import { byDate, quarterOfDate, type ChartEvent, type EventKind } from "~/query/
 import type { Dimension } from "~/query/types";
 import { chartTheme } from "~/platform/charts/chart-theme";
 import { escapeHtml } from "~/platform/charts/escape";
+import { formatStationDate, formatStationMonth } from "~/platform/dates";
 
 /** A marker's short label (Plot): on the chart, and in the legend. */
 export const EVENT_LABELS: Record<EventKind, string> = {
@@ -21,25 +22,13 @@ const EVENT_NAMES: Record<EventKind, string> = {
   move: "Your move",
   event: "Station event",
 };
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-].concat(["October", "November", "December"]);
 
-/** When, in the game's style, month first (Plot): `Feb 4, 2194`, `March 2194`, `Q1 2194`. */
+/** When, in the game's date style (src/platform/dates.ts): `2194 Feb 4`, `2194 Mar`, `Q1 2194`. */
 export function eventWhen(event: ChartEvent): string {
   const year = event.date.slice(0, 4);
-  const month = MONTHS[Number(event.date.slice(5, 7)) - 1]!;
   if (event.precision === "quarter") return `Q${quarterOfDate(event.date).slice(-1)} ${year}`;
-  if (event.precision === "month") return `${month} ${year}`;
-  return `${month.slice(0, 3)} ${Number(event.date.slice(8, 10))}, ${year}`;
+  if (event.precision === "month") return formatStationMonth(event.date.slice(0, 7));
+  return formatStationDate(event.date);
 }
 
 /** The tooltip's two lines for one event: `Feb 4, 2194 · Release`, then what happened. */

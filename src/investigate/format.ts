@@ -1,3 +1,4 @@
+import { formatStationMonth } from "~/platform/dates";
 import type { Dimension, Measure } from "~/query/types";
 import {
   isAvailable,
@@ -5,8 +6,6 @@ import {
   resolveQuarter,
   type RelativeQuarter,
 } from "~/query/relative";
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export const MEASURE_LABELS: Record<Measure, string> = {
   revenue: "Revenue",
@@ -70,9 +69,8 @@ export function formatDimensionValue(
     return match ? `${match[2]} ${match[1]}` : value;
   }
   if (dimension === "month") {
-    const match = /^(\d{4})-(\d{2})$/.exec(value);
-    const name = match ? MONTHS[Number(match[2]) - 1] : undefined;
-    return match && name ? `${name} ${match[1]}` : value;
+    // The game's date style, year first: "2193 Mar" (src/platform/dates.ts).
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? formatStationMonth(value) : value;
   }
   if (dimension === "discounted") return value === "yes" ? "Any discount" : "Full price";
   if (dimension === "discount_rate") return parseFloat(value) === 0 ? "Full price" : `${value} off`;
@@ -136,10 +134,10 @@ export function formatDimensionShort(
   among: readonly string[] = [],
 ): string {
   if (dimension === "quarter" && value) return value.replace(/^\d+-/, "");
-  // "Mar", or "Mar 2193" when the months beside it span more than one year.
+  // "Mar", or "2193 Mar" when the months beside it span more than one year.
   if (dimension === "month" && value) {
     const full = formatDimensionValue(dimension, value);
-    return new Set(among.map((m) => m.slice(0, 4))).size > 1 ? full : full.replace(/ \d{4}$/, "");
+    return new Set(among.map((m) => m.slice(0, 4))).size > 1 ? full : full.replace(/^\d{4} /, "");
   }
   if (dimension === "weekday" && value) return value.slice(0, 3);
   return formatDimensionValue(dimension, value);

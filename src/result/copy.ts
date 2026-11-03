@@ -3,6 +3,7 @@
 // The discoveries' own text is server-only: see discoveries.server.ts.
 // {braces} are filled by the functions below.
 import { eventTitle } from "~/game/event-title";
+import { stationDay } from "~/platform/dates";
 import { nextQuarter, quarterNumber, type QuarterId } from "~/simulation/quarters";
 import type {
   Assumption,
@@ -147,25 +148,10 @@ export const continueTo = (next: QuarterId) =>
 /** An event's short title (endless-copy.md section 1): the game's one definition, shared with the memo and the bell. */
 export { eventTitle };
 
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-/** The station's date once a quarter is played: the first day of the next one, "October 1, 2194". */
+/** The station's date once a quarter is played: the first day of the next one, "2194 Oct 1". */
 export function dayAfter(quarter: QuarterId): string {
   const next = nextQuarter(quarter);
-  return `${MONTH_NAMES[(quarterNumber(next) - 1) * 3]} 1, ${next.slice(0, 4)}`;
+  return stationDay(next.slice(0, 4), (quarterNumber(next) - 1) * 3 + 1, 1);
 }
 
 /** The removal screen (endless.md section 7), which replaces the result's buttons once the panel has voted. */
@@ -226,7 +212,7 @@ export const SERVICE_RECORD = {
   strike: ", strike",
   // Scores and grades read as everywhere else on the screen: scoreText's "74 (C\u2212)" (Plot, on #215).
   tenure: (quarters: number, mean: number, grade: Grade) =>
-    `Manager since January 1, 2194: ${quarters} ${quarters === 1 ? "quarter" : "quarters"}. Average overall score: ${scoreText(mean, grade)}.`,
+    `Manager since 2194 Jan 1: ${quarters} ${quarters === 1 ? "quarter" : "quarters"}. Average overall score: ${scoreText(mean, grade)}.`,
   best: (quarter: QuarterId, score: number, grade: Grade) =>
     `Best quarter: ${quarterName(quarter)}, ${scoreText(score, grade)}.`,
 } as const;

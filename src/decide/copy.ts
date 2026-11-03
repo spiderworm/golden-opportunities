@@ -28,7 +28,7 @@ export const DECIDE_COPY = {
       line: "ATTENTION, SHOPKEEPER. A NEW QUARTER HAS BEEN SCHEDULED. YOUR SCORE WILL BE YOUR WEAKEST MEASURE. WE CALL THIS TEAMWORK. MR. ZOOLANDER WOULD CALL IT ONE LOOK.",
       facts: [
         "Your plan runs from ",
-        { strong: "January 1 to March 31, 2194" },
+        { strong: "2194 Jan 1 to Mar 31" },
         ". Your score is your ",
         { strong: "lowest measure" },
         ": raise one by sinking another, and your score sinks with it.",

@@ -11,7 +11,7 @@ import styles from "./Settings.module.css";
 
 export const RESET_COPY = {
   heading: "Reset game",
-  text: "Starts a new game from January 1, 2194. Your plans, results, pins and conversation with Dewey are cleared. Your settings stay as they are.",
+  text: "Starts a new game from 2194 Jan 1. Your plans, results, pins and conversation with Dewey are cleared. Your settings stay as they are.",
   open: "Reset game",
   question: "Reset the game? This can't be undone.",
   cancel: "Cancel",

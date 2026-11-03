@@ -32,7 +32,7 @@ describe("the Q2 memo (q2.md, section 2)", () => {
     expect(q2.transmission.memoHeader).toEqual([
       "LARKSPUR STATION / COMMERCE OFFICE",
       "Quarterly review: Orbital Books, Ring C, Berth 14",
-      "April 1, 2194",
+      "2194 Apr 1",
     ]);
     expect(q2.transmission.memo.slice(1)).toEqual([
       [
@@ -70,7 +70,7 @@ describe("the Q2 memo (q2.md, section 2)", () => {
       <Transmission open={false} copy={q2.transmission} onOpenLedgers={noop} onLater={noop} />,
     );
     expect(memo).toContain("First-quarter overall score: 66 (D). Lowest measure: Culture.");
-    expect(memo).toContain("April 1, 2194");
+    expect(memo).toContain("2194 Apr 1");
     expect(memo).not.toContain("41%");
     expect(
       render(

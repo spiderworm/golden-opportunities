@@ -31,11 +31,9 @@ describe("the plan screen's words, any quarter after Q1 (endless-copy.md section
     expect(planCopy("2195-Q1").serial).toBe("LKS-2195-Q1-0006");
     expect(q3.playing).toEqual(["July...", "August...", "September..."]);
     expect(text(q3.briefing[0]!.facts)).toBe(
-      "Q3 2194 runs July 1 to September 30, 2194. Your score is your lowest measure: Profit, Readers served, Happiness or Culture.",
+      "Q3 2194 runs 2194 Jul 1 to Sep 30. Your score is your lowest measure: Profit, Readers served, Happiness or Culture.",
     );
-    expect(text(planCopy("2194-Q4").briefing[0]!.facts)).toContain(
-      "October 1 to December 31, 2194",
-    );
+    expect(text(planCopy("2194-Q4").briefing[0]!.facts)).toContain("2194 Oct 1 to Dec 31");
     expect(text(q3.briefing.find((b) => b.boss === "happiness")!.facts)).toBe(
       "The Book of the Month calendar for July, August and September is empty. A pick is 15% off for its whole month.",
     );

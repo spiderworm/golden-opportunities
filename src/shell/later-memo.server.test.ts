@@ -49,7 +49,7 @@ describe("the memo from Q3 on (endless.md section 3, endless-copy.md section 2)"
     expect(memo.transmission.line).toBe(
       "THE COMMERCE OFFICE HAS NOTED THE BOOK CLUB. DO NOT WASTE IT.",
     );
-    expect(memo.transmission.memoHeader[2]).toBe("July 1, 2194");
+    expect(memo.transmission.memoHeader[2]).toBe("2194 Jul 1");
     expect(memo.bell).toEqual({
       title: "Q3 2194: Mystery orders rising in August",
       detail: "Read the memo, then submit your picks and a plan for Q3 2194.",
@@ -95,7 +95,7 @@ describe("the memo from Q3 on (endless.md section 3, endless-copy.md section 2)"
     expect(memo.transmission.line).toBe(
       "A STRIKE HAS EXPIRED. WE HAVE UPDATED THE SPREADSHEET. THE SPREADSHEET IS RELIEVED.",
     );
-    expect(memo.transmission.memoHeader[2]).toBe("January 1, 2195");
+    expect(memo.transmission.memoHeader[2]).toBe("2195 Jan 1");
   });
 
   it("shows a new strike and an expiry together, the new strike first, and its line wins", () => {

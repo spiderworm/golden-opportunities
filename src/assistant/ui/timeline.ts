@@ -12,7 +12,7 @@ export const isQuarter = (value: unknown): value is string =>
 
 /**
  * A reply's heading (Plot's copy): "Today" for the current quarter, the first day of an earlier one in the
- * station's date style ("1 Apr 2194"), and "Earlier" for a reply kept before quarters were recorded or from an
+ * station's date style ("2194 Apr 1"), and "Earlier" for a reply kept before quarters were recorded or from an
  * earlier game.
  */
 export function timelineLabel(quarter: string | undefined, current: string | undefined): string {

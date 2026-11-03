@@ -8,6 +8,7 @@ import { MONTHS } from "~/alma/names";
 import type { GameSave } from "~/game/types";
 import { quarterAt, quarterIndex, quarterMonths, type QuarterId } from "~/game/quarters";
 import { BOSSES } from "~/platform/bosses/bosses";
+import { stationDay } from "~/platform/dates";
 import { STRIKE_BELOW, strikes } from "~/simulation/strikes";
 import { bellItem, eventTitle } from "~/game/event-title";
 import { ALERT_COPY, type AlertCopy } from "./alert-copy";
@@ -96,7 +97,7 @@ export function laterMemo(save: GameSave, quarter: QuarterId, record: AlmaRecord
       memoHeader: [
         "LARKSPUR STATION / COMMERCE OFFICE",
         "Quarterly review: Orbital Books, Ring C, Berth 14",
-        `${MONTHS[Number(month) - 1]} 1, ${year}`,
+        stationDay(year, Number(month), 1),
       ],
       memo: memo.map((text) => [text]),
     },

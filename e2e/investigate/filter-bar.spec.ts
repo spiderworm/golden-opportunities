@@ -65,7 +65,7 @@ test("a drilldown puts its filter on the bar, and Clear filters takes everything
 }) => {
   await page.goto("/investigate?analytics-test=1&weekday=Monday&month=2193-12&show=quarter");
   const bar = page.getByRole("group", { name: "Filters" });
-  await expect(bar.getByRole("button", { name: "Month Dec 2193" })).toBeVisible();
+  await expect(bar.getByRole("button", { name: "Month 2193 Dec" })).toBeVisible();
   await expect(bar.getByRole("button", { name: "Weekday Monday" })).toBeVisible();
   await expect(bar.getByRole("button", { name: "Quarter All quarters" })).toBeVisible();
   await bar.getByRole("button", { name: "Clear filters" }).click();
