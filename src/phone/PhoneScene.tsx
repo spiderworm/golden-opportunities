@@ -26,6 +26,9 @@ import {
   type Object3D,
 } from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import { BOSSES } from "~/platform/bosses/bosses";
@@ -37,6 +40,7 @@ import {
   fitGrip,
   gripFrame,
   gripRotation,
+  cameraBack,
   phoneSize,
   type Hand,
   type PhoneSize,
@@ -167,8 +171,8 @@ const GLANCE = [4, 9] as const;
 const GLANCE_TIME = 1.4;
 /** The widest and narrowest the camera's lens goes to fit the robot's head in the band between the words. */
 const FOV_RANGE = [45, 100] as const;
-/** Where the camera sits in the phone's frame, in metres: on its middle, a little way behind it (David, 2 Nov). */
-const CAMERA_AT = new Vector3(0, 0, 0.35);
+/** The face's outline, for debugging: thick enough to see whether it lies along the window's edges. */
+const FACE_LINE = { color: "#ff1f1f", width: 10 } as const;
 /** The head's height (with its antenna) in metres, for keeping it within the band. */
 const HEAD_SIZE = 0.42;
 
@@ -332,8 +336,25 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     );
     box.renderOrder = 999;
     box.visible = false;
+    // The face toward the robot (z = -0.5 in the unit box), thick and red: it should lie along the window's edges.
+    const corners = [-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5];
+    const line = new LineGeometry();
+    line.setPositions(
+      corners.flatMap((_, i) => (i % 2 ? [] : [corners[i]!, corners[i + 1]!, -0.5])),
+    );
+    const face = new Line2(
+      line,
+      new LineMaterial({
+        color: FACE_LINE.color,
+        linewidth: FACE_LINE.width,
+        depthTest: false,
+        transparent: true,
+      }),
+    );
+    face.renderOrder = 1000;
+    box.add(face);
     group.add(box);
-    return { group, box, frame: new Group() };
+    return { group, box, face, frame: new Group() };
   }, []);
   // For debugging from the browser's console: where the camera sits on the phone, in the phone's frame (metres; the
   // phone's face toward the robot is at z = -its depth / 2, and the camera looks along -z).
@@ -344,6 +365,8 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
   //   phoneCamera.orbitFrom(x, y, z)  puts the orbiting camera there from the palm, in the world (metres).
   // Orbiting starts off.
   const override = useRef<Vector3 | null>(null);
+  /** Where the camera sits on the phone (cameraBack), set every frame for the device and the lens. */
+  const cameraAt = useMemo(() => new Vector3(), []);
   const fovOverride = useRef<number | null>(null);
   const orbit = useRef<OrbitControls | null>(null);
   const orbitFrom = useRef<Vector3 | null>(null);
@@ -420,7 +443,7 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
         // How far the line from the phone's camera to the face passes from the turnstile's hub, in metres; and the
         // three, in the robot's own frame.
         sightline: (() => {
-          const cam = phone.group.localToWorld(new Vector3().copy(override.current ?? CAMERA_AT));
+          const cam = phone.group.localToWorld(new Vector3().copy(override.current ?? cameraAt));
           // Its face as it is: up the head from its base, the head however it's tipped.
           const face = rig.headBone
             .getWorldPosition(new Vector3())
@@ -478,7 +501,8 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
         ),
       }),
       fov: (degrees: number) => void (fovOverride.current = degrees),
-      // phoneCamera.outline(on)  draws the phone's outline over everything, or not (it starts off).
+      // phoneCamera.outline(on)  draws the phone's outline over everything, or not (it starts off, unless the page's
+      // address has ?outline).
       outline: (on = true) => {
         phone.box.visible = on;
         invalidate();
@@ -538,6 +562,9 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       },
     };
     (window as unknown as { phoneCamera?: typeof control }).phoneCamera = control;
+    // ?outline draws it from the start, for checking on a real phone, which has no console (David, 3 Nov: "test on
+    // several devices, and the red lines fall on the edge of the screen on each device").
+    if (new URLSearchParams(location.search).has("outline")) control.outline(true);
     return () => void delete (window as unknown as { phoneCamera?: typeof control }).phoneCamera;
   }, [camera, phone, rig]);
   useEffect(() => {
@@ -548,6 +575,8 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       phone.group.remove(camera);
       phone.box.geometry.dispose();
       (phone.box.material as LineBasicMaterial).dispose();
+      phone.face.geometry.dispose();
+      (phone.face.material as LineMaterial).dispose();
     };
   }, [scene, camera, phone]);
 
@@ -598,16 +627,21 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     const [shoulder] = arm.joints;
     const holding = t - REACH[1];
 
-    // The phone: the device's shape, and the camera on its middle, CAMERA_AT behind it (David placed it there with
-    // phoneCamera.set), looking straight out of its face toward the robot (its -z).
+    // The phone: the device's shape, and the camera on its middle, behind it (cameraBack), looking straight out of
+    // its face toward the robot (its -z).
     const screen = phoneSize(size.width, size.height);
     phone.box.scale.set(screen.wide, screen.tall, screen.deep);
     const grip = gripFrame(phone.group, screen, phone.frame);
-    if (!orbit.current) {
-      if (override.current) cam.position.copy(override.current);
-      else cam.position.copy(CAMERA_AT);
+    // On the phone's middle, as far back as fills the window with its face at the lens it has (again below, once
+    // the lens is fitted).
+    const place = () => {
+      cameraAt.set(0, 0, cameraBack(screen, cam.fov));
+      if (orbit.current) return;
+      cam.position.copy(override.current ?? cameraAt);
       cam.rotation.set(0, 0, 0);
-    }
+    };
+    place();
+    (phone.face.material as LineMaterial).resolution.set(size.width, size.height);
 
     // Walk, or stand; the animation first, then the arm and hand over it.
     const walked = ease(clamp01((t - WALK[0]) / (WALK[1] - WALK[0])));
@@ -636,8 +670,9 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
         rig.root.updateMatrixWorld(true);
         rig.headBone.getWorldPosition(work.headAt);
         const tan = Math.tan(MathUtils.degToRad(fov / 2));
-        // How far the camera (CAMERA_AT behind the phone) is from the head, across the floor.
-        const away = Math.hypot(work.headAt.x, work.headAt.z - screen.deep / 2) + CAMERA_AT.z;
+        // How far the camera (cameraBack behind the phone, at this pass's lens) is from the head, across the floor.
+        const away =
+          Math.hypot(work.headAt.x, work.headAt.z - screen.deep / 2) + cameraBack(screen, fov);
         phone.group.position.set(
           0,
           (work.headAt.y + HEIGHT) / 2 - middle * away * tan,
@@ -671,6 +706,7 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       if (!orbit.current && fovOverride.current === null && Math.abs(cam.fov - fov) > 0.01) {
         cam.fov = fov;
         cam.updateProjectionMatrix();
+        place();
       }
       // The robot walks up from START to there.
       rig.root.position.set(across, 0, -(START + (distance - START) * walked));
@@ -905,7 +941,7 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
     // the animation's) from where the robot faces toward that, as far as LOOK_MAX.
     const lookIn = reducedMotion ? 1 : ease(clamp01((t - WALK[0]) / LOOK_TIME));
     rig.headBone.getWorldPosition(work.headAt);
-    const lookAt = phone.group.localToWorld(work.w.copy(override.current ?? CAMERA_AT));
+    const lookAt = phone.group.localToWorld(work.w.copy(override.current ?? cameraAt));
     const middle = phone.group.getWorldPosition(new Vector3());
     lookAt.lerp(middle, reducedMotion ? 0 : ease(clamp01((holding - CURIOUS.back[1]) / 0.6)));
     if (out) {
@@ -946,7 +982,7 @@ function Grab({ reducedMotion, onGrabbed, onDrawn, zone, head }: PhoneSceneProps
       const r = recording.current;
       // Where the phone camera is, whether or not the view is orbiting: its place on the phone.
       phone.group.updateMatrixWorld(true);
-      const at = phone.group.localToWorld(new Vector3().copy(override.current ?? CAMERA_AT));
+      const at = phone.group.localToWorld(new Vector3().copy(override.current ?? cameraAt));
       const turn = phone.group.getWorldQuaternion(new Quaternion());
       // For phoneCamera.record: how near the thumb comes to the forearm's line (elbow to wrist), and how the wrist bends and twists.
       const elbow = arm.joints[1].getWorldPosition(new Vector3());

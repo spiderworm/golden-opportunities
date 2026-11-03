@@ -57,6 +57,15 @@ export const phoneSize = (wide: number, tall: number): PhoneSize => ({
   deep: phoneDeep(Math.min(wide, tall) * PHONE_SCALE),
 });
 
+/**
+ * How far behind the phone's middle the camera sits, in metres, for the phone's face toward the robot to fill the
+ * window exactly at this lens (David, 3 Nov: the red outline of that face should "barely touch the edges of the
+ * window" on every device). The face has the window's own shape (phoneSize), so its height fixes the distance.
+ */
+export function cameraBack(screen: PhoneSize, fov: number): number {
+  return screen.tall / 2 / Math.tan((fov / 2) * (Math.PI / 180)) - screen.deep / 2;
+}
+
 export const THUMB = 4;
 /** The side of the phone (its x) the fingers go round; the thumb goes round the other. */
 export const FINGERS_SIDE = 1;

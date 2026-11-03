@@ -1,4 +1,4 @@
-import { Group, Quaternion, Vector3, type Bone, type Object3D } from "three";
+import { Group, PerspectiveCamera, Quaternion, Vector3, type Bone, type Object3D } from "three";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,6 +8,7 @@ import {
   gripFrame,
   gripRotation,
   intoPhone,
+  cameraBack,
   phoneSize,
   THUMB,
   tipMiss,
@@ -107,4 +108,35 @@ describe.each([
       }
     });
   });
+});
+
+it("puts the camera where the phone's face toward the robot fills the window exactly, on every device", () => {
+  // Phones' CSS sizes, upright and turned, at the lenses the head's fit chooses between.
+  for (const [w, h] of [
+    [375, 667],
+    [390, 844],
+    [430, 932],
+    [360, 800],
+    [412, 915],
+    [844, 390],
+  ] as const) {
+    const screen = phoneSize(w, h);
+    for (const fov of [45, 60, 100]) {
+      const camera = new PerspectiveCamera(fov, w / h, 0.01, 10);
+      camera.position.set(0, 0, cameraBack(screen, fov));
+      camera.updateMatrixWorld(true);
+      // The face's corners, on the window's corners.
+      for (const [x, y] of [
+        [-1, -1],
+        [1, -1],
+        [1, 1],
+        [-1, 1],
+      ] as const) {
+        const at = new Vector3((x * screen.wide) / 2, (y * screen.tall) / 2, -screen.deep / 2);
+        at.project(camera);
+        expect(at.x).toBeCloseTo(x, 6);
+        expect(at.y).toBeCloseTo(y, 6);
+      }
+    }
+  }
 });
