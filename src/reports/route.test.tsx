@@ -217,9 +217,12 @@ describe("Reports", () => {
     const view = render(data, `/reports?report=${id}`);
     expect(view).toContain("Down in Q4.");
     expect(view).toContain("Every quarter played so far");
+    // Each item can be read as a chart or a table (David, 3 Nov 2026), starting as it was saved: a chart.
+    expect(view).toMatch(/aria-pressed="false" aria-label="Table: Revenue by quarter"/);
     const editor = render(data, `/reports?edit=${id}`);
     expect(editor).toContain('value="The quiet picks"');
     expect(editor).toContain("Save report");
+    expect(editor).toContain('aria-label="Table: Revenue by quarter"');
     expect(editor).toContain("Delete report");
     expect(render(data, "/reports?new=1")).toContain("Add charts");
 

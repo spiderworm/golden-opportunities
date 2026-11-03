@@ -41,3 +41,15 @@ export const NO_CHART = {
     `Too many groups to chart (${n}). Filter to ${max} or fewer.`,
   comparison: "Two values read best as a table",
 } as const;
+
+/**
+ * The reason a pin or report item has no chart, for its toggle: from its spec (a comparison, one figure), or once
+ * it's run, too many groups for the palette. Null when it can be drawn.
+ */
+export function noChartReason(
+  before: "comparison" | "figure" | null,
+  tooMany: number | null,
+  max: number,
+): string | null {
+  return before ? NO_CHART[before] : tooMany !== null ? NO_CHART.tooMany(tooMany, max) : null;
+}

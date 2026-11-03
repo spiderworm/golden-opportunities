@@ -473,3 +473,11 @@
   opacity: 0.5;
   cursor: default;
 }
+
+/* A report item's title with its Table toggle, as a pin's header has them. */
+.itemHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
