@@ -34,10 +34,10 @@ export function ForecastLines({ result }: { result: ForecastResult }) {
   const measures = (["revenue", "units"] as const).filter((m) => result[m]);
   if (!measures.length) return null;
   return (
-    <section className={styles.forecast} aria-labelledby="forecast-heading">
-      <h2 id="forecast-heading" className={styles.forecastHeading}>
+    <section className={`${styles.card} ${styles.forecast}`} aria-labelledby="forecast-heading">
+      <h3 id="forecast-heading" className={styles.cardTitle}>
         {FORECAST_HEADING}
-      </h2>
+      </h3>
       <ul className={styles.forecastLines}>
         {measures.map((m) => (
           <li key={m} data-where={result[m]!.where}>

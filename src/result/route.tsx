@@ -41,6 +41,9 @@ import {
 import { earnedDiscoveries, laterDiscoveries, type EarnedDiscovery } from "./discoveries.server";
 import { OUTCOME_COLORS, outcomeOption } from "./outcome-chart";
 import { heldCourse, planSummary, type HalfYearData, type ResultData } from "./result-data";
+import { ForecastLines } from "./forecast-result";
+import { forecastResult } from "~/forecast/forecast.server";
+import type { ForecastResult } from "~/forecast/forecast";
 import { ServiceRecord } from "./ServiceRecord";
 import styles from "./Result.module.css";
 
@@ -54,7 +57,9 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 /** The latest played quarter, or `?quarter=2194-Q1` for an earlier one; a quarter not played yet goes to Decide. */
-export function loader({ request }: Route.LoaderArgs): ResultData {
+export function loader({
+  request,
+}: Route.LoaderArgs): ResultData & { forecast: ForecastResult | null } {
   const asked = new URL(request.url).searchParams.get("quarter");
   const data = getResultData(request, isQuarterId(asked) ? asked : undefined);
   if (!data) throw redirect("/decide");
@@ -65,6 +70,8 @@ export function loader({ request }: Route.LoaderArgs): ResultData {
     discoveries: later
       ? laterDiscoveries(data.laterDiscoveries, data.discoveryOffers)
       : earnedDiscoveries(data.discoveries, data.quarter),
+    // The player's forecast for this quarter against what happened (src/forecast), or null without one.
+    forecast: forecastResult(request, data.quarter),
   };
 }
 
@@ -84,6 +91,7 @@ export default function Result({ loaderData }: Route.ComponentProps) {
     goalStretch,
     season2193,
     removed: removal,
+    forecast,
   } = loaderData;
   // The panel's vote closes the removal quarter's screen only: an earlier quarter's, opened later, stays as it was
   // (Audit, on #226), as Q1's did under the half-year review.
@@ -176,6 +184,9 @@ export default function Result({ loaderData }: Route.ComponentProps) {
           holdingCourse={holdingCourse}
         />
       </section>
+
+      {/* The player's own forecast, beside the totals it was about (David, req_6d136a2b7fb3). */}
+      {forecast && <ForecastLines result={forecast} />}
 
       <section className={styles.card} aria-labelledby="outcome-chart-title">
         <header className={styles.cardHeader}>
