@@ -133,6 +133,17 @@ gives the difference and the fractional change, `"new"` when last year was zero
 Groups that sold last year but not this year are not added as rows. Dewey can't
 use `vs` yet.
 
+## How much evidence
+
+An average's result carries `evidence: { unit, rows, total }` (`evidence.ts`;
+David, 3 Nov 2026: "Show n next to averages"): how many items each row's figure
+and the total's are over, in the rows' order. `avg_order_value` is over orders
+(distinct, as `orders` counts them), `avg_discount` over sale lines,
+`avg_rating` over ratings and `orders_per_day` over eligible days. Other
+measures have no `evidence`. It's beside the rows, not in them, so Dewey's tools,
+which pass rows on, don't see it yet. `lowEvidence` says when an average is shown
+faded: under 30 ratings, orders or sale lines, and never for days.
+
 ## What Dewey may use
 
 Dewey's tools see only `AGENT_MEASURES`, `AGENT_DIMENSIONS` and

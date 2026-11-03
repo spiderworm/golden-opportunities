@@ -9,6 +9,7 @@ import { checkLabel, serializeResult } from "./result";
 import { PRICE_BANDS, QUERY_LIMITS } from "./types";
 import { rollUpSales, type SaleCells } from "./sale-cells";
 import { lastYearMissing, lastYearQuery, quartersCovered, yearEarlier } from "./last-year";
+import { evidenceUnit, type Evidence } from "./evidence";
 import type {
   Dimension,
   Measure,
@@ -305,6 +306,12 @@ function value(target: Aggregate, measure: Measure, days = 0): number | null {
   if (measure === "revenue") return target.sum / REVENUE_UNIT;
   return target.sum;
 }
+/** How many items an average is over (evidence.ts): orders, lines, ratings or days. */
+function evidenceOf(target: Aggregate, measure: Measure, days: number): Evidence {
+  if (measure === "avg_order_value") return { n: orderCount(target) };
+  if (measure === "orders_per_day") return { n: days };
+  return { n: target.count };
+}
 function compare(
   a: string | number | null | undefined,
   b: string | number | null | undefined,
@@ -383,6 +390,8 @@ function execute(query: Query, view: QueryView): QueryResult {
     if (visible > 1) total.overlap += visible - 1;
     for (const [group, count] of seen) if (count > 1) group.overlap += count - 1;
   }
+  const unit = evidenceUnit(query.measure);
+  const evidence = new Map<QueryRow, Evidence>();
   const rows: QueryRow[] = [...groups.values()].map((group) => {
     let dayCount = 0;
     if (query.measure === "orders_per_day") {
@@ -392,10 +401,12 @@ function execute(query: Query, view: QueryView): QueryResult {
       dayCount = denominators.get(key) ?? groupDays(days, group.dimensions);
       denominators.set(key, dayCount);
     }
-    return {
+    const row = {
       ...group.dimensions,
       [query.measure]: value(group.aggregate, query.measure, dayCount),
     };
+    if (unit) evidence.set(row, evidenceOf(group.aggregate, query.measure, dayCount));
+    return row;
   });
   rows.sort((a, b) => {
     if (query.sort) {
@@ -456,6 +467,13 @@ function execute(query: Query, view: QueryView): QueryResult {
     rows: visibleRows,
     total: value(total, query.measure, days.length),
     source,
+    ...(unit && {
+      evidence: {
+        unit,
+        rows: visibleRows.map((row) => evidence.get(row)!),
+        total: evidenceOf(total, query.measure, days.length),
+      },
+    }),
   };
 }
 

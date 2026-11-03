@@ -1,5 +1,6 @@
 import type { DeepReadonly, SaleLine } from "../bookshop/types";
 import type { SaleCells } from "./sale-cells";
+import type { Evidence, EvidenceUnit } from "./evidence";
 
 export const DIMENSIONS = [
   "quarter",
@@ -127,6 +128,11 @@ export interface QueryResult {
   source: string;
   /** With `vs: "last_year"`: each row's figure a year earlier, in the rows' order, and the total's. */
   lastYear?: { rows: LastYear[]; total: LastYear };
+  /**
+   * For an average (evidence.ts): how many items each row's figure and the total's are over, in the rows' order.
+   * Beside the rows, not in them, so Dewey's tools (which pass rows on) don't get it before the figures gate does.
+   */
+  evidence?: { unit: EvidenceUnit; rows: Evidence[]; total: Evidence };
 }
 
 export type QueryErrorCode =
