@@ -5,7 +5,11 @@ beforeEach(() => resetAdmission());
 
 const URL_ = "http://localhost:5173/api/analytics/sharing";
 const req = (body: string, headers: Record<string, string> = {}, method = "POST", url = URL_) =>
-  new Request(url, { method, body: method === "POST" ? body : undefined, headers: { origin: "http://localhost:5173", "content-type": "application/json", ...headers } });
+  new Request(url, {
+    method,
+    body: method === "POST" ? body : undefined,
+    headers: { origin: "http://localhost:5173", "content-type": "application/json", ...headers },
+  });
 
 async function run(request: Request) {
   const applied: boolean[] = [];
@@ -14,16 +18,35 @@ async function run(request: Request) {
 }
 
 test("a same-origin page on this machine can turn sharing off and on", async () => {
-  expect(await run(req('{"on":false}'))).toEqual({ status: 200, body: { on: false }, applied: [false] });
+  expect(await run(req('{"on":false}'))).toEqual({
+    status: 200,
+    body: { on: false },
+    applied: [false],
+  });
   expect(await run(req('{"on":true}'))).toMatchObject({ status: 200, applied: [true] });
 });
 
 test("other sites are refused, including DNS-rebound ones and a spoofed Host", async () => {
   expect((await run(req('{"on":false}', { origin: "https://evil.example" }))).status).toBe(403);
   // DNS rebinding: the page's own origin isn't loopback, even though the request reaches 127.0.0.1.
-  expect((await run(req('{"on":false}', { origin: "http://rebind.example:5173" }, "POST", "http://rebind.example:5173/api/analytics/sharing"))).status).toBe(403);
+  expect(
+    (
+      await run(
+        req(
+          '{"on":false}',
+          { origin: "http://rebind.example:5173" },
+          "POST",
+          "http://rebind.example:5173/api/analytics/sharing",
+        ),
+      )
+    ).status,
+  ).toBe(403);
   expect((await run(req('{"on":false}', { origin: "" }))).status).toBe(403);
-  const noOrigin = new Request(URL_, { method: "POST", body: '{"on":false}', headers: { "content-type": "application/json" } });
+  const noOrigin = new Request(URL_, {
+    method: "POST",
+    body: '{"on":false}',
+    headers: { "content-type": "application/json" },
+  });
   expect((await run(noOrigin)).applied).toEqual([]);
 });
 
@@ -42,7 +65,11 @@ test("a body that never finishes times out, and a flood is refused before its bo
   const stalled = new Request(URL_, {
     method: "POST",
     headers: { origin: "http://localhost:5173", "content-type": "application/json" },
-    body: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{"on":')); } }),
+    body: new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode('{"on":'));
+      },
+    }),
     // @ts-expect-error Node needs this for a streamed body
     duplex: "half",
   });
@@ -54,7 +81,16 @@ test("a body that never finishes times out, and a flood is refused before its bo
     method: "POST",
     headers: { origin: "http://localhost:5173", "content-type": "application/json" },
     // highWaterMark 0: the stream is pulled only when someone reads it.
-    body: new ReadableStream({ pull(c) { pulled = true; c.enqueue(new TextEncoder().encode('{"on":false}')); c.close(); } }, { highWaterMark: 0 }),
+    body: new ReadableStream(
+      {
+        pull(c) {
+          pulled = true;
+          c.enqueue(new TextEncoder().encode('{"on":false}'));
+          c.close();
+        },
+      },
+      { highWaterMark: 0 },
+    ),
     // @ts-expect-error Node needs this for a streamed body
     duplex: "half",
   });

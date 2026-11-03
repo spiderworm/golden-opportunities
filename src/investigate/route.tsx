@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigation, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
+import {
+  Link,
+  useLocation,
+  useNavigation,
+  useSearchParams,
+  type ShouldRevalidateFunctionArgs,
+} from "react-router";
 
 import { AssistantPanel } from "~/assistant/ui/AssistantPanel";
 import type { ShellHandle } from "~/shell/Shell";
@@ -50,7 +56,6 @@ import styles from "./Investigate.module.css";
 
 export const handle: ShellHandle = { title: ledgersTitle };
 
-
 export function meta({}: Route.MetaArgs) {
   return [{ title: "Investigate | Orbital Books" }];
 }
@@ -60,17 +65,23 @@ export function loader({ request }: Route.LoaderArgs) {
   const state = parseState(new URL(request.url).searchParams);
   const session = getGameSession(request);
   const observed: ObservedQuery[] = [];
-  const investigation = investigate(state, runQuery, session.queryView, (query, result) => observed.push({ query, result }));
+  const investigation = investigate(state, runQuery, session.queryView, (query, result) =>
+    observed.push({ query, result }),
+  );
   // The observer includes only panels whose query differs from that panel's default.
   let evidence: "recorded" | "deferred" = "recorded";
   try {
     recordDiscoveries(session.save, session.queryView, observed);
   } catch (error) {
-    if (!(error instanceof QueryError) || error.code !== 'RATE_LIMITED') throw error;
+    if (!(error instanceof QueryError) || error.code !== "RATE_LIMITED") throw error;
     // Evidence is best effort under contention; the loaded ledgers remain usable, but the browser mustn't keep
     // this view, so showing it again asks (and records) again.
     evidence = "deferred";
-    try { trackServer('discovery_record_deferred', { code: 'SAVE_BUSY' }); } catch { /* Rendering is independent of telemetry. */ }
+    try {
+      trackServer("discovery_record_deferred", { code: "SAVE_BUSY" });
+    } catch {
+      /* Rendering is independent of telemetry. */
+    }
   }
   trackServer("investigate_loaded", {
     durationMs: Math.round(performance.now() - started),
@@ -80,7 +91,13 @@ export function loader({ request }: Route.LoaderArgs) {
     // Whether the heatmap's grid was cut off by the row limit (Plot, #264).
     heatmapCut: investigation.heatmap.truncated === true,
   });
-  return { state, ...investigation, planned: currentQuarter(session.save) === null, dataVersion: dataVersion(session.save), evidence };
+  return {
+    state,
+    ...investigation,
+    planned: currentQuarter(session.save) === null,
+    dataVersion: dataVersion(session.save),
+    evidence,
+  };
 }
 
 /**
@@ -98,7 +115,13 @@ clientLoader.hydrate = true as const;
  * - adding a filter to the bar, or taking off one with nothing chosen, which changes only the URL's `show`.
  * Anything else, a navigation or another action, revalidates as usual.
  */
-export function shouldRevalidate({ formAction, formMethod, currentUrl, nextUrl, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
+export function shouldRevalidate({
+  formAction,
+  formMethod,
+  currentUrl,
+  nextUrl,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
   if (formAction === "/alert/seen") return false;
   if (!formMethod && onlyShownChanged(currentUrl, nextUrl)) return false;
   return defaultShouldRevalidate;
@@ -109,7 +132,8 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigation = useNavigation();
   const location = useLocation();
-  const refreshing = navigation.state === "loading" && navigation.location?.pathname === location.pathname;
+  const refreshing =
+    navigation.state === "loading" && navigation.location?.pathname === location.pathname;
   // The bar follows the URL. A filter added or taken off is on (or off) the bar in the same event, before the
   // navigation lands: otherwise React puts the checkbox back for a moment (measured: a check reads unchecked).
   const [chosen, setChosen] = useState<readonly FilterId[] | null>(null);
@@ -151,7 +175,10 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             update(state, next);
           }}
           onRemove={(id) => {
-            const values = FILTER_PARTS[id].reduce((n, d) => n + (state.filters[d]?.length ?? 0), 0);
+            const values = FILTER_PARTS[id].reduce(
+              (n, d) => n + (state.filters[d]?.length ?? 0),
+              0,
+            );
             track("investigate_filter_removed", { filter: id, values });
             const next = shown.filter((other) => other !== id);
             setChosen(next);
@@ -169,13 +196,23 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           onAward={(choice) => {
             // Award names are a fixed list from the data, like discount rates: not content. Only a listed name is sent.
             const listed = typeof choice === "object" && options.award.includes(choice.award);
-            track("investigate_award_filtered", typeof choice === "object" ? { choice: "award", ...(listed ? { award: choice.award } : {}) } : { choice });
+            track(
+              "investigate_award_filtered",
+              typeof choice === "object"
+                ? { choice: "award", ...(listed ? { award: choice.award } : {}) }
+                : { choice },
+            );
             update(setAward(state, choice));
           }}
           onSeries={(choice) => {
             // A volume number is a fixed value from the data, like a discount rate: not content. Only a listed one is sent.
             const listed = typeof choice === "object" && options.volume.includes(choice.volume);
-            track("investigate_series_filtered", typeof choice === "object" ? { choice: "volume", ...(listed ? { volume: choice.volume } : {}) } : { choice });
+            track(
+              "investigate_series_filtered",
+              typeof choice === "object"
+                ? { choice: "volume", ...(listed ? { volume: choice.volume } : {}) }
+                : { choice },
+            );
             update(setSeries(state, choice));
           }}
           onClear={() => {
@@ -191,12 +228,25 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           quarters={options.quarter}
           onMeasures={(measures) => {
             // Measure ids are a fixed list, not content: "revenue+units".
-            track("investigate_measure_changed", { measure: measures[0]!, measures: measures.join("+"), count: measures.length });
+            track("investigate_measure_changed", {
+              measure: measures[0]!,
+              measures: measures.join("+"),
+              count: measures.length,
+            });
             const [measure, ...rest] = measures;
             // Several measures can't also compare quarters (David's choice): that switches off.
             // The heatmap follows the chart's first measure until the player picks its own.
-            const heat = state.heat.measure === state.measure ? { ...state.heat, measure: measure! } : state.heat;
-            update({ ...state, measure: measure!, also: rest, compare: rest.length ? false : state.compare, heat });
+            const heat =
+              state.heat.measure === state.measure
+                ? { ...state.heat, measure: measure! }
+                : state.heat;
+            update({
+              ...state,
+              measure: measure!,
+              also: rest,
+              compare: rest.length ? false : state.compare,
+              heat,
+            });
           }}
           onSeries={(measure, shown) => track("investigate_series_toggled", { measure, shown })}
           onGroup={(by) => {
@@ -209,7 +259,11 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           }}
           onDrill={(value) => {
             const next = toggleFilterValue(state, state.by, value);
-            track("investigate_drilldown", { source: "chart", dimension: state.by, selected: next.filters[state.by]?.length ?? 0 });
+            track("investigate_drilldown", {
+              source: "chart",
+              dimension: state.by,
+              selected: next.filters[state.by]?.length ?? 0,
+            });
             update(next);
           }}
           onTable={(shown) => track("investigate_table_toggled", { shown })}
@@ -225,7 +279,11 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             quarters={options.quarter}
             onMonth={(month) => {
               const next = toggleFilterValue(state, "month", month);
-              track("investigate_drilldown", { source: "title_view", dimension: "month", selected: next.filters.month?.length ?? 0 });
+              track("investigate_drilldown", {
+                source: "title_view",
+                dimension: "month",
+                selected: next.filters.month?.length ?? 0,
+              });
               update(next);
             }}
             onClose={() => {
@@ -240,11 +298,20 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           quarters={options.quarter}
           onCell={(row, col) => {
             const next = toggleCell(state, row, col);
-            track("investigate_drilldown", { source: "heatmap", dimension: `${state.heat.rows}_${state.heat.cols}`, selected: next.filters[state.heat.cols] ? 1 : 0 });
+            track("investigate_drilldown", {
+              source: "heatmap",
+              dimension: `${state.heat.rows}_${state.heat.cols}`,
+              selected: next.filters[state.heat.cols] ? 1 : 0,
+            });
             update(next);
           }}
           onHeat={(heat) => {
-            track("investigate_heatmap_changed", { measure: heat.measure, rows: heat.rows, cols: heat.cols, period: heat.period });
+            track("investigate_heatmap_changed", {
+              measure: heat.measure,
+              rows: heat.rows,
+              cols: heat.cols,
+              period: heat.period,
+            });
             update({ ...state, heat });
           }}
           onPin={() => pins.add(heatPin, "player")}
@@ -259,7 +326,12 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
       </div>
       {/* Dewey: a column beside the dashboard on wide screens, after it below that. */}
       <aside className={styles.assistant} aria-label="Dewey">
-        <AssistantPanel ChartView={DeweyChart} onPin={(chart) => pins.add(chart, "dewey")} onPinLookup={(pin) => pins.add(pin, "player")} isPinned={pins.has} />
+        <AssistantPanel
+          ChartView={DeweyChart}
+          onPin={(chart) => pins.add(chart, "dewey")}
+          onPinLookup={(pin) => pins.add(pin, "player")}
+          isPinned={pins.has}
+        />
       </aside>
     </div>
   );
@@ -270,8 +342,15 @@ function heatPinFor(state: InvestigateState, quarters: readonly string[]): PinSp
   const { measure, rows, cols } = state.heat;
   // The span the card shows: past eight quarters, its window (heatWindow), so the pin is the grid the player saw.
   const window = heatWindow(state, quarters);
-  const filter = { ...filtersExcept(state.filters, [rows, cols]), ...(window ? { quarter: window } : {}) };
-  return { title: heatTitle(state.heat, window !== null), kind: "heatmap", query: { measure, by: [rows, cols], ...(Object.keys(filter).length ? { filter } : {}) } };
+  const filter = {
+    ...filtersExcept(state.filters, [rows, cols]),
+    ...(window ? { quarter: window } : {}),
+  };
+  return {
+    title: heatTitle(state.heat, window !== null),
+    kind: "heatmap",
+    query: { measure, by: [rows, cols], ...(Object.keys(filter).length ? { filter } : {}) },
+  };
 }
 
 /** The main chart as a pin: the same query it runs, so the pin shows what the player saw. */

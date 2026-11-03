@@ -15,7 +15,10 @@ const early: [string, Props | undefined, TrackOptions | undefined][] = [];
  * Starts the browser's analytics once per page load, through the studio's
  * kit (../kit.client: where they're sent, and from what).
  */
-export function startAnalytics(instance: string, gl?: () => WebGLRenderingContext | null): Analytics {
+export function startAnalytics(
+  instance: string,
+  gl?: () => WebGLRenderingContext | null,
+): Analytics {
   if (analytics) return analytics;
   if (gl) setGl(gl);
   analytics = studio().analytics!;
@@ -78,7 +81,11 @@ export const installId = () => analytics?.install() ?? "";
 async function tellServer(on: boolean): Promise<boolean> {
   let confirmed = false;
   try {
-    const res = await fetch("/api/analytics/sharing", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ on }) });
+    const res = await fetch("/api/analytics/sharing", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ on }),
+    });
     if (res.ok) {
       const body: unknown = await res.json();
       confirmed = typeof body === "object" && body !== null && (body as { on?: unknown }).on === on;

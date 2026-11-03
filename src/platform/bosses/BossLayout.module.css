@@ -26,8 +26,14 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-panel);
   background:
-    linear-gradient(to bottom, rgb(12 16 30 / 0.62), rgb(12 16 30 / 0.38) 55%, rgb(12 16 30 / 0.55)),
-    image-set(url("/bosses/backdrop-1200.webp") 1x, url("/bosses/backdrop.webp") 2x) center 72% / cover no-repeat,
+    linear-gradient(
+      to bottom,
+      rgb(12 16 30 / 0.62),
+      rgb(12 16 30 / 0.38) 55%,
+      rgb(12 16 30 / 0.55)
+    ),
+    image-set(url("/bosses/backdrop-1200.webp") 1x, url("/bosses/backdrop.webp") 2x) center 72% /
+      cover no-repeat,
     #141824;
 }
 
@@ -41,7 +47,9 @@
   border: 1px solid rgb(255 255 255 / 0.1);
   border-radius: 16px;
   background: rgb(13 17 31 / 0.78);
-  box-shadow: 0 18px 40px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  box-shadow:
+    0 18px 40px rgb(0 0 0 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
   backdrop-filter: blur(10px) saturate(1.1);
   /* Above the tags (which are above the floor): what opens out of the form, a move's whole line or a month's
      list of books, lies over the tags rather than under them. Its frosting makes it a layer of its own, so
@@ -96,7 +104,10 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 200ms, box-shadow 200ms, background-color 200ms;
+  transition:
+    border-color 200ms,
+    box-shadow 200ms,
+    background-color 200ms;
 }
 
 /* Its tail, down at its boss. */
@@ -126,7 +137,9 @@
 /* Open: lit in the boss's tint. Colour and shadow only, never size. */
 .teaser[data-open] {
   border-color: var(--tint);
-  box-shadow: 0 0 0 1px var(--tint), 0 0 18px color-mix(in srgb, var(--tint) 35%, transparent);
+  box-shadow:
+    0 0 0 1px var(--tint),
+    0 0 18px color-mix(in srgb, var(--tint) 35%, transparent);
   cursor: default;
 }
 

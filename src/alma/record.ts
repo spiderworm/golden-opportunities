@@ -44,15 +44,22 @@ export const FAILURES: readonly string[] = [
   "reason",
   "timeout",
   ...["missing", "broken", "timeout", "signed_out", "other"].map((k) => `unavailable:${k}`),
-  ...(["story", "reason", "bossLine"] as const).flatMap((field) => TEXT_PROBLEMS.map((p) => `text:${field}:${p}`)),
+  ...(["story", "reason", "bossLine"] as const).flatMap((field) =>
+    TEXT_PROBLEMS.map((p) => `text:${field}:${p}`),
+  ),
 ];
 
-
-const isPlain = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
+const isPlain = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" &&
+  v !== null &&
+  !Array.isArray(v) &&
+  Object.getPrototypeOf(v) === Object.prototype;
 const shortText = (v: unknown, limit: number) => typeof v === "string" && v.length <= limit;
 const keysAre = (v: Record<string, unknown>, required: string[], optional: string[] = []) =>
-  required.every((k) => k in v) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
-const smallInt = (v: unknown, max: number) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= max;
+  required.every((k) => k in v) &&
+  Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+const smallInt = (v: unknown, max: number) =>
+  Number.isInteger(v) && (v as number) >= 0 && (v as number) <= max;
 
 /**
  * The save's check on one stored record (Frank calls it from store.server.ts). Bounded, because the save is
@@ -62,8 +69,39 @@ const smallInt = (v: unknown, max: number) => Number.isInteger(v) && (v as numbe
  */
 export function isAlmaRecord(value: unknown): value is AlmaRecord {
   if (!isPlain(value)) return false;
-  if (!keysAre(value, ["quarter", "source", "type", "params", "stretch", "story", "bossLine", "promptVersion", "attempts"], ["drop", "reason", "model", "failure"])) return false;
-  const { quarter, source, type, params, stretch, drop, story, reason, bossLine, model, promptVersion, attempts, failure } = value;
+  if (
+    !keysAre(
+      value,
+      [
+        "quarter",
+        "source",
+        "type",
+        "params",
+        "stretch",
+        "story",
+        "bossLine",
+        "promptVersion",
+        "attempts",
+      ],
+      ["drop", "reason", "model", "failure"],
+    )
+  )
+    return false;
+  const {
+    quarter,
+    source,
+    type,
+    params,
+    stretch,
+    drop,
+    story,
+    reason,
+    bossLine,
+    model,
+    promptVersion,
+    attempts,
+    failure,
+  } = value;
   // Where a quarter enters from the save: a well-formed name, Q1 2194 or later.
   if (!isQuarterName(quarter)) return false;
   if (source !== "alma" && source !== "scripted") return false;
@@ -71,15 +109,30 @@ export function isAlmaRecord(value: unknown): value is AlmaRecord {
   if (!isPlain(params) || Object.keys(params).length > 8) return false;
   for (const [k, v] of Object.entries(params)) {
     if (!/^[a-z_]{1,20}$/.test(k)) return false;
-    if (!(typeof v === "number" ? Number.isInteger(v) && Math.abs(v) <= 1_000_000 : shortText(v, 40))) return false;
+    if (
+      !(typeof v === "number" ? Number.isInteger(v) && Math.abs(v) <= 1_000_000 : shortText(v, 40))
+    )
+      return false;
   }
-  if (stretch !== null && !(isPlain(stretch) && keysAre(stretch, ["measure", "percent"]) && (MEASURE_IDS as readonly unknown[]).includes(stretch.measure) && smallInt(stretch.percent, 100))) return false;
-  if (drop !== undefined && (!smallInt(drop, 100) || stretch === null || reason !== undefined)) return false;
-  if (!shortText(story, TEXT_LIMITS.story) || !shortText(bossLine, TEXT_LIMITS.bossLine)) return false;
+  if (
+    stretch !== null &&
+    !(
+      isPlain(stretch) &&
+      keysAre(stretch, ["measure", "percent"]) &&
+      (MEASURE_IDS as readonly unknown[]).includes(stretch.measure) &&
+      smallInt(stretch.percent, 100)
+    )
+  )
+    return false;
+  if (drop !== undefined && (!smallInt(drop, 100) || stretch === null || reason !== undefined))
+    return false;
+  if (!shortText(story, TEXT_LIMITS.story) || !shortText(bossLine, TEXT_LIMITS.bossLine))
+    return false;
   if (reason !== undefined && !shortText(reason, TEXT_LIMITS.reason)) return false;
   if (model !== undefined && !shortText(model, 60)) return false;
   if (!smallInt(promptVersion, 1000) || !smallInt(attempts, 5)) return false;
-  if (failure !== undefined && !(typeof failure === "string" && FAILURES.includes(failure))) return false;
+  if (failure !== undefined && !(typeof failure === "string" && FAILURES.includes(failure)))
+    return false;
   return true;
 }
 

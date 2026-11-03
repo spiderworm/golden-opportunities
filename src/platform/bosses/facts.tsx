@@ -2,5 +2,7 @@
 export type FactLine = (string | { strong: string })[];
 
 export function FactText({ line }: { line: readonly FactLine[number][] }) {
-  return line.map((part, i) => (typeof part === "string" ? part : <strong key={i}>{part.strong}</strong>));
+  return line.map((part, i) =>
+    typeof part === "string" ? part : <strong key={i}>{part.strong}</strong>,
+  );
 }

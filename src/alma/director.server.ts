@@ -20,13 +20,17 @@ export interface AlmaModel {
 export const ALMA_TIMEOUT_MS = 30_000;
 
 /** The real model: headless Claude Code with no tools at all, locked like Dewey's (claudeCode.server.ts). */
-export function claudeCodeAlma(model = process.env.ORBITAL_ALMA_MODEL || "sonnet", timeoutMs = ALMA_TIMEOUT_MS): AlmaModel {
+export function claudeCodeAlma(
+  model = process.env.ORBITAL_ALMA_MODEL || "sonnet",
+  timeoutMs = ALMA_TIMEOUT_MS,
+): AlmaModel {
   const provider = claudeCodeAssistant({ server: null, model, timeoutMs });
   return {
     name: model.slice(0, 60),
     async ask(system, input, signal) {
       let text = "";
-      for await (const event of provider.ask({ system, message: input }, signal)) if (event.type === "text") text += event.text;
+      for await (const event of provider.ask({ system, message: input }, signal))
+        if (event.type === "text") text += event.text;
       if (signal.aborted) throw new AssistantUnavailable("Alma was stopped.", "timeout");
       return text;
     },
@@ -35,13 +39,15 @@ export function claudeCodeAlma(model = process.env.ORBITAL_ALMA_MODEL || "sonnet
 
 /** The model to ask, or null to always script: `ORBITAL_ALMA_PROVIDER=scripted`, and every test run. */
 export function almaModel(env: NodeJS.ProcessEnv = process.env): AlmaModel | null {
-  if (env.ORBITAL_ALMA_PROVIDER === "scripted" || env.VITEST || env.NODE_ENV === "test") return null;
+  if (env.ORBITAL_ALMA_PROVIDER === "scripted" || env.VITEST || env.NODE_ENV === "test")
+    return null;
   return claudeCodeAlma();
 }
 
 /** A failed call's code, always one of FAILURES: a kind added to the provider later reads as "other" until it's listed. */
 const failureOf = (error: unknown) => {
-  const code = error instanceof AssistantUnavailable ? `unavailable:${error.kind}` : "unavailable:other";
+  const code =
+    error instanceof AssistantUnavailable ? `unavailable:${error.kind}` : "unavailable:other";
   return FAILURES.includes(code) ? code : "unavailable:other";
 };
 
@@ -60,11 +66,21 @@ export async function chooseEvent(
     titles,
     accept,
     timeoutMs = ALMA_TIMEOUT_MS,
-  }: { seed: number; model: AlmaModel | null; titles: readonly string[]; accept?: (candidate: Candidate) => boolean; timeoutMs?: number },
+  }: {
+    seed: number;
+    model: AlmaModel | null;
+    titles: readonly string[];
+    accept?: (candidate: Candidate) => boolean;
+    timeoutMs?: number;
+  },
 ): Promise<AlmaRecord> {
   const candidates = drawCandidates(seed, context, accept);
   const recovery = recoveryOf(context);
-  const record = (candidate: Candidate, flavor: Flavor, rest: Pick<AlmaRecord, "source" | "attempts"> & Partial<AlmaRecord>): AlmaRecord => ({
+  const record = (
+    candidate: Candidate,
+    flavor: Flavor,
+    rest: Pick<AlmaRecord, "source" | "attempts"> & Partial<AlmaRecord>,
+  ): AlmaRecord => ({
     quarter: context.quarter,
     type: candidate.type,
     params: { ...candidate.params },
@@ -74,7 +90,12 @@ export async function chooseEvent(
     promptVersion: PROMPT_VERSION,
     ...rest,
   });
-  const scripted = (attempts: number, failure?: string) => record(candidates[0], scriptedFlavor(candidates[0], context), { source: "scripted", attempts, ...(failure ? { failure } : {}) });
+  const scripted = (attempts: number, failure?: string) =>
+    record(candidates[0], scriptedFlavor(candidates[0], context), {
+      source: "scripted",
+      attempts,
+      ...(failure ? { failure } : {}),
+    });
   if (!model) return scripted(0);
 
   const input = almaInput(context, history, candidates);
@@ -84,7 +105,13 @@ export async function chooseEvent(
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let text: string;
     try {
-      text = await model.ask(ALMA_RULES, attempt === 1 ? input : `${input}\n\nYour last answer was rejected (${failure}). Answer again, keeping every rule.`, controller.signal);
+      text = await model.ask(
+        ALMA_RULES,
+        attempt === 1
+          ? input
+          : `${input}\n\nYour last answer was rejected (${failure}). Answer again, keeping every rule.`,
+        controller.signal,
+      );
     } catch (error) {
       return scripted(attempt, controller.signal.aborted ? "timeout" : failureOf(error));
     } finally {
@@ -92,7 +119,12 @@ export async function chooseEvent(
     }
     if (controller.signal.aborted) return scripted(attempt, "timeout");
     const checked = checkAnswer(text, candidates, context, { titles });
-    if (checked.ok) return record(candidates[checked.index], checked.flavor, { source: "alma", model: model.name, attempts: attempt });
+    if (checked.ok)
+      return record(candidates[checked.index], checked.flavor, {
+        source: "alma",
+        model: model.name,
+        attempts: attempt,
+      });
     failure = checked.failure;
   }
   return scripted(2, failure);

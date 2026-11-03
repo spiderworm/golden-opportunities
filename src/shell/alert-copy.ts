@@ -29,17 +29,27 @@ export const ALERT_COPY = {
     label: "Transmission from the Commerce Office",
     kicker: "INCOMING TRANSMISSION",
     line: "THE NUMBERS HAVE GONE DOWN. WE PREFER UP. MR. ZOOLANDER TEACHES THAT ONE MUST ALWAYS LOOK. PLEASE LOOK AT THE LEDGERS.",
-    memoHeader: ["LARKSPUR STATION / COMMERCE OFFICE", "Quarterly review: Orbital Books, Ring C, Berth 14", "January 1, 2194"],
+    memoHeader: [
+      "LARKSPUR STATION / COMMERCE OFFICE",
+      "Quarterly review: Orbital Books, Ring C, Berth 14",
+      "January 1, 2194",
+    ],
     memo: [
       ["Fourth-quarter revenue: $161,525. Third quarter: $274,036. ", { strong: "Down 41%." }],
-      ["The Commerce Office expects a plan for the first quarter before the shuttle season ends. Your ledgers are on the console, and Dewey can help you read them there."],
+      [
+        "The Commerce Office expects a plan for the first quarter before the shuttle season ends. Your ledgers are on the console, and Dewey can help you read them there.",
+      ],
       ["Submit your plan when you are ready."],
     ],
     open: "Open the ledgers",
     later: "Later",
   },
   strip: {
-    long: ["Standing order from the Commerce Office: Q4 revenue is down ", { strong: "41%" }, " on Q3. Submit a plan for Q1 2194."],
+    long: [
+      "Standing order from the Commerce Office: Q4 revenue is down ",
+      { strong: "41%" },
+      " on Q3. Submit a plan for Q1 2194.",
+    ],
     short: ["Standing order: Q4 revenue down ", { strong: "41%" }, ". Plan due for Q1 2194."],
     ledgers: "Open the ledgers",
     memo: "Read the memo",
@@ -52,10 +62,18 @@ export const ALERT_COPY = {
 
 /** Q2's bell, as getStationState lists it (Frank's game state uses this; q2AlertCopy has the rest). */
 export const Q2_ALERT_COPY = {
-  bell: { title: "The Q2 Book of the Month calendar is empty", detail: "Choose the picks, then submit a plan for Q2 2194." },
+  bell: {
+    title: "The Q2 Book of the Month calendar is empty",
+    detail: "Choose the picks, then submit a plan for Q2 2194.",
+  },
 } as const;
 
-const MEASURE_NAMES: Record<MeasureId, string> = { profit: "Profit", readers: "Readers served", happiness: "Happiness", culture: "Culture" };
+const MEASURE_NAMES: Record<MeasureId, string> = {
+  profit: "Profit",
+  readers: "Readers served",
+  happiness: "Happiness",
+  culture: "Culture",
+};
 
 /** "Profit", "Profit and Happiness", "Profit, Happiness and Culture": in report-card order, as the engine lists them. */
 function measureNames(ids: readonly MeasureId[]): string {
@@ -77,18 +95,28 @@ export function q2AlertCopy(q1: FirstQuarter): AlertCopy {
     transmission: {
       ...ALERT_COPY.transmission,
       line: "THE FIRST QUARTER HAS BEEN FILED. IT CANNOT BE UNFILED. WE TRIED. THE CALENDAR IS NOW EMPTY. MR. ZOOLANDER WOULD FILL IT WITH SOMETHING REALLY, REALLY GOOD-LOOKING. PLEASE FILL IT.",
-      memoHeader: ["LARKSPUR STATION / COMMERCE OFFICE", "Quarterly review: Orbital Books, Ring C, Berth 14", "April 1, 2194"],
+      memoHeader: [
+        "LARKSPUR STATION / COMMERCE OFFICE",
+        "Quarterly review: Orbital Books, Ring C, Berth 14",
+        "April 1, 2194",
+      ],
       memo: [
         // At 100 every measure met its goal, so none is lowest (Plot, #139).
-        [`First-quarter overall score: ${q1.score} (${q1.grade.replace("-", "\u2212")}). ${q1.score >= 100 ? "Every measure met its goal." : `Lowest measure: ${measureNames(q1.binding)}.`}`],
-        ["The Book of the Month calendar for the second quarter is empty. The previous manager's schedule ended in March. The Commerce Office expects the picks, and a plan, before the shuttle season begins."],
+        [
+          `First-quarter overall score: ${q1.score} (${q1.grade.replace("-", "\u2212")}). ${q1.score >= 100 ? "Every measure met its goal." : `Lowest measure: ${measureNames(q1.binding)}.`}`,
+        ],
+        [
+          "The Book of the Month calendar for the second quarter is empty. The previous manager's schedule ended in March. The Commerce Office expects the picks, and a plan, before the shuttle season begins.",
+        ],
         ["Your ledgers now include Q1 2194, and Dewey can help you read them there."],
         ["Submit your plan when you are ready."],
       ],
     },
     strip: {
       ...ALERT_COPY.strip,
-      long: ["Standing order from the Commerce Office: the Book of the Month calendar for Q2 is empty. Submit your picks and a plan for Q2 2194."],
+      long: [
+        "Standing order from the Commerce Office: the Book of the Month calendar for Q2 is empty. Submit your picks and a plan for Q2 2194.",
+      ],
       short: ["Standing order: Q2 picks needed. Plan due for Q2 2194."],
     },
     bell: Q2_ALERT_COPY.bell,

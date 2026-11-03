@@ -32,7 +32,8 @@ export const SUN_DIRECTION = new Vector3(-0.85, 0.32, 0.42).normalize();
 export const STATION_START_ANGLE = Math.atan2(PLANET_POSITION.x, PLANET_POSITION.z) + 0.45;
 
 /** Berth frame to station frame (the berth isn't rotated, only moved). */
-export const berthToStation = (x: number, y: number, z: number) => new Vector3(x, y, z).add(BERTH_ORIGIN);
+export const berthToStation = (x: number, y: number, z: number) =>
+  new Vector3(x, y, z).add(BERTH_ORIGIN);
 
 const frontZ = ROOM.depth / 2;
 

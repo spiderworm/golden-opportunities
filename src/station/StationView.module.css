@@ -82,5 +82,7 @@
   border-radius: 8px;
   background: rgb(0 0 0 / 0.6);
   color: #b8ffcf;
-  font: 12px ui-monospace, monospace;
+  font:
+    12px ui-monospace,
+    monospace;
 }

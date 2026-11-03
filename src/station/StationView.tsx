@@ -1,4 +1,15 @@
-import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  Component,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { useSearchParams } from "react-router";
 
 import { track } from "~/platform/analytics/analytics.client";
@@ -87,13 +98,20 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
     const m = moving.current;
     if (!m || m.to !== settled) return;
     moving.current = null;
-    track("camera_moved", { to: settled, trigger: m.trigger, durationMs: Math.round(performance.now() - m.started) });
+    track("camera_moved", {
+      to: settled,
+      trigger: m.trigger,
+      durationMs: Math.round(performance.now() - m.started),
+    });
   }, []);
 
   const onFailed = useCallback(
     (error: unknown) => {
       setSupport("failed");
-      track("station_failed", { stage: drawn ? "running" : "loading", cause: error instanceof ImportFailed ? "import" : "scene" });
+      track("station_failed", {
+        stage: drawn ? "running" : "loading",
+        cause: error instanceof ImportFailed ? "import" : "scene",
+      });
     },
     [drawn],
   );
@@ -119,16 +137,22 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
           </Suspense>
         </SceneBoundary>
       ) : (
-        <StationPoster note={support === "static" ? NOTES.static : support === "failed" ? NOTES[drawn ? "running" : "loading"] : undefined} />
+        <StationPoster
+          note={
+            support === "static"
+              ? NOTES.static
+              : support === "failed"
+                ? NOTES[drawn ? "running" : "loading"]
+                : undefined
+          }
+        />
       )}
-      {held && !drawn && (support === "checking" || support === "3d") && <img className={styles.held} src={held} alt="" />}
+      {held && !drawn && (support === "checking" || support === "3d") && (
+        <img className={styles.held} src={held} alt="" />
+      )}
       <p className={styles.place}>Orbital Books, Ring C, Berth 14</p>
       {support === "3d" && ready && (
-        <button
-          type="button"
-          className={styles.move}
-          onClick={() => move(next)}
-        >
+        <button type="button" className={styles.move} onClick={() => move(next)}>
           {next === "inside" ? "Go inside" : "Step outside"}
         </button>
       )}
@@ -138,7 +162,10 @@ export function StationView({ busyness, featuredTitle, alert }: StationViewProps
 }
 
 /** Falls back to the still picture if the scene throws (its code or a model that won't load, a lost GPU). */
-class SceneBoundary extends Component<{ onError: (error: unknown) => void; children: ReactNode }, { failed: boolean }> {
+class SceneBoundary extends Component<
+  { onError: (error: unknown) => void; children: ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };

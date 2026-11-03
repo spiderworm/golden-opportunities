@@ -27,7 +27,9 @@ describe("station loads", () => {
     let tries = 0;
     let cut!: (error: unknown) => void;
     const settled = vi.fn();
-    held(() => (++tries === 1 ? new Promise((_, reject) => (cut = reject)) : Promise.resolve("model"))).then(settled, settled);
+    held(() =>
+      ++tries === 1 ? new Promise((_, reject) => (cut = reject)) : Promise.resolve("model"),
+    ).then(settled, settled);
     listeners.beforeunload!();
     listeners.pagehide!();
     expect(going).toHaveBeenCalledTimes(1);
@@ -54,7 +56,9 @@ describe("station loads", () => {
     // beforeunload alone, for a page that then stays (a download): held, then loaded once the moment passes.
     tries = 0;
     const later = vi.fn();
-    held(() => (++tries === 1 ? new Promise((_, reject) => (cut = reject)) : Promise.resolve("texture"))).then(later, later);
+    held(() =>
+      ++tries === 1 ? new Promise((_, reject) => (cut = reject)) : Promise.resolve("texture"),
+    ).then(later, later);
     listeners.beforeunload!();
     expect(going).toHaveBeenCalledTimes(2);
     cut(failed);

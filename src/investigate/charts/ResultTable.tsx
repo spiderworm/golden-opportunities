@@ -10,7 +10,11 @@ export function ResultTable({ result, height }: { result: QueryResult; height?: 
         <thead>
           <tr>
             {result.columns.map((c) => (
-              <th key={c.key} scope="col" className={c.type === "number" ? styles.numeric : undefined}>
+              <th
+                key={c.key}
+                scope="col"
+                className={c.type === "number" ? styles.numeric : undefined}
+              >
                 {c.label}
               </th>
             ))}

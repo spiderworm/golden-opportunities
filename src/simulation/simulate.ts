@@ -4,11 +4,32 @@ import type { BookshopData, DeepReadonly } from "~/bookshop/types";
 import { assumptions, happened } from "./copy";
 import { reportCard, type MeasureInput } from "./grading";
 import { ledger, measures, ratingsOf, type Costs, type Ledger, type Ratings } from "./measures";
-import { baseline, historyOf, leversFor, PICK_DISCOUNT, run, SALE_DISCOUNT, withRelease, YEAR, type History, type Levers, type QuarterNumber, type Run } from "./model";
+import {
+  baseline,
+  historyOf,
+  leversFor,
+  PICK_DISCOUNT,
+  run,
+  SALE_DISCOUNT,
+  withRelease,
+  YEAR,
+  type History,
+  type Levers,
+  type QuarterNumber,
+  type Run,
+} from "./model";
 import { linesOf, ordersOf, type Order } from "./orders";
 import { has, isPlan } from "./plan";
 import { RELEASE } from "./release";
-import type { HappenedFacts, MeasureId, Metrics, MonthOutcome, Plan, ReportCard, SimulationResult } from "./types";
+import type {
+  HappenedFacts,
+  MeasureId,
+  Metrics,
+  MonthOutcome,
+  Plan,
+  ReportCard,
+  SimulationResult,
+} from "./types";
 import { MEASURE_IDS } from "./types";
 
 export interface Prepared {
@@ -24,7 +45,9 @@ export interface Prepared {
 
 /** Holding course's levers: M1's scheduled picks in Q1 2194; from Q2 2194 the calendar starts empty. */
 export const holdLevers = (quarter: QuarterNumber, year = YEAR): Levers =>
-  quarter === 1 && year === YEAR ? leversFor({ levers: [] }) : { picks: [null, null, null], sale: null, events: false };
+  quarter === 1 && year === YEAR
+    ? leversFor({ levers: [] })
+    : { picks: [null, null, null], sale: null, events: false };
 
 /** The seeds the new volume's expected effect is averaged over, independent of the player's seed (m1-new-volume.md). */
 export const EFFECT_SEEDS = Array.from({ length: 20 }, (_, i) => 101 + i);
@@ -37,7 +60,8 @@ export function releaseEffect(history: History, ratings: Ratings): Record<Measur
   const effect = Object.fromEntries(MEASURE_IDS.map((id) => [id, 0])) as Record<MeasureId, number>;
   for (const seed of EFFECT_SEEDS) {
     const base = baseline(history, seed);
-    const of = (b: readonly Order[]) => measures(run(history, b, seed, holdLevers(history.quarter, history.year)).orders, ratings);
+    const of = (b: readonly Order[]) =>
+      measures(run(history, b, seed, holdLevers(history.quarter, history.year)).orders, ratings);
     const [withIt, without] = [of(withRelease(history, base, seed)), of(base)];
     for (const id of MEASURE_IDS) effect[id] += (withIt[id] - without[id]) / EFFECT_SEEDS.length;
   }
@@ -47,7 +71,11 @@ export function releaseEffect(history: History, ratings: Ratings): Record<Measur
 const histories = new WeakMap<DeepReadonly<BookshopData>, Map<string, History>>();
 
 /** A quarter's history, once per dataset: all a quarter's lines need, without the anchor's runs. */
-export function historyFor(data: DeepReadonly<BookshopData>, quarter: QuarterNumber = 1, year = YEAR): History {
+export function historyFor(
+  data: DeepReadonly<BookshopData>,
+  quarter: QuarterNumber = 1,
+  year = YEAR,
+): History {
   let byQuarter = histories.get(data);
   if (!byQuarter) histories.set(data, (byQuarter = new Map()));
   const key = `${year}-Q${quarter}`;
@@ -59,7 +87,11 @@ export function historyFor(data: DeepReadonly<BookshopData>, quarter: QuarterNum
 // The history never changes for a loaded dataset, so its derived values are worked out once per quarter.
 const prepared = new WeakMap<DeepReadonly<BookshopData>, Map<string, Prepared>>();
 
-export function prepare(data: DeepReadonly<BookshopData>, quarter: QuarterNumber = 1, year = YEAR): Prepared {
+export function prepare(
+  data: DeepReadonly<BookshopData>,
+  quarter: QuarterNumber = 1,
+  year = YEAR,
+): Prepared {
   let byQuarter = prepared.get(data);
   if (!byQuarter) prepared.set(data, (byQuarter = new Map()));
   const key = `${year}-Q${quarter}`;
@@ -67,7 +99,9 @@ export function prepare(data: DeepReadonly<BookshopData>, quarter: QuarterNumber
   if (cached) return cached;
   const history = historyFor(data, quarter, year);
   const ratings = ratingsOf(data);
-  const quarters = [1, 2, 3, 4].map((q) => measures(ordersOf(data.saleLines.filter((l) => l.quarter === q)), ratings));
+  const quarters = [1, 2, 3, 4].map((q) =>
+    measures(ordersOf(data.saleLines.filter((l) => l.quarter === q)), ratings),
+  );
   const quarterlyAverage = Object.fromEntries(
     MEASURE_IDS.map((id) => [id, quarters.reduce((t, q) => t + q[id], 0) / quarters.length]),
   ) as Record<MeasureId, number>;
@@ -79,7 +113,10 @@ export function prepare(data: DeepReadonly<BookshopData>, quarter: QuarterNumber
     history,
     ratings,
     lastYear,
-    anchor: Object.fromEntries(MEASURE_IDS.map((id) => [id, lastYear[id] + effect[id]])) as Record<MeasureId, number>,
+    anchor: Object.fromEntries(MEASURE_IDS.map((id) => [id, lastYear[id] + effect[id]])) as Record<
+      MeasureId,
+      number
+    >,
     quarterlyAverage,
     averageOrderValue: ledger(lastYearOrders).revenue / lastYearOrders.length,
   };
@@ -91,11 +128,31 @@ const HOLD_COURSE: Plan = { levers: [] };
 
 export const metricsOf = (l: Ledger): Metrics => ({ ...l });
 
-export function cardFor(p: Prepared, r: Run, anchor = p.anchor, goals: Partial<Record<MeasureId, number>> = {}, costs: Costs = {}): ReportCard {
-  const results = measures(r.orders, p.ratings, r.nights.length, r.nights.reduce((t, n) => t + n.orders, 0), costs);
+export function cardFor(
+  p: Prepared,
+  r: Run,
+  anchor = p.anchor,
+  goals: Partial<Record<MeasureId, number>> = {},
+  costs: Costs = {},
+): ReportCard {
+  const results = measures(
+    r.orders,
+    p.ratings,
+    r.nights.length,
+    r.nights.reduce((t, n) => t + n.orders, 0),
+    costs,
+  );
   return reportCard(
     Object.fromEntries(
-      MEASURE_IDS.map((id) => [id, { result: results[id], lastYear: anchor[id], quarterlyAverage: p.quarterlyAverage[id], goal: goals[id] }]),
+      MEASURE_IDS.map((id) => [
+        id,
+        {
+          result: results[id],
+          lastYear: anchor[id],
+          quarterlyAverage: p.quarterlyAverage[id],
+          goal: goals[id],
+        },
+      ]),
     ) as Record<MeasureId, MeasureInput>,
   );
 }
@@ -136,7 +193,13 @@ export function releaseFacts(r: Run, sale: boolean): NonNullable<HappenedFacts["
 export function eventFacts(r: Run, mine: Ledger): NonNullable<HappenedFacts["events"]> {
   const nights = ledger(r.orders.filter((o) => o.kind === "event" && !o.saleClone));
   const orders = r.nights.reduce((t, n) => t + n.orders, 0);
-  return { nights: r.nights.length, orders, perNight: orders / r.nights.length, gross: nights.grossProfit, eventCosts: mine.eventCosts };
+  return {
+    nights: r.nights.length,
+    orders,
+    perNight: orders / r.nights.length,
+    gross: nights.grossProfit,
+    eventCosts: mine.eventCosts,
+  };
 }
 
 /** The sale's facts, against holding course. */
@@ -147,9 +210,19 @@ export const saleFacts = (mine: Ledger, hold: Ledger): NonNullable<HappenedFacts
   profitPct: mine.grossProfit / hold.grossProfit - 1,
 });
 
-function factsFor(plan: Plan, r: Run, months: readonly string[], mine: Ledger, hold: Ledger): HappenedFacts {
-  const facts: HappenedFacts = { release: releaseFacts(r, has(plan, "sale")), amount: mine.grossProfit - hold.grossProfit };
-  if (plan.levers.length === 0) facts.holdCourse = { ...pickedCopies(r, months), profit: mine.grossProfit };
+function factsFor(
+  plan: Plan,
+  r: Run,
+  months: readonly string[],
+  mine: Ledger,
+  hold: Ledger,
+): HappenedFacts {
+  const facts: HappenedFacts = {
+    release: releaseFacts(r, has(plan, "sale")),
+    amount: mine.grossProfit - hold.grossProfit,
+  };
+  if (plan.levers.length === 0)
+    facts.holdCourse = { ...pickedCopies(r, months), profit: mine.grossProfit };
   if (has(plan, "repick")) facts.repick = pickedCopies(r, months);
   if (has(plan, "events")) facts.events = eventFacts(r, mine);
   if (has(plan, "sale")) facts.sale = saleFacts(mine, hold);
@@ -157,16 +230,29 @@ function factsFor(plan: Plan, r: Run, months: readonly string[], mine: Ledger, h
 }
 
 /** Revenue and units by month, under the plan and holding course. */
-export function monthlyOf(months: readonly string[], planRun: Run, holdRun: Run, year = YEAR): MonthOutcome[] {
+export function monthlyOf(
+  months: readonly string[],
+  planRun: Run,
+  holdRun: Run,
+  year = YEAR,
+): MonthOutcome[] {
   const monthOf = (orders: readonly Order[], month: string) => {
     const l = ledger(orders.filter((o) => o.day.slice(5, 7) === month));
     return { revenue: l.revenue, units: l.units };
   };
-  return months.map((month) => ({ month: `${year}-${month}`, plan: monthOf(planRun.orders, month), holdCourse: monthOf(holdRun.orders, month) }));
+  return months.map((month) => ({
+    month: `${year}-${month}`,
+    plan: monthOf(planRun.orders, month),
+    holdCourse: monthOf(holdRun.orders, month),
+  }));
 }
 
 /** Plays Q1 2194 under the plan, and under holding course from the same seed (a 32-bit unsigned integer). */
-export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<BookshopData>): SimulationResult {
+export function simulateQuarter(
+  plan: Plan,
+  seed: number,
+  data: DeepReadonly<BookshopData>,
+): SimulationResult {
   if (!isPlan(plan)) throw new Error("Invalid plan: 0 to 2 distinct levers, in LEVER_IDS order");
   const p = prepare(data);
   const base = withRelease(p.history, baseline(p.history, seed), seed);
@@ -182,7 +268,8 @@ export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<Boo
     return ledger(r.orders, r.nights.length).grossProfit;
   };
   const withoutSale = profitOf(others);
-  const saleChange = (response: number) => profitOf({ levers: [...others.levers, "sale"] }, response) - withoutSale;
+  const saleChange = (response: number) =>
+    profitOf({ levers: [...others.levers, "sale"] }, response) - withoutSale;
   const facts = factsFor(plan, planRun, p.history.months, mine, hold);
 
   return {
@@ -194,7 +281,11 @@ export function simulateQuarter(plan: Plan, seed: number, data: DeepReadonly<Boo
       monthly: monthlyOf(p.history.months, planRun, holdRun),
       totals: { plan: metricsOf(mine), holdCourse: metricsOf(hold) },
       reportCard: { plan: cardFor(p, planRun), holdCourse: cardFor(p, holdRun) },
-      assumptions: assumptions(plan, { averageOrderValue: p.averageOrderValue, saleAt10: saleChange(0.1), saleAt30: saleChange(0.3) }),
+      assumptions: assumptions(plan, {
+        averageOrderValue: p.averageOrderValue,
+        saleAt10: saleChange(0.1),
+        saleAt30: saleChange(0.3),
+      }),
       happened: happened(facts),
       facts,
     },

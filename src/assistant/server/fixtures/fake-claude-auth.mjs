@@ -15,7 +15,10 @@ else if (command === "--version") {
 } else if (mode === "key") {
   console.log(JSON.stringify({ loggedIn: Boolean(process.env.ANTHROPIC_API_KEY) }));
   process.exit(process.env.ANTHROPIC_API_KEY ? 0 : 1);
-} else if (mode === "in") console.log(JSON.stringify({ loggedIn: true, authMethod: "claude.ai", email: "someone@example.com" }));
+} else if (mode === "in")
+  console.log(
+    JSON.stringify({ loggedIn: true, authMethod: "claude.ai", email: "someone@example.com" }),
+  );
 else if (mode === "out") {
   console.log(JSON.stringify({ loggedIn: false, authMethod: "none" }));
   process.exit(1);

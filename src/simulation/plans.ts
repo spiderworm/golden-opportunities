@@ -18,19 +18,38 @@ const copiesByMonth = new WeakMap<DeepReadonly<BookshopData>, Map<string, number
  * that sold 2 copies or fewer in that month of 2193 (a different title each month, the new volume never),
  * plus author nights. The same every year, so `seed` doesn't change it; it's there for callers that vary it.
  */
-export function goodPlan(_seed: number, quarter: QuarterId, data: DeepReadonly<BookshopData>): Plan | Q2Plan {
+export function goodPlan(
+  _seed: number,
+  quarter: QuarterId,
+  data: DeepReadonly<BookshopData>,
+): Plan | Q2Plan {
   if (quarter === "2194-Q1") return { levers: ["repick", "events"] };
   let copies = copiesByMonth.get(data);
   if (!copies) {
     copiesByMonth.set(data, (copies = new Map()));
-    for (const l of data.saleLines) copies.set(`${l.isbn}:${l.date.slice(5, 7)}`, (copies.get(`${l.isbn}:${l.date.slice(5, 7)}`) ?? 0) + 1);
+    for (const l of data.saleLines)
+      copies.set(
+        `${l.isbn}:${l.date.slice(5, 7)}`,
+        (copies.get(`${l.isbn}:${l.date.slice(5, 7)}`) ?? 0) + 1,
+      );
   }
   const ratings = ratingsOf(data);
   const used = new Set<string>();
   const picks = monthsOf(quarterNumber(quarter) as QuarterNumber).map((month) => {
     const best = q2Candidates(data)
-      .filter((c) => c.format === "Hardcover" && c.isbn !== RELEASE.edition.isbn && !used.has(c.bookId) && (copies.get(`${c.isbn}:${month}`) ?? 0) <= QUIET_COPIES)
-      .sort((a, b) => ratings.average(b.bookId) - ratings.average(a.bookId) || b.listPrice - a.listPrice || a.title.localeCompare(b.title, "en-US"))[0];
+      .filter(
+        (c) =>
+          c.format === "Hardcover" &&
+          c.isbn !== RELEASE.edition.isbn &&
+          !used.has(c.bookId) &&
+          (copies.get(`${c.isbn}:${month}`) ?? 0) <= QUIET_COPIES,
+      )
+      .sort(
+        (a, b) =>
+          ratings.average(b.bookId) - ratings.average(a.bookId) ||
+          b.listPrice - a.listPrice ||
+          a.title.localeCompare(b.title, "en-US"),
+      )[0];
     used.add(best.bookId);
     return best.isbn;
   });

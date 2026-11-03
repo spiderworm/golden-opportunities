@@ -1,8 +1,20 @@
 // One query result drawn over a category axis, as bars or lines: the main
 // chart, the title view, and charts pinned by the player or by Dewey all use it.
 import type { EChartsCoreOption } from "echarts/core";
-import { PRICE_BANDS, QUERY_LIMITS, type Dimension, type Measure, type QueryResult } from "~/query/types";
-import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS, WHOLE_TICKS } from "../format";
+import {
+  PRICE_BANDS,
+  QUERY_LIMITS,
+  type Dimension,
+  type Measure,
+  type QueryResult,
+} from "~/query/types";
+import {
+  formatDimensionShort,
+  formatDimensionValue,
+  formatMeasure,
+  MEASURE_LABELS,
+  WHOLE_TICKS,
+} from "../format";
 import { isTotal } from "../state";
 import { chartTheme, seriesColor, tooltipStyle } from "~/platform/charts/chart-theme";
 import { escapeHtml } from "~/platform/charts/escape";
@@ -33,11 +45,18 @@ const RANKED_DIMENSIONS: readonly Dimension[] = ["title", "author", "series", "e
 
 function orderCategories(x: Dimension, categories: (string | null)[]): (string | null)[] {
   if (x === "month" || x === "quarter") return [...categories].sort();
-  if (x === "discount_rate") return [...categories].sort((a, b) => parseFloat(a ?? "Infinity") - parseFloat(b ?? "Infinity"));
+  if (x === "discount_rate")
+    return [...categories].sort(
+      (a, b) => parseFloat(a ?? "Infinity") - parseFloat(b ?? "Infinity"),
+    );
   // "$12.99": cheapest first.
-  if (x === "list_price") return [...categories].sort((a, b) => parseFloat(a?.slice(1) ?? "Infinity") - parseFloat(b?.slice(1) ?? "Infinity"));
+  if (x === "list_price")
+    return [...categories].sort(
+      (a, b) => parseFloat(a?.slice(1) ?? "Infinity") - parseFloat(b?.slice(1) ?? "Infinity"),
+    );
   if (x === "price_band") {
-    const at = (c: string | null) => (c === null ? Infinity : (PRICE_BANDS as readonly string[]).indexOf(c));
+    const at = (c: string | null) =>
+      c === null ? Infinity : (PRICE_BANDS as readonly string[]).indexOf(c);
     return [...categories].sort((a, b) => at(a) - at(b));
   }
   return categories;
@@ -57,7 +76,11 @@ export function categoryModel(
   x: Dimension,
   seriesBy: Dimension | null = null,
   allCategories: readonly string[] = [],
-  { top, keep = [], limit = QUERY_LIMITS.rows }: { top?: number; keep?: readonly string[]; limit?: number } = {},
+  {
+    top,
+    keep = [],
+    limit = QUERY_LIMITS.rows,
+  }: { top?: number; keep?: readonly string[]; limit?: number } = {},
 ): CategoryModel {
   const measure = result.columns.at(-1)!.key as Measure;
   const complete = result.rows.length < limit;
@@ -67,19 +90,25 @@ export function categoryModel(
     const value = row[x] ?? null;
     if (!categories.includes(value)) categories.push(value);
   }
-  const seriesKeys = seriesBy ? orderCategories(seriesBy, [...new Set(result.rows.map((r) => r[seriesBy] ?? null))]) : [null];
+  const seriesKeys = seriesBy
+    ? orderCategories(seriesBy, [...new Set(result.rows.map((r) => r[seriesBy] ?? null))])
+    : [null];
   const valueAt = (category: string | null, key: string | null) => {
-    const row = result.rows.find((r) => (r[x] ?? null) === category && (!seriesBy || (r[seriesBy] ?? null) === key));
+    const row = result.rows.find(
+      (r) => (r[x] ?? null) === category && (!seriesBy || (r[seriesBy] ?? null) === key),
+    );
     return row ? (row[measure] ?? null) : complete && isTotal(measure) ? 0 : null;
   };
-  const sum = (category: string | null) => seriesKeys.reduce((total, key) => total + (valueAt(category, key) ?? 0), 0);
+  const sum = (category: string | null) =>
+    seriesKeys.reduce((total, key) => total + (valueAt(category, key) ?? 0), 0);
 
   const horizontal = RANKED_DIMENSIONS.includes(x);
   const ranked = categories.length;
   if (horizontal) {
     // Largest first; ties keep the query's order.
     categories = [...categories].sort((a, b) => sum(b) - sum(a));
-    if (top !== undefined) categories = categories.filter((c, i) => i < top || keep.includes(c ?? ""));
+    if (top !== undefined)
+      categories = categories.filter((c, i) => i < top || keep.includes(c ?? ""));
   } else {
     categories = orderCategories(x, categories);
   }
@@ -101,7 +130,10 @@ export function categoryModel(
  * measure: a total of zero is no sales, but an average of zero is a figure (0% discount on full-price sales), so
  * it's drawn (Audit, #254). `measures` is each series' measure, or one for all of them.
  */
-export function nothingToDraw(series: readonly { values: readonly (number | null)[] }[], measures: readonly Measure[]): boolean {
+export function nothingToDraw(
+  series: readonly { values: readonly (number | null)[] }[],
+  measures: readonly Measure[],
+): boolean {
   return series.every((s, i) => {
     const total = isTotal(measures[i] ?? measures[0]!);
     return s.values.every((v) => v === null || (total && v === 0));
@@ -109,13 +141,21 @@ export function nothingToDraw(series: readonly { values: readonly (number | null
 }
 
 export function categoryHeight(model: CategoryModel, height = 320): number {
-  return model.horizontal ? Math.max(height, model.categories.length * HORIZONTAL_ROW + 40) : height;
+  return model.horizontal
+    ? Math.max(height, model.categories.length * HORIZONTAL_ROW + 40)
+    : height;
 }
 
 /** Series names and colors, for the HTML legend. Empty for a single series. */
-export function legendItems(model: CategoryModel, quarters: readonly string[]): { label: string; color: string }[] {
+export function legendItems(
+  model: CategoryModel,
+  quarters: readonly string[],
+): { label: string; color: string }[] {
   if (!model.seriesBy) return [];
-  return model.series.map((s, i) => ({ label: formatDimensionValue(model.seriesBy!, s.key), color: seriesColor(model.seriesBy!, s.key, i, quarters) }));
+  return model.series.map((s, i) => ({
+    label: formatDimensionValue(model.seriesBy!, s.key),
+    color: seriesColor(model.seriesBy!, s.key, i, quarters),
+  }));
 }
 
 export function categoryOption(
@@ -143,7 +183,13 @@ export function categoryOption(
 
   const categoryAxis = {
     type: "category",
-    data: model.categories.map((c) => formatDimensionShort(x, c, model.categories.filter((k): k is string => k !== null))),
+    data: model.categories.map((c) =>
+      formatDimensionShort(
+        x,
+        c,
+        model.categories.filter((k): k is string => k !== null),
+      ),
+    ),
     inverse: horizontal,
     boundaryGap: kind === "bar",
     axisLine: { lineStyle: { color: chartTheme.axis } },
@@ -156,7 +202,9 @@ export function categoryOption(
       hideOverlap: !horizontal,
       width: horizontal ? 220 : undefined,
       overflow: horizontal ? "truncate" : undefined,
-      formatter: horizontal ? undefined : (label: string) => (label.length > 22 ? `${label.slice(0, 21)}…` : label),
+      formatter: horizontal
+        ? undefined
+        : (label: string) => (label.length > 22 ? `${label.slice(0, 21)}…` : label),
     },
   };
   const valueAxis = {
@@ -164,7 +212,11 @@ export function categoryOption(
     splitNumber: 4,
     // Counts and revenue never tick between whole numbers: "0.3 units" isn't a reading.
     ...(WHOLE_TICKS.includes(measure) ? { minInterval: 1 } : {}),
-    axisLabel: { color: chartTheme.textMuted, fontSize: 12, formatter: (v: number) => formatMeasure(measure, v, { compact: true }) },
+    axisLabel: {
+      color: chartTheme.textMuted,
+      fontSize: 12,
+      formatter: (v: number) => formatMeasure(measure, v, { compact: true }),
+    },
     splitLine: { lineStyle: { color: chartTheme.grid, width: 1, type: "solid" } },
   };
 
@@ -181,7 +233,15 @@ export function categoryOption(
         kind === "line"
           ? { type: "line", lineStyle: { color: chartTheme.axis, width: 1 } }
           : { type: "shadow", shadowStyle: { color: "rgb(143 132 255 / 0.08)" } },
-      formatter: (params: { dataIndex: number; seriesIndex: number; seriesName: string; value: number | null; color: string }[]) => {
+      formatter: (
+        params: {
+          dataIndex: number;
+          seriesIndex: number;
+          seriesName: string;
+          value: number | null;
+          color: string;
+        }[],
+      ) => {
         const first = params[0];
         if (!first) return "";
         const heading = escapeHtml(formatDimensionValue(x, model.categories[first.dataIndex]));
@@ -197,16 +257,26 @@ export function categoryOption(
               : "";
           return value + part;
         });
-        const hint = !drill ? "" : anySelected && isSelected(first.dataIndex) ? "Click to clear" : "Click to look closer";
-        const hintLine = hint ? `<div style="font-size:11px;color:${chartTheme.textSubtle};margin-top:6px">${hint}</div>` : "";
+        const hint = !drill
+          ? ""
+          : anySelected && isSelected(first.dataIndex)
+            ? "Click to clear"
+            : "Click to look closer";
+        const hintLine = hint
+          ? `<div style="font-size:11px;color:${chartTheme.textSubtle};margin-top:6px">${hint}</div>`
+          : "";
         return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${heading}</div>${lines.join("")}${hintLine}`;
       },
     },
     xAxis: horizontal ? valueAxis : categoryAxis,
     yAxis: horizontal ? categoryAxis : valueAxis,
     series: model.series.map((series, index) => {
-      const color = model.seriesBy ? seriesColor(model.seriesBy, series.key, index, quarters) : chartTheme.series;
-      const name = model.seriesBy ? formatDimensionValue(model.seriesBy, series.key) : MEASURE_LABELS[measure];
+      const color = model.seriesBy
+        ? seriesColor(model.seriesBy, series.key, index, quarters)
+        : chartTheme.series;
+      const name = model.seriesBy
+        ? formatDimensionValue(model.seriesBy, series.key)
+        : MEASURE_LABELS[measure];
       if (kind === "line") {
         return {
           type: "line",

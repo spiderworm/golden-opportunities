@@ -19,13 +19,20 @@ export interface ShelfUnit {
 export const SHELF_DEPTH = 0.62;
 export const SHELF_HEIGHT = 4.2;
 /** How each shelf model is stretched to fill half a unit. */
-export const SHELF_SCALE = { x: 2.2 / 0.779, y: SHELF_HEIGHT / 0.98, z: SHELF_DEPTH / 0.299 } as const;
+export const SHELF_SCALE = {
+  x: 2.2 / 0.779,
+  y: SHELF_HEIGHT / 0.98,
+  z: SHELF_DEPTH / 0.299,
+} as const;
 /** The two models' centers across a unit. */
 export const SHELF_HALVES = [-1.1, 1.1];
 /** The heights of the boards books stand on, bottom to top. */
 export const BOARDS = [0.08, 0.25, 0.43, 0.6, 0.77].map((y) => +(y * SHELF_SCALE.y).toFixed(3));
 /** The stretches of board between the models' frames, across a unit, where books can stand. */
-export const BAYS: [from: number, to: number][] = SHELF_HALVES.map((x) => [x - 0.299 * SHELF_SCALE.x + 0.04, x + 0.299 * SHELF_SCALE.x - 0.04]);
+export const BAYS: [from: number, to: number][] = SHELF_HALVES.map((x) => [
+  x - 0.299 * SHELF_SCALE.x + 0.04,
+  x + 0.299 * SHELF_SCALE.x - 0.04,
+]);
 /** The back of the boards, from the unit's center line. */
 export const SHELF_BACK = -0.094 * SHELF_SCALE.z;
 

@@ -8,7 +8,10 @@ import { DEFAULT_STATE } from "./state";
 // Frank's engine, without its telemetry.
 const runQuery = (query: Query, v: QueryView) => engineQuery(query, v, () => {});
 
-const view: QueryView = { periods: ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"], includeUndated: true };
+const view: QueryView = {
+  periods: ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"],
+  includeUndated: true,
+};
 const quarters = view.periods;
 
 describe("investigate", () => {
@@ -30,10 +33,15 @@ describe("investigate", () => {
   });
 
   it("keeps the drilled-into dimension's bars but filters everything else", () => {
-    const drilled = investigate({ ...DEFAULT_STATE, by: "genre", filters: { genre: ["Fiction"] } }, runQuery, view);
+    const drilled = investigate(
+      { ...DEFAULT_STATE, by: "genre", filters: { genre: ["Fiction"] } },
+      runQuery,
+      view,
+    );
     expect(drilled.chart.rows.length).toBe(result.options.genre.length);
     expect(drilled.tiles[0]!.value!).toBeLessThan(result.tiles[0]!.value!);
-    const heatTotal = (r: typeof result) => r.heatmap.rows.reduce((sum, row) => sum + (row.revenue ?? 0), 0);
+    const heatTotal = (r: typeof result) =>
+      r.heatmap.rows.reduce((sum, row) => sum + (row.revenue ?? 0), 0);
     expect(heatTotal(drilled)).toBeLessThan(heatTotal(result));
   });
 });
@@ -47,7 +55,12 @@ describe("the queries it sends", () => {
     };
     const future: QueryView = { ...view, periods: [...view.periods, "2194-Q1"] };
     const result = investigate(DEFAULT_STATE, recording, future);
-    expect(sent.every((q) => !Object.hasOwn(q as object, "filter") || (q as { filter: unknown }).filter !== undefined)).toBe(true);
+    expect(
+      sent.every(
+        (q) =>
+          !Object.hasOwn(q as object, "filter") || (q as { filter: unknown }).filter !== undefined,
+      ),
+    ).toBe(true);
     expect(result.options.quarter).toEqual([...quarters, "2194-Q1"]);
   });
 });
@@ -58,7 +71,11 @@ describe("awards", () => {
     expect(result.options.award).toHaveLength(12);
     expect(result.options.award).toContain("Hugo Award");
     expect([...result.options.award]).toEqual([...result.options.award].sort());
-    const hugo = investigate({ ...DEFAULT_STATE, filters: { award: ["Hugo Award"] } }, runQuery, view);
+    const hugo = investigate(
+      { ...DEFAULT_STATE, filters: { award: ["Hugo Award"] } },
+      runQuery,
+      view,
+    );
     expect(hugo.tiles[0]!.value!).toBeGreaterThan(0);
     expect(hugo.tiles[0]!.value!).toBeLessThan(result.tiles[0]!.value!);
     const split = investigate({ ...DEFAULT_STATE, by: "awarded" }, runQuery, view);
@@ -73,9 +90,20 @@ describe("series", () => {
     const saga = investigate({ ...DEFAULT_STATE, measure: "units", by: "volume" }, runQuery, view);
     expect(saga.chart.rows.some((row) => row.volume === null)).toBe(true);
     // The Mallemaroking Saga's volumes, as #169 measured them: 7,334, 4,636 and 4,077 copies.
-    const mallemaroking = runQuery({ measure: "units", by: ["volume"], filter: { series: ["The Mallemaroking Saga"] } }, view);
-    expect(mallemaroking.rows.map((row) => [row.volume, row.units])).toEqual([["1", 7334], ["2", 4636], ["3", 4077]]);
-    const standalone = investigate({ ...DEFAULT_STATE, filters: { in_series: ["no"] } }, runQuery, view);
+    const mallemaroking = runQuery(
+      { measure: "units", by: ["volume"], filter: { series: ["The Mallemaroking Saga"] } },
+      view,
+    );
+    expect(mallemaroking.rows.map((row) => [row.volume, row.units])).toEqual([
+      ["1", 7334],
+      ["2", 4636],
+      ["3", 4077],
+    ]);
+    const standalone = investigate(
+      { ...DEFAULT_STATE, filters: { in_series: ["no"] } },
+      runQuery,
+      view,
+    );
     expect(standalone.tiles[0]!.value!).toBeLessThan(result.tiles[0]!.value!);
   });
 });
@@ -93,67 +121,113 @@ describe("the title view", () => {
   it("appears for exactly one title, by month, ignoring its own month filter", () => {
     expect(investigate(DEFAULT_STATE, runQuery, view).titleView).toBeNull();
     const title = "Hashtag QuokkaSelfie";
-    const drilled = investigate({ ...DEFAULT_STATE, filters: { title: [title], month: ["2193-12"] } }, runQuery, view);
+    const drilled = investigate(
+      { ...DEFAULT_STATE, filters: { title: [title], month: ["2193-12"] } },
+      runQuery,
+      view,
+    );
     expect(drilled.titleView?.title).toBe(title);
     expect(drilled.titleView?.result.rows.length).toBe(12);
-    const twoTitles = investigate({ ...DEFAULT_STATE, filters: { title: [title, "The Thing Is"] } }, runQuery, view);
+    const twoTitles = investigate(
+      { ...DEFAULT_STATE, filters: { title: [title, "The Thing Is"] } },
+      runQuery,
+      view,
+    );
     expect(twoTitles.titleView).toBeNull();
   });
 
   it("counts the title's ratings by stars, whatever else the screen filters, and records them as no evidence", () => {
     const observed: unknown[] = [];
     const title = "Land Water Sky Space";
-    const state = { ...DEFAULT_STATE, filters: { title: [title], quarter: ["2193-Q4"], format: ["Hardcover"] } };
+    const state = {
+      ...DEFAULT_STATE,
+      filters: { title: [title], quarter: ["2193-Q4"], format: ["Hardcover"] },
+    };
     const drilled = investigate(state, runQuery, view, (query) => observed.push(query));
     const ratings = drilled.titleView!.ratings;
     expect(ratings.rows.reduce((sum, row) => sum + Number(row.ratings), 0)).toBe(95);
-    expect(ratings.rows.every((row) => ["1", "2", "3", "4", "5"].includes(String(row.stars)))).toBe(true);
+    expect(ratings.rows.every((row) => ["1", "2", "3", "4", "5"].includes(String(row.stars)))).toBe(
+      true,
+    );
     expect(observed.some((q) => (q as { measure: string }).measure === "ratings")).toBe(false);
     // A title nobody rated has none.
-    expect(investigate({ ...DEFAULT_STATE, filters: { title: ["Cimornul"] } }, runQuery, view).titleView!.ratings.rows).toEqual([]);
+    expect(
+      investigate({ ...DEFAULT_STATE, filters: { title: ["Cimornul"] } }, runQuery, view).titleView!
+        .ratings.rows,
+    ).toEqual([]);
   });
 });
 
 describe("buildTile", () => {
-  const byQuarter = { columns: [], total: 0, source: "", rows: [{ quarter: "2193-Q1", units: 5 }, { quarter: "2193-Q3", units: 9 }] };
+  const byQuarter = {
+    columns: [],
+    total: 0,
+    source: "",
+    rows: [
+      { quarter: "2193-Q1", units: 5 },
+      { quarter: "2193-Q3", units: 9 },
+    ],
+  };
 
   it("follows the latest selected quarter", () => {
-    expect(buildTile("units", byQuarter, quarters, { quarter: ["2193-Q3", "2193-Q1"] })).toMatchObject({ quarter: "2193-Q3", previousQuarter: "2193-Q2", value: 9, previous: 0 });
+    expect(
+      buildTile("units", byQuarter, quarters, { quarter: ["2193-Q3", "2193-Q1"] }),
+    ).toMatchObject({ quarter: "2193-Q3", previousQuarter: "2193-Q2", value: 9, previous: 0 });
   });
 
   it("reports the quarter a month filter allows, and won't compare across it", () => {
-    expect(buildTile("units", byQuarter, quarters, { quarter: ["2193-Q3", "2193-Q4"], month: ["2193-09"] })).toMatchObject({
+    expect(
+      buildTile("units", byQuarter, quarters, {
+        quarter: ["2193-Q3", "2193-Q4"],
+        month: ["2193-09"],
+      }),
+    ).toMatchObject({
       quarter: "2193-Q3",
       previousQuarter: null,
       value: 9,
     });
-    expect(buildTile("units", byQuarter, quarters, { month: ["2193-03", "2193-06"] })).toMatchObject({ quarter: "2193-Q2", previousQuarter: "2193-Q1", value: 0 });
+    expect(
+      buildTile("units", byQuarter, quarters, { month: ["2193-03", "2193-06"] }),
+    ).toMatchObject({ quarter: "2193-Q2", previousQuarter: "2193-Q1", value: 0 });
   });
 
   it("has nothing to compare the first quarter with", () => {
-    expect(buildTile("units", byQuarter, quarters, { quarter: ["2193-Q1"] })).toMatchObject({ value: 5, previous: null, previousQuarter: null });
+    expect(buildTile("units", byQuarter, quarters, { quarter: ["2193-Q1"] })).toMatchObject({
+      value: 5,
+      previous: null,
+      previousQuarter: null,
+    });
   });
 });
 
 describe("change", () => {
   it("reads averages in points and totals in percent, colored by whether up is good", () => {
-    expect(change("avg_discount", 0.12, 0.1)).toEqual({ text: "+2.0 pts", direction: "up", good: null });
+    expect(change("avg_discount", 0.12, 0.1)).toEqual({
+      text: "+2.0 pts",
+      direction: "up",
+      good: null,
+    });
     expect(change("orders", 90, 100)).toEqual({ text: "-10.0%", direction: "down", good: false });
     expect(change("units", 5, 0)).toBeNull();
   });
 });
 
-it('observes only panels whose queries actually differ from their own default', () => {
+it("observes only panels whose queries actually differ from their own default", () => {
   const observed: Query[] = [];
   const observe = (query: Query) => observed.push(query);
   investigate(DEFAULT_STATE, runQuery, view, observe);
   expect(observed).toEqual([]);
-  investigate({ ...DEFAULT_STATE, by: 'format' }, runQuery, view, observe);
-  expect(observed.map(q => q.by)).toEqual([['format']]);
+  investigate({ ...DEFAULT_STATE, by: "format" }, runQuery, view, observe);
+  expect(observed.map((q) => q.by)).toEqual([["format"]]);
   observed.length = 0;
-  investigate({ ...DEFAULT_STATE, measure: 'orders_per_day' }, runQuery, view, observe);
-  expect(observed.map(q => q.by)).toEqual([['month']]);
+  investigate({ ...DEFAULT_STATE, measure: "orders_per_day" }, runQuery, view, observe);
+  expect(observed.map((q) => q.by)).toEqual([["month"]]);
   observed.length = 0;
-  investigate({ ...DEFAULT_STATE, filters: { title: ['Hashtag QuokkaSelfie'], discount_rate: ['15%'] } }, runQuery, view, observe);
-  expect(observed.map(q => q.by)).toEqual([['month'], ['month']]);
+  investigate(
+    { ...DEFAULT_STATE, filters: { title: ["Hashtag QuokkaSelfie"], discount_rate: ["15%"] } },
+    runQuery,
+    view,
+    observe,
+  );
+  expect(observed.map((q) => q.by)).toEqual([["month"], ["month"]]);
 });

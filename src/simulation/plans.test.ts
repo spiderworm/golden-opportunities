@@ -23,13 +23,22 @@ describe("a sensible player's plan (goodPlan)", () => {
     }
   });
 
-  it("lasts five years on seed 1 with quiet quarters: the panel never removes it", { timeout: 60_000 }, () => {
-    const overall = Array.from({ length: 20 }, (_, n) => {
-      const quarter = quarterAt(n);
-      const turn = { quarter, seed: 1, plan: goodPlan(1, quarter, data), event: n < 2 ? null : QUIET };
-      return simulateTurn(turn, data).outcome.reportCard.plan.overall.score;
-    });
-    expect(removedAt(overall)).toBeNull();
-    expect(Math.min(...overall.slice(0, 2))).toBeGreaterThanOrEqual(70);
-  });
+  it(
+    "lasts five years on seed 1 with quiet quarters: the panel never removes it",
+    { timeout: 60_000 },
+    () => {
+      const overall = Array.from({ length: 20 }, (_, n) => {
+        const quarter = quarterAt(n);
+        const turn = {
+          quarter,
+          seed: 1,
+          plan: goodPlan(1, quarter, data),
+          event: n < 2 ? null : QUIET,
+        };
+        return simulateTurn(turn, data).outcome.reportCard.plan.overall.score;
+      });
+      expect(removedAt(overall)).toBeNull();
+      expect(Math.min(...overall.slice(0, 2))).toBeGreaterThanOrEqual(70);
+    },
+  );
 });

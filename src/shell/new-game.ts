@@ -8,5 +8,8 @@ import type { Route } from "./+types/new-game";
 export function action({ request }: Route.ActionArgs) {
   const reset = new URL(request.url).searchParams.get("reset") === "1";
   const cookie = reset ? resetGame(request) : startNewGame(request);
-  return new Response(null, { status: 303, headers: { Location: "/", "Set-Cookie": cookie, "Cache-Control": "no-store" } });
+  return new Response(null, {
+    status: 303,
+    headers: { Location: "/", "Set-Cookie": cookie, "Cache-Control": "no-store" },
+  });
 }

@@ -55,8 +55,13 @@ export function ordersOf(lines: readonly DeepReadonly<SaleLine>[]): Order[] {
 
 /** Sale lines in the query layer's shape, numbered by day, then by order. Ids after Q1 name their quarter. */
 export function linesOf(orders: readonly Order[], year: number, quarter = 1): SimulatedLine[] {
-  const [tag, short] = quarter === 1 ? [`${year}`, `${year}`] : [`${year}-q${quarter}`, `${year}Q${quarter}`];
-  const sorted = orders.map((order, index) => ({ order, index })).sort((a, b) => (a.order.day < b.order.day ? -1 : a.order.day > b.order.day ? 1 : a.index - b.index));
+  const [tag, short] =
+    quarter === 1 ? [`${year}`, `${year}`] : [`${year}-q${quarter}`, `${year}Q${quarter}`];
+  const sorted = orders
+    .map((order, index) => ({ order, index }))
+    .sort((a, b) =>
+      a.order.day < b.order.day ? -1 : a.order.day > b.order.day ? 1 : a.index - b.index,
+    );
   const lines: SimulatedLine[] = [];
   sorted.forEach(({ order }, o) => {
     const orderId = `S${short}-${String(o + 1).padStart(6, "0")}`;

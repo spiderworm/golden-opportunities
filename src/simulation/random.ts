@@ -27,12 +27,15 @@ export function stream(seed: number, name: string): Random {
 }
 
 /** An integer from min to max inclusive. */
-export const integer = (random: Random, min: number, max: number) => min + Math.floor(random() * (max - min + 1));
+export const integer = (random: Random, min: number, max: number) =>
+  min + Math.floor(random() * (max - min + 1));
 
-export const pick = <T>(random: Random, items: readonly T[]): T => items[Math.floor(random() * items.length)];
+export const pick = <T>(random: Random, items: readonly T[]): T =>
+  items[Math.floor(random() * items.length)];
 
 /** Rounds up with probability equal to the fraction, so small counts aren't biased. */
-export const roundRandomly = (random: Random, value: number) => Math.floor(value) + (random() < value - Math.floor(value) ? 1 : 0);
+export const roundRandomly = (random: Random, value: number) =>
+  Math.floor(value) + (random() < value - Math.floor(value) ? 1 : 0);
 
 /** k distinct indexes from 0..n-1, in ascending order. */
 export function sampleIndexes(random: Random, n: number, k: number): number[] {

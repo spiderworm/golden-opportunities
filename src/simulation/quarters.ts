@@ -6,14 +6,14 @@
 export type QuarterId = `${number}-Q${1 | 2 | 3 | 4}`;
 
 /** The first quarter a game plays. */
-export const FIRST_QUARTER: QuarterId = '2194-Q1';
+export const FIRST_QUARTER: QuarterId = "2194-Q1";
 
 const NAME = /^(\d{4})-Q([1-4])$/;
 const FIRST_YEAR = 2194;
 
 /** A well-formed quarter name, at or after FIRST_QUARTER. */
 export function isQuarterName(value: unknown): value is QuarterId {
-  const match = typeof value === 'string' ? NAME.exec(value) : null;
+  const match = typeof value === "string" ? NAME.exec(value) : null;
   return match !== null && Number(match[1]) >= FIRST_YEAR;
 }
 /** A quarter's place in the game: 0 for Q1 2194, 4 for Q1 2195. */
@@ -28,11 +28,14 @@ export function quarterAt(index: number): QuarterId {
 /** The quarter after this one: Q4 2194 is followed by Q1 2195. */
 export const nextQuarter = (quarter: QuarterId): QuarterId => quarterAt(quarterIndex(quarter) + 1);
 /** For sorting: negative when `a` comes first. */
-export const compareQuarters = (a: QuarterId, b: QuarterId): number => quarterIndex(a) - quarterIndex(b);
+export const compareQuarters = (a: QuarterId, b: QuarterId): number =>
+  quarterIndex(a) - quarterIndex(b);
 /** A quarter's months, as YYYY-MM, in order. */
 export function quarterMonths(period: QuarterId): string[] {
-  const [year, q] = period.split('-Q');
-  return [0, 1, 2].map(i => `${year}-${String(3 * Number(q) - 2 + i).padStart(2, '0')}`);
+  const [year, q] = period.split("-Q");
+  return [0, 1, 2].map((i) => `${year}-${String(3 * Number(q) - 2 + i).padStart(2, "0")}`);
 }
 /** The sale-line quarter number, 1 to 4. */
-export function quarterNumber(period: QuarterId): number { return Number(period.slice(-1)); }
+export function quarterNumber(period: QuarterId): number {
+  return Number(period.slice(-1));
+}

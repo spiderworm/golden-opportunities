@@ -18,7 +18,14 @@ export interface EChartProps {
 }
 
 /** Draws an ECharts option on the client; the server renders an empty frame of the same size. */
-export function EChart({ option, height, label, onClick, onCategoryClick, categoryAxis = "x" }: EChartProps) {
+export function EChart({
+  option,
+  height,
+  label,
+  onClick,
+  onCategoryClick,
+  categoryAxis = "x",
+}: EChartProps) {
   const ref = useRef<HTMLDivElement>(null);
   const chart = useRef<ECharts | null>(null);
   const latest = useRef({ option, onClick, onCategoryClick, categoryAxis });

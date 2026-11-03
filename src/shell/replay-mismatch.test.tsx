@@ -15,7 +15,12 @@ const station: StationState = {
 };
 /** A route error as React Router hands it to a boundary, for a thrown `data(...)`. Seeded data keys errors by
  * the route whose boundary shows them: the shell's, which catches its pages' errors. */
-const routeError = (status: number, data: unknown) => ({ status, statusText: "", internal: false, data });
+const routeError = (status: number, data: unknown) => ({
+  status,
+  statusText: "",
+  internal: false,
+  data,
+});
 
 function renderWith(pageError: unknown, shellData: StationState | undefined = station) {
   const Stub = createRoutesStub([
@@ -23,13 +28,26 @@ function renderWith(pageError: unknown, shellData: StationState | undefined = st
       id: "root",
       path: "/",
       Component: Outlet,
-      children: [{ id: "shell/layout", Component: ShellLayout as never, ErrorBoundary: ErrorBoundary as never, children: [{ id: "page", path: "investigate", Component: () => <p>page</p> }] }],
+      children: [
+        {
+          id: "shell/layout",
+          Component: ShellLayout as never,
+          ErrorBoundary: ErrorBoundary as never,
+          children: [{ id: "page", path: "investigate", Component: () => <p>page</p> }],
+        },
+      ],
     },
   ]);
   return renderToString(
     <Stub
       initialEntries={["/investigate"]}
-      hydrationData={{ loaderData: { root: { instance: "instance-1" }, ...(shellData ? { "shell/layout": shellData } : {}) }, errors: { "shell/layout": pageError } }}
+      hydrationData={{
+        loaderData: {
+          root: { instance: "instance-1" },
+          ...(shellData ? { "shell/layout": shellData } : {}),
+        },
+        errors: { "shell/layout": pageError },
+      }}
     />,
   );
 }

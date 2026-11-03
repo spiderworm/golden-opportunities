@@ -1,7 +1,16 @@
 import type { CrowdAgent } from "@recast-navigation/core";
 import { useFrame } from "@react-three/fiber";
 import { use, useMemo } from "react";
-import { AnimationMixer, Box3, Group, Quaternion, Vector3, type AnimationClip, type Mesh, type MeshStandardMaterial } from "three";
+import {
+  AnimationMixer,
+  Box3,
+  Group,
+  Quaternion,
+  Vector3,
+  type AnimationClip,
+  type Mesh,
+  type MeshStandardMaterial,
+} from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 import type { Bookshop } from "./bookshop";
@@ -29,7 +38,6 @@ const VARIANTS = ["shopper-teal", "shopper-coral", "shopper-lavender", "shopper-
 /** The keeper wears the cardigan. */
 const KEEPER_VARIANT = 3;
 const HEIGHT = 1.7;
-
 
 /** A shopper: the spot they're at or heading for (theirs alone), and their place in the crowd. */
 interface Walker {
@@ -67,7 +75,8 @@ function makeFigures(variants: { scene: Group; animations: AnimationClip[] }[]):
     const root = new Group();
     root.add(body);
     const mixer = new AnimationMixer(body);
-    const clip = (name: string) => source.animations.find((a) => a.name.toLowerCase().includes(name)) ?? source.animations[0]!;
+    const clip = (name: string) =>
+      source.animations.find((a) => a.name.toLowerCase().includes(name)) ?? source.animations[0]!;
     const walk = mixer.clipAction(clip("walk"));
     const idle = mixer.clipAction(clip("idle"));
     return { root, mixer, walk, idle, walking: false };
@@ -137,7 +146,8 @@ export function Shoppers({ count, shop }: { count: number; shop: Bookshop }) {
       const velocity = w.agent.velocity();
       const walking = Math.hypot(velocity.x, velocity.z) > 0.15;
       const want = walking ? Math.atan2(velocity.x, velocity.z) : facing;
-      w.heading += Math.atan2(Math.sin(want - w.heading), Math.cos(want - w.heading)) * Math.min(1, delta * 6);
+      w.heading +=
+        Math.atan2(Math.sin(want - w.heading), Math.cos(want - w.heading)) * Math.min(1, delta * 6);
       const f = figures[i + 1]!;
       f.root.visible = true;
       f.root.position.set(at.x, 0, at.z);

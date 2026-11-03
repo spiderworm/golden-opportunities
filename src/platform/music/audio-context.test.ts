@@ -36,7 +36,11 @@ class FakeContext {
     return { connect: (node: unknown) => node };
   }
   createGain() {
-    const gain = { gain: { value: 1, setTargetAtTime: (v: number) => void (gain.gain.value = v) }, connect: (node: unknown) => node, context: this };
+    const gain = {
+      gain: { value: 1, setTargetAtTime: (v: number) => void (gain.gain.value = v) },
+      connect: (node: unknown) => node,
+      context: this,
+    };
     this.gains.push(gain);
     return gain;
   }
@@ -48,14 +52,19 @@ class FakeContext {
 function setUp(volume: number) {
   const gestures = new Map<string, EventListener>();
   let deck!: Deck;
-  vi.stubGlobal("Audio", class extends Deck {
-    constructor() {
-      super();
-      deck = this;
-    }
-  });
+  vi.stubGlobal(
+    "Audio",
+    class extends Deck {
+      constructor() {
+        super();
+        deck = this;
+      }
+    },
+  );
   vi.stubGlobal("document", { hidden: false, addEventListener() {} });
-  vi.stubGlobal("addEventListener", (name: string, listener: EventListener) => gestures.set(name, listener));
+  vi.stubGlobal("addEventListener", (name: string, listener: EventListener) =>
+    gestures.set(name, listener),
+  );
   vi.stubGlobal("removeEventListener", () => {});
   const music = createMusic({
     key: "test",

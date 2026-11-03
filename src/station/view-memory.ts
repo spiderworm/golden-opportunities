@@ -9,7 +9,9 @@ export const KEY = "orbital-books.station.view";
 export const FIRST_VIEW: StationViewpoint = "inside";
 
 /** The view to open on. Anything unreadable (no storage, a stale value) counts as a first visit. */
-export function rememberedView(storage: () => Pick<Storage, "getItem"> | undefined): StationViewpoint {
+export function rememberedView(
+  storage: () => Pick<Storage, "getItem"> | undefined,
+): StationViewpoint {
   try {
     const saved = storage()?.getItem(KEY);
     return saved === "inside" || saved === "outside" ? saved : FIRST_VIEW;
@@ -19,7 +21,10 @@ export function rememberedView(storage: () => Pick<Storage, "getItem"> | undefin
 }
 
 /** Keeps the view for next time; a browser that won't store it just opens inside again. */
-export function rememberView(storage: () => Pick<Storage, "setItem"> | undefined, view: StationViewpoint) {
+export function rememberView(
+  storage: () => Pick<Storage, "setItem"> | undefined,
+  view: StationViewpoint,
+) {
   try {
     storage()?.setItem(KEY, view);
   } catch {

@@ -16,7 +16,12 @@ interface Placement {
 }
 
 /** item.json's "facing": degrees the model is turned from facing +z. */
-const FACING: Record<Placement["model"], number> = { armchair: 90, globe: 0, hourglass: 0, rocket: 0 };
+const FACING: Record<Placement["model"], number> = {
+  armchair: 90,
+  globe: 0,
+  hourglass: 0,
+  rocket: 0,
+};
 
 const PLACEMENTS: Placement[] = [
   { model: "armchair", height: 1.05, position: [-6.3, 0, 4.1], turn: 2.4 },
@@ -48,8 +53,15 @@ function Placed({ placement, source }: { placement: Placement; source: Object3D 
 }
 
 export function Props() {
-  const [armchair, globe, hourglass, rocket] = useStationModels((["armchair", "globe", "hourglass", "rocket"] as const).map(url));
-  const loaded = { armchair: armchair!.scene, globe: globe!.scene, hourglass: hourglass!.scene, rocket: rocket!.scene };
+  const [armchair, globe, hourglass, rocket] = useStationModels(
+    (["armchair", "globe", "hourglass", "rocket"] as const).map(url),
+  );
+  const loaded = {
+    armchair: armchair!.scene,
+    globe: globe!.scene,
+    hourglass: hourglass!.scene,
+    rocket: rocket!.scene,
+  };
   return (
     <>
       {PLACEMENTS.map((p, i) => (

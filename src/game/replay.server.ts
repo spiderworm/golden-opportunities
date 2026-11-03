@@ -5,59 +5,97 @@
 // quarter was played. A replay that doesn't match (an engine change since) is refused loudly, never rescored.
 // Saves from before keep their stored lines, which are used as they are.
 
-import { createHash } from 'node:crypto';
-import type { BookshopData, DeepReadonly, JoinedBook, Sale, SaleLine } from '../bookshop/types';
-import { rollUpSales, type SaleCells } from '../query/sale-cells';
-import { RELEASE, releaseBook } from '../simulation/release';
-import type { SimulatedLine } from '../simulation/types';
-import { SaveError } from './store.server';
-import { linesOfTurn, ENGINE_VERSION, type TurnEvent } from '../simulation/turn';
-import { trackServer } from '../platform/analytics/analytics.server';
-import type { PlayedQuarter } from './types';
+import { createHash } from "node:crypto";
+import type { BookshopData, DeepReadonly, JoinedBook, Sale, SaleLine } from "../bookshop/types";
+import { rollUpSales, type SaleCells } from "../query/sale-cells";
+import { RELEASE, releaseBook } from "../simulation/release";
+import type { SimulatedLine } from "../simulation/types";
+import { SaveError } from "./store.server";
+import { linesOfTurn, ENGINE_VERSION, type TurnEvent } from "../simulation/turn";
+import { trackServer } from "../platform/analytics/analytics.server";
+import type { PlayedQuarter } from "./types";
 
 /** A replay that doesn't match: the engine changed since `quarter`, the first quarter that no longer replays. */
 export class ReplayMismatch extends SaveError {
-  readonly quarter: PlayedQuarter['period'];
-  constructor(quarter: PlayedQuarter['period']) { super('REPLAY_MISMATCH'); this.quarter = quarter; }
+  readonly quarter: PlayedQuarter["period"];
+  constructor(quarter: PlayedQuarter["period"]) {
+    super("REPLAY_MISMATCH");
+    this.quarter = quarter;
+  }
 }
 
 /** The columns a save keeps of a simulated line: the source sales' shape. */
-export const visible = (lines: readonly SimulatedLine[]): Sale[] => lines.map(({ id, sourceSheet, sourceRow, date, quarter, isbn, discount, itemId, orderId }) =>
-  ({ id, sourceSheet, sourceRow, date, quarter, isbn, discount, itemId, orderId }));
+export const visible = (lines: readonly SimulatedLine[]): Sale[] =>
+  lines.map(({ id, sourceSheet, sourceRow, date, quarter, isbn, discount, itemId, orderId }) => ({
+    id,
+    sourceSheet,
+    sourceRow,
+    date,
+    quarter,
+    isbn,
+    discount,
+    itemId,
+    orderId,
+  }));
 
 /** SHA-256 over every line's identity, day, edition, discount and order, in order: what a replay must reproduce. */
 export function linesHash(lines: readonly Sale[]): string {
-  const hash = createHash('sha256');
-  for (const l of lines) hash.update(`${l.id}\0${l.date}\0${l.isbn}\0${l.discount}\0${l.orderId}\n`);
-  return hash.digest('hex');
+  const hash = createHash("sha256");
+  for (const l of lines)
+    hash.update(`${l.id}\0${l.date}\0${l.isbn}\0${l.discount}\0${l.orderId}\n`);
+  return hash.digest("hex");
 }
 
 /**
  * The lines a quarter's plan gives on this seed, under its Alma event from Q3 on: the engine's own replay path
  * (Sim's linesOfTurn), the same lines that played it, without the report card or the anchor.
  */
-export function replayLines(quarter: PlayedQuarter, seed: number, data: DeepReadonly<BookshopData>, event: TurnEvent | null = null): Sale[] {
-  return visible(linesOfTurn({ quarter: quarter.period, seed, plan: quarter.outcome.plan, event }, data).lines);
+export function replayLines(
+  quarter: PlayedQuarter,
+  seed: number,
+  data: DeepReadonly<BookshopData>,
+  event: TurnEvent | null = null,
+): Sale[] {
+  return visible(
+    linesOfTurn({ quarter: quarter.period, seed, plan: quarter.outcome.plan, event }, data).lines,
+  );
 }
 
 /**
  * A quarter's lines joined to their editions, books and publishers, as the query layer reads sales. The new volume
  * is generated, not in the data: the engine's records join it (src/simulation/release.ts).
  */
-export function joinSales(sales: readonly Sale[], data: DeepReadonly<BookshopData>): DeepReadonly<SaleLine>[] {
-  const editions = new Map([...data.editions, RELEASE.edition].map(e => [e.isbn, e]));
-  const books = new Map([...data.joinedBooks, releaseBook(data) as DeepReadonly<JoinedBook>].map(b => [b.id, b]));
-  const publishers = new Map(data.publishers.map(p => [p.id, p]));
-  return sales.map(sale => {
-    const edition = editions.get(sale.isbn); const book = edition && books.get(edition.bookId); const publisher = edition && publishers.get(edition.publisherId);
-    if (!edition || !book || !publisher) throw new SaveError('INVALID_SAVE');
-    return { ...sale, book, title: book.title, author: book.author, genre: book.info?.genre ?? null, format: edition.format, publisher,
-      listPrice: edition.listPrice, revenue: edition.listPrice * (1 - sale.discount) } as DeepReadonly<SaleLine>;
+export function joinSales(
+  sales: readonly Sale[],
+  data: DeepReadonly<BookshopData>,
+): DeepReadonly<SaleLine>[] {
+  const editions = new Map([...data.editions, RELEASE.edition].map((e) => [e.isbn, e]));
+  const books = new Map(
+    [...data.joinedBooks, releaseBook(data) as DeepReadonly<JoinedBook>].map((b) => [b.id, b]),
+  );
+  const publishers = new Map(data.publishers.map((p) => [p.id, p]));
+  return sales.map((sale) => {
+    const edition = editions.get(sale.isbn);
+    const book = edition && books.get(edition.bookId);
+    const publisher = edition && publishers.get(edition.publisherId);
+    if (!edition || !book || !publisher) throw new SaveError("INVALID_SAVE");
+    return {
+      ...sale,
+      book,
+      title: book.title,
+      author: book.author,
+      genre: book.info?.genre ?? null,
+      format: edition.format,
+      publisher,
+      listPrice: edition.listPrice,
+      revenue: edition.listPrice * (1 - sale.discount),
+    } as DeepReadonly<SaleLine>;
   });
 }
 
 /** A quarter's lines as the query layer keeps them: rolled up into cells (docs/design/rollups.md). */
-const cellsOf = (sales: readonly Sale[], data: DeepReadonly<BookshopData>) => rollUpSales(joinSales(sales, data));
+const cellsOf = (sales: readonly Sale[], data: DeepReadonly<BookshopData>) =>
+  rollUpSales(joinSales(sales, data));
 
 /**
  * Replayed quarters' cells, by save, least recently used save out once the cache holds more than `limit` cells in
@@ -66,11 +104,15 @@ const cellsOf = (sales: readonly Sale[], data: DeepReadonly<BookshopData>) => ro
  * (MAX_SIMULATED_CELLS, about 24 years), so 600,000 holds four of the longest saves, some 420 MB.
  */
 let limit = 600_000;
-interface SaveCells { quarters: Map<string, SaleCells>; cells: number }
+interface SaveCells {
+  quarters: Map<string, SaleCells>;
+  cells: number;
+}
 const cache = new Map<string, SaveCells>();
 let total = 0;
 /** By the quarter's hash and count too, so a cached replay is only ever returned for the lines it was checked against. */
-const keyOf = (quarter: PlayedQuarter) => `${quarter.outcomeId}\0${quarter.lines?.hash}\0${quarter.lines?.count}`;
+const keyOf = (quarter: PlayedQuarter) =>
+  `${quarter.outcomeId}\0${quarter.lines?.hash}\0${quarter.lines?.count}`;
 /** A save's entry, now the most recently used. */
 function entry(saveId: string): SaveCells {
   const found = cache.get(saveId) ?? { quarters: new Map(), cells: 0 };
@@ -81,18 +123,28 @@ function entry(saveId: string): SaveCells {
 function remember(saveId: string, key: string, cells: SaleCells) {
   const save = entry(saveId);
   const old = save.quarters.get(key);
-  if (old) { save.cells -= old.cells.length; total -= old.cells.length; }
+  if (old) {
+    save.cells -= old.cells.length;
+    total -= old.cells.length;
+  }
   save.quarters.set(key, cells);
-  save.cells += cells.cells.length; total += cells.cells.length;
+  save.cells += cells.cells.length;
+  total += cells.cells.length;
   for (const [id, other] of cache) {
     if (total <= limit) break;
     if (id === saveId) continue;
-    cache.delete(id); total -= other.cells;
+    cache.delete(id);
+    total -= other.cells;
   }
 }
 
 /** Keeps the cells of the lines a quarter was just played with, so its first queries don't replay it. */
-export function rememberLines(saveId: string, quarter: PlayedQuarter, lines: readonly Sale[], data: DeepReadonly<BookshopData>) {
+export function rememberLines(
+  saveId: string,
+  quarter: PlayedQuarter,
+  lines: readonly Sale[],
+  data: DeepReadonly<BookshopData>,
+) {
   remember(saveId, keyOf(quarter), cellsOf(lines, data));
 }
 
@@ -101,17 +153,30 @@ export function rememberLines(saveId: string, quarter: PlayedQuarter, lines: rea
  * fresh one checked against the quarter's count and hash before it's rolled up. A mismatch throws REPLAY_MISMATCH:
  * the engine has changed since the quarter was played, and the save can't be read by this version.
  */
-export function quarterCells(saveId: string, seed: number, quarter: PlayedQuarter, data: () => DeepReadonly<BookshopData>, event: TurnEvent | null = null): SaleCells {
+export function quarterCells(
+  saveId: string,
+  seed: number,
+  quarter: PlayedQuarter,
+  data: () => DeepReadonly<BookshopData>,
+  event: TurnEvent | null = null,
+): SaleCells {
   const key = keyOf(quarter);
   const cached = cache.get(saveId)?.quarters.get(key);
-  if (cached) { entry(saveId); return cached; }
+  if (cached) {
+    entry(saveId);
+    return cached;
+  }
   let lines: readonly Sale[];
   if (quarter.sales) lines = quarter.sales;
   else {
     lines = replayLines(quarter, seed, data(), event);
     if (lines.length !== quarter.lines.count || linesHash(lines) !== quarter.lines.hash) {
       // The engine changed under a played quarter: worth knowing how often, and which quarter it reached (Plot, #205).
-      try { trackServer('save_replay_refused', { quarter: quarter.period, engine: ENGINE_VERSION }); } catch { /* Telemetry can't change the refusal. */ }
+      try {
+        trackServer("save_replay_refused", { quarter: quarter.period, engine: ENGINE_VERSION });
+      } catch {
+        /* Telemetry can't change the refusal. */
+      }
       throw new ReplayMismatch(quarter.period);
     }
   }
@@ -121,7 +186,12 @@ export function quarterCells(saveId: string, seed: number, quarter: PlayedQuarte
 }
 
 /** For tests: forget every replay. */
-export const forgetReplays = () => { cache.clear(); total = 0; };
+export const forgetReplays = () => {
+  cache.clear();
+  total = 0;
+};
 /** For tests: the cache's size, and a smaller bound to exercise it. */
 export const replayCacheSize = () => ({ saves: cache.size, cells: total });
-export function setReplayCacheLimit(cells: number) { limit = cells; }
+export function setReplayCacheLimit(cells: number) {
+  limit = cells;
+}

@@ -22,7 +22,16 @@ export const chartTheme = {
    * slots, in their fixed order. Validated on the panel surface
    * (validate_palette.js --mode dark --surface #161c30: all checks pass).
    */
-  categorical: ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"],
+  categorical: [
+    "#3987e5",
+    "#d95926",
+    "#199e70",
+    "#c98500",
+    "#d55181",
+    "#008300",
+    "#9085e9",
+    "#e66767",
+  ],
   inkOnLight: "#0f1424",
   inkOnDark: "#f2f4ff",
   font: '"Inter", system-ui, sans-serif',
@@ -44,7 +53,12 @@ export const MAX_SERIES = chartTheme.categorical.length;
  * A series' color. Quarters take the ordinal violet ramp; anything else takes
  * the categorical slots in order of appearance.
  */
-export function seriesColor(dimension: string, key: string | null, index: number, quarters: readonly string[]): string {
+export function seriesColor(
+  dimension: string,
+  key: string | null,
+  index: number,
+  quarters: readonly string[],
+): string {
   if (dimension === "quarter" && key) return quarterColor(key, quarters);
   return chartTheme.categorical[index % chartTheme.categorical.length]!;
 }
@@ -60,7 +74,9 @@ export const tooltipStyle = {
 
 /** The heat ramp's color at t (0 to 1), interpolated between its stops in sRGB. */
 export function heatColor(t: number): string {
-  const stops = chartTheme.heatRamp.map((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)));
+  const stops = chartTheme.heatRamp.map((hex) =>
+    [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)),
+  );
   const scaled = Math.min(Math.max(t, 0), 1) * (stops.length - 1);
   const i = Math.min(Math.floor(scaled), stops.length - 2);
   const f = scaled - i;

@@ -5,7 +5,14 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 // costs one draw call however many pieces it has.
 
 /** A box from its center and size. */
-export function box(x: number, y: number, z: number, w: number, h: number, d: number): BufferGeometry {
+export function box(
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+): BufferGeometry {
   return new BoxGeometry(w, h, d).translate(x, y, z);
 }
 

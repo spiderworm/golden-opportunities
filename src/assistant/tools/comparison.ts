@@ -2,20 +2,40 @@
 // comparison on Investigate work it out the same way, each running the queries through POST /api/query.
 
 import type { QueryColumn, QueryResult } from "../../query/types.ts";
-import { checkQuery, type Comparison, type ComparisonFigures, type ComparisonResult } from "./definitions.ts";
+import {
+  checkQuery,
+  type Comparison,
+  type ComparisonFigures,
+  type ComparisonResult,
+} from "./definitions.ts";
 
 /** The two queries a comparison runs, one per side; each is grouped by the compared dimension too. */
 export function comparisonQueries(c: Comparison) {
-  const side = (value: string) => checkQuery({ measure: c.measure, by: [...c.by, c.across], filter: { ...c.filter, [c.across]: [value] } });
+  const side = (value: string) =>
+    checkQuery({
+      measure: c.measure,
+      by: [...c.by, c.across],
+      filter: { ...c.filter, [c.across]: [value] },
+    });
   return [side(c.from), side(c.to)] as const;
 }
 
-const figures = (from: number | null | undefined, to: number | null | undefined): ComparisonFigures => {
+const figures = (
+  from: number | null | undefined,
+  to: number | null | undefined,
+): ComparisonFigures => {
   const a = typeof from === "number" ? from : null;
   const b = typeof to === "number" ? to : null;
   const change = a === null || b === null ? null : b - a;
-  const direction = change === null ? null : change > 0 ? "rose" : change < 0 ? "fell" : "unchanged";
-  return { from: a, to: b, change, percent_change: change === null || !a ? null : (change / Math.abs(a)) * 100, direction };
+  const direction =
+    change === null ? null : change > 0 ? "rose" : change < 0 ? "fell" : "unchanged";
+  return {
+    from: a,
+    to: b,
+    change,
+    percent_change: change === null || !a ? null : (change / Math.abs(a)) * 100,
+    direction,
+  };
 };
 
 /**
@@ -23,16 +43,34 @@ const figures = (from: number | null | undefined, to: number | null | undefined)
  * compared values are the model's free text, so they appear in headings and the source only as the data
  * returned them; a side that matched nothing is named in fixed words (Audit, #32).
  */
-export function combineComparison(c: Comparison, a: Pick<QueryResult, "columns" | "rows" | "total" | "source">, b: Pick<QueryResult, "columns" | "rows" | "total" | "source">): ComparisonResult {
+export function combineComparison(
+  c: Comparison,
+  a: Pick<QueryResult, "columns" | "rows" | "total" | "source">,
+  b: Pick<QueryResult, "columns" | "rows" | "total" | "source">,
+): ComparisonResult {
   const labelOf = (rows: QueryResult["rows"]) => {
     const value = rows.find((r) => typeof r[c.across] === "string")?.[c.across];
     return typeof value === "string" ? value : null;
   };
   const labels = { from: labelOf(a.rows), to: labelOf(b.rows) };
   const dim = c.by[0];
-  const number = (label: string, key: string): ComparisonResult["columns"][number] => ({ key, label, type: "number", nullable: true });
+  const number = (label: string, key: string): ComparisonResult["columns"][number] => ({
+    key,
+    label,
+    type: "number",
+    nullable: true,
+  });
   const columns = [
-    ...(dim ? [a.columns.find((col: QueryColumn) => col.key === dim) ?? { key: dim, label: dim, type: "string" as const, nullable: true }] : []),
+    ...(dim
+      ? [
+          a.columns.find((col: QueryColumn) => col.key === dim) ?? {
+            key: dim,
+            label: dim,
+            type: "string" as const,
+            nullable: true,
+          },
+        ]
+      : []),
     number(labels.from ?? "First value", "from"),
     number(labels.to ?? "Second value", "to"),
     number("Change", "change"),

@@ -4,7 +4,15 @@
 // each option pulls its levers. M1 plays Q1; every function takes the quarter.
 import type { BookshopData, DeepReadonly, SaleLine } from "~/bookshop/types";
 import { cloneOrder, itemOf, ordersOf, type Item, type Order, type OrderKind } from "./orders";
-import { integer, pick, roundRandomly, sampleIndexes, stream, weightedIndex, type Random } from "./random";
+import {
+  integer,
+  pick,
+  roundRandomly,
+  sampleIndexes,
+  stream,
+  weightedIndex,
+  type Random,
+} from "./random";
 import { has } from "./plan";
 import { RELEASE, RELEASE_DAY, RELEASE_RATE, releaseLaunch, releaseLine } from "./release";
 import type { Plan } from "./types";
@@ -21,7 +29,8 @@ export const monthsOf = (quarter: QuarterNumber): string[] =>
  * A seeded stream's name in a quarter. Q1 keeps M1's names, so its draws never
  * change; later quarters draw from their own streams.
  */
-export const streamName = (quarter: QuarterNumber, name: string) => (quarter === 1 ? name : `q${quarter}:${name}`);
+export const streamName = (quarter: QuarterNumber, name: string) =>
+  quarter === 1 ? name : `q${quarter}:${name}`;
 export const PICK_DISCOUNT = 0.15;
 export const SALE_DISCOUNT = 0.15;
 /** The share of orders a station-wide sale clones (*assumed*). */
@@ -57,7 +66,8 @@ const monthOf = (day: string) => day.slice(5, 7);
 export function quarterDays(year: number, quarter: QuarterNumber = 1): string[] {
   const days: string[] = [];
   const first = 3 * (quarter - 1);
-  for (let t = Date.UTC(year, first, 1); t < Date.UTC(year, first + 3, 1); t += DAY) days.push(dayOf(t));
+  for (let t = Date.UTC(year, first, 1); t < Date.UTC(year, first + 3, 1); t += DAY)
+    days.push(dayOf(t));
   return days;
 }
 
@@ -79,7 +89,9 @@ export function replayedDay(day: string): string {
   let offset = (weekdayOf(timeOf(day)) - weekdayOf(target) + 7) % 7;
   if (offset > 3) offset -= 7;
   const near = dayOf(target + offset * DAY);
-  return monthOf(near) === monthOf(day) ? near : dayOf(target + (offset > 0 ? offset - 7 : offset + 7) * DAY);
+  return monthOf(near) === monthOf(day)
+    ? near
+    : dayOf(target + (offset > 0 ? offset - 7 : offset + 7) * DAY);
 }
 
 export interface History {
@@ -112,7 +124,8 @@ function joinSharesOf(data: DeepReadonly<BookshopData>): (isbn: string) => numbe
     let share = joinShares.get(data);
     if (!share) {
       const orderSize = new Map<string, number>();
-      for (const line of data.saleLines) orderSize.set(line.orderId, (orderSize.get(line.orderId) ?? 0) + 1);
+      for (const line of data.saleLines)
+        orderSize.set(line.orderId, (orderSize.get(line.orderId) ?? 0) + 1);
       // Copies of each edition, and of each title, and how many of them shared an order with another book.
       const shared = new Map<string, { copies: number; joined: number }>();
       const count = (key: string, joined: boolean) => {
@@ -139,9 +152,18 @@ function joinSharesOf(data: DeepReadonly<BookshopData>): (isbn: string) => numbe
   };
 }
 
-export function historyOf(data: DeepReadonly<BookshopData>, quarter: QuarterNumber = 1, year = YEAR): History {
+export function historyOf(
+  data: DeepReadonly<BookshopData>,
+  quarter: QuarterNumber = 1,
+  year = YEAR,
+): History {
   const months = monthsOf(quarter);
-  const [from, to] = [`${HISTORY_YEAR}-${months[0]}-01`, quarter === 4 ? `${HISTORY_YEAR + 1}-01-01` : `${HISTORY_YEAR}-${monthsOf((quarter + 1) as QuarterNumber)[0]}-01`];
+  const [from, to] = [
+    `${HISTORY_YEAR}-${months[0]}-01`,
+    quarter === 4
+      ? `${HISTORY_YEAR + 1}-01-01`
+      : `${HISTORY_YEAR}-${monthsOf((quarter + 1) as QuarterNumber)[0]}-01`,
+  ];
   const templates = new Map<string, DeepReadonly<SaleLine>>();
   const picks = new Map<string, Set<string>>();
   for (const line of data.saleLines) {
@@ -173,7 +195,8 @@ export function historyOf(data: DeepReadonly<BookshopData>, quarter: QuarterNumb
     },
     observedPick: (month) => {
       const isbns = [...(picks.get(month) ?? [])];
-      if (isbns.length !== 1) throw new Error(`Expected one Book of the Month in month ${month}, found ${isbns.length}`);
+      if (isbns.length !== 1)
+        throw new Error(`Expected one Book of the Month in month ${month}, found ${isbns.length}`);
       return isbns[0];
     },
     joinShare: joinSharesOf(data),
@@ -195,7 +218,9 @@ export function unpromoted(history: History, seed: number): Order[] {
   return ordersOf(history.lastYear.filter((l) => !removed.has(l))).map((order) => ({
     ...order,
     items: order.items.map((item) =>
-      restored.has(item.template) && item.discount === PICK_DISCOUNT ? { ...item, discount: 0 } : item,
+      restored.has(item.template) && item.discount === PICK_DISCOUNT
+        ? { ...item, discount: 0 }
+        : item,
     ),
   }));
 }
@@ -203,14 +228,18 @@ export function unpromoted(history: History, seed: number): Order[] {
 /** The quarter as it would go with no Book of the Month: each day replays its 2193 day, with ±3% noise on orders. */
 export function baseline(history: History, seed: number): Order[] {
   const byDay = new Map<string, Order[]>();
-  for (const order of unpromoted(history, seed)) byDay.set(order.day, [...(byDay.get(order.day) ?? []), order]);
+  for (const order of unpromoted(history, seed))
+    byDay.set(order.day, [...(byDay.get(order.day) ?? []), order]);
   const random = stream(seed, history.streamOf(streamName(history.quarter, "noise")));
   const orders: Order[] = [];
   for (const day of quarterDays(history.year, history.quarter)) {
     const source = byDay.get(replayedDay(day)) ?? [];
     const factor = 1 - NOISE + 2 * NOISE * random();
     const target = roundRandomly(random, source.length * factor);
-    const kept = target < source.length ? sampleIndexes(random, source.length, target).map((i) => source[i]) : [...source];
+    const kept =
+      target < source.length
+        ? sampleIndexes(random, source.length, target).map((i) => source[i])
+        : [...source];
     while (kept.length < target) kept.push(pick(random, source));
     orders.push(...kept.map((o) => cloneOrder(o, { day })));
   }
@@ -222,7 +251,15 @@ export function baseline(history: History, seed: number): Order[] {
  * day's orders (`hosts`, indexes into `orders`), otherwise it arrives as its own
  * one-item order. A host is replaced by a copy, so orders shared with other runs never change.
  */
-function place(orders: Order[], hosts: readonly number[], day: string, item: Item, kind: OrderKind, share: number, random: Random) {
+function place(
+  orders: Order[],
+  hosts: readonly number[],
+  day: string,
+  item: Item,
+  kind: OrderKind,
+  share: number,
+  random: Random,
+) {
   if (hosts.length > 0 && random() < share) {
     const i = hosts[Math.floor(random() * hosts.length)];
     orders[i] = { ...orders[i], items: [...orders[i].items, item] };
@@ -263,7 +300,8 @@ export function withRelease(history: History, base: readonly Order[], seed: numb
     if (launched && day < RELEASE_DAY) continue;
     const launch = launched ? releaseLaunch((timeOf(day) - timeOf(RELEASE_DAY)) / DAY) : 1;
     const expected = RELEASE_RATE * launch * ((perDay.get(day) ?? 0) / meanDay);
-    for (let i = roundRandomly(random, expected); i > 0; i--) place(orders, hosts.get(day) ?? [], day, itemOf(template), "release", share, joins);
+    for (let i = roundRandomly(random, expected); i > 0; i--)
+      place(orders, hosts.get(day) ?? [], day, itemOf(template), "release", share, joins);
   }
   return orders;
 }
@@ -324,18 +362,22 @@ export function run(history: History, base: readonly Order[], seed: number, leve
       const sameDay = base.filter((o) => o.day === day);
       // A guard: a Tuesday to Thursday with no 2193 sales draws from the whole quarter.
       const pool = sameDay.length > 0 ? sameDay : base;
-      for (let i = 0; i < count; i++) orders.push(cloneOrder(pick(random, pool), { day, kind: "event" }));
+      for (let i = 0; i < count; i++)
+        orders.push(cloneOrder(pick(random, pool), { day, kind: "event" }));
       nights.push({ day, orders: count });
     }
   }
 
   // Q2 picks by ISBN: a title can have two editions in one format (Heliotrope Pajamas has two paperbacks).
-  const picks = levers.picks.map((spec) => (spec === null ? null : typeof spec === "string" ? spec : history.isbnOf(spec)));
+  const picks = levers.picks.map((spec) =>
+    spec === null ? null : typeof spec === "string" ? spec : history.isbnOf(spec),
+  );
   history.months.forEach((month, m) => {
     const isbn = picks[m];
     if (isbn === null) return;
     for (const order of orders)
-      if (monthOf(order.day) === month) for (const item of order.items) if (item.isbn === isbn) item.discount = PICK_DISCOUNT;
+      if (monthOf(order.day) === month)
+        for (const item of order.items) if (item.isbn === isbn) item.discount = PICK_DISCOUNT;
     // Scheduled and re-picked titles draw the same count and days from the same stream; only the title differs.
     const random = stream(seed, history.streamOf(`pick-extra:${month}`));
     const extra = pick(random, OBSERVED_EXTRAS);
@@ -356,7 +398,9 @@ export function run(history: History, base: readonly Order[], seed: number, leve
     const random = stream(seed, history.streamOf(streamName(history.quarter, "sale")));
     // One draw per order, so a larger response clones a superset of a smaller one's orders.
     // Clones keep their kind: an author night's clone is still an author-night visit.
-    const clones = orders.filter(() => random() < levers.sale!).map((o) => cloneOrder(o, { saleClone: true }));
+    const clones = orders
+      .filter(() => random() < levers.sale!)
+      .map((o) => cloneOrder(o, { saleClone: true }));
     orders.push(...clones);
     // The sale's 15% replaces every discount, the picks' included.
     for (const order of orders) for (const item of order.items) item.discount = SALE_DISCOUNT;

@@ -34,7 +34,12 @@ export interface BossFocusOptions {
  * (null until then, or once reported). Rendering on the server can't tell 3D from 2D, so the
  * first report waits for the browser rather than saying "2d" on every device.
  */
-export function autoFocus(bubbles: readonly SceneBubble[], initial: number, mode: SceneMode | null, reported: boolean): BossId | null {
+export function autoFocus(
+  bubbles: readonly SceneBubble[],
+  initial: number,
+  mode: SceneMode | null,
+  reported: boolean,
+): BossId | null {
   if (reported || mode === null) return null;
   return bubbles[initial]?.boss ?? null;
 }
@@ -43,7 +48,10 @@ export function autoFocus(bubbles: readonly SceneBubble[], initial: number, mode
  * The scene's one focus model: exactly one bubble open at a time, `initial` first. The 2D and 3D
  * scenes both draw from it, so a bubble or a boss selected in either opens the same bubble.
  */
-export function useBossFocus(bubbles: readonly SceneBubble[], { initial = 0, mode, onFocus }: BossFocusOptions) {
+export function useBossFocus(
+  bubbles: readonly SceneBubble[],
+  { initial = 0, mode, onFocus }: BossFocusOptions,
+) {
   const [open, setOpen] = useState(initial);
   const reported = useRef(false);
 

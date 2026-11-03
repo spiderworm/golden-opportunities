@@ -11,7 +11,9 @@
     "test": "vitest run",
     "data:bookshop": "node tools/convert-bookshop.ts",
     "data:sample": "node tools/sample-data.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@react-router/node": "8.5.1",
@@ -38,6 +40,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@types/three": "0.186.0",
+    "prettier": "3.9.10",
     "typescript": "7.0.2",
     "vite": "8.3.4",
     "vitest": "5.0.5",

@@ -23,7 +23,8 @@ let analytics: Analytics | undefined;
 export function serverAnalytics(): Analytics {
   if (analytics) return analytics;
   const storage = fileStorage(path.join(DATA_DIR, "analytics-server.json"));
-  if (!storage.getItem(`${KEY}.install`)) storage.setItem(`${KEY}.install`, JSON.stringify(instanceId()));
+  if (!storage.getItem(`${KEY}.install`))
+    storage.setItem(`${KEY}.install`, JSON.stringify(instanceId()));
   analytics = createAnalytics({
     game: GAME,
     key: KEY,
@@ -41,4 +42,5 @@ export function serverAnalytics(): Analytics {
 }
 
 /** track() for server-side code. */
-export const trackServer: Track = (event, props, options) => serverAnalytics().track(event, props, options);
+export const trackServer: Track = (event, props, options) =>
+  serverAnalytics().track(event, props, options);

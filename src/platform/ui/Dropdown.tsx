@@ -37,7 +37,10 @@ interface Common<T extends string> {
   buttonRef?: RefObject<HTMLButtonElement | null>;
 }
 export type DropdownProps<T extends string> = Common<T> &
-  ({ mode: "single"; value: T; onChange: (value: T) => void } | { mode: "multi"; values: readonly T[]; onChange: (values: T[]) => void });
+  (
+    | { mode: "single"; value: T; onChange: (value: T) => void }
+    | { mode: "multi"; values: readonly T[]; onChange: (values: T[]) => void }
+  );
 
 export function Dropdown<T extends string>(props: DropdownProps<T>) {
   const { name, options, active, empty, align = "start", trigger, legend = name } = props;
@@ -61,7 +64,8 @@ export function Dropdown<T extends string>(props: DropdownProps<T>) {
       if (event.key !== "Escape") return;
       setOpen(false);
       const focus = document.activeElement;
-      if (!focus || focus === document.body || root.current?.contains(focus)) button.current?.focus();
+      if (!focus || focus === document.body || root.current?.contains(focus))
+        button.current?.focus();
     };
     document.addEventListener("pointerdown", away);
     document.addEventListener("keydown", escape);
@@ -72,7 +76,8 @@ export function Dropdown<T extends string>(props: DropdownProps<T>) {
   }, [open]);
 
   const labels = options.filter((o) => chosen.includes(o.value)).map((o) => o.label);
-  const summary = props.summary ?? (labels.length > 2 ? `${labels.length} selected` : labels.join(", "));
+  const summary =
+    props.summary ?? (labels.length > 2 ? `${labels.length} selected` : labels.join(", "));
 
   return (
     <div className={styles.menu} ref={root}>
@@ -103,7 +108,11 @@ export function Dropdown<T extends string>(props: DropdownProps<T>) {
           const reason = option.disabledReason ?? null;
           const whyId = `${panelId}-why-${i}`;
           return (
-            <label key={option.value} className={styles.option} data-disabled={(reason !== null && !on) || undefined}>
+            <label
+              key={option.value}
+              className={styles.option}
+              data-disabled={(reason !== null && !on) || undefined}
+            >
               <input
                 type={props.mode === "single" ? "radio" : "checkbox"}
                 name={props.mode === "single" ? panelId : undefined}
@@ -118,13 +127,26 @@ export function Dropdown<T extends string>(props: DropdownProps<T>) {
                     setOpen(false);
                     button.current?.focus();
                   } else {
-                    const next = on ? chosen.filter((v) => v !== option.value) : [...chosen, option.value];
+                    const next = on
+                      ? chosen.filter((v) => v !== option.value)
+                      : [...chosen, option.value];
                     setPending(next);
                     props.onChange(next);
                   }
                 }}
               />
-              {option.color && <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 3, background: option.color, flex: "none" }} />}
+              {option.color && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 3,
+                    background: option.color,
+                    flex: "none",
+                  }}
+                />
+              )}
               <span>{option.label}</span>
               {reason && (
                 <span id={whyId} className={styles.why}>

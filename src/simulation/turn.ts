@@ -3,7 +3,14 @@
 // Pure and deterministic: a turn depends only on its quarter, seed, plan and event, and the data, so a
 // save's quarters replay exactly. Q1 and Q2 2194 are played by their own engines, unchanged.
 import type { BookshopData, DeepReadonly } from "~/bookshop/types";
-import { AGAINST, applyConditions, changesOrders, conditionsOf, type Conditions, type TurnEvent } from "./conditions";
+import {
+  AGAINST,
+  applyConditions,
+  changesOrders,
+  conditionsOf,
+  type Conditions,
+  type TurnEvent,
+} from "./conditions";
 import { MONTH_NAMES, type QuarterCopy } from "./copy";
 import { goalFor } from "./grading";
 import { EVENT_COST, measures } from "./measures";
@@ -11,7 +18,16 @@ import { baseline, run, withRelease, YEAR, type QuarterNumber } from "./model";
 import { picksLines, simulatePicks, simulateQ2, type PicksQuarter } from "./q2";
 import { isQuarterName, quarterAt, quarterIndex, quarterNumber, type QuarterId } from "./quarters";
 import { EFFECT_SEEDS, historyFor, holdLevers, prepare, simulateQuarter } from "./simulate";
-import type { Certificate, MeasureId, Plan, Q2Plan, Q2SimulationResult, ReportCard, SimulatedLine, SimulationResult } from "./types";
+import type {
+  Certificate,
+  MeasureId,
+  Plan,
+  Q2Plan,
+  Q2SimulationResult,
+  ReportCard,
+  SimulatedLine,
+  SimulationResult,
+} from "./types";
 import { FORMAT_WORDS, GENRE_WORDS } from "./words";
 import { MEASURE_IDS } from "./types";
 
@@ -46,11 +62,15 @@ type Measures = Record<MeasureId, number>;
 /** "2195-Q3" as its year and quarter. */
 export function quarterParts(quarter: string): { year: number; quarter: QuarterNumber } {
   if (!isQuarterName(quarter)) throw new Error(`Not a playable quarter: ${quarter}`);
-  return { year: YEAR + Math.floor(quarterIndex(quarter) / 4), quarter: quarterNumber(quarter) as QuarterNumber };
+  return {
+    year: YEAR + Math.floor(quarterIndex(quarter) / 4),
+    quarter: quarterNumber(quarter) as QuarterNumber,
+  };
 }
 
 const isLaunch = (t: { year: number; quarter: QuarterNumber }) => t.year === YEAR && t.quarter <= 2;
-const byMeasure = (f: (id: MeasureId) => number) => Object.fromEntries(MEASURE_IDS.map((id) => [id, f(id)])) as Measures;
+const byMeasure = (f: (id: MeasureId) => number) =>
+  Object.fromEntries(MEASURE_IDS.map((id) => [id, f(id)])) as Measures;
 
 interface Anchored {
   /** What scores 70: 2193 as sold, plus the new volume's and the event's expected effects on holding course. */
@@ -66,7 +86,11 @@ const anchors = new WeakMap<DeepReadonly<BookshopData>, Map<string, Anchored>>()
  * The quarter's anchor under its event (section 8): the mean, over EFFECT_SEEDS, of holding course with
  * the event's conditions minus without them, added to the quarter's anchor. About 40 runs, cached.
  */
-export function anchorFor(quarter: QuarterId, event: TurnEvent | null, data: DeepReadonly<BookshopData>): Anchored {
+export function anchorFor(
+  quarter: QuarterId,
+  event: TurnEvent | null,
+  data: DeepReadonly<BookshopData>,
+): Anchored {
   const t = quarterParts(quarter);
   const p = prepare(data, t.quarter, t.year);
   const conditions = conditionsOf(event, p.history);
@@ -81,8 +105,12 @@ export function anchorFor(quarter: QuarterId, event: TurnEvent | null, data: Dee
     const hold = holdLevers(t.quarter, t.year);
     for (const seed of EFFECT_SEEDS) {
       const base = withRelease(p.history, baseline(p.history, seed), seed);
-      const of = (orders: typeof base, c: Conditions) => measures(run(p.history, orders, seed, hold).orders, p.ratings, 0, 0, c.costs);
-      const [withIt, without] = [of(applyConditions(p.history, base, seed, conditions), conditions), of(base, { costs: {} })];
+      const of = (orders: typeof base, c: Conditions) =>
+        measures(run(p.history, orders, seed, hold).orders, p.ratings, 0, 0, c.costs);
+      const [withIt, without] = [
+        of(applyConditions(p.history, base, seed, conditions), conditions),
+        of(base, { costs: {} }),
+      ];
       for (const id of MEASURE_IDS) effect[id] += (withIt[id] - without[id]) / EFFECT_SEEDS.length;
     }
   }
@@ -92,11 +120,17 @@ export function anchorFor(quarter: QuarterId, event: TurnEvent | null, data: Dee
 }
 
 /** "bound" when the event's expected effect on holding course passes 10% of any measure's anchor; the server then falls back. */
-export function eventProblem(event: TurnEvent, quarter: QuarterId, data: DeepReadonly<BookshopData>): "bound" | null {
+export function eventProblem(
+  event: TurnEvent,
+  quarter: QuarterId,
+  data: DeepReadonly<BookshopData>,
+): "bound" | null {
   const t = quarterParts(quarter);
   const p = prepare(data, t.quarter, t.year);
   const { effect } = anchorFor(quarter, event, data);
-  return MEASURE_IDS.some((id) => Math.abs(effect[id]) > EVENT_BOUND * Math.abs(p.anchor[id])) ? "bound" : null;
+  return MEASURE_IDS.some((id) => Math.abs(effect[id]) > EVENT_BOUND * Math.abs(p.anchor[id]))
+    ? "bound"
+    : null;
 }
 
 /**
@@ -104,7 +138,11 @@ export function eventProblem(event: TurnEvent, quarter: QuarterId, data: DeepRea
  * usual step. A recovery goal: the anchor times (1 + drop / 100), never below the normal goal, and capped
  * at the anchor plus the record's percent, 20.
  */
-export function goalsFor(anchor: Measures, quarterlyAverage: Measures, event: TurnEvent | null): Partial<Measures> {
+export function goalsFor(
+  anchor: Measures,
+  quarterlyAverage: Measures,
+  event: TurnEvent | null,
+): Partial<Measures> {
   if (!event?.stretch) return {};
   const { measure, percent } = event.stretch;
   const a = anchor[measure];
@@ -125,11 +163,14 @@ function eventRule(event: TurnEvent | null, c: Conditions): string | undefined {
   const counted = "Alma's event this quarter; the goals count its expected effect.";
   if (c.genre) {
     const month = MONTH_NAMES[Number(c.genre.month) - 1];
-    const change = c.genre.factor > 1 ? `${pct(c.genre.factor - 1)} higher` : `${pct(1 - c.genre.factor)} lower`;
+    const change =
+      c.genre.factor > 1 ? `${pct(c.genre.factor - 1)} higher` : `${pct(1 - c.genre.factor)} lower`;
     return `${capital(GENRE_WORDS[c.genre.genre] ?? c.genre.genre)} orders in ${month} are ${change} than the replay: ${counted}`;
   }
-  if (c.weekday) return `${String(event!.params.weekday)} orders are ${pct(1 - c.weekday.factor)} lower than the replay all quarter: ${counted}`;
-  if (c.costs.cogs) return `${capital(FORMAT_WORDS[c.costs.cogs.format] ?? c.costs.cogs.format)} copies cost the store ${pct(c.costs.cogs.rate)} of their list price, instead of 60%: ${counted}`;
+  if (c.weekday)
+    return `${String(event!.params.weekday)} orders are ${pct(1 - c.weekday.factor)} lower than the replay all quarter: ${counted}`;
+  if (c.costs.cogs)
+    return `${capital(FORMAT_WORDS[c.costs.cogs.format] ?? c.costs.cogs.format)} copies cost the store ${pct(c.costs.cogs.rate)} of their list price, instead of 60%: ${counted}`;
   return undefined;
 }
 
@@ -138,8 +179,18 @@ function setupOf(turn: Turn, data: DeepReadonly<BookshopData>): PicksQuarter {
   const t = quarterParts(turn.quarter);
   const p = prepare(data, t.quarter, t.year);
   const { anchor, conditions } = anchorFor(turn.quarter, turn.event, data);
-  const copy: QuarterCopy = { year: t.year, event: eventRule(turn.event, conditions), fare: conditions.costs.fare };
-  return { ...t, anchor, goals: goalsFor(anchor, p.quarterlyAverage, turn.event), conditions, copy };
+  const copy: QuarterCopy = {
+    year: t.year,
+    event: eventRule(turn.event, conditions),
+    fare: conditions.costs.fare,
+  };
+  return {
+    ...t,
+    anchor,
+    goals: goalsFor(anchor, p.quarterlyAverage, turn.event),
+    conditions,
+    copy,
+  };
 }
 
 function checkLaunch(turn: Turn) {
@@ -153,36 +204,59 @@ function checkLaunch(turn: Turn) {
  * no dearer, and any fare for a plan that ran no author nights, which it never touched. Certificates never
  * change the score.
  */
-export function endlessCertificates(card: ReportCard, turn: Turn, ranNights: boolean): Certificate[] {
+export function endlessCertificates(
+  card: ReportCard,
+  turn: Turn,
+  ranNights: boolean,
+): Certificate[] {
   const event = turn.event;
   if (!event) return [];
   const met = (id: MeasureId) => card.measures.find((m) => m.id === id)!.met;
   const certificates: Certificate[] = [];
   if (event.drop !== undefined && event.stretch && met(event.stretch.measure))
-    certificates.push({ id: "comeback", measure: event.stretch.measure, previous: quarterAt(quarterIndex(turn.quarter) - 1) });
+    certificates.push({
+      id: "comeback",
+      measure: event.stretch.measure,
+      previous: quarterAt(quarterIndex(turn.quarter) - 1),
+    });
   const against = MEASURE_IDS.filter((id) => (AGAINST[event.type] ?? []).includes(id));
-  const touched = event.type !== "author_fares" || (ranNights && Number(event.params.cost) > EVENT_COST);
+  const touched =
+    event.type !== "author_fares" || (ranNights && Number(event.params.cost) > EVENT_COST);
   if (against.length > 0 && touched && against.every(met))
-    certificates.push({ id: "weathered", measures: against, event: { type: event.type, params: { ...event.params } } });
+    certificates.push({
+      id: "weathered",
+      measures: against,
+      event: { type: event.type, params: { ...event.params } },
+    });
   return certificates;
 }
 
 /** Plays a quarter under the plan, and under holding course from the same seed. */
-export function simulateTurn(turn: Turn, data: DeepReadonly<BookshopData>): SimulationResult | Q2SimulationResult {
+export function simulateTurn(
+  turn: Turn,
+  data: DeepReadonly<BookshopData>,
+): SimulationResult | Q2SimulationResult {
   const t = quarterParts(turn.quarter);
   if (isLaunch(t)) {
     checkLaunch(turn);
-    return t.quarter === 1 ? simulateQuarter(turn.plan as Plan, turn.seed, data) : simulateQ2(turn.plan as Q2Plan, turn.seed, data);
+    return t.quarter === 1
+      ? simulateQuarter(turn.plan as Plan, turn.seed, data)
+      : simulateQ2(turn.plan as Q2Plan, turn.seed, data);
   }
   const result = simulatePicks(turn.plan as Q2Plan, turn.seed, data, setupOf(turn, data));
   const { plan, holdCourse } = result.outcome.reportCard;
-  plan.certificates.push(...endlessCertificates(plan, turn, (turn.plan as Q2Plan).levers.includes("events")));
+  plan.certificates.push(
+    ...endlessCertificates(plan, turn, (turn.plan as Q2Plan).levers.includes("events")),
+  );
   holdCourse.certificates.push(...endlessCertificates(holdCourse, turn, false));
   return result;
 }
 
 /** The same lines as simulateTurn, without the report card or the anchor: for a save's replay and its hash. */
-export function linesOfTurn(turn: Turn, data: DeepReadonly<BookshopData>): { lines: SimulatedLine[]; doNothingLines: SimulatedLine[] } {
+export function linesOfTurn(
+  turn: Turn,
+  data: DeepReadonly<BookshopData>,
+): { lines: SimulatedLine[]; doNothingLines: SimulatedLine[] } {
   const t = quarterParts(turn.quarter);
   if (isLaunch(t)) {
     checkLaunch(turn);
@@ -190,7 +264,10 @@ export function linesOfTurn(turn: Turn, data: DeepReadonly<BookshopData>): { lin
     const { lines, doNothingLines } = simulateQuarter(turn.plan as Plan, turn.seed, data);
     return { lines, doNothingLines };
   }
-  return picksLines(turn.plan as Q2Plan, turn.seed, data, { ...t, conditions: conditionsOf(turn.event, historyFor(data, t.quarter, t.year)) });
+  return picksLines(turn.plan as Q2Plan, turn.seed, data, {
+    ...t,
+    conditions: conditionsOf(turn.event, historyFor(data, t.quarter, t.year)),
+  });
 }
 
 export interface PlayedQuarter {
@@ -205,7 +282,10 @@ export interface PlayedQuarter {
  * result with every expected effect its anchor carries taken out, result − (anchor − 2193 as sold),
  * against 2193 as sold in 2194, and against the same quarter a year earlier, measured the same way, after.
  */
-export function recoveryFor(played: readonly PlayedQuarter[], data: DeepReadonly<BookshopData>): { measure: MeasureId; drop: number } | undefined {
+export function recoveryFor(
+  played: readonly PlayedQuarter[],
+  data: DeepReadonly<BookshopData>,
+): { measure: MeasureId; drop: number } | undefined {
   const last = played.at(-1);
   if (!last) return undefined;
   const t = quarterParts(last.quarter);

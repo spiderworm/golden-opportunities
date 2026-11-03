@@ -3,7 +3,11 @@ import { CanvasTexture, SRGBColorSpace } from "three";
 // Textures drawn at runtime on a canvas, so the station needs no image files
 // (and no font downloads) until the art pipeline supplies real ones.
 
-function canvasTexture(width: number, height: number, draw: (ctx: CanvasRenderingContext2D) => void): CanvasTexture {
+function canvasTexture(
+  width: number,
+  height: number,
+  draw: (ctx: CanvasRenderingContext2D) => void,
+): CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -62,7 +66,12 @@ export function coverTexture(title: string): CanvasTexture {
   });
 }
 
-function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, size: number): string[] {
+function wrap(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  size: number,
+): string[] {
   ctx.font = `700 ${size}px Georgia, "Times New Roman", serif`;
   const lines: string[] = [];
   let line = "";

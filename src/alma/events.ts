@@ -6,9 +6,33 @@ import { MEASURE_IDS, type MeasureId } from "~/simulation/types";
 
 export { MEASURE_IDS, type MeasureId };
 
-export const GENRES = ["Fiction", "Mystery", "Romance", "SciFi/Fantasy", "Young Adult", "Childrens", "Nonfiction", "Memoir"] as const;
-export const FORMATS = ["Hardcover", "Trade paperback", "Paperback", "Mass market paperback", "Graphic", "Board book"] as const;
-export const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+export const GENRES = [
+  "Fiction",
+  "Mystery",
+  "Romance",
+  "SciFi/Fantasy",
+  "Young Adult",
+  "Childrens",
+  "Nonfiction",
+  "Memoir",
+] as const;
+export const FORMATS = [
+  "Hardcover",
+  "Trade paperback",
+  "Paperback",
+  "Mass market paperback",
+  "Graphic",
+  "Board book",
+] as const;
+export const WEEKDAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
 
 /** One param: a value from a fixed list, or a whole number within limits, shown in its unit. */
 export type ParamSpec =
@@ -29,17 +53,57 @@ export interface EventType {
 const month: ParamSpec = { kind: "int", min: 1, max: 3, unit: "month" };
 
 export const EVENT_TYPES: readonly EventType[] = [
-  { id: "genre_surge", params: { genre: { kind: "enum", values: GENRES }, month, percent: { kind: "int", min: 10, max: 30, unit: "percent" } }, mild: true, against: [] },
-  { id: "genre_slump", params: { genre: { kind: "enum", values: GENRES }, month, percent: { kind: "int", min: 10, max: 25, unit: "percent" } }, mild: false, against: ["profit", "readers", "culture"] },
-  { id: "quiet_days", params: { weekday: { kind: "enum", values: WEEKDAYS }, percent: { kind: "int", min: 10, max: 25, unit: "percent" } }, mild: false, against: ["profit", "readers", "culture"] },
-  { id: "author_fares", params: { cost: { kind: "int", min: 100, max: 400, unit: "dollars" } }, mild: true, against: ["profit"] },
+  {
+    id: "genre_surge",
+    params: {
+      genre: { kind: "enum", values: GENRES },
+      month,
+      percent: { kind: "int", min: 10, max: 30, unit: "percent" },
+    },
+    mild: true,
+    against: [],
+  },
+  {
+    id: "genre_slump",
+    params: {
+      genre: { kind: "enum", values: GENRES },
+      month,
+      percent: { kind: "int", min: 10, max: 25, unit: "percent" },
+    },
+    mild: false,
+    against: ["profit", "readers", "culture"],
+  },
+  {
+    id: "quiet_days",
+    params: {
+      weekday: { kind: "enum", values: WEEKDAYS },
+      percent: { kind: "int", min: 10, max: 25, unit: "percent" },
+    },
+    mild: false,
+    against: ["profit", "readers", "culture"],
+  },
+  {
+    id: "author_fares",
+    params: { cost: { kind: "int", min: 100, max: 400, unit: "dollars" } },
+    mild: true,
+    against: ["profit"],
+  },
   // At most 69%: hardcovers at 70% take 10.1 to 11.0% off holding course's profit, past section 2's 10% bound
   // (Sim's finding, Plot's #199); at 69% the worst is 9.88%.
-  { id: "format_costs", params: { format: { kind: "enum", values: FORMATS }, percent: { kind: "int", min: 65, max: 69, unit: "percent" } }, mild: false, against: ["profit"] },
+  {
+    id: "format_costs",
+    params: {
+      format: { kind: "enum", values: FORMATS },
+      percent: { kind: "int", min: 65, max: 69, unit: "percent" },
+    },
+    mild: false,
+    against: ["profit"],
+  },
   { id: "quiet_quarter", params: {}, mild: true, against: [], oncePer: 3 },
 ];
 
-export const eventType = (id: unknown): EventType | undefined => EVENT_TYPES.find((t) => t.id === id);
+export const eventType = (id: unknown): EventType | undefined =>
+  EVENT_TYPES.find((t) => t.id === id);
 
 /** The stretch beside every event: one measure's goal, raised by this much instead of 5%. */
 export const STRETCH_PERCENT = { min: 10, max: 20 } as const;

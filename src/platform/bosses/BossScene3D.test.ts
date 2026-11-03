@@ -14,7 +14,6 @@ function screenY(fit: { distance: number; height: number }, y: number, height: n
 }
 
 describe("framing the bosses to their floor", () => {
-
   for (const [height, headroom] of [
     [220, 12],
     [360, 40],

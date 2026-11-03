@@ -126,7 +126,15 @@
 .barcode {
   width: 84px;
   height: 12px;
-  background: repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 3px, currentColor 3px 5px, transparent 5px 6px, currentColor 6px 7px, transparent 7px 10px);
+  background: repeating-linear-gradient(
+    90deg,
+    currentColor 0 1px,
+    transparent 1px 3px,
+    currentColor 3px 5px,
+    transparent 5px 6px,
+    currentColor 6px 7px,
+    transparent 7px 10px
+  );
   opacity: 0.7;
 }
 
@@ -218,7 +226,9 @@
   background:
     repeating-linear-gradient(to bottom, transparent 0 27px, rgb(255 255 255 / 0.025) 27px 28px),
     rgb(255 255 255 / 0.015);
-  transition: border-color 160ms, background-color 160ms;
+  transition:
+    border-color 160ms,
+    background-color 160ms;
 }
 
 .option:hover {
@@ -360,7 +370,9 @@
   transform: rotate(-7deg) scale(1.35);
   opacity: 0;
   pointer-events: none;
-  transition: transform 180ms cubic-bezier(0.3, 1.4, 0.5, 1), opacity 120ms;
+  transition:
+    transform 180ms cubic-bezier(0.3, 1.4, 0.5, 1),
+    opacity 120ms;
 }
 
 .option[data-selected] .stamp {
@@ -430,7 +442,6 @@
 
 /* A form under 640 px: the stamp is smaller in its corner. */
 @container requisition (max-width: 639px) {
-
   .stamp {
     padding: 1px 6px;
     border-width: 2px;
@@ -586,7 +597,6 @@
     animation: none;
   }
 }
-
 
 /* Submit sits up in the form's title row, at its right; in the page it still comes after the moves, so the
    keyboard reaches it last. */

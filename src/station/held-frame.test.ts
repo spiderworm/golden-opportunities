@@ -3,8 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // A canvas whose encodes finish when the test says so.
 function canvas() {
   const encodes: ((blob: Blob | null) => void)[] = [];
-  const element = { toBlob: (done: (blob: Blob | null) => void) => encodes.push(done) } as unknown as HTMLCanvasElement;
-  return { element, finish: (i: number) => encodes[i]!(new Blob([String(i)], { type: "image/webp" })) };
+  const element = {
+    toBlob: (done: (blob: Blob | null) => void) => encodes.push(done),
+  } as unknown as HTMLCanvasElement;
+  return {
+    element,
+    finish: (i: number) => encodes[i]!(new Blob([String(i)], { type: "image/webp" })),
+  };
 }
 
 // Each test gets a fresh page's worth of held frame.

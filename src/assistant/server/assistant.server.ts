@@ -4,7 +4,9 @@
 import type { AssistantProvider, ProviderEvent } from "./provider.server.ts";
 
 /** A canned assistant, for tests and for trying the panel without spending anything. Never spawns anything. */
-export function fakeAssistant(events: ProviderEvent[] = [{ type: "text", text: "Which quarter would you like to look at?" }]): AssistantProvider {
+export function fakeAssistant(
+  events: ProviderEvent[] = [{ type: "text", text: "Which quarter would you like to look at?" }],
+): AssistantProvider {
   return {
     name: "fake",
     async *ask(_prompt, signal) {
@@ -26,7 +28,11 @@ export const setAssistantForTests = (p: AssistantProvider | null) => void (overr
  * The provider to use. `real` builds the Claude Code one; it's only called when nothing else answers. `fake`
  * builds the one ORBITAL_ASSISTANT_PROVIDER=fake asks for (tests under Vitest always get the canned one).
  */
-export function getAssistant(real: () => AssistantProvider, env = process.env, fake: () => AssistantProvider = fakeAssistant): AssistantProvider {
+export function getAssistant(
+  real: () => AssistantProvider,
+  env = process.env,
+  fake: () => AssistantProvider = fakeAssistant,
+): AssistantProvider {
   if (override) return override;
   if (env.VITEST) return fakeAssistant();
   if (env.ORBITAL_ASSISTANT_PROVIDER === "fake") return fake();
@@ -86,7 +92,11 @@ export const resetLimitsForTests = () => {
 };
 
 /** Newline-delimited JSON: one event per line, flushed as it's produced. Stops the source when the reader goes. */
-export function ndjson<T>(events: (signal: AbortSignal) => AsyncIterable<T>, onError: (e: unknown) => T, request?: Request): Response {
+export function ndjson<T>(
+  events: (signal: AbortSignal) => AsyncIterable<T>,
+  onError: (e: unknown) => T,
+  request?: Request,
+): Response {
   const abort = new AbortController();
   request?.signal.addEventListener("abort", () => abort.abort(), { once: true });
   const encoder = new TextEncoder();
@@ -108,5 +118,11 @@ export function ndjson<T>(events: (signal: AbortSignal) => AsyncIterable<T>, onE
       await iterator?.return?.();
     },
   });
-  return new Response(body, { headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  return new Response(body, {
+    headers: {
+      "content-type": "application/x-ndjson; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+    },
+  });
 }

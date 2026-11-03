@@ -3,7 +3,14 @@
 // source for it: the engine's sale lines carry its ISBN and book ID, and the
 // game joins them through these records. Everything here is scenario fiction,
 // except what it borrows from the series' first two volumes.
-import type { BookInfo, BookshopData, DeepReadonly, Edition, JoinedBook, SaleLine } from "~/bookshop/types";
+import type {
+  BookInfo,
+  BookshopData,
+  DeepReadonly,
+  Edition,
+  JoinedBook,
+  SaleLine,
+} from "~/bookshop/types";
 
 /** Generated: none of this is in the 2193 data. */
 export const RELEASE = {
@@ -42,7 +49,14 @@ export function releaseBook(data: DeepReadonly<BookshopData>): DeepReadonly<Join
   const author = data.authors.find((a) => a.id === RELEASE.book.authorId);
   const series = data.series.find((s) => s.id === RELEASE.info.seriesId);
   if (!author || !series) throw new Error("The release's author and series must be in the data");
-  return { ...RELEASE.book, author, info: RELEASE.info, series, editions: [RELEASE.edition], awards: [] };
+  return {
+    ...RELEASE.book,
+    author,
+    info: RELEASE.info,
+    series,
+    editions: [RELEASE.edition],
+    awards: [],
+  };
 }
 
 /** The release as a sale line, for the engine's orders and the lines it writes. */

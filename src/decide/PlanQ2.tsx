@@ -10,11 +10,19 @@ import { MoveCard, useMoreLine } from "./MoveCard";
 import { PickPicker, type Candidate } from "./PickPicker";
 import { onBubbleFocused, PlayOut, sceneOf } from "./PlanParts";
 import type { QuarterId } from "~/simulation/quarters";
-import { DECIDE_COPY as COPY, DECIDE_Q2_COPY as Q2, editionLabel, planCopy, type PlanBrief } from "./q2-copy";
+import {
+  DECIDE_COPY as COPY,
+  DECIDE_Q2_COPY as Q2,
+  editionLabel,
+  planCopy,
+  type PlanBrief,
+} from "./q2-copy";
 import styles from "./Decide.module.css";
 
 /** What the Q2 action answers: Frank's shapes, with the engine's reason when it refuses a plan. */
-export type Q2ActionData = { ok: true } | { ok: false; played: boolean; problem?: "shape" | "unknown-edition" | "same-title" };
+export type Q2ActionData =
+  | { ok: true }
+  | { ok: false; played: boolean; problem?: "shape" | "unknown-edition" | "same-title" };
 
 type Step = "choose" | "confirm" | "playing";
 
@@ -29,7 +37,15 @@ const planProps = (picks: readonly (string | null)[], lever: Q2LeverId | null) =
  * for each of its months, or none, and up to one more move, on the same requisition form in the same scene as
  * Q1's. Its months, heading, serial, brief and play-out come from the quarter (planCopy).
  */
-export function PlanQ2({ quarter, candidates, brief = null }: { quarter: QuarterId; candidates: readonly Candidate[]; brief?: PlanBrief | null }) {
+export function PlanQ2({
+  quarter,
+  candidates,
+  brief = null,
+}: {
+  quarter: QuarterId;
+  candidates: readonly Candidate[];
+  brief?: PlanBrief | null;
+}) {
   const plan = useMemo(() => planCopy(quarter, brief), [quarter, brief]);
   const scene = useMemo(() => sceneOf(plan.briefing), [plan]);
   const MONTHS = plan.months;
@@ -80,7 +96,11 @@ export function PlanQ2({ quarter, candidates, brief = null }: { quarter: Quarter
   const chosenMove = plan.moves.find((m) => m.id === lever);
   const form = (
     <div className={styles.requisition}>
-      <fieldset className={styles.moves} disabled={step !== "choose"} aria-describedby="moves-rule moves-status">
+      <fieldset
+        className={styles.moves}
+        disabled={step !== "choose"}
+        aria-describedby="moves-rule moves-status"
+      >
         <legend className={styles.movesHeading}>{Q2.movesHeading}</legend>
         <p id="moves-rule" className={styles.rule}>
           <FactText line={COPY.rule} />
@@ -94,7 +114,11 @@ export function PlanQ2({ quarter, candidates, brief = null }: { quarter: Quarter
             onPick={(month, isbn) => {
               const next = picks.map((p, m) => (m === month ? isbn : p));
               setPicks(next);
-              track("plan_pick_changed", { month: MONTHS[month]!, picked: isbn !== null, picks: next.filter(Boolean).length });
+              track("plan_pick_changed", {
+                month: MONTHS[month]!,
+                picked: isbn !== null,
+                picks: next.filter(Boolean).length,
+              });
             }}
             onRefused={(month) => track("plan_pick_refused", { month: MONTHS[month]! })}
           />
@@ -103,13 +127,25 @@ export function PlanQ2({ quarter, candidates, brief = null }: { quarter: Quarter
               {Q2.moreLabel}
             </p>
             {plan.moves.map((m, i) => (
-              <MoveCard key={m.id} move={m} number={i + 1} selected={lever === m.id} onToggle={() => toggle(m.id)} line={line} />
+              <MoveCard
+                key={m.id}
+                move={m}
+                number={i + 1}
+                selected={lever === m.id}
+                onToggle={() => toggle(m.id)}
+                line={line}
+              />
             ))}
           </div>
         </div>
         <div className={styles.formFoot}>
           <div className={styles.formNotes}>
-            <p id="moves-status" className={styles.movesStatus} role="status" data-warning={tooMany || undefined}>
+            <p
+              id="moves-status"
+              className={styles.movesStatus}
+              role="status"
+              data-warning={tooMany || undefined}
+            >
               {tooMany ? Q2.tooMany : holding ? Q2.holdCourse : ""}
             </p>
             {refused ? (
@@ -144,7 +180,12 @@ export function PlanQ2({ quarter, candidates, brief = null }: { quarter: Quarter
         </div>
       </fieldset>
       {step === "confirm" && (
-        <div className={styles.confirm} role="alertdialog" aria-labelledby="confirm-text" aria-describedby="confirm-moves">
+        <div
+          className={styles.confirm}
+          role="alertdialog"
+          aria-labelledby="confirm-text"
+          aria-describedby="confirm-moves"
+        >
           {/* The plan being committed, named: each month's pick and the other move, or holding course. */}
           <ul id="confirm-moves" className={styles.confirmMoves}>
             {holding ? (
@@ -175,12 +216,19 @@ export function PlanQ2({ quarter, candidates, brief = null }: { quarter: Quarter
               autoFocus
               onClick={() => {
                 setStep("playing");
-                fetcher.submit({ picks: picks.map((p) => p ?? "").join(","), levers: lever ?? "", quarter }, { method: "post" });
+                fetcher.submit(
+                  { picks: picks.map((p) => p ?? "").join(","), levers: lever ?? "", quarter },
+                  { method: "post" },
+                );
               }}
             >
               {COPY.confirmSubmit}
             </button>
-            <Link to="/investigate" className={styles.secondary} onClick={() => track("plan_keep_investigating", planProps(picks, lever))}>
+            <Link
+              to="/investigate"
+              className={styles.secondary}
+              onClick={() => track("plan_keep_investigating", planProps(picks, lever))}
+            >
               {COPY.keepInvestigating}
             </Link>
           </div>
@@ -188,7 +236,10 @@ export function PlanQ2({ quarter, candidates, brief = null }: { quarter: Quarter
       )}
       {step === "playing" && (
         <div className={styles.cover}>
-          <PlayOut lines={plan.playing} done={fetcher.state === "idle" && fetcher.data?.ok === true} />
+          <PlayOut
+            lines={plan.playing}
+            done={fetcher.state === "idle" && fetcher.data?.ok === true}
+          />
         </div>
       )}
     </div>

@@ -52,13 +52,21 @@ export const DECIDE_COPY = {
       boss: "culture",
       teaser: "AUTHORS MAY BE INVITED.",
       line: "AUTHORS MAY BE INVITED. AUTHORS REQUIRE A SHUTTLE FARE. CULTURE IS EXPENSIVE. PLEASE PURCHASE SOME ANYWAY.",
-      facts: ["An author night costs ", { strong: "$200" }, ": the author's shuttle fare and the room."],
+      facts: [
+        "An author night costs ",
+        { strong: "$200" },
+        ": the author's shuttle fare and the room.",
+      ],
     },
     {
       boss: "happiness",
       teaser: "THE PREVIOUS MANAGER LEFT A SCHEDULE.",
       line: "THE PREVIOUS MANAGER LEFT A SCHEDULE. THE PREVIOUS MANAGER ALSO LEFT. WE ASSUME THEY COULD NOT TURN LEFT.",
-      facts: ["Already scheduled, Book of the Month at ", { strong: "15% off" }, " for the whole month:"],
+      facts: [
+        "Already scheduled, Book of the Month at ",
+        { strong: "15% off" },
+        " for the whole month:",
+      ],
       picks: true,
     },
     {
@@ -87,7 +95,11 @@ export const DECIDE_COPY = {
     footer: "Two moves maximum. Filed requisitions are final.",
   },
   /** Under the moves heading: the rule the choice turns on, so no closed bubble hides it. */
-  rule: ["Your score is your ", { strong: "lowest measure" }, ": Profit, Readers served, Happiness or Culture."] as FactLine,
+  rule: [
+    "Your score is your ",
+    { strong: "lowest measure" },
+    ": Profit, Readers served, Happiness or Culture.",
+  ] as FactLine,
   holdCourse: "Hold course: the schedule runs as it is.",
   tooMany: "You can choose up to two moves.",
   submit: "Submit plan",
@@ -101,13 +113,28 @@ export const DECIDE_COPY = {
 } as const;
 
 /** The moves, in LEVER_IDS order. */
-export const MOVES: { id: LeverId; title: string; line: string; /** A key figure kept on the title line, so the line's clamp never hides it. */ figure?: string }[] = [
+export const MOVES: {
+  id: LeverId;
+  title: string;
+  line: string;
+  /** A key figure kept on the title line, so the line's clamp never hides it. */ figure?: string;
+}[] = [
   {
     id: "repick",
     title: "Re-pick Book of the Month",
     figure: "3 hardcovers",
     line: "Feature Kalakalal Avenue (January), Can I Be Honest? (February) and Who Did You Think You Were Kidding? (March), all in hardcover, instead of the scheduled picks (The Mallemaroking, Rystwyth and Portmeirion).",
   },
-  { id: "events", title: "Weekday author nights", figure: "$200 a night", line: "Host 12 author nights, one each week on a Tuesday, Wednesday or Thursday, at $200 each." },
-  { id: "sale", title: "Station-wide sale", figure: "15% off", line: "15% off every book, all quarter. The Book of the Month runs at the same 15%." },
+  {
+    id: "events",
+    title: "Weekday author nights",
+    figure: "$200 a night",
+    line: "Host 12 author nights, one each week on a Tuesday, Wednesday or Thursday, at $200 each.",
+  },
+  {
+    id: "sale",
+    title: "Station-wide sale",
+    figure: "15% off",
+    line: "15% off every book, all quarter. The Book of the Month runs at the same 15%.",
+  },
 ];

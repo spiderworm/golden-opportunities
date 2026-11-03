@@ -6,12 +6,19 @@ import type { EChartsCoreOption } from "echarts/core";
 import { QUERY_LIMITS, type Dimension, type QueryResult } from "~/query/types";
 import { chartTheme, tooltipStyle } from "~/platform/charts/chart-theme";
 import { escapeHtml } from "~/platform/charts/escape";
-import { formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS, WHOLE_TICKS } from "../format";
+import {
+  formatDimensionShort,
+  formatDimensionValue,
+  formatMeasure,
+  MEASURE_LABELS,
+  WHOLE_TICKS,
+} from "../format";
 import { isTotal, MEASURE_UNITS, type ChartMeasure } from "../state";
 import { categoryModel, TOP_RANKED, type CategoryModel } from "./category-chart";
 
 /** Each measure's color, by its place in the chart: the validated categorical slots, in order. */
-export const measureColor = (index: number) => chartTheme.categorical[index % chartTheme.categorical.length]!;
+export const measureColor = (index: number) =>
+  chartTheme.categorical[index % chartTheme.categorical.length]!;
 
 export interface MeasuresModel {
   x: Dimension;
@@ -51,7 +58,12 @@ export function measuresModel(
       return at < 0 ? absent : (model.series[0]!.values[at] ?? null);
     });
   };
-  const series = measures.map((measure, i) => ({ measure, color: measureColor(i), axis: axisOf(measure), values: valuesFor(i) }));
+  const series = measures.map((measure, i) => ({
+    measure,
+    color: measureColor(i),
+    axis: axisOf(measure),
+    values: valuesFor(i),
+  }));
   return {
     x,
     categories: first.categories,
@@ -69,7 +81,10 @@ export function measuresModel(
 /** The chart for several measures; `hidden` measures (turned off in the legend) aren't drawn, and their axes stay. */
 export function measuresOption(
   model: MeasuresModel,
-  { selected = [], hidden = [] }: { selected?: readonly string[]; hidden?: readonly ChartMeasure[] } = {},
+  {
+    selected = [],
+    hidden = [],
+  }: { selected?: readonly string[]; hidden?: readonly ChartMeasure[] } = {},
 ): EChartsCoreOption {
   const anySelected = selected.length > 0;
   const isSelected = (i: number) => selected.includes(model.categories[i] ?? "");
@@ -78,7 +93,13 @@ export function measuresOption(
 
   const categoryAxis = {
     type: "category",
-    data: model.categories.map((c) => formatDimensionShort(model.x, c, model.categories.filter((k): k is string => k !== null))),
+    data: model.categories.map((c) =>
+      formatDimensionShort(
+        model.x,
+        c,
+        model.categories.filter((k): k is string => k !== null),
+      ),
+    ),
     inverse: horizontal,
     boundaryGap: model.kind === "bar",
     axisLine: { lineStyle: { color: chartTheme.axis } },
@@ -106,7 +127,11 @@ export function measuresOption(
     alignTicks: true,
     ...(axis.measures.every((m) => WHOLE_TICKS.includes(m)) ? { minInterval: 1 } : {}),
     axisLine: { show: true, lineStyle: { color: axis.color, width: 2 } },
-    axisLabel: { color: axis.color, fontSize: 12, formatter: (v: number) => formatMeasure(axis.measures[0]!, v, { compact: true }) },
+    axisLabel: {
+      color: axis.color,
+      fontSize: 12,
+      formatter: (v: number) => formatMeasure(axis.measures[0]!, v, { compact: true }),
+    },
     splitLine: { show: k === 0, lineStyle: { color: chartTheme.grid, width: 1, type: "solid" } },
   }));
 
@@ -118,7 +143,13 @@ export function measuresOption(
     grid: horizontal
       ? { left: 8, right: 24, top: model.axes.length > 1 ? 44 : 16, bottom: 36, containLabel: true }
       : // containLabel leaves room for the tick labels, not an axis's name: room for the second axis's, on the right.
-        { left: 24, right: model.axes.length > 1 ? 40 : 16, top: 16, bottom: 4, containLabel: true },
+        {
+          left: 24,
+          right: model.axes.length > 1 ? 40 : 16,
+          top: 16,
+          bottom: 4,
+          containLabel: true,
+        },
     tooltip: {
       ...tooltipStyle,
       trigger: "axis",
@@ -126,7 +157,9 @@ export function measuresOption(
         model.kind === "line"
           ? { type: "line", lineStyle: { color: chartTheme.axis, width: 1 } }
           : { type: "shadow", shadowStyle: { color: "rgb(143 132 255 / 0.08)" } },
-      formatter: (params: { dataIndex: number; seriesIndex: number; value: number | null; color: string }[]) => {
+      formatter: (
+        params: { dataIndex: number; seriesIndex: number; value: number | null; color: string }[],
+      ) => {
         const at = params[0];
         if (!at) return "";
         const heading = escapeHtml(formatDimensionValue(model.x, model.categories[at.dataIndex]));
@@ -135,7 +168,8 @@ export function measuresOption(
           const key = `<span style="display:inline-block;width:10px;height:2px;margin-right:8px;vertical-align:middle;background:${m.color}"></span><span style="color:${chartTheme.textMuted}">${escapeHtml(MEASURE_LABELS[m.measure])}</span>`;
           return `<div style="display:flex;justify-content:space-between;gap:16px"><span>${key}</span><strong>${escapeHtml(formatMeasure(m.measure, p.value))}</strong></div>`;
         });
-        const hint = anySelected && isSelected(at.dataIndex) ? "Click to clear" : "Click to look closer";
+        const hint =
+          anySelected && isSelected(at.dataIndex) ? "Click to clear" : "Click to look closer";
         return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${heading}</div>${lines.join("")}<div style="font-size:11px;color:${chartTheme.textSubtle};margin-top:6px">${hint}</div>`;
       },
     },
@@ -166,7 +200,10 @@ export function measuresOption(
         barCategoryGap: "28%",
         itemStyle: { color: m.color, borderRadius: horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0] },
         emphasis: { focus: "none", itemStyle: { color: m.color } },
-        data: m.values.map((value, i) => ({ value, itemStyle: { color: anySelected && !isSelected(i) ? chartTheme.dimmed : m.color } })),
+        data: m.values.map((value, i) => ({
+          value,
+          itemStyle: { color: anySelected && !isSelected(i) ? chartTheme.dimmed : m.color },
+        })),
       };
     }),
   };
@@ -177,7 +214,10 @@ export function measuresTable(model: MeasuresModel, results: readonly QueryResul
   const dimension = results[0]!.columns[0]!;
   return {
     columns: [dimension, ...model.measures.map((m, i) => results[i]!.columns.at(-1)!)],
-    rows: model.categories.map((c, row) => ({ [model.x]: c, ...Object.fromEntries(model.measures.map((m) => [m.measure, m.values[row] ?? null])) })),
+    rows: model.categories.map((c, row) => ({
+      [model.x]: c,
+      ...Object.fromEntries(model.measures.map((m) => [m.measure, m.values[row] ?? null])),
+    })),
     total: null,
     source: results.map((r) => r.source).join(" "),
   };

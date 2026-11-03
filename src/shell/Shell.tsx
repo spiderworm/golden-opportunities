@@ -30,7 +30,12 @@ export interface ShellProps {
    * The Commerce Office's standing order for the quarter being planned: its transmission plays once, on
    * first arrival at the station, and its strip stays until the plan is in. Q1's memo unless `quarter` says Q2.
    */
-  standingOrder?: { seen: boolean; submitted: boolean; quarter?: QuarterId | null; memo?: AlertCopy | null };
+  standingOrder?: {
+    seen: boolean;
+    submitted: boolean;
+    quarter?: QuarterId | null;
+    memo?: AlertCopy | null;
+  };
   /** Q1's report card, which Q2's memo quotes. */
   q1?: FirstQuarter | null;
   /** Records that the transmission was seen, opened or put off, so it doesn't play again; settles once the shell has reloaded. */
@@ -39,20 +44,37 @@ export interface ShellProps {
   children: ReactNode;
 }
 
-export function Shell({ stationDate, notifications, standingOrder, q1, onAlertSeen, track, children }: ShellProps) {
+export function Shell({
+  stationDate,
+  notifications,
+  standingOrder,
+  q1,
+  onAlertSeen,
+  track,
+  children,
+}: ShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const musicLayer = useRef<HTMLDivElement>(null);
   const title = usePageTitle();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const matches = useMatches();
-  const stripHidden = matches.some((m) => (m.handle as ShellHandle | undefined)?.standingOrder === false);
+  const stripHidden = matches.some(
+    (m) => (m.handle as ShellHandle | undefined)?.standingOrder === false,
+  );
   const bleed = matches.some((m) => (m.handle as ShellHandle | undefined)?.bleed);
   const [memoOpen, setMemoOpen] = useState(false);
   // Each quarter's memo (q2.md section 2): Q2's quotes Q1's report card, so it waits for it.
   const quarter = standingOrder?.quarter ?? "2194-Q1";
   // From Q3 the server builds each quarter's memo from Alma's record (later-memo.server.ts); null until it's saved.
-  const copy = standingOrder?.memo !== undefined ? standingOrder.memo : quarter === "2194-Q2" ? (q1 ? q2AlertCopy(q1) : null) : ALERT_COPY;
+  const copy =
+    standingOrder?.memo !== undefined
+      ? standingOrder.memo
+      : quarter === "2194-Q2"
+        ? q1
+          ? q2AlertCopy(q1)
+          : null
+        : ALERT_COPY;
   // Once per quarter per visit at most, even if recording it failed; the save keeps it to once per game.
   const arrived = useRef<string | null>(null);
   const pending = standingOrder && !standingOrder.submitted && copy !== null;
@@ -74,7 +96,15 @@ export function Shell({ stationDate, notifications, standingOrder, q1, onAlertSe
   // before the save changed, and leave the bell unread (WebKit did, in the M1 e2e).
   function openLedgers(event: MouseEvent<HTMLAnchorElement>) {
     const saving = closeMemo("open");
-    if (!saving || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (
+      !saving ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
     event.preventDefault();
     void saving.finally(() => navigate("/investigate"));
   }
@@ -123,7 +153,9 @@ export function Shell({ stationDate, notifications, standingOrder, q1, onAlertSe
                     <NavLink
                       to={item.to}
                       end
-                      className={({ isActive }) => (isActive ? `${styles.menuItem} ${styles.active}` : styles.menuItem)}
+                      className={({ isActive }) =>
+                        isActive ? `${styles.menuItem} ${styles.active}` : styles.menuItem
+                      }
                       title={collapsed ? item.label : undefined}
                       onClick={() => track("nav_selected", { item: item.label })}
                     >
@@ -173,7 +205,14 @@ export function Shell({ stationDate, notifications, standingOrder, q1, onAlertSe
           />
         )}
         <main className={styles.content}>{children}</main>
-        {standingOrder && copy && <Transmission open={memoOpen} copy={copy.transmission} onOpenLedgers={openLedgers} onLater={() => void closeMemo("later")} />}
+        {standingOrder && copy && (
+          <Transmission
+            open={memoOpen}
+            copy={copy.transmission}
+            onOpenLedgers={openLedgers}
+            onLater={() => void closeMemo("later")}
+          />
+        )}
       </div>
     </div>
   );
