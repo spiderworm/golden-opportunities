@@ -141,6 +141,11 @@ test("M1: discover, choose two moves, play; a separate save holds course with hi
     collectPageErrors(second, baseURL!, errors);
     await second.goto("/result?analytics-test=1");
     await expect(second).toHaveURL(/\/decide/); // first player's committed plan is not shared
+    // Decide's reports panel loads the /reports route (its module and its data) as it opens. Leaving before that
+    // settles aborts the module's import, and React Router answers a failed route import by reloading the page
+    // (loadRouteModule): in WebKit, that reload of /decide interrupts the next goto (measured: 2 of 3 runs). The
+    // panel's button shows once both have loaded.
+    await expect(second.getByRole("button", { name: "No reports yet" })).toBeVisible();
     const id = (await page.context().cookies()).find((c) =>
       c.name.startsWith("orbital_save_"),
     )?.value;
