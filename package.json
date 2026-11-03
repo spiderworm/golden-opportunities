@@ -11,6 +11,8 @@
     "test": "vitest run",
     "data:bookshop": "node tools/convert-bookshop.ts",
     "data:sample": "node tools/sample-data.ts",
+    "close": "tools/close.sh",
+    "open": "tools/open.sh",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
