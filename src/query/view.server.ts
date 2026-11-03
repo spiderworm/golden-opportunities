@@ -1,5 +1,6 @@
 import { QueryError } from "./errors";
 import { isRecord } from "./validate";
+import { EVENT_KINDS, MAX_VIEW_EVENTS } from "./events";
 import type { QueryView } from "./types";
 
 export const BASELINE_VIEW: QueryView = Object.freeze({
@@ -38,7 +39,14 @@ export function validateView(view: QueryView): void {
     !isRecord(view) ||
     Object.keys(view).some(
       (key) =>
-        !["periods", "includeUndated", "simulatedSales", "simulatedCells", "version"].includes(key),
+        ![
+          "periods",
+          "includeUndated",
+          "simulatedSales",
+          "simulatedCells",
+          "version",
+          "events",
+        ].includes(key),
     ) ||
     !Array.isArray(view.periods) ||
     view.periods.length > MAX_VIEW_PERIODS ||
@@ -57,6 +65,17 @@ export function validateView(view: QueryView): void {
         !Array.isArray(view.simulatedCells.spanningLines) ||
         view.simulatedCells.spanningLines.length !== view.simulatedCells.spanning.length ||
         view.simulatedCells.cells.length > MAX_SIMULATED_CELLS)) ||
+    (view.events !== undefined &&
+      (!Array.isArray(view.events) ||
+        view.events.length > MAX_VIEW_EVENTS ||
+        !view.events.every(
+          (e) =>
+            isRecord(e) &&
+            typeof e.date === "string" &&
+            /^\d{4}-\d{2}-\d{2}$/.test(e.date) &&
+            (EVENT_KINDS as readonly unknown[]).includes(e.kind) &&
+            typeof e.label === "string",
+        ))) ||
     (view.version !== undefined &&
       (typeof view.version !== "string" || !/^[0-9a-f]{16}$/.test(view.version)))
   ) {

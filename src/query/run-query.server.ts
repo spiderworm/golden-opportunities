@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { loadBookshop } from "../bookshop/loader.server";
 import type { DeepReadonly, JoinedBook, SaleLine } from "../bookshop/types";
 import { QueryError } from "./errors";
@@ -9,6 +10,7 @@ import { checkLabel, serializeResult } from "./result";
 import { PRICE_BANDS, QUERY_LIMITS } from "./types";
 import { rollUpSales, type SaleCells } from "./sale-cells";
 import { lastYearMissing, lastYearQuery, quartersCovered, yearEarlier } from "./last-year";
+import { byDate, EVENT_RANK, MAX_EVENTS, quarterOfDate, type ViewEvent } from "./events";
 import { evidenceUnit, type Evidence } from "./evidence";
 import type {
   Dimension,
@@ -139,7 +141,31 @@ function bookDimensions(book: DeepReadonly<JoinedBook> | null): Dimensions {
  * label adds the publication year.
  */
 const editionLabels = new Map<string, string>();
-function editionOf(sale: DeepReadonly<SaleLine>): string {
+/**
+ * An edition's dimensions, as a sale line of it has them (saleFact): its book's, its format, edition, price and
+ * publisher. An event about an edition (events.ts) carries these, so a query shows it where the edition's sales are.
+ */
+export function editionDimensions(
+  book: DeepReadonly<JoinedBook>,
+  isbn: string,
+  publisher: string,
+): Dimensions {
+  const edition = book.editions.find((e) => e.isbn === isbn);
+  if (!edition) throw new Error(`No edition ${isbn} of ${book.title}`);
+  return {
+    ...bookDimensions(book),
+    format: edition.format,
+    edition: editionOf({ isbn, format: edition.format, title: book.title, book }),
+    list_price: `$${edition.listPrice.toFixed(2)}`,
+    price_band: priceBand(edition.listPrice),
+    publisher,
+  };
+}
+function editionOf(
+  sale: Pick<DeepReadonly<SaleLine>, "isbn" | "format" | "title"> & {
+    book: Pick<DeepReadonly<JoinedBook>, "editions">;
+  },
+): string {
   let label = editionLabels.get(sale.isbn);
   if (label === undefined) {
     const edition = sale.book.editions.find((e) => e.isbn === sale.isbn);
@@ -610,6 +636,73 @@ function executeWithLastYear(query: Query, view: QueryView): QueryResult {
   };
 }
 
+/** Book and edition dimensions an event about an edition answers; a filter on any other one doesn't hide it. */
+const EVENT_DIMENSIONS: readonly Dimension[] = [
+  "genre",
+  "series",
+  "title",
+  "author",
+  "awarded",
+  "volume",
+  "in_series",
+  "format",
+  "edition",
+  "list_price",
+  "price_band",
+  "publisher",
+];
+
+/**
+ * The view's events a result over months or quarters marks (events.ts), with how many were left out. One is in
+ * scope when its quarter (and, for a day or month, its month) is one the query covers. One about an edition also
+ * needs the edition to pass the query's filters on its own dimensions, and, broken down by one of them as well, to
+ * be among the result's groups: the release shows on the whole shop and on Mystery, not on Romance. A shop-wide
+ * move shows everywhere it's in scope. Past MAX_EVENTS, the latest of the highest-ranked kinds are kept.
+ */
+function eventsFor(query: Query, view: QueryView, result: QueryResult): QueryResult["events"] {
+  if (!view.events?.length || !query.by.some((d) => d === "month" || d === "quarter"))
+    return undefined;
+  const quarters = new Set(quartersCovered(query, view.periods));
+  const months = query.filter?.month;
+  const filters = Object.entries(query.filter ?? {}) as [Dimension, readonly string[]][];
+  const grouped = query.by.filter((d) => EVENT_DIMENSIONS.includes(d));
+  const inScope = (event: ViewEvent) => {
+    if (!quarters.has(quarterOfDate(event.date))) return false;
+    if (months && event.precision !== "quarter" && !months.includes(event.date.slice(0, 7)))
+      return false;
+    if (!event.dimensions) return true;
+    const dims = event.dimensions;
+    return (
+      filters.every(([d, values]) =>
+        d === "award"
+          ? (event.awards ?? []).some((a) => values.includes(a))
+          : !EVENT_DIMENSIONS.includes(d) || (dims[d] != null && values.includes(dims[d]!)),
+      ) && grouped.every((d) => result.rows.some((row) => row[d] === dims[d]))
+    );
+  };
+  const relevant = view.events.filter(inScope);
+  const kept = [...relevant]
+    .sort((a, b) => EVENT_RANK[a.kind] - EVENT_RANK[b.kind] || b.date.localeCompare(a.date))
+    .slice(0, MAX_EVENTS)
+    .sort(byDate);
+  return {
+    list: kept.map(({ date, precision, kind, label }) => ({ date, precision, kind, label })),
+    hidden: relevant.length - kept.length,
+  };
+}
+
+/** A view's events as a short hash for the cache key, worked out once per list. */
+const eventHashes = new WeakMap<readonly ViewEvent[], string>();
+function eventsKey(events: readonly ViewEvent[] | undefined): string | null {
+  if (!events?.length) return null;
+  let hash = eventHashes.get(events);
+  if (!hash) {
+    hash = createHash("sha256").update(JSON.stringify(events)).digest("hex").slice(0, 16);
+    eventHashes.set(events, hash);
+  }
+  return hash;
+}
+
 /** Fixed grammar only. Visibility always comes from trusted server state. */
 export function runQuery(
   input: unknown,
@@ -632,11 +725,15 @@ export function runQuery(
             [...view.periods].sort(),
             view.includeUndated,
             view.version ?? null,
+            // The events a result marks come from the view too (events.ts).
+            eventsKey(view.events),
           ]);
     let result = key ? cached(key) : undefined;
     const cacheHit = result !== undefined;
     if (!result) {
       result = executeWithLastYear(query, view);
+      const events = eventsFor(query, view, result);
+      if (events) result = { ...result, events };
       const body = serializeResult(result);
       if (key) remember(key, result, body.length + key.length);
     }
