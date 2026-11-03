@@ -28,7 +28,8 @@
   .assistant {
     position: sticky;
     top: 20px;
-    width: var(--dewey-width, 480px);
+    /* Never past half the window, even with a width kept from a wider one (Chart, #308). */
+    width: min(var(--dewey-width, 480px), 50vw);
   }
 
   .assistant [data-dewey-resize] {

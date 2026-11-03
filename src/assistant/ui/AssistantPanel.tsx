@@ -710,7 +710,13 @@ const styles = {
     fontFamily: "var(--font-body)",
   },
   // Room at the right for the column's fold button (DeweyColumn).
-  header: { display: "flex", alignItems: "baseline", gap: 8, paddingRight: 36 },
+  header: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "baseline",
+    gap: "4px 8px",
+    paddingRight: 36,
+  },
   offline: {
     display: "flex",
     flexDirection: "column",
@@ -729,6 +735,8 @@ const styles = {
     borderRadius: "var(--radius-control)",
     cursor: "pointer",
     fontSize: 12,
+    // One line: at the column's narrowest the header wraps round it instead (Chart, #308).
+    whiteSpace: "nowrap",
   },
   muted: { color: "var(--color-text-muted)", margin: 0, fontSize: 13 },
   chartTitle: { fontSize: 13, fontWeight: 600 },
