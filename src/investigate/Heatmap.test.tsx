@@ -38,13 +38,14 @@ describe("the heatmap (David: \"the same level of customization that we've given
     expect(model.cells.find(([x, y]) => x === 1 && y === 0)![2]).toBeNull();
     const complete = heatModel({ ...result, truncated: false }, "units", "genre", heatAxis("genre", result, [], {}), "price_band", heatAxis("price_band", result, [], {}));
     expect(complete.cells.find(([x, y]) => x === 1 && y === 0)![2]).toBe(0);
-    const html = renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat }} result={cut} quarters={[]} onCell={() => {}} onHeat={() => {}} />);
+    const html = renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat }} result={cut} quarters={[]} onCell={() => {}} onHeat={() => {}} onPin={() => {}} pinned={false} />);
     expect(html).toContain("This grid is too large to show in full. Narrow it with a filter.");
     expect(html).toMatch(/data-cut="true"[^>]*aria-label="Fiction, \$10 to \$19\.99: Not shown: the grid was cut off\."/);
   });
 
   it("titles itself from its choices, offers its measure and axes, and labels every cell", () => {
-    const html = renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat }} result={result} quarters={[]} onCell={() => {}} onHeat={() => {}} />);
+    const html = renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat }} result={result} quarters={[]} onCell={() => {}} onHeat={() => {}} onPin={() => {}} pinned={false} />);
+    expect(html).toMatch(/title="Pin this heatmap below"/);
     expect(html).toMatch(/<h2[^>]*>Units sold by genre and price band<\/h2>/);
     expect(text(html)).toContain("Show Units sold");
     expect(text(html)).toContain("Rows Genre");
@@ -58,14 +59,14 @@ describe("the heatmap (David: \"the same level of customization that we've given
     const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
     const byQuarter = { ...heat, rows: "weekday" as const, cols: "quarter" as const };
     const html = renderToString(
-      <Heatmap state={{ ...DEFAULT_STATE, heat: byQuarter, filters: { weekday: ["Monday"], quarter: ["2193-Q2"] } }} result={result} quarters={quarters} onCell={() => {}} onHeat={() => {}} />,
+      <Heatmap state={{ ...DEFAULT_STATE, heat: byQuarter, filters: { weekday: ["Monday"], quarter: ["2193-Q2"] } }} result={result} quarters={quarters} onCell={() => {}} onHeat={() => {}} onPin={() => {}} pinned={false} />,
     );
     for (const q of ["Q1", "Q2", "Q3", "Q4"]) expect(html).toMatch(new RegExp(`role="columnheader"[^>]*>${q}<`));
   });
 
   it("offers its period only once the ledger holds more than eight quarters, and says so in its title (Plot, #264)", () => {
     const render = (quarters: string[], extra: Partial<typeof DEFAULT_STATE> = {}) =>
-      renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat, ...extra }} result={result} quarters={quarters} onCell={() => {}} onHeat={() => {}} />);
+      renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat, ...extra }} result={result} quarters={quarters} onCell={() => {}} onHeat={() => {}} onPin={() => {}} pinned={false} />);
     const four = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
     const ten = [...four, "2194-Q1", "2194-Q2", "2194-Q3", "2194-Q4", "2195-Q1", "2195-Q2"];
     expect(text(render(four))).not.toContain("Period");
@@ -82,7 +83,7 @@ describe("the heatmap (David: \"the same level of customization that we've given
     // Both set: the quarter wording.
     expect(text(render(ten, { filters: { month: ["2193-02"], quarter: ["2193-Q1"] } }))).toMatch(/Following the screen(&#x27;|')s quarter filter\./);
     // Cut off over every quarter of a long ledger: the note offers the window.
-    expect(text(renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat: { ...heat, period: "all" } }} result={{ ...result, truncated: true }} quarters={ten} onCell={() => {}} onHeat={() => {}} />))).toContain(
+    expect(text(renderToString(<Heatmap state={{ ...DEFAULT_STATE, heat: { ...heat, period: "all" } }} result={{ ...result, truncated: true }} quarters={ten} onCell={() => {}} onHeat={() => {}} onPin={() => {}} pinned={false} />))).toContain(
       "Narrow it with a filter, or choose Last eight quarters.",
     );
   });

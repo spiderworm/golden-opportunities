@@ -1,9 +1,9 @@
 // Pinned charts: what a pin holds, and checks for pins read back from storage.
 import { yearMonth } from "~/query/months";
 import { DIMENSIONS, MEASURES, QUERY_LIMITS, type Dimension, type Measure, type Query } from "~/query/types";
-import { CHART_MEASURES, fittingMeasures, MAX_MEASURES, type ChartMeasure } from "../state";
+import { CHART_MEASURES, fittingMeasures, HEAT_DIMENSIONS, MAX_MEASURES, type ChartMeasure } from "../state";
 
-export const CHART_PIN_KINDS = ["bar", "line", "table"] as const;
+export const CHART_PIN_KINDS = ["bar", "line", "table", "heatmap"] as const;
 export const PIN_KINDS = [...CHART_PIN_KINDS, "comparison"] as const;
 export type PinKind = (typeof PIN_KINDS)[number];
 
@@ -118,6 +118,11 @@ export function parsePinSpec(value: unknown): PinSpec | null {
   if (!only(value, ["title", "kind", "query", "also"]) || !CHART_PIN_KINDS.includes(value.kind as never)) return null;
   const query = parseQuery(value.query);
   if (!query) return null;
+  if (value.kind === "heatmap") {
+    // A heatmap is one measure down one of the grid's dimensions and across another (Investigate's HeatState).
+    const grid = query.by.length === 2 && query.by.every((d) => HEAT_DIMENSIONS.includes(d as never)) && CHART_MEASURES.includes(query.measure as never);
+    return grid && value.also === undefined ? { title: value.title, kind: "heatmap", query } : null;
+  }
   if (value.also === undefined) return { title: value.title, kind: value.kind as ChartPinSpec["kind"], query };
   const also = parseAlso(query.measure, value.also);
   if (!also) return null;

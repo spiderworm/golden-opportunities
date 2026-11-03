@@ -6,6 +6,15 @@ const spec = { title: "Revenue by quarter", kind: "bar", query: { measure: "reve
 const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
 describe("pin specs", () => {
+  it("keeps a heatmap: one measure down one grid dimension and across another", () => {
+    const heat = { title: "Units sold by genre and price band", kind: "heatmap", query: { measure: "units", by: ["genre", "price_band"], filter: { quarter: ["2193-Q4"] } } };
+    expect(parsePinSpec(copy(heat))).toEqual(heat);
+    expect(pinKey(heat as PinSpec)).not.toBe(pinKey({ ...heat, kind: "table" } as PinSpec));
+    for (const by of [["genre"], ["genre", "title"], ["genre", "genre"]]) expect(parsePinSpec({ ...copy(heat), query: { measure: "units", by } })).toBeNull();
+    expect(parsePinSpec({ ...copy(heat), query: { measure: "avg_rating", by: ["genre", "quarter"] } })).toBeNull();
+    expect(parsePinSpec({ ...copy(heat), also: ["orders"] })).toBeNull();
+  });
+
   it("keeps a chart's other measures only while they fit one chart, and tells such pins apart", () => {
     const two = { ...copy(spec), also: ["units"] };
     expect(parsePinSpec(two)).toEqual(two);
