@@ -1081,8 +1081,12 @@ describe("how much evidence is behind a figure, only by ref (David, 3 Nov 2026)"
       "Mystery's rating interval is {{e1.range}}.",
     ])
       expect(sayIn(sentence), sentence).toBe(WITHHELD);
-    // Their ordinary neighbours still pass.
+    // Their ordinary neighbours still pass, Audit's among them (#337).
     for (const sentence of [
+      "Certainly, here are the figures I've just looked up.",
+      "I trust the terminal to look things up.",
+      "Here is the variation across shelves.",
+      "There's plenty of time to look things up.",
       "Ask me about certain titles and I'll look them up.",
       "I looked up average rating by genre.",
       "Here are the figures I've just looked up.",

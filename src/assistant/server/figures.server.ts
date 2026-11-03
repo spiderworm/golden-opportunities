@@ -725,12 +725,14 @@ const EVIDENCE_WORDS = new RegExp(
     [
       // Noise, chance and significance.
       "noise|noisy|(?:in)?significan(?:t|tly|ce)|statistic(?:s|al|ally)?|flukes?|(?:by|random|pure) chance",
-      "random(?:ly|ness)?|variation|luck(?:y|ily)?|coincidences?|coincidental|blips?",
+      "random(?:ly|ness)?|(?:random|natural) variation|luck(?:y|ily)?|coincidences?|coincidental|blips?",
       // Whether a difference is real.
       "(?:real|clear|genuine|true|actual) differences?|(?:in)?conclusive(?:ly)?|robust(?:ly)?",
-      "certain(?:ly|ty)|for certain|(?:is|are|was|were|that's|it's) certain|definite(?:ly)?",
+      // Not a bare "certainly", "trust" or "variation", which open and fill ordinary sentences (Audit, #337).
+      "certainty|for certain|(?:is|are|was|were|that's|it's) certain|definite(?:ly)?",
       // How much data, and how far to trust it (Probe's red-team of #337).
-      "(?:small|tiny|large|big) samples?|sample sizes?|too few|handful|plenty of|trust(?:ed|worthy)?|solid(?:ly)?",
+      "(?:small|tiny|large|big) samples?|sample sizes?|too few|handful|plenty of (?:ratings|orders|data|sale lines|days)",
+      "trustworthy|(?:to|can|can't|cannot|could|couldn't) trust|be trusted|solid(?:ly)?",
       "(?:un)?reliabl[ey]|confidence|confident(?:ly)?|uncertain(?:ty)?|meaningful(?:ly)?|meaningless",
       // Ranges, said by the model rather than by {{a1.range}}.
       "margin of error|standard error|likely range|intervals?|error bars?|give or take|plus or minus",
