@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useFetcher, useNavigate } from "react-router";
 
+import { track } from "~/platform/analytics/analytics.client";
+
 import { quarterName } from "~/game/event-title";
 import { measureTexts, RESULT_COPY, scoreText, SERVICE_RECORD } from "~/result/copy";
 import { DECIDE_COPY as COPY, REPORTS_COPY } from "./copy";
@@ -24,7 +26,17 @@ interface Loaded {
 /** One report open in the panel: the player's, by id, or a shop report, by quarter. */
 export type Chosen = { type: "player"; id: string } | { type: "shop"; quarter: string } | null;
 
-export function DecideReports({ planStarted }: { planStarted: boolean }) {
+export function DecideReports({
+  planStarted,
+  quarter,
+  onRead,
+}: {
+  planStarted: boolean;
+  /** The quarter being planned, for the panel's events. */
+  quarter: string;
+  /** A report was chosen in the panel: its key, so the form can count the reports read before submitting. */
+  onRead: (key: string) => void;
+}) {
   const data = useFetcher<Loaded>();
   useEffect(() => {
     if (data.state === "idle" && !data.data) void data.load("/reports");
@@ -33,7 +45,17 @@ export function DecideReports({ planStarted }: { planStarted: boolean }) {
   const [asking, setAsking] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
-  const toReports = () => (planStarted ? setAsking(true) : void navigate("/reports"));
+  // The control that asked, so Stay returns focus to it (Audit, #286).
+  const askedFrom = useRef<HTMLElement | null>(null);
+  const toReports = () => {
+    if (!planStarted) return void navigate("/reports");
+    askedFrom.current = document.activeElement as HTMLElement | null;
+    setAsking(true);
+  };
+  const stay = () => {
+    setAsking(false);
+    askedFrom.current?.focus();
+  };
 
   if (!data.data) return null;
   const { player, reports, quarters } = data.data;
@@ -45,7 +67,15 @@ export function DecideReports({ planStarted }: { planStarted: boolean }) {
           type="button"
           className={styles.decideButton}
           aria-expanded={open}
-          onClick={() => setOpen(!open)}
+          onClick={() => {
+            if (!open)
+              track("plan_reports_opened", {
+                quarter,
+                playerReports: player.length,
+                shopReports: reports.length,
+              });
+            setOpen(!open);
+          }}
         >
           {COPY.button(player.length)}
         </button>
@@ -67,12 +97,26 @@ export function DecideReports({ planStarted }: { planStarted: boolean }) {
               button.current?.focus();
             }}
             onEdit={toReports}
+            onRead={(chosen, charts) => {
+              track("plan_report_read", { quarter, type: chosen.type, charts });
+              onRead(chosen.type === "player" ? `player:${chosen.id}` : `shop:${chosen.quarter}`);
+            }}
           />,
           document.body,
         )}
       {asking &&
         createPortal(
-          <div role="alertdialog" aria-labelledby="leave-decide" className={styles.decideAsk}>
+          <div
+            role="alertdialog"
+            aria-labelledby="leave-decide"
+            className={styles.decideAsk}
+            onKeyDown={(e) => {
+              // Escape is Stay, and stops here: not the panel's, nor Decide's own (Audit and Orbit, #286).
+              if (e.key !== "Escape") return;
+              e.stopPropagation();
+              stay();
+            }}
+          >
             <p id="leave-decide">{COPY.leave.question}</p>
             <div className={styles.actions}>
               <button
@@ -82,7 +126,7 @@ export function DecideReports({ planStarted }: { planStarted: boolean }) {
               >
                 {COPY.leave.go}
               </button>
-              <button type="button" autoFocus onClick={() => setAsking(false)}>
+              <button type="button" autoFocus onClick={stay}>
                 {COPY.leave.stay}
               </button>
             </div>
@@ -100,6 +144,7 @@ export function Panel({
   quarters,
   onClose,
   onEdit,
+  onRead = () => {},
   initial = null,
 }: {
   player: PlayerReport[];
@@ -107,9 +152,19 @@ export function Panel({
   quarters: string[];
   onClose: () => void;
   onEdit: () => void;
+  /** A report was chosen to read, with its number of charts (a shop report has none). */
+  onRead?: (chosen: NonNullable<Chosen>, charts: number) => void;
   initial?: Chosen;
 }) {
-  const [chosen, setChosen] = useState<Chosen>(initial);
+  const [chosen, setChosenState] = useState<Chosen>(initial);
+  const setChosen = (next: Chosen) => {
+    setChosenState(next);
+    if (next)
+      onRead(
+        next,
+        next.type === "player" ? (player.find((r) => r.id === next.id)?.items.length ?? 0) : 0,
+      );
+  };
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), [chosen]);
   // Escape closes the panel here, and stops: Decide's own Escape (a pinned move's line) waits for the next press.

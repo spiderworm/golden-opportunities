@@ -14,7 +14,15 @@ import { pinKey, type PinSpec } from "~/investigate/pins/spec";
 import { usePins } from "~/investigate/pins/usePins";
 import { track } from "~/platform/analytics/analytics.client";
 import { PLAYER_COPY as COPY } from "./copy";
-import { checkReport, REPORT_LIMITS, type PlayerReport, type RefusalReason } from "./player";
+import {
+  checkReport,
+  editCounts,
+  REPORT_LIMITS,
+  reportCounts,
+  type PlayerReport,
+  type RefusalReason,
+  type ReportInput,
+} from "./player";
 import styles from "./Reports.module.css";
 
 // The player's own reports (docs/design/reports.md section 3): a list, one report open to read, or the editor. Where
@@ -166,7 +174,11 @@ export function ReportCharts({
         >
           <h4 className={styles.cardTitle}>{item.spec.title}</h4>
           {everyQuarter(item.spec) && <span className={styles.muted}>{COPY.everyQuarter}</span>}
-          <PinChart spec={item.spec} quarters={quarters} onError={() => {}} />
+          <PinChart
+            spec={item.spec}
+            quarters={quarters}
+            onError={(code) => track("report_chart_failed", { code })}
+          />
           {item.note && <p className={styles.note}>{item.note}</p>}
         </li>
       ))}
@@ -213,6 +225,7 @@ function DeleteReport({ report, onDeleted }: { report: PlayerReport; onDeleted?:
             onClick={() => {
               // Before the submission, so the editor's leave guard lets it go.
               onDeleted?.();
+              track("report_deleted", { charts: report.items.length });
               dialog.current?.close();
               void submit(
                 { intent: "delete", id: report.id },
@@ -266,17 +279,31 @@ function Editor({
   const changed = JSON.stringify(draft) !== JSON.stringify(initial);
   const blocker = useBlocker(() => changed && !leaving.current);
 
+  // What was sent, for the event once the save answers.
+  const sent = useRef<ReportInput | null>(null);
   useEffect(() => {
     if (fetcher.state !== "idle" || !fetcher.data) return;
     if (fetcher.data.ok) {
+      const saved = sent.current!;
+      if (report)
+        track("report_edited", { ...reportCounts(saved), ...editCounts(inputOf(initial), saved) });
+      else
+        track("report_created", { ...reportCounts(saved), from: add ? "investigate" : "reports" });
       leaving.current = true;
       void navigate(`/reports?report=${fetcher.data.id}`);
-    } else setError(REFUSED[fetcher.data.reason]);
+    } else {
+      if (fetcher.data.reason !== "busy") track("report_refused", { reason: fetcher.data.reason });
+      setError(REFUSED[fetcher.data.reason]);
+    }
   }, [fetcher.state, fetcher.data]);
 
   const save = () => {
     const checked = checkReport(inputOf(draft));
-    if (!checked.ok) return setError(REFUSED[checked.reason]);
+    if (!checked.ok) {
+      track("report_refused", { reason: checked.reason });
+      return setError(REFUSED[checked.reason]);
+    }
+    sent.current = checked.report;
     setError(null);
     void fetcher.submit(
       {
@@ -412,14 +439,29 @@ function Editor({
         <button type="submit" className={styles.primary} disabled={fetcher.state !== "idle"}>
           {COPY.save}
         </button>
-        <Link to={report ? `/reports?report=${report.id}` : "/reports"}>{COPY.cancel}</Link>
+        <Link
+          to={report ? `/reports?report=${report.id}` : "/reports"}
+          onClick={() => {
+            // Cancel puts it back: no guard, and the event says whether anything had changed.
+            leaving.current = true;
+            track("report_edit_cancelled", { changed });
+          }}
+        >
+          {COPY.cancel}
+        </Link>
         {report && <DeleteReport report={report} onDeleted={() => (leaving.current = true)} />}
       </div>
       {blocker.state === "blocked" && (
         <div role="alertdialog" aria-labelledby="leave-question" className={styles.inlineDialog}>
           <p id="leave-question">{COPY.leave.question}</p>
           <div className={styles.actions}>
-            <button type="button" onClick={() => blocker.proceed()}>
+            <button
+              type="button"
+              onClick={() => {
+                track("report_edit_cancelled", { changed: true });
+                blocker.proceed();
+              }}
+            >
               {COPY.leave.leave}
             </button>
             <button type="button" autoFocus onClick={() => blocker.reset()}>

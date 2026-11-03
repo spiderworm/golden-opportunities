@@ -90,6 +90,7 @@ interface PlayerReport {
 
 - **A chart in a report is a copy of the pin,** not a link to it. Unpinning a chart, or the board dropping it past its 8, leaves every report as it was.
 - **Each chart runs again when it's shown,** through `POST /api/query`, as pins do (`runPin`). Nothing a chart showed is stored. The 2193 data and played quarters never change, so a chart filtered to a quarter shows the same thing every time. A chart over every quarter grows as quarters are played; its caption says so: `Every quarter played so far`.
+- **A report's charts count as evidence exactly as the same pin does on the board,** on Reports as in Decide (section 4): each runs through `/api/query` when shown, so opening a report can record evidence just as the board can (Orbit, on #284). A heatmap stays context, as a pinned heatmap is.
 - **The limit is 12 reports** (*tune*). At 12, `New report` explains why it's off: `You have 12 reports. Delete one to start another.`.
 
 ### How it's made
@@ -140,7 +141,7 @@ Every event says what happened, never content: no titles, summaries, notes or ch
 | `report_edited` | an edit is saved | `charts`, `notes`, `summary`, `renamed` (bool), `added`, `removed`, `moved` (counts) |
 | `report_edit_cancelled` | `Cancel`, or leaving with unsaved changes | `changed` (bool) |
 | `report_deleted` | a report is deleted | `charts` |
-| `report_refused` | save refused | `reason`: `full`, `limit`, `no_title`, `no_charts`, `invalid` |
+| `report_refused` | save refused | `reason`: `full`, `limit`, `no_title`, `no_charts`, `invalid` (a busy save isn't a refusal: the editor keeps the draft and asks to save again) |
 | `report_chart_failed` | a report's chart can't run | `code`, as `investigate_pin_failed` has it |
 | `investigate_pin_reported` | `Add to report` on a pin | `kind`, `pinnedBy`, `to`: `existing` or `new` |
 | `plan_reports_opened` | Decide's panel opens | `quarter`, `playerReports`, `shopReports` |

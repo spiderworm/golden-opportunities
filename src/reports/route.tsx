@@ -1,9 +1,12 @@
+import { useEffect } from "react";
 import { data, Form, redirect, useFetcher } from "react-router";
 
 import { markReportSeen, writeReports } from "~/game/game.server";
 import { removedQuarter } from "~/game/progress";
 import { isQuarterId } from "~/game/quarters";
 import { getGameSession } from "~/game/session.server";
+import { track } from "~/platform/analytics/analytics.client";
+import { trackServer } from "~/platform/analytics/analytics.server";
 import { EChart } from "~/platform/charts/EChart";
 import {
   eventTitle,
@@ -21,6 +24,7 @@ import { MEASURE_IDS, type MeasureId } from "~/simulation/types";
 import type { Route } from "./+types/route";
 import { greeting, REPORTS_COPY as COPY } from "./copy";
 import { overallOption } from "./overall-chart";
+import { reportCounts } from "./player";
 import { applyReportChange, changeFrom, type ReportOutcome } from "./player.server";
 import { PlayerReports, NewReportButton } from "./PlayerReports";
 import { shopReports, type ShopReport } from "./shop.server";
@@ -84,6 +88,7 @@ function reportAction(request: Request, form: FormData) {
       outcome = applyReportChange(save, change, () => crypto.randomUUID());
       return outcome.ok ? outcome.reports : null;
     });
+    reportEvent(change.intent, outcome as ReportOutcome);
   } catch (error) {
     // A busy or changed save (409): the editor keeps the draft and asks to save again, rather than the page going
     // to its error screen and losing it (Orbit, #284). Anything else is a real refusal.
@@ -96,11 +101,36 @@ function reportAction(request: Request, form: FormData) {
     : data({ ok: false as const, reason: done.reason }, { status: 400 });
 }
 
+/** Server side too, so a refusal the browser didn't see is still counted (section 5). Counts only, never words. */
+function reportEvent(intent: string, written: ReportOutcome) {
+  try {
+    if (!written.ok) trackServer("game_report_refused", { intent, reason: written.reason });
+    else {
+      const report = written.reports.find((r) => r.id === written.id);
+      trackServer("game_report_saved", {
+        intent,
+        reports: written.reports.length,
+        ...(report ? reportCounts(report) : {}),
+      });
+    }
+  } catch {
+    /* A transport failure can't undo a saved report. */
+  }
+}
+
 const measureName = (id: MeasureId) => RESULT_COPY.reportCard.measures[id];
 
 export default function Reports({ loaderData }: Route.ComponentProps) {
   const { reports, record, removedAt, player, editable, quarters } = loaderData;
   const newReports = reports.filter((r) => r.new).length;
+  // Once per visit to the page, with what it showed: counts only.
+  useEffect(() => {
+    track("reports_viewed", {
+      shopReports: reports.length,
+      newShopReports: newReports,
+      playerReports: player.length,
+    });
+  }, []);
   const latest = reports[0];
   return (
     <div className={styles.page}>
@@ -218,7 +248,9 @@ function ShopReportCard({ report: r }: { report: ShopReport }) {
     <details
       className={styles.card}
       onToggle={(e) => {
-        if (e.currentTarget.open && r.new && seen.state === "idle" && !seen.data)
+        if (!e.currentTarget.open) return;
+        track("report_shop_opened", { quarter: r.quarter, new: r.new, via: "card" });
+        if (r.new && seen.state === "idle" && !seen.data)
           void seen.submit({ quarter: r.quarter }, { method: "post", action: "/reports" });
       }}
     >
@@ -287,7 +319,13 @@ function ShopReportCard({ report: r }: { report: ShopReport }) {
           )}
         </dd>
       </dl>
-      <Form method="post" action="/reports">
+      <Form
+        method="post"
+        action="/reports"
+        onSubmit={() =>
+          track("report_shop_opened", { quarter: r.quarter, new: r.new, via: "results" })
+        }
+      >
         <input type="hidden" name="quarter" value={r.quarter} />
         <button type="submit" name="intent" value="results" className={styles.linkButton}>
           {COPY.fullResults}
