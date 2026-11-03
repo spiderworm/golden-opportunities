@@ -26,6 +26,6 @@ David's take-home for Golden Analytics. Read `docs/requirements.md` first: it sa
 - **Keep `docs/collaboration-log.md` current.** Add an entry when David makes a major decision, and especially when he pushes back on or overrides an agent's recommendation. Quote his words.
 - **The README is David's to write.** Don't create or edit `README.md`.
 - **Formatting:** Prettier, 100 columns (David, 2 Nov 2026). Run `npm run format` before you commit; `npm run format:check` lists files that need it. It skips `packages/`, `docs/` and Markdown.
-- **Game text:** US English, no emoji.
+- **Game text:** US English, no emoji. One deliberate in-world exception: dates read year first, `2194 Apr 1` (David, 3 Nov 2026), through `src/platform/dates.ts`. Quarters stay `Q1 2194`.
 - **Headless browsers:** mute them (Web Audio to a zero gain node, media elements muted). Playwright's Chromium mutes itself; WebKit and Firefox don't.
 - **Commit before you show (David, 3 Nov 2026):** anything that loads in stages (a 3D scene, a 2D/3D swap, faces, the phone scene) shows nothing until it has chosen what to show and that is fully ready: models loaded, first frame drawn in its final state. Then it appears once. If that takes over 500 ms, show only a quiet `Loading…` (`useCommitment` and `LoadingLine`, #348). Never show a placeholder that is then swapped, never two versions at once, and a failure commits to the fallback the same way. Keep the space's size fixed. Measure a change like this before and after on cold loads.

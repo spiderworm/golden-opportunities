@@ -47,7 +47,7 @@ test("three strikes, and the panel removes the player at Q3 2194; Play again sta
       /You were removed after three quarters with an overall score under 70 in four: Q1 2194 \(\d+\), Q2 2194 \(\d+\) and Q3 2194 \(\d+\)\. You ran Orbital Books for 3 quarters, from Q1 2194 to Q3 2194\./,
     ),
   ).toBeVisible();
-  await expect(page.getByText("Removed by the panel, October 1, 2194.")).toBeVisible();
+  await expect(page.getByText("Removed by the panel, 2194 Oct 1.")).toBeVisible();
   await expect(page.getByRole("link", { name: /^Continue to/ })).toHaveCount(0);
 
   // No plan can be filed: Decide sends the player back to the results.
@@ -55,7 +55,7 @@ test("three strikes, and the panel removes the player at Q3 2194; Play again sta
   await page.goto("/decide?analytics-test=1");
   await expect(page).toHaveURL(/\/result(?:\?|$)/);
 
-  // Play again: a new save from January 1, with Q1's memo.
+  // Play again: a new save from 2194 Jan 1, with Q1's memo.
   const before = (await page.context().cookies()).find((c) =>
     c.name.startsWith("orbital_save_"),
   )?.value;
@@ -64,7 +64,7 @@ test("three strikes, and the panel removes the player at Q3 2194; Play again sta
   await expect(
     page.getByRole("dialog", { name: "Transmission from the Commerce Office" }),
   ).toContainText("THE NUMBERS HAVE GONE DOWN.");
-  await expect(page.locator("time")).toHaveText("1 Jan 2194");
+  await expect(page.locator("time")).toHaveText("2194 Jan 1");
   const after = (await page.context().cookies()).find((c) =>
     c.name.startsWith("orbital_save_"),
   )?.value;

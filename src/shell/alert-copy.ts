@@ -32,7 +32,7 @@ export const ALERT_COPY = {
     memoHeader: [
       "LARKSPUR STATION / COMMERCE OFFICE",
       "Quarterly review: Orbital Books, Ring C, Berth 14",
-      "January 1, 2194",
+      "2194 Jan 1",
     ],
     memo: [
       ["Fourth-quarter revenue: $161,525. Third quarter: $274,036. ", { strong: "Down 41%." }],
@@ -98,7 +98,7 @@ export function q2AlertCopy(q1: FirstQuarter): AlertCopy {
       memoHeader: [
         "LARKSPUR STATION / COMMERCE OFFICE",
         "Quarterly review: Orbital Books, Ring C, Berth 14",
-        "April 1, 2194",
+        "2194 Apr 1",
       ],
       memo: [
         // At 100 every measure met its goal, so none is lowest (Plot, #139).

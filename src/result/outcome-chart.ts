@@ -66,11 +66,11 @@ export function outcomeOption(series: OutcomeSeries): EChartsCoreOption {
           const ref = series.reference[i];
           const name =
             p.seriesName === referenceLabel && ref
-              ? `${monthName(ref.month)} ${series.referenceYear ?? "2193"}`
+              ? `${series.referenceYear ?? "2193"} ${monthName(ref.month)}`
               : p.seriesName;
           return `<div style="display:flex;justify-content:space-between;gap:16px"><span><span style="display:inline-block;width:10px;height:2px;margin-right:8px;vertical-align:middle;background:${p.color}"></span><span style="color:${chartTheme.textMuted}">${escapeHtml(name)}</span></span><strong>${escapeHtml(moneyText(p.value))}</strong></div>`;
         });
-        return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${escapeHtml(`${monthName(series.months[i] ?? "")} 2194`)}</div>${rows.join("")}`;
+        return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${escapeHtml(`2194 ${monthName(series.months[i] ?? "")}`)}</div>${rows.join("")}`;
       },
     },
     xAxis: {

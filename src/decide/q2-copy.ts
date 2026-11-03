@@ -4,6 +4,7 @@
 // rule line, the form's issuer and stamp, the confirm step) stays in copy.ts.
 import { quarterIndex, quarterMonths, quarterNumber, type QuarterId } from "~/simulation/quarters";
 import type { BossId } from "~/platform/bosses/bosses";
+import { stationSpan } from "~/platform/dates";
 import type { MeasureId, Q2LeverId } from "~/simulation/types";
 import { FORMAT_WORDS } from "~/simulation/words";
 import { DECIDE_COPY, MOVES, type BriefingBubble } from "./copy";
@@ -21,7 +22,7 @@ export const DECIDE_Q2_COPY = {
       line: "QUARTER TWO. IT IS LIKE QUARTER ONE, BUT TWO. MR. ZOOLANDER ALSO RETURNED FOR A SECOND ONE. IT WAS NECESSARY.",
       facts: [
         "Q2 runs ",
-        { strong: "April 1 to June 30, 2194" },
+        { strong: "2194 Apr 1 to Jun 30" },
         ". Your score is your ",
         { strong: "lowest measure" },
         ": Profit, Readers served, Happiness or Culture.",
@@ -240,7 +241,13 @@ function factsFor(
     case "overall":
       return [
         `${quarterName(quarter)} runs `,
-        { strong: `${months[0]} 1 to ${months[2]} ${LAST_DAY[lastMonth - 1]}, ${year}` },
+        {
+          strong: stationSpan(
+            year,
+            { month: lastMonth - 2, day: 1 },
+            { month: lastMonth, day: LAST_DAY[lastMonth - 1]! },
+          ),
+        },
         ". Your score is your ",
         { strong: "lowest measure" },
         ": Profit, Readers served, Happiness or Culture.",

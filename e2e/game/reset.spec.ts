@@ -1,6 +1,6 @@
 import { test, expect, collectPageErrors } from "../fixtures";
 
-// Reset game, from Settings (David, 2 Nov 2026): after an in-page confirm, a new game from January 1, 2194, with
+// Reset game, from Settings (David, 2 Nov 2026): after an in-page confirm, a new game from 2194 Jan 1, with
 // the old game's pins, conversation and station view forgotten in this browser, and the person's own settings kept.
 test("Settings resets the game after a confirm step, from Q2 back to the January arrival", async ({
   page,

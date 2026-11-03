@@ -362,9 +362,7 @@ describe("a later quarter's result screen (endless-copy.md section 4)", () => {
     expect(page).toContain("66 (D), strike");
     expect(page).toContain("Quiet Tuesdays");
     expect(page).toContain("The new Inspector Ryeslton volume");
-    expect(page).toContain(
-      "Manager since January 1, 2194: 3 quarters. Average overall score: 74 (C).",
-    );
+    expect(page).toContain("Manager since 2194 Jan 1: 3 quarters. Average overall score: 74 (C).");
     expect(page).toContain("Best quarter: Q3 2194, 81 (B\u2212).");
     expect(page).not.toMatch(/\([A-D]-\)/);
   });
@@ -447,7 +445,7 @@ describe("a later quarter's result screen (endless-copy.md section 4)", () => {
     expect(page).toContain(
       "You were removed after three quarters with an overall score under 70 in four: Q1 2194 (66), Q3 2194 (62) and Q4 2194 (64). You ran Orbital Books for 4 quarters, from Q1 2194 to Q4 2194.",
     );
-    expect(page).toContain("Removed by the panel, January 1, 2195.");
+    expect(page).toContain("Removed by the panel, 2195 Jan 1.");
     expect(page).toContain("Play again");
     expect(page).not.toContain("Continue to");
     // The ledgers link is under the removal, once: not also in What happened.

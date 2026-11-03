@@ -41,7 +41,7 @@ describe("Shell", () => {
 
   it("shows the station date and the unread count", () => {
     const html = renderAt("/");
-    expect(html).toContain("4 Jan 2194");
+    expect(html).toContain("2194 Jan 4");
     expect(html).toContain('aria-label="Notifications, 1 unread"');
   });
 

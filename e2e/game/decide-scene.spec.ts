@@ -14,7 +14,7 @@ test("the bosses brief the plan together: the Administrator first, then whicheve
 
   // On load, the Administrator's bubble is open, with its full line and facts.
   await expect(administrator).toHaveAttribute("aria-expanded", "true");
-  await expect(scene).toContainText("January 1 to March 31, 2194");
+  await expect(scene).toContainText("2194 Jan 1 to Mar 31");
   await expect(commerce).toHaveAttribute("aria-expanded", "false");
   await expect(scene.getByText("60% of their list price")).toBeHidden();
 
@@ -24,7 +24,7 @@ test("the bosses brief the plan together: the Administrator first, then whicheve
   await expect(scene.getByText(/THREE SEEMED LENIENT/)).toBeVisible();
   await expect(scene.getByText("60% of their list price")).toBeVisible();
   await expect(administrator).toHaveAttribute("aria-expanded", "false");
-  await expect(scene.getByText("January 1 to March 31, 2194")).toBeHidden();
+  await expect(scene.getByText("2194 Jan 1 to Mar 31")).toBeHidden();
 
   // So do Enter and Space, from the keyboard.
   await drone.focus();
@@ -89,7 +89,7 @@ test("in 2D, a boss opens its bubble when clicked, and opening bubbles moves not
   // The tags (the scene's region also holds the form's buttons).
   const bubbles = scene.locator("button[data-tag]");
   await expect(bubbles).toHaveCount(5);
-  await expect(scene.getByText("January 1 to March 31, 2194")).toBeVisible();
+  await expect(scene.getByText("2194 Jan 1 to Mar 31")).toBeVisible();
   await expect(scene.locator("[data-boss]")).toHaveCount(5);
 
   // Clicking a robot opens its bubble, like clicking the bubble.

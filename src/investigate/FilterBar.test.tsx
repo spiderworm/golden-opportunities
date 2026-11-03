@@ -53,7 +53,7 @@ describe("the bar (David, 2 Nov 2026)", () => {
 
   it("shows a filter that has values even if it wasn't added, so nothing applies unseen", () => {
     expect(bar({ weekday: ["Monday"], month: ["2193-12"] })).toMatch(
-      /Month Dec 2193.*Weekday Monday/,
+      /Month 2193 Dec.*Weekday Monday/,
     );
   });
 

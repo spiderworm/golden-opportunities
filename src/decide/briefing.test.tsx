@@ -36,7 +36,7 @@ describe("the bosses' brief (m1-copy section 3)", () => {
     expect(strips).toHaveLength(5);
     const all = strips.join(" ");
     for (const fact of [
-      "January 1 to March 31, 2194",
+      "2194 Jan 1 to Mar 31",
       "Profit, Readers served, Happiness and Culture",
       "last year's first quarter plus 5%",
       "lowest measure",

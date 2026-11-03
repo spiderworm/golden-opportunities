@@ -68,9 +68,9 @@ describe("the ledgers' title", () => {
 
 describe("month labels", () => {
   it("name the year in full, and in short whenever both years are in view", () => {
-    expect(formatDimensionValue("month", "2194-01")).toBe("Jan 2194");
+    expect(formatDimensionValue("month", "2194-01")).toBe("2194 Jan");
     expect(formatDimensionShort("month", "2193-03", ["2193-01", "2193-02", "2193-03"])).toBe("Mar");
-    expect(formatDimensionShort("month", "2193-03", ["2193-03", "2194-03"])).toBe("Mar 2193");
-    expect(formatDimensionShort("month", "2194-03", ["2193-03", "2194-03"])).toBe("Mar 2194");
+    expect(formatDimensionShort("month", "2193-03", ["2193-03", "2194-03"])).toBe("2193 Mar");
+    expect(formatDimensionShort("month", "2194-03", ["2193-03", "2194-03"])).toBe("2194 Mar");
   });
 });

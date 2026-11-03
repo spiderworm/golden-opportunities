@@ -69,7 +69,7 @@ test("Q1, then Q2 with a pick, then the service record, then on to Q3", async ({
   await expect(page).toHaveURL(/\/(?:\?|$)/);
   const memo = page.getByRole("dialog", { name: "Transmission from the Commerce Office" });
   await expect(memo).toContainText("THE FIRST QUARTER HAS BEEN FILED.");
-  await expect(memo).toContainText("April 1, 2194");
+  await expect(memo).toContainText("2194 Apr 1");
   await expect(memo).toContainText(
     new RegExp(
       `First-quarter overall score: ${score} \\(${grade}\\)\\. (Lowest measure: ${MEASURES}(?:(?:, | and )${MEASURES})*\\.|Every measure met its goal\\.)`,
@@ -175,8 +175,8 @@ test("Q1, then Q2 with a pick, then the service record, then on to Q3", async ({
   await page.goto("/?analytics-test=1");
   const q3Memo = page.getByRole("dialog", { name: "Transmission from the Commerce Office" });
   await expect(q3Memo).toContainText(`Q2 2194 overall score: ${q2Score}`);
-  await expect(q3Memo).toContainText("July 1, 2194");
-  await expect(page.locator("time")).toHaveText("1 Jul 2194");
+  await expect(q3Memo).toContainText("2194 Jul 1");
+  await expect(page.locator("time")).toHaveText("2194 Jul 1");
   const excused = (message: string) =>
     browserName === "webkit" && ABORTED_ON_WEBKIT.some((a) => a.pattern.test(message));
   expect(errors.filter((message) => !excused(message))).toEqual([]);

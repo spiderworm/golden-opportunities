@@ -59,7 +59,7 @@ describe("the Q2 plan (q2.md section 5)", () => {
     ]);
     const all = text(html);
     for (const fact of [
-      "April 1 to June 30, 2194",
+      "2194 Apr 1 to Jun 30",
       "last year's second quarter",
       "60% of their list price",
       "$200",

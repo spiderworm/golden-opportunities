@@ -259,8 +259,8 @@ describe("the outcome chart after Q2", () => {
     const tip = option.tooltip.formatter([
       { dataIndex: 1, seriesName: "Q1 2194 (for reference)", value: 2, color: "#000" },
     ]);
-    expect(tip).toContain("Feb 2194");
-    expect(tip).toContain("May 2194");
+    expect(tip).toContain("2194 Feb");
+    expect(tip).toContain("2194 May");
   });
 });
 
@@ -385,9 +385,9 @@ describe("the result's later-quarter notes and certificates (endless-copy.md sec
 
 describe("the removal screen's words (endless.md section 7)", () => {
   it("date the removal the day after its quarter, and list the strikes", () => {
-    expect(dayAfter("2194-Q3")).toBe("October 1, 2194");
-    expect(dayAfter("2194-Q4")).toBe("January 1, 2195");
-    expect(REMOVAL_COPY.finalRow("2195-Q2")).toBe("Removed by the panel, July 1, 2195.");
+    expect(dayAfter("2194-Q3")).toBe("2194 Oct 1");
+    expect(dayAfter("2194-Q4")).toBe("2195 Jan 1");
+    expect(REMOVAL_COPY.finalRow("2195-Q2")).toBe("Removed by the panel, 2195 Jul 1.");
     expect(REMOVAL_COPY.lines.map((l) => l.boss)).toEqual([
       "overall",
       "profit",

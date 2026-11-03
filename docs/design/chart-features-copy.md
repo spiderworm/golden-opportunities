@@ -2,7 +2,7 @@
 
 Status: **for the builders.** These are the strings for David's three chart features (req_bef8599d5ea4, 3 Nov 2026), written before they're built so each builder has them now. Plot owns the copy and is the second reviewer on each UI PR. Builders may add strings this note doesn't foresee; send those to Plot in the PR.
 
-The house rules hold: US English, no emoji, sentence case, and the toolbar's existing patterns. Today a disabled button's tooltip says what to do ("Show one measure to compare quarters"), and a toggle keeps its name while it's pressed (`aria-pressed`, as `Table` and `Compare quarters` do).
+The house rules hold: US English, no emoji, sentence case, and the toolbar's existing patterns. Dates are the one in-world exception, year first: `2194 Apr 1`, `2194 Mar` (David, 3 Nov 2026). Today a disabled button's tooltip says what to do ("Show one measure to compare quarters"), and a toggle keeps its name while it's pressed (`aria-pressed`, as `Table` and `Compare quarters` do).
 
 ## 1. Table and chart, either way (Chart; Sage for Dewey)
 
@@ -225,11 +225,11 @@ David: "I think it would be good to support event markers on time series. ie, ma
 - **The Options item:** `Events`, a tick box like the others. Its hint: `Mark releases, Book of the Month picks, your moves and station events on the timeline`.
 - **Marker labels,** short, on the chart and in the legend: `Release`, `Pick`, `Your move` and `Event` (Alma's station events).
 - **Tooltips:** the date and kind, then what happened.
-  - **Release:** `Feb 4, 2194 · Release`, then `The Bourton Model Village Poisoning, Inspector Ryeslton volume 3`.
-  - **Pick:** `March 2194 · Book of the Month`, then the edition's title and format, without its price, e.g. `Portmeirion, mass market paperback` (Frank, #353).
+  - **Release:** `2194 Feb 4 · Release`, then `The Bourton Model Village Poisoning, Inspector Ryeslton volume 3`.
+  - **Pick:** `2194 Mar · Book of the Month`, then the edition's title and format, without its price, e.g. `Portmeirion, mass market paperback` (Frank, #353).
   - **Your move:** `Q1 2194 · Your move`, then the move's name exactly as Decide has it (`MOVES`): `Station-wide sale`, `Weekday author nights` or `Re-pick Book of the Month`. Holding course isn't a move, so it gets no marker. A re-pick gets both its own marker and the picks it chose, so on January 1 the move and January's pick draw as one `+2` (Frank, #353).
   - **Event:** `Q3 2194 · Station event`, then the event's short title (`eventTitle`) and its stretch, e.g. `{short title}, July 9 to 23`.
-  - Dates are month first, in the game's style: `Feb 4, 2194` for a day, `March 2194` for a month. Markers have no arrow or symbol characters.
+  - Dates are in the game's one style, year first (`src/platform/dates.ts`; David: "2194 Apr 1 ... that's a much better style than every other"): `2194 Feb 4` for a day, `2194 Mar` for a month, and `Q1 2194` for a quarter. Markers have no arrow or symbol characters.
 - **Crowding:** where markers overlap, one is drawn with `+{n}`, e.g. `+2`, and its tooltip lists each in date order. If some can't be drawn at all, the caption says `{n} more events hidden: filter to one quarter to see them all`, or `1 more event hidden: …`.
 - **Nothing to mark** isn't a disabled state. The caption says `No events in this period.`, as for 2193 and quarters not yet played. A quarter not yet played is never marked: no spoilers.
 - **Disabled, always with a reason:**
