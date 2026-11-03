@@ -875,3 +875,290 @@ describe('"look up" (Audit\'s review of #244)', () => {
       expect(say(sentence), sentence).toBe(WITHHELD);
   });
 });
+
+describe("how much evidence is behind a figure, only by ref (David, 3 Nov 2026)", () => {
+  const ratings = [
+    "query_data",
+    { measure: "avg_rating", by: ["genre"] },
+    {
+      ref: "e",
+      complete: true,
+      columns: [],
+      unit: "ratings",
+      rows: [
+        { ref: "e1", genre: "Mystery", avg_rating: 4.12, n: 212, range_low: 3.94, range_high: 4.3 },
+        { ref: "e2", genre: "Poetry", avg_rating: 3.5, n: 1 },
+      ],
+      total: 4.1,
+      n: 213,
+      range_low: 3.9,
+      range_high: 4.26,
+      source: "Ratings.",
+    },
+  ] as const;
+  const noisy = [
+    "compare_data",
+    { measure: "units", across: "quarter", from: "2193-Q3", to: "2193-Q4", by: ["genre"] },
+    {
+      ref: "f",
+      labels: { from: "2193-Q3", to: "2193-Q4" },
+      columns: [],
+      rows: [
+        {
+          ref: "f1",
+          genre: "Mystery",
+          from: 100,
+          to: 104,
+          change: 4,
+          percent_change: 4,
+          direction: "rose",
+          noise: "within",
+        },
+        {
+          ref: "f2",
+          genre: "Poetry",
+          from: 100,
+          to: 300,
+          change: 200,
+          percent_change: 200,
+          direction: "rose",
+          noise: "clear",
+        },
+        {
+          ref: "f3",
+          genre: "Drama",
+          from: null,
+          to: 3,
+          change: null,
+          percent_change: null,
+          direction: null,
+          noise: null,
+        },
+      ],
+      total: {
+        from: 200,
+        to: 404,
+        change: 204,
+        percent_change: 102,
+        direction: "rose",
+        noise: "clear",
+      },
+      source: "Compared.",
+    },
+  ] as const;
+  const refs = () => {
+    const r = new Refs();
+    r.addTool(...(byQuarter as unknown as [string, unknown, unknown]));
+    r.addTool(...(ratings as unknown as [string, unknown, unknown]));
+    r.addTool(...(noisy as unknown as [string, unknown, unknown]));
+    return r;
+  };
+  const sayIn = (sentence: string) => say(sentence, refs());
+
+  it("renders an average's n with its unit, singular for one, and the total's", () => {
+    expect(sayIn("{{e1.genre}}'s average is based on {{e1.n}}.")).toBe(
+      "Mystery's average is based on 212 ratings.",
+    );
+    expect(sayIn("{{e2.genre}}'s rests on {{e2.n}}.")).toBe("Poetry's rests on 1 rating.");
+    expect(sayIn("All genres together, {{e.total}} from {{e.n}}.")).toBe(
+      "All genres together, 4.1 from 213 ratings.",
+    );
+  });
+
+  it("renders average rating's likely range to one decimal place", () => {
+    expect(sayIn("{{e1.genre}}'s average rating has {{e1.range}}.")).toBe(
+      "Mystery's average rating has a likely range of 3.9 to 4.3 stars.",
+    );
+    expect(sayIn("Across genres it's {{e.total}}, with {{e.range}}.")).toBe(
+      "Across genres it's 4.1, with a likely range of 3.9 to 4.3 stars.",
+    );
+    // The phrase is the ref's: in the model's own words it's withheld.
+    expect(sayIn("Its likely range is {{e1.range}}.")).toBe(WITHHELD);
+  });
+
+  it("withholds n or a range a lookup doesn't have: a total, an unrated row, or with a rounding", () => {
+    expect(sayIn("Based on {{a1.n}}.")).toBe(WITHHELD);
+    expect(sayIn("Based on {{a.n}}.")).toBe(WITHHELD);
+    expect(sayIn("Its range is {{e2.range}}.")).toBe(WITHHELD);
+    expect(sayIn("Based on {{e1.n|round:100}}.")).toBe(WITHHELD);
+    expect(sayIn("Based on {{f1.n}}.")).toBe(WITHHELD);
+  });
+
+  it("renders within noise only where the data judged the change within noise", () => {
+    expect(sayIn("Mystery {{f1.change}}, {{f1.noise}}.")).toBe("Mystery rose by 4, within noise.");
+    expect(sayIn("Poetry {{f2.change}}, {{f2.noise}}.")).toBe(WITHHELD);
+    expect(sayIn("Drama, {{f3.noise}}.")).toBe(WITHHELD);
+    expect(sayIn("All genres, {{f.noise}}.")).toBe(WITHHELD);
+    expect(sayIn("Revenue, {{a1.noise}}.")).toBe(WITHHELD);
+  });
+
+  it("withholds the model's own judgments of evidence", () => {
+    for (const sentence of [
+      "Mystery {{f1.change}}, which is within noise.",
+      "Poetry {{f2.change}}, a significant change.",
+      "That's not statistically meaningful.",
+      "Poetry {{f2.change}}, and it isn't a fluke.",
+      "The rise could be down to chance alone, by chance.",
+      "Mystery's average {{e1}} is reliable.",
+      "That's a real difference.",
+      "It's based on two hundred ratings.",
+      "Based on 212 ratings.",
+      "Its likely range is narrow.",
+      // Accents read through, as in every other word check (Audit's review of #337).
+      "Poetry {{f2.change}}, a signíficant change.",
+      "That is nóise.",
+      "Mystery's average {{e1}} is relìable.",
+    ])
+      expect(sayIn(sentence), sentence).toBe(WITHHELD);
+  });
+
+  it("still passes ordinary sentences around the same words' neighbours", () => {
+    expect(sayIn("I looked up average rating by genre.")).not.toBe(WITHHELD);
+    expect(sayIn("Mystery's average rating is {{e1}}, based on {{e1.n}}.")).toBe(
+      "Mystery's average rating is 4.12, based on 212 ratings.",
+    );
+  });
+
+  it("needs the evidence's own row in the sentence, by a ref: alone, or beside a name in prose, it's withheld (Probe's second red-team)", () => {
+    for (const sentence of [
+      "That is {{f1.noise}}.",
+      "That average is based on {{e1.n}}.",
+      "Poetry's average rests on {{e1.n}}.",
+      "Its average rating has {{e1.range}}.",
+      "All genres together: {{e.n}}.",
+      "Mystery {{f1.noise}}.",
+    ])
+      expect(sayIn(sentence), sentence).toBe(WITHHELD);
+    // Through the gate, the shape the real model wrote: the second sentence can't borrow the first's subject.
+    const gate = sentenceGate(refs());
+    expect(gate.push("Poetry {{f2.change}}. That is {{f1.noise}}. ") + gate.flush()).not.toContain(
+      "within noise",
+    );
+  });
+
+  it("renders a likely range with two decimal places when one would make both ends the same (Plot)", () => {
+    const r = new Refs();
+    r.addTool(
+      "query_data",
+      { measure: "avg_rating", by: ["genre"] },
+      {
+        ref: "k",
+        complete: true,
+        columns: [],
+        unit: "ratings",
+        rows: [
+          {
+            ref: "k1",
+            genre: "Drama",
+            avg_rating: 4.21,
+            n: 900,
+            range_low: 4.18,
+            range_high: 4.24,
+          },
+        ],
+        total: 4.21,
+        source: "S",
+      },
+    );
+    expect(say("{{k1.genre}} has {{k1.range}}.", r)).toBe(
+      "Drama has a likely range of 4.18 to 4.24 stars.",
+    );
+  });
+
+  it("keeps an evidence ref with its own figure: every ref in the sentence is the same row's (Probe's red-team of #337)", () => {
+    const r = refs();
+    r.addTool(
+      "query_data",
+      { measure: "avg_rating", by: ["format"] },
+      {
+        ref: "h",
+        complete: true,
+        columns: [],
+        unit: "ratings",
+        rows: [{ ref: "h1", format: "Hardcover", avg_rating: 4.4, n: 30 }],
+        total: 4.4,
+        n: 30,
+        source: "S",
+      },
+    );
+    for (const sentence of [
+      "Poetry {{f2.change}}, {{f1.noise}}.",
+      "All genres together {{f.change}}, {{f1.noise}}.",
+      "Poetry's average is {{e2}}, based on {{e1.n}}.",
+      "Poetry's average is {{e2}}, with {{e1.range}}.",
+      "Hardcover's average is {{h1}}, based on {{e1.n}}.",
+      "Mystery's revenue was {{a1}}, based on {{e1.n}}.",
+      "Mystery's revenue was {{a1}}, with {{e1.range}}.",
+      "{{e2.genre}}'s average is {{e2}}, based on {{e.n}}.",
+      "Mystery's average is {{e1}} from {{e1.n}}, and Poetry's {{e2}} from {{e2.n}}.",
+    ])
+      expect(say(sentence, r), sentence).toBe(WITHHELD);
+    // The same row's refs, or a lookup's total with its own n, still read.
+    expect(say("{{e1.genre}}'s average rating is {{e1}}, based on {{e1.n}}.", r)).toBe(
+      "Mystery's average rating is 4.12, based on 212 ratings.",
+    );
+    expect(say("Mystery {{f1.change}}, {{f1.noise}}.", r)).toBe("Mystery rose by 4, within noise.");
+    expect(say("Across genres it's {{e.total}}, based on {{e.n}}.", r)).toBe(
+      "Across genres it's 4.1, based on 213 ratings.",
+    );
+    // A sentence with no evidence ref is unaffected.
+    expect(say("Poetry {{f2.change}}, and Mystery {{f1.change}}.", r)).not.toBe(WITHHELD);
+  });
+
+  it("withholds the model's own judgments of how much data or how real a difference, in other words too", () => {
+    for (const sentence of [
+      "Poetry {{f2.change}}, a clear difference.",
+      "Poetry {{f2.change}}, a genuine difference.",
+      "Mystery {{f1.change}}, which is just random variation.",
+      "Mystery {{f1.change}}, probably luck.",
+      "Mystery {{f1.change}}, likely a coincidence.",
+      "Mystery {{f1.change}}, only a blip.",
+      "Poetry's average {{e2}} rests on too few ratings to trust.",
+      "Poetry's average {{e2}} comes from a small sample.",
+      "Poetry's average {{e2}} is based on only a handful of ratings.",
+      "Mystery's average {{e1}} rests on plenty of ratings.",
+      "Mystery's average {{e1}} is solid.",
+      "Mystery's average {{e1}} is trustworthy.",
+      "Poetry {{f2.change}}, a conclusive result.",
+      "Poetry {{f2.change}}, an inconclusive result.",
+      "Poetry {{f2.change}}, a robust change.",
+      "Poetry {{f2.change}}, and that is certain.",
+      "Poetry {{f2.change}}, definitely not chance.",
+      "Mystery's average {{e1}}, give or take.",
+      "Mystery's average {{e1}}, plus or minus a bit.",
+      "Mystery's rating interval is {{e1.range}}.",
+    ])
+      expect(sayIn(sentence), sentence).toBe(WITHHELD);
+    // Their ordinary neighbours still pass, Audit's among them (#337).
+    for (const sentence of [
+      "Certainly, here are the figures I've just looked up.",
+      "I trust the terminal to look things up.",
+      "Here is the variation across shelves.",
+      "There's plenty of time to look things up.",
+      "Ask me about certain titles and I'll look them up.",
+      "I looked up average rating by genre.",
+      "Here are the figures I've just looked up.",
+    ])
+      expect(sayIn(sentence), sentence).not.toBe(WITHHELD);
+  });
+
+  it("ignores evidence fields on a lookup whose unit isn't an average's", () => {
+    const r = new Refs();
+    r.addTool(
+      "query_data",
+      { measure: "units", by: ["genre"] },
+      {
+        ref: "g",
+        complete: true,
+        columns: [],
+        unit: "copies",
+        rows: [{ ref: "g1", genre: "Mystery", units: 5, n: 5 }],
+        total: 5,
+        n: 5,
+        source: "S",
+      },
+    );
+    expect(say("Based on {{g1.n}}.", r)).toBe(WITHHELD);
+    expect(say("Based on {{g.n}}.", r)).toBe(WITHHELD);
+  });
+});
