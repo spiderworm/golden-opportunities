@@ -4,19 +4,55 @@
 }
 
 .assistant {
+  position: relative;
   min-width: 0;
 }
 
-/* Wide screens: Dewey gets a column, sticky beside the dashboard. */
+/* His name beside his face on the folded bar. */
+.assistant [data-dewey-name] {
+  font-weight: 600;
+}
+
+/* Under the dashboard he's full width: only folding, no resizing. */
+.assistant [data-dewey-resize] {
+  display: none;
+}
+
+/* Wide screens: Dewey gets a column, sticky beside the dashboard, as wide as he's been dragged (DeweyColumn). */
 @media (min-width: 1600px) {
   .layout {
-    grid-template-columns: minmax(0, 1fr) 400px;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
   }
 
   .assistant {
     position: sticky;
     top: 20px;
+    width: var(--dewey-width, 480px);
+  }
+
+  .assistant [data-dewey-resize] {
+    display: block;
+  }
+
+  .assistant [data-dewey-resize]:hover,
+  .assistant [data-dewey-resize]:focus-visible,
+  .assistant[data-dragging] [data-dewey-resize] {
+    background: var(--color-accent-wash);
+  }
+
+  /* Folded: a strip with his face, and his name running down it. */
+  .assistant[data-folded] {
+    width: 64px;
+  }
+
+  .assistant [data-dewey-unfold] {
+    flex-direction: column;
+  }
+
+  .assistant [data-dewey-name] {
+    writing-mode: vertical-rl;
+    letter-spacing: 0.04em;
   }
 }
 
