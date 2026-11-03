@@ -32,7 +32,7 @@ export type RefusalReason = "full" | "limit" | "no_title" | "no_charts" | "inval
 
 /** Control characters but the line break, and the marks that reorder text (Audit, #171). */
 const CONTROL = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/;
-const BIDI = /[؜‎‏‪-‮⁦-⁩]/;
+const BIDI = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/;
 const plain = (text: string, lines: boolean) =>
   !CONTROL.test(text) && !BIDI.test(text) && (lines || !text.includes("\n"));
 

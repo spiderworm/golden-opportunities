@@ -36,7 +36,9 @@ describe("a player's report", () => {
     for (const bad of [
       input({ title: "x".repeat(REPORT_LIMITS.title + 1) }),
       input({ title: "Two\nlines" }),
-      input({ title: "Hidden ‮ mark" }),
+      input({ title: "Hidden \u202e mark" }),
+      input({ summary: "Isolated \u2067 text" }),
+      input({ items: [{ spec: spec(), note: "Arabic mark \u061c" }] }),
       input({ summary: "x".repeat(REPORT_LIMITS.summary + 1) }),
       input({ summary: "Bell \u0007" }),
       input({ items: [{ spec: spec(), note: "x".repeat(REPORT_LIMITS.note + 1) }] }),

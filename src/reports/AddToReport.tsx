@@ -56,7 +56,9 @@ export function AddToReport({ pin }: { pin: Pin }) {
             <p className={styles.muted} aria-busy="true">
               {"…"}
             </p>
-          ) : !reports.data.editable ? null : (
+          ) : !reports.data.editable ? (
+            <p className={styles.muted}>{COPY.closed}</p>
+          ) : (
             <ul className={styles.plain}>
               {list.map((r) => {
                 const full = r.items.length >= REPORT_LIMITS.items;
