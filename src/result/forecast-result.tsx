@@ -1,32 +1,11 @@
+import type { ForecastMeasure, ForecastResult, MeasureResult } from "~/forecast/forecast";
 import { moneyText } from "./copy";
 import styles from "./Result.module.css";
 
 // A played quarter's forecast against what happened (David, 3 Nov 2026, req_6d136a2b7fb3; Plot's copy, section 10;
 // Frank's ForecastResult): for each measure forecast, the actual, whether it landed below, inside or above the
-// player's 80% range, and how far the expected figure was off, as a value and a percent.
-
-export type ForecastMeasure = "revenue" | "units";
-export interface ForecastEntry {
-  point: number;
-  low: number;
-  high: number;
-}
-/** One measure's forecast against what happened (Frank's MeasureResult). */
-export interface MeasureResult {
-  forecast: ForecastEntry;
-  actual: number;
-  where: "below" | "inside" | "above";
-  /** point − actual: above zero means the forecast was high. */
-  error: number;
-  /** error / actual; null when the actual is 0. */
-  errorPct: number | null;
-}
-export interface ForecastResult {
-  quarter: string;
-  revenue?: MeasureResult;
-  units?: MeasureResult;
-  note?: string;
-}
+// player's 80% range, and how far the expected figure was off, as a value and a percent. Frank's shapes and scoring
+// (src/forecast/forecast.ts).
 
 const LABELS: Record<ForecastMeasure, string> = { revenue: "Revenue", units: "Units sold" };
 /** The section's heading (Plot): a plain question, about the quarter just played, that the lines answer. */

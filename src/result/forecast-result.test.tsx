@@ -1,7 +1,8 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { ForecastLines, resultLine, type MeasureResult } from "./forecast-result";
+import type { MeasureResult } from "~/forecast/forecast";
+import { ForecastLines, resultLine } from "./forecast-result";
 
 const result = (over: Partial<MeasureResult>): MeasureResult => ({
   forecast: { point: 140000, low: 130000, high: 150000 },
