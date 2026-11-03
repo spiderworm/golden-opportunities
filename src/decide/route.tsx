@@ -38,7 +38,8 @@ import { MoveCard, useMoreLine } from "./MoveCard";
 import { onBubbleFocused, PlayOut, sceneOf } from "./PlanParts";
 import { PlanQ2 } from "./PlanQ2";
 import { quarterName, type PlanBrief } from "./q2-copy";
-import { PlanRefused, readAnyPlan } from "./read-plan.server";
+import { ForecastRefused, PlanRefused, readAnyPlan } from "./read-plan.server";
+import { forecastMeasures, type Forecast } from "~/forecast/forecast";
 import styles from "./Decide.module.css";
 
 export const handle: ShellHandle = { title: "Decisions", standingOrder: false, bleed: true };
@@ -93,6 +94,17 @@ export async function action({ request }: Route.ActionArgs) {
   try {
     sent = await readAnyPlan(request);
   } catch (error) {
+    // A wrong forecast names its field and why, so the browser can say it by the field (src/forecast).
+    if (error instanceof ForecastRefused)
+      return data(
+        {
+          ok: false as const,
+          played: false,
+          problem: "forecast" as const,
+          forecastProblem: error.problem,
+        },
+        { status: 400 },
+      );
     if (error instanceof PlanRefused)
       return data(
         { ok: false as const, played: false, problem: "shape" as const },
@@ -101,15 +113,25 @@ export async function action({ request }: Route.ActionArgs) {
     throw error;
   }
   return sent.form === "moves"
-    ? actionQ1(request, sent.plan, sent.reportsRead)
-    : actionQ2(request, sent.plan, sent.quarter, sent.reportsRead);
+    ? actionQ1(request, sent.plan, sent.reportsRead, sent.forecast)
+    : actionQ2(request, sent.plan, sent.quarter, sent.reportsRead, sent.forecast);
 }
 
-function actionQ1(request: Request, plan: Plan, reportsRead: number) {
+/** A forecast filed with a plan: which measures, and whether it had a note; never the figures or the note. */
+function trackForecast(quarter: QuarterId, forecast: Forecast | null) {
+  if (forecast)
+    trackServer("forecast_made", {
+      quarter,
+      measures: forecastMeasures(forecast).join(","),
+      hadNote: forecast.note !== undefined,
+    });
+}
+
+function actionQ1(request: Request, plan: Plan, reportsRead: number, forecast: Forecast | null) {
   try {
     if (getPlan(request) || currentQuarter(request) !== "2194-Q1")
       return data({ ok: false as const, played: true }, { status: 409 });
-    submitPlan(request, plan);
+    submitPlan(request, plan, forecast);
   } catch (error) {
     // The game refuses with a Response: a lost race to play, a busy or changed save, no
     // save, or storage trouble. The player goes to the results only if a plan is
@@ -125,6 +147,7 @@ function actionQ1(request: Request, plan: Plan, reportsRead: number) {
     // The reports chosen in Decide's panel before submitting (reports.md section 5).
     reportsRead,
   });
+  trackForecast("2194-Q1", forecast);
   return { ok: true as const };
 }
 
@@ -146,12 +169,18 @@ function laterPlayed(request: Request, asked: QuarterId | null): boolean {
 
 type Q2Problem = "shape" | "unknown-edition" | "same-title";
 
-async function actionQ2(request: Request, plan: Q2Plan, asked: QuarterId, reportsRead: number) {
+async function actionQ2(
+  request: Request,
+  plan: Q2Plan,
+  asked: QuarterId,
+  reportsRead: number,
+  forecast: Forecast | null,
+) {
   // A plan is filed only for the quarter its form was written for: the game refuses another quarter's with a 409
   // (Frank's submitQuarterPlan), and a form left open in another tab, sent once the save has moved on, goes to
   // the results (Frank and Audit, #212). From Q3 on, filing waits for the quarter's Alma record.
   try {
-    await submitQuarterPlan(request, plan, asked);
+    await submitQuarterPlan(request, plan, asked, forecast);
   } catch (error) {
     // A plan the engine refuses (an edition not sold in 2193, one title twice) is a 400 naming why (Frank's
     // game state, from Sim's q2PlanProblem); otherwise as Q1: a lost race, a busy save, storage trouble.
@@ -177,6 +206,7 @@ async function actionQ2(request: Request, plan: Q2Plan, asked: QuarterId, report
     picks,
     reportsRead,
   });
+  trackForecast(asked, forecast);
   return { ok: true as const };
 }
 
