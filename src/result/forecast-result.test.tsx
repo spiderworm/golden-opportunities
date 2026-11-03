@@ -45,6 +45,25 @@ describe("a forecast against what happened (Plot's copy, section 10)", () => {
     );
   });
 
+  it("says spot on when the figures shown match, never off by $0", () => {
+    const line = (actual: number) =>
+      resultLine(
+        "revenue",
+        result({
+          actual,
+          where: "inside",
+          error: 140000 - actual,
+          errorPct: (140000 - actual) / actual,
+        }),
+      );
+    expect(line(140000.4)).toBe(
+      "Revenue: $140,000, inside your range of $130,000 to $150,000. You expected $140,000: spot on.",
+    );
+    expect(line(140000.5)).toBe(
+      "Revenue: $140,001, inside your range of $130,000 to $150,000. You expected $140,000: off by $1 (under 1%).",
+    );
+  });
+
   it("says a miss under 1% as under 1%, never 0%", () => {
     expect(
       resultLine(
