@@ -164,6 +164,8 @@ export interface InvestigateState {
   compare: boolean;
   /** Beside the quarter shown, the same quarter last year (`vs=last_year`): applies only while lastYearBlock allows it. */
   lastYear: boolean;
+  /** Draw the two measures against each other, a point per group (scatterProblem says when it can). */
+  scatter: boolean;
   filters: Filters;
   /** The heatmap. Its measure follows the chart's first until the player picks one (`heat=`). */
   heat: HeatState;
@@ -175,6 +177,7 @@ export const DEFAULT_STATE: InvestigateState = {
   by: "month",
   compare: false,
   lastYear: false,
+  scatter: false,
   filters: {},
   heat: { measure: "revenue", rows: "weekday", cols: "month", period: "recent" },
 };
@@ -253,6 +256,20 @@ export const keepsLastYear = (state: Pick<InvestigateState, "by" | "also" | "com
 export const shownQuarter = (state: Pick<InvestigateState, "filters">): string | null =>
   state.filters.quarter?.length === 1 ? state.filters.quarter[0]! : null;
 
+/**
+ * Why the chart can't be a scatter plot, or null when it can: the toggle's disabled tooltip (Plot's copy, #291). A
+ * scatter plot is two measures across one dimension (David, 3 Nov 2026), a point per group, the first measure
+ * across and the second up. Over months, quarters or weekdays the points would hide their order in time, which a
+ * line already shows.
+ */
+export function scatterProblem(by: Grouping, also: readonly ChartMeasure[]): string | null {
+  if (also.length === 0) return "Choose a second measure for a scatter plot";
+  if (also.length > 1) return "A scatter plot shows two measures";
+  if (by === "month" || by === "quarter" || by === "weekday")
+    return "Break down by title, genre or another group for a scatter plot";
+  return null;
+}
+
 /** A list of measures cut to what fits one chart, in order: repeats, a fourth measure and a third unit dropped. */
 export function fittingMeasures(measures: readonly ChartMeasure[]): ChartMeasure[] {
   return measures.reduce<ChartMeasure[]>(
@@ -292,6 +309,7 @@ export function parseState(params: URLSearchParams): InvestigateState {
         ...measures,
         compare: params.get("compare") === "quarter" && canCompare(by, measures.also),
       }),
+    scatter: params.get("chart") === "scatter" && scatterProblem(by, measures.also) === null,
     filters,
     heat: readHeat(params, measures.measure),
   };
@@ -320,6 +338,8 @@ export function toSearchParams(state: InvestigateState): URLSearchParams {
   if (state.by !== DEFAULT_STATE.by) params.set("by", state.by);
   if (state.compare && canCompare(state.by, state.also)) params.set("compare", "quarter");
   if (state.lastYear && keepsLastYear(state)) params.set("vs", "last_year");
+  if (state.scatter && scatterProblem(state.by, state.also) === null)
+    params.set("chart", "scatter");
   // The heatmap's measure only once it differs from the chart's, so it keeps following the chart until then.
   if (state.heat.measure !== state.measure) params.set("heat", state.heat.measure);
   if (state.heat.rows !== DEFAULT_STATE.heat.rows) params.set("heat_rows", state.heat.rows);

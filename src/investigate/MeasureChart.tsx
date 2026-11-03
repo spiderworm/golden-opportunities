@@ -17,6 +17,7 @@ import { Dropdown } from "~/platform/ui/Dropdown";
 import { ReasonToggle } from "~/platform/ui/ReasonToggle";
 import { Legend } from "./charts/Legend";
 import { LastYearTable, ResultTable } from "./charts/ResultTable";
+import { SCATTER_HEIGHT, scatterOption, scatterPoints, scatterTitle } from "./charts/scatter-chart";
 import { changeLine, lastYearLabels, withLastYear } from "./charts/last-year";
 import { seriesColor } from "~/platform/charts/chart-theme";
 import {
@@ -41,6 +42,7 @@ import {
   GROUPINGS,
   lastYearBlock,
   lastYearUnshown,
+  scatterProblem,
   measuresOf,
   monthsInScope,
   shownQuarter,
@@ -64,6 +66,8 @@ export interface MeasureChartProps {
   onCompare: (compare: boolean) => void;
   /** "vs. same quarter last year" switched on or off. */
   onLastYear?: (on: boolean) => void;
+  /** The scatter plot turned on or off (scatterProblem says when it can be on). */
+  onScatter: (on: boolean) => void;
   onDrill: (value: string) => void;
   onTable: (shown: boolean) => void;
   /** Pins this view to the pinned charts; `pinned` when an identical one is already there. */
@@ -116,6 +120,7 @@ export function MeasureChart({
   onGroup,
   onCompare,
   onLastYear,
+  onScatter,
   onDrill,
   onTable,
   onPin,
@@ -147,10 +152,18 @@ export function MeasureChart({
       selected.join("\u0000"),
     ],
   );
+  const noScatter = scatterProblem(state.by, state.also);
+  const scatter = state.scatter && noScatter === null;
   const manyOption = useMemo(
-    () => (many ? measuresOption(many, { selected, hidden }) : null),
-    [many, selected.join("\u0000"), hidden.join()],
+    () =>
+      many
+        ? scatter
+          ? scatterOption(many, { selected })
+          : measuresOption(many, { selected, hidden })
+        : null,
+    [many, scatter, selected.join("\u0000"), hidden.join()],
   );
+  const points = useMemo(() => (many && scatter ? scatterPoints(many) : []), [many, scatter]);
   // A measure taken off the chart can't stay hidden.
   useEffect(() => setHidden((h) => h.filter((m) => measures.includes(m))), [measures.join()]);
   const model = useMemo(
@@ -196,7 +209,9 @@ export function MeasureChart({
     // selected is derived from state.filters, which changes identity with each navigation.
     [model, ghost, selected.join("\u0000"), quarters, state, result.total],
   );
-  const title = `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}${labels ? `, vs. ${labels.then}` : ""}`;
+  const title = scatter
+    ? scatterTitle(measures, state.by)
+    : `${measuresLabel(measures)} by ${DIMENSION_LABELS[state.by].toLowerCase()}${labels ? `, vs. ${labels.then}` : ""}`;
 
   function drillAt(index: number) {
     const value = model.categories[index];
@@ -279,6 +294,14 @@ export function MeasureChart({
           >
             Table
           </button>
+          <ReasonToggle
+            className={styles.toggle}
+            pressed={scatter}
+            reason={noScatter}
+            onToggle={() => onScatter(!scatter)}
+          >
+            Scatter plot
+          </ReasonToggle>
           <button
             type="button"
             className={styles.toggle}
@@ -303,6 +326,17 @@ export function MeasureChart({
       ) : many && manyOption ? (
         table ? (
           <ResultTable result={measuresTable(many, [result, ...also])} />
+        ) : scatter ? (
+          <EChart
+            option={manyOption}
+            height={SCATTER_HEIGHT}
+            label={`${title}. Click a point to look closer.`}
+            onClick={(event) => {
+              // Unknown groups can't be filtered on, as with a bar.
+              const value = points[event.dataIndex]?.category;
+              if (value !== null && value !== undefined) onDrill(value);
+            }}
+          />
         ) : (
           <>
             <ul className={styles.legend} aria-label="Measures">

@@ -5,6 +5,7 @@ import {
   awardChoice,
   canAddMeasure,
   canCompare,
+  scatterProblem,
   measuresOf,
   DEFAULT_STATE,
   onlyShownChanged,
@@ -32,6 +33,7 @@ describe("investigate state", () => {
       by: "genre",
       compare: true,
       lastYear: false,
+      scatter: false,
       filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] },
       heat: { measure: "units", rows: "weekday", cols: "month", period: "recent" },
     } as const;
@@ -394,6 +396,32 @@ describe("investigate state", () => {
     const cell = toggleCell(state, "Fiction", "under $10");
     expect(cell.filters).toEqual({ genre: ["Fiction"], price_band: ["under $10"] });
     expect(toggleCell(cell, "Fiction", "under $10").filters).toEqual({});
+  });
+
+  it("plots two measures against each other across a dimension that isn't time, from a link", () => {
+    const at = (query: string) => parseState(new URLSearchParams(query));
+    const scatter = at("measures=revenue,units&by=genre&chart=scatter");
+    expect(scatter).toMatchObject({
+      measure: "revenue",
+      also: ["units"],
+      by: "genre",
+      scatter: true,
+    });
+    expect(toSearchParams(scatter).toString()).toBe(
+      "measures=revenue%2Cunits&by=genre&chart=scatter",
+    );
+    // One measure, three, or a breakdown over time: no scatter plot, and the link drops it.
+    expect(at("measure=revenue&by=genre&chart=scatter").scatter).toBe(false);
+    expect(at("measures=revenue,units,orders&by=genre&chart=scatter").scatter).toBe(false);
+    expect(at("measures=revenue,units&by=month&chart=scatter").scatter).toBe(false);
+    expect(toSearchParams({ ...scatter, by: "quarter" }).has("chart")).toBe(false);
+    expect(scatterProblem("genre", ["units"])).toBeNull();
+    expect(scatterProblem("genre", [])).toBe("Choose a second measure for a scatter plot");
+    expect(scatterProblem("genre", ["units", "orders"])).toBe("A scatter plot shows two measures");
+    for (const by of ["month", "quarter", "weekday"] as const)
+      expect(scatterProblem(by, ["units"])).toBe(
+        "Break down by title, genre or another group for a scatter plot",
+      );
   });
 
   it("says why a measure can't join: three at most, two units at most", () => {
