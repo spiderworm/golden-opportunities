@@ -45,6 +45,17 @@ describe("a forecast against what happened (Plot's copy, section 10)", () => {
     );
   });
 
+  it("says a miss under 1% as under 1%, never 0%", () => {
+    expect(
+      resultLine(
+        "revenue",
+        result({ actual: 140500, where: "inside", error: -500, errorPct: -500 / 140500 }),
+      ),
+    ).toBe(
+      "Revenue: $140,500, inside your range of $130,000 to $150,000. You expected $140,000: off by $500 (under 1%).",
+    );
+  });
+
   it("leaves the percent out when nothing sold", () => {
     expect(
       resultLine(
