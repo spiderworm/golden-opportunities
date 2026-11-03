@@ -23,10 +23,11 @@ import { PhoneScreen } from "./phone/PhoneScreen";
 // Closed mode runs first, so a closed game runs no loader, action or agent; then the entry page, at any URL,
 // until the player has agreed (David, 3 Nov 2026). A visitor who hasn't agreed yet gets the closed page (Goldy).
 export const middleware: Route.MiddlewareFunction[] = [
+  // First, so every request runs as its visitor, the entry page's and the closed page's included: a deployed
+  // player's "Share play data" choice is theirs alone (Audit, #368).
+  visitorSharingMiddleware,
   closedMiddleware,
   entryGate,
-  // Every request runs as its visitor, so a deployed player's "Share play data" choice is theirs alone.
-  visitorSharingMiddleware,
 ];
 
 export function loader() {

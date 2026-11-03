@@ -1,3 +1,4 @@
+import { visitorAllowsSharing } from "../platform/analytics/visitor-sharing.server";
 import { randomBytes } from "node:crypto";
 import { QueryError } from "../query/errors";
 import { saves } from "./session.server";
@@ -7,7 +8,13 @@ import { trackServer } from "../platform/analytics/analytics.server";
 export const QUERY_TOKEN_TTL_MS = 180_000;
 const grants = new Map<
   string,
-  { saveId: string; queryRevision: number; expires: number; timer: ReturnType<typeof setTimeout> }
+  {
+    saveId: string;
+    queryRevision: number;
+    expires: number;
+    timer: ReturnType<typeof setTimeout>;
+    sharing: boolean;
+  }
 >();
 function event(name: string) {
   try {
@@ -35,6 +42,8 @@ export function issueGameQueryToken(saveId: string): { token: string; revoke: ()
     queryRevision: save.queryRevision ?? save.revision,
     expires: Date.now() + QUERY_TOKEN_TTL_MS,
     timer,
+    // The asking visitor's "Share play data" choice, for the lookups that arrive with this token (#368).
+    sharing: visitorAllowsSharing(),
   });
   event("game_query_session_started");
   return {
@@ -45,6 +54,8 @@ export function issueGameQueryToken(saveId: string): { token: string; revoke: ()
     },
   };
 }
+/** Whether the visitor whose question issued this token shares play data; true for an unknown one. */
+export const queryTokenSharing = (token: string) => grants.get(token)?.sharing ?? true;
 /** Unknown, revoked and expired capabilities intentionally share one bounded error. */
 export function saveForQueryToken(token: string) {
   const grant = grants.get(token);
