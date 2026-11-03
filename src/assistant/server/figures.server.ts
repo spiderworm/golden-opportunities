@@ -720,8 +720,41 @@ export function nextPriceContext(
  * a likely range from {{a1.range}}. In the model's own words they're withheld, as is calling a difference
  * significant, real or a fluke, which the copy never says (Plot's copy, section 4).
  */
-const EVIDENCE_WORDS =
-  /\b(?:noise|noisy|(?:in)?significan(?:t|tly|ce)|statistic(?:s|al|ally)?|margin of error|confidence|confident(?:ly)?|uncertain(?:ty)?|flukes?|(?:by|random|pure) chance|standard error|sample size|likely range|error bars?|(?:un)?reliable|real difference|meaningful(?:ly)?|meaningless)\b/iu;
+const EVIDENCE_WORDS = new RegExp(
+  "\\b(?:" +
+    [
+      // Noise, chance and significance.
+      "noise|noisy|(?:in)?significan(?:t|tly|ce)|statistic(?:s|al|ally)?|flukes?|(?:by|random|pure) chance",
+      "random(?:ly|ness)?|variation|luck(?:y|ily)?|coincidences?|coincidental|blips?",
+      // Whether a difference is real.
+      "(?:real|clear|genuine|true|actual) differences?|(?:in)?conclusive(?:ly)?|robust(?:ly)?",
+      "certain(?:ly|ty)|for certain|(?:is|are|was|were|that's|it's) certain|definite(?:ly)?",
+      // How much data, and how far to trust it (Probe's red-team of #337).
+      "(?:small|tiny|large|big) samples?|sample sizes?|too few|handful|plenty of|trust(?:ed|worthy)?|solid(?:ly)?",
+      "(?:un)?reliabl[ey]|confidence|confident(?:ly)?|uncertain(?:ty)?|meaningful(?:ly)?|meaningless",
+      // Ranges, said by the model rather than by {{a1.range}}.
+      "margin of error|standard error|likely range|intervals?|error bars?|give or take|plus or minus",
+    ].join("|") +
+    ")\\b",
+  "iu",
+);
+
+/**
+ * Evidence qualifies one figure: {{e1.n}} the average {{e1}}, {{f1.noise}} the change {{f1.change}}. So a sentence
+ * with an evidence ref passes only if every ref in it is that same row's, or for {{e.n}} that lookup's total: two
+ * true refs mustn't make a false sentence, "Poetry rose by 200, within noise" with Mystery's flag (Probe's
+ * red-team of #337). A sentence with no evidence ref is unaffected.
+ */
+function evidenceBound(refs: string[]): boolean {
+  const parsed = refs.map((ref) => {
+    const m = /^([a-z]+)(\d*)(?:\.([a-z_.]+))?(?:\|.*)?$/.exec(ref.trim());
+    return m ? { at: `${m[1]}${m[2]}`, field: (m[3] ?? "").replace(/^total[._]?/, "") } : null;
+  });
+  const evidence = parsed.filter((p) => p && ["n", "range", "noise"].includes(p.field));
+  if (!evidence.length) return true;
+  const at = evidence[0]!.at;
+  return parsed.every((p) => p !== null && p.at === at);
+}
 
 export function renderSentence(
   sentence: string,
@@ -739,6 +772,7 @@ export function renderSentence(
     return text ?? "";
   });
   if (bad) return null;
+  if (!evidenceBound([...folded.matchAll(REF)].map((m) => m[1]!))) return null;
   if (priceProblem(folded, refs, known) || carriesOver(folded, refs, known, after)) return null;
   // Titles the data returned, exactly and whole, are the data's words, not the model's: cleared before the ban.
   let prose = folded.replace(REF, " ");
