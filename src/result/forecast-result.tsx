@@ -22,16 +22,19 @@ const percentOff = (errorPct: number) => {
 
 /**
  * Plot's line, its percent of what actually happened (Frank's errorPct; Sim and Plot, #382): "Revenue: $162,300, above your range of $130,000 to $150,000. You expected $140,000: off by $22,300
- * (16%)." Inside: "…inside your range of…"; exactly right: "…You expected $142,300: spot on."
+ * (14%)." Inside: "…inside your range of…"; exactly right: "…You expected $142,300: spot on."
  */
 export function resultLine(measure: ForecastMeasure, r: MeasureResult): string {
   const { point, low, high } = r.forecast;
   const range = `${amount(measure, low)} to ${amount(measure, high)}`;
   const where = `${r.where} your range of ${range}`;
+  // The miss between the two figures as shown, whole dollars or units, so "spot on" and "off by" always agree with
+  // them: a miss under 50 cents isn't "off by $0" (Sim, #396 and #397).
+  const shown = Math.abs(Math.round(r.actual) - Math.round(point));
   const off =
-    r.error === 0
+    shown === 0
       ? "spot on"
-      : `off by ${amount(measure, Math.abs(r.error))}${r.errorPct === null ? "" : ` (${percentOff(r.errorPct)})`}`;
+      : `off by ${amount(measure, shown)}${r.errorPct === null ? "" : ` (${percentOff(r.errorPct)})`}`;
   return `${LABELS[measure]}: ${amount(measure, r.actual)}, ${where}. You expected ${amount(measure, point)}: ${off}.`;
 }
 
