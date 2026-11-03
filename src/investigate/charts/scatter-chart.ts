@@ -116,7 +116,7 @@ export function scatterOption(
     series: [
       {
         type: "scatter",
-        name: `${MEASURE_LABELS[up.measure]} against ${MEASURE_LABELS[across.measure]}`,
+        name: `${MEASURE_LABELS[up.measure]} against ${MEASURE_LABELS[across.measure].toLowerCase()}`,
         symbolSize: 10,
         cursor: "pointer",
         emphasis: { focus: "none", scale: 1.4 },
