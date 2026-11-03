@@ -546,6 +546,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Below the card's header now that the controls are there: clear of the column labels. */
+  margin-bottom: 12px;
   color: var(--color-text-muted);
   font-size: 12px;
 }
@@ -634,6 +636,11 @@
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   transition: opacity 150ms ease;
+}
+
+/* A cell the terminal's row limit left out: unknown, so hatched and empty, never a $0 (Plot, #264). */
+.heatCell[data-cut] {
+  background: repeating-linear-gradient(135deg, transparent 0 5px, var(--color-border) 5px 6px) !important;
 }
 
 .heatCell[data-dimmed] {
