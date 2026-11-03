@@ -423,7 +423,7 @@ export function MeasureChart({
           {/* The chart's modes, in one menu (David, 3 Nov 2026: "Keep the Chart/Table toggle and Pin buttons
               inline. Create an "Options" dropdown"), named "View" (David: "Oh YEAH "View" is spot-on"). One that can't be
               used stays in it, saying why. Plot's order: the
-              ways to compare, then (to come) the ways to show one measure, then Scatter plot, which needs two. */}
+              ways to compare, then the ways to show one measure, then Events, then Scatter plot, which needs two. */}
           <ToggleMenu
             name="View"
             onOpen={() => track("chart_options_opened", { where: "investigate" })}
@@ -489,20 +489,20 @@ export function MeasureChart({
                 onToggle: () => onShare?.(running ? "total" : "running"),
               },
               {
-                key: "scatter",
-                label: "Scatter plot",
-                on: scatter,
-                reason: noScatter,
-                hint: `Plot one measure against the other, one point per ${DIMENSION_LABELS[state.by].toLowerCase()}`,
-                onToggle: () => onScatter(!scatter),
-              },
-              {
                 key: "events",
                 label: "Events",
                 on: state.events && eventsReason === null,
                 reason: eventsReason,
                 hint: "Mark releases, Book of the Month picks, your moves and station events on the timeline",
                 onToggle: () => onEvents?.(!state.events),
+              },
+              {
+                key: "scatter",
+                label: "Scatter plot",
+                on: scatter,
+                reason: noScatter,
+                hint: `Plot one measure against the other, one point per ${DIMENSION_LABELS[state.by].toLowerCase()}`,
+                onToggle: () => onScatter(!scatter),
               },
             ]}
           />
