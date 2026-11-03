@@ -53,6 +53,7 @@ One event to a line, under its area, so changes to different events don't collid
 - `notifications_opened`
 - `notification_selected`
 - `alert_shown`
+- `alert_seen_failed` (marking the transmission seen was refused or failed: its HTTP `status`, 0 for a network failure; the memo closes and comes back next visit)
 - `alert_dismissed`
 - `alert_strip_clicked`
 - `settings_opened`
