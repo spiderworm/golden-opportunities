@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AddToReport } from "~/reports/AddToReport";
 import {
   useLocation,
   useNavigation,
@@ -314,6 +315,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           quarters={options.quarter}
           onRemove={pins.remove}
           onError={(code) => track("investigate_pin_failed", { code })}
+          addToReport={(pin) => <AddToReport pin={pin} />}
         />
       </div>
       {/* Dewey: a column beside the dashboard on wide screens, after it below that. */}

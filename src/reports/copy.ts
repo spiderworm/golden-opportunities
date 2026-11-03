@@ -55,6 +55,54 @@ export const REPORTS_COPY = {
   allMet: "Every measure met its goal",
 } as const;
 
+/** The player's own reports (section 3). Plot's strings from #171, but those marked "Chart's", which wait on Plot. */
+export const PLAYER_COPY = {
+  heading: "Your reports",
+  newReport: "New report",
+  /** Chart's. */
+  empty: "No reports yet. Use New report to gather pinned charts and your notes on them.",
+  limit: "You have 12 reports. Delete one to start another.",
+  full: "A report holds up to 6 charts. Remove one to add another.",
+  meta: (charts: number, quarter: string) =>
+    `${charts} ${charts === 1 ? "chart" : "charts"} \u00b7 edited ${quarter}`,
+  open: "Open",
+  edit: "Edit",
+  /** Chart's. */
+  close: "Close",
+  /** A chart over every quarter grows as quarters are played. */
+  everyQuarter: "Every quarter played so far",
+  title: "Title",
+  summary: "Summary (optional)",
+  note: "Note (optional)",
+  moveUp: "Move up",
+  moveDown: "Move down",
+  remove: "Remove",
+  addCharts: "Add charts",
+  /** Chart's: the board is empty. */
+  noPins: "Pin charts in Investigate to add them here.",
+  /** Chart's: a pin already in the report. */
+  inReport: "Already in this report",
+  save: "Save report",
+  cancel: "Cancel",
+  noTitle: "Give the report a title.",
+  noCharts: "Add at least one chart.",
+  /** Chart's: anything else the save refused. */
+  invalid: "This report couldn't be saved. Check its text and try again.",
+  leave: {
+    question: "Leave without saving your changes to this report?",
+    leave: "Leave",
+    stay: "Keep editing",
+  },
+  delete: {
+    button: "Delete report",
+    question: (title: string) => `Delete "${title}"? This can't be undone.`,
+    confirm: "Delete report",
+    keep: "Keep it",
+  },
+  addToReport: "Add to report",
+  newReportFromPin: "New report\u2026",
+} as const;
+
 /** The greeting line: the new shop reports, as the nav badge counts them. */
 export function greeting(newReports: number): string {
   if (newReports === 0) return "No new reports.";

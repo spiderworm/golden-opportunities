@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { combineComparison, comparisonQueries } from "~/assistant/tools/comparison";
 import type { ComparisonResult } from "~/assistant/tools/definitions";
@@ -23,7 +23,7 @@ import { formatDimensionValue, formatMeasure, MEASURE_LABELS } from "../format";
 import { monthsInScope } from "../state";
 import styles from "../Investigate.module.css";
 import { fetchQuery, QueryRequestError } from "./query-client";
-import type { ChartPinSpec, ComparisonPinSpec, Pin } from "./spec";
+import { pinKey, type ChartPinSpec, type ComparisonPinSpec, type Pin, type PinSpec } from "./spec";
 
 const CHART_HEIGHT = 240;
 
@@ -32,10 +32,18 @@ export interface PinnedChartsProps {
   quarters: readonly string[];
   onRemove: (id: string) => void;
   onError: (code: string) => void;
+  /** Each pin's Add to report control (reports.md section 3), if the page offers one. */
+  addToReport?: (pin: Pin) => ReactNode;
 }
 
 /** The player's board: charts they pinned, or asked Dewey to pin. */
-export function PinnedCharts({ pins, quarters, onRemove, onError }: PinnedChartsProps) {
+export function PinnedCharts({
+  pins,
+  quarters,
+  onRemove,
+  onError,
+  addToReport,
+}: PinnedChartsProps) {
   return (
     <section className={styles.pinned} aria-labelledby="pinned-title">
       <header className={styles.pinnedHeader}>
@@ -58,6 +66,7 @@ export function PinnedCharts({ pins, quarters, onRemove, onError }: PinnedCharts
                 quarters={quarters}
                 onRemove={() => onRemove(pin.id)}
                 onError={onError}
+                addToReport={addToReport?.(pin)}
               />
             </li>
           ))}
@@ -78,7 +87,7 @@ type Load =
  * A comparison is its two queries, combined as Dewey's tool server combines them; if either side fails, the
  * whole card fails, and the other side is cancelled.
  */
-export async function runPin(pin: Pin, signal: AbortSignal): Promise<Loaded> {
+export async function runPin(pin: PinSpec, signal: AbortSignal): Promise<Loaded> {
   if (pin.kind !== "comparison") {
     // Several measures are a query each, as the main chart's.
     // A heatmap is context, never discovery evidence, pinned or not (Plot, #63 and #266): asked without recording.
@@ -113,18 +122,61 @@ function PinnedChart({
   quarters,
   onRemove,
   onError,
+  addToReport,
 }: {
   pin: Pin;
   quarters: readonly string[];
   onRemove: () => void;
   onError: (code: string) => void;
+  addToReport?: ReactNode;
+}) {
+  return (
+    <article className={`${styles.card} ${styles.pinCard}`} aria-label={pin.title}>
+      <header className={styles.pinHeader}>
+        <div>
+          <h3 className={styles.pinTitle}>{pin.title}</h3>
+          <div className={styles.pinMeta}>
+            {pin.pinnedBy === "dewey" ? "Pinned by Dewey" : "Pinned by you"}
+          </div>
+        </div>
+        <div className={styles.pinActions}>
+          {addToReport}
+          <button
+            type="button"
+            className={styles.chipRemove}
+            aria-label={`Unpin ${pin.title}`}
+            title="Unpin"
+            onClick={onRemove}
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      </header>
+      <PinChart spec={pin} quarters={quarters} onError={onError} />
+    </article>
+  );
+}
+
+/**
+ * A pin's chart, run again through POST /api/query whenever it's shown: on the board, and in a report, which holds a
+ * copy of the pin (reports.md section 3). Nothing a chart showed is kept.
+ */
+export function PinChart({
+  spec,
+  quarters,
+  onError,
+}: {
+  spec: PinSpec;
+  quarters: readonly string[];
+  onError: (code: string) => void;
 }) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
+  const key = pinKey(spec);
 
   useEffect(() => {
     const controller = new AbortController();
     setLoad({ status: "loading" });
-    runPin(pin, controller.signal)
+    runPin(spec, controller.signal)
       .then((loaded) => setLoad({ status: "ready", ...loaded }))
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -137,28 +189,11 @@ function PinnedChart({
         });
       });
     return () => controller.abort();
-    // A pin's query never changes; a new query is a new pin.
-  }, [pin.id]);
+    // A spec's query never changes for a key; a new query is a new key.
+  }, [key]);
 
   return (
-    <article className={`${styles.card} ${styles.pinCard}`} aria-label={pin.title}>
-      <header className={styles.pinHeader}>
-        <div>
-          <h3 className={styles.pinTitle}>{pin.title}</h3>
-          <div className={styles.pinMeta}>
-            {pin.pinnedBy === "dewey" ? "Pinned by Dewey" : "Pinned by you"}
-          </div>
-        </div>
-        <button
-          type="button"
-          className={styles.chipRemove}
-          aria-label={`Unpin ${pin.title}`}
-          title="Unpin"
-          onClick={onRemove}
-        >
-          <Icon name="close" size={14} />
-        </button>
-      </header>
+    <>
       {load.status === "loading" && (
         <div className={styles.pinPlaceholder} style={{ height: CHART_HEIGHT }} aria-busy="true" />
       )}
@@ -168,15 +203,15 @@ function PinnedChart({
         </p>
       )}
       {load.status === "ready" &&
-        (pin.kind === "comparison"
-          ? load.kind === "comparison" && <ComparisonBody pin={pin} result={load.result} />
+        (spec.kind === "comparison"
+          ? load.kind === "comparison" && <ComparisonBody pin={spec} result={load.result} />
           : load.kind === "query" &&
-            (pin.kind === "heatmap" ? (
-              <HeatPinBody pin={pin} result={load.result} quarters={quarters} />
+            (spec.kind === "heatmap" ? (
+              <HeatPinBody pin={spec} result={load.result} quarters={quarters} />
             ) : (
-              <PinBody pin={pin} result={load.result} also={load.also} quarters={quarters} />
+              <PinBody pin={spec} result={load.result} also={load.also} quarters={quarters} />
             )))}
-    </article>
+    </>
   );
 }
 
