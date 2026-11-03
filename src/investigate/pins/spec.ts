@@ -37,9 +37,12 @@ export interface ChartPinSpec {
   table?: boolean;
 }
 
-/** Whether a chart or table pin can be shown both ways: it has a breakdown to draw (one number stays a figure). */
-export const canToggle = (spec: PinSpec): spec is ChartPinSpec =>
-  spec.kind !== "comparison" && spec.query.by.length > 0;
+/**
+ * Why a pin can't be drawn as a chart, before it's run: a comparison reads as a table, and one number is a figure
+ * (NO_CHART's keys); null if it can. Too many groups is known only once it's run.
+ */
+export const noChart = (spec: PinSpec): "comparison" | "figure" | null =>
+  spec.kind === "comparison" ? "comparison" : spec.query.by.length ? null : "figure";
 
 /** Whether a pin shows as a table now: its toggle, or else its kind. */
 export const shownAsTable = (spec: ChartPinSpec) => spec.table ?? spec.kind === "table";

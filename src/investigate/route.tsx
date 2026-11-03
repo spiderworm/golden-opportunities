@@ -311,9 +311,9 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           onPin={(table) => pins.add(table ? { ...heatPin, table } : heatPin, "player")}
           pinned={pins.has(heatPin)}
           onTable={(table) =>
-            track("view_toggled", {
+            track("table_toggled", {
               where: "heatmap",
-              view: table ? "table" : "chart",
+              shown: table,
               kind: "heatmap",
             })
           }
@@ -326,9 +326,9 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
           addToReport={(pin) => <AddToReport pin={pin} />}
           onTable={(pin, table) => {
             pins.setTable(pin.id, table);
-            track("view_toggled", {
+            track("table_toggled", {
               where: "pin",
-              view: table ? "table" : "chart",
+              shown: table,
               kind: pin.kind,
             });
           }}
