@@ -13,10 +13,14 @@ import { entryGate } from "./entry/gate.server";
 import { startAnalytics } from "./platform/analytics/analytics.client";
 import { serverAnalytics } from "./platform/analytics/analytics.server";
 import { instanceId } from "./platform/analytics/instance.server";
+import { closedMiddleware } from "./platform/closed/closed.server";
 import { revalidateAbovePage } from "./platform/revalidate";
 import "./platform/theme/theme.css";
 import { useIsPhone } from "./phone/phone";
 import { PhoneScreen } from "./phone/PhoneScreen";
+
+// Closed mode runs first, so a closed game runs no loader, action or agent.
+export const middleware: Route.MiddlewareFunction[] = [closedMiddleware];
 
 export function loader() {
   serverAnalytics();

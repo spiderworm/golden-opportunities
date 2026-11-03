@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { QueryResult } from "~/query/types";
 import { pinMonths } from "../pins/PinnedCharts";
 import type { Pin } from "../pins/spec";
-import { categoryModel, categoryOption, nothingToDraw } from "./category-chart";
+import { categoryModel, categoryOption, noiseFlags, nothingToDraw } from "./category-chart";
 
 const QUARTERS = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
 
@@ -251,5 +251,116 @@ describe("the value axis", () => {
     ).toBe(true);
     // Drawn, its axis reads as percents from zero.
     expect((await labels("avg_discount", [0, 0, 0]))[0]).toBe("0.0%");
+  });
+});
+
+describe("how much evidence is behind a bar (Plot, #296 and #297)", () => {
+  type Param = {
+    dataIndex: number;
+    seriesIndex: number;
+    seriesName: string;
+    value: number | null;
+    color: string;
+  };
+  const tip = (option: ReturnType<typeof categoryOption>, params: Param[]) =>
+    (option.tooltip as { formatter: (p: Param[]) => string })
+      .formatter(params)
+      .replace(/<[^>]+>/g, "|");
+  const param = (seriesIndex: number, dataIndex: number, value: number | null): Param => ({
+    dataIndex,
+    seriesIndex,
+    seriesName: "",
+    value,
+    color: "",
+  });
+  const ratings: QueryResult = {
+    columns: [
+      { key: "genre", label: "Genre", type: "string", nullable: true },
+      { key: "avg_rating", label: "Average rating", type: "number", nullable: true },
+    ],
+    rows: [
+      { genre: "Fantasy", avg_rating: 4.1 },
+      { genre: "Poetry", avg_rating: 4.6 },
+      { genre: "Travel", avg_rating: 5 },
+    ],
+    total: 4.2,
+    source: "test",
+    evidence: {
+      unit: "ratings",
+      rows: [
+        { n: 212, se: 0.1 },
+        { n: 8, se: 0.2 },
+        { n: 1, se: null },
+      ],
+      total: { n: 221, se: 0.09 },
+    },
+  };
+  const model = categoryModel(ratings, "genre");
+  const series = (option: ReturnType<typeof categoryOption>) =>
+    option.series as { type: string; name: string; data: unknown[] }[];
+
+  it("says what an average is based on, warns when it's few, and gives average rating's likely range", () => {
+    const option = categoryOption(model, { quarters: QUARTERS, drill: false });
+    const many = tip(option, [param(0, 0, 4.1)]);
+    expect(many).toContain("Based on 212 ratings");
+    expect(many).toContain("Likely range: 3.9 to 4.3 stars");
+    expect(many).not.toContain("Only");
+    expect(tip(option, [param(0, 1, 4.6)])).toContain(
+      "Only 8 ratings: this average could easily change with a few more",
+    );
+    expect(tip(option, [param(0, 2, 5)])).toContain("Too few ratings for a likely range");
+  });
+
+  it("fades bars over too few, and draws a whisker for each likely range", () => {
+    const option = categoryOption(model, { quarters: QUARTERS, drill: false });
+    const bars = series(option)[0]!.data as { itemStyle: { opacity?: number } }[];
+    expect(bars.map((b) => b.itemStyle.opacity)).toEqual([1, 0.45, 0.45]);
+    const whiskers = series(option)[1]!;
+    expect(whiskers.type).toBe("custom");
+    expect(whiskers.data[2]).toEqual([2, NaN, NaN]);
+    // The whiskers' own series add nothing to the tooltip.
+    expect(tip(option, [param(0, 0, 4.1), param(1, 0, 4.1)]).match(/Based on/g)).toHaveLength(1);
+  });
+
+  it("draws a band along a line instead, and nothing on measures other than average rating", () => {
+    const band = series(categoryOption(model, { kind: "line", quarters: QUARTERS, drill: false }));
+    expect(band.map((s) => s.name)).toEqual(["Average rating", "range-low", "range-width"]);
+    expect(band.map((s) => s.type)).toEqual(["line", "line", "line"]);
+    expect(series(categoryOption(model, { quarters: QUARTERS, drill: false }))[0]!.type).toBe(
+      "bar",
+    );
+    const units = categoryModel(result([{ genre: "Fantasy", units: 3 }], ["genre"]), "genre");
+    expect(series(categoryOption(units, { quarters: QUARTERS, drill: false }))).toHaveLength(1);
+  });
+
+  it("says when comparing quarters finds a difference within noise", () => {
+    const compared: QueryResult = {
+      ...result(
+        [
+          { genre: "Fantasy", quarter: "2193-Q1", units: 100 },
+          { genre: "Fantasy", quarter: "2193-Q2", units: 110 },
+          { genre: "Poetry", quarter: "2193-Q1", units: 100 },
+          { genre: "Poetry", quarter: "2193-Q2", units: 160 },
+        ],
+        ["genre", "quarter"],
+      ),
+      evidence: {
+        unit: null,
+        rows: [100, 110, 100, 160].map((n) => ({ n, se: Math.sqrt(n) })),
+        total: { n: 470, se: Math.sqrt(470) },
+      },
+    };
+    const option = categoryOption(categoryModel(compared, "genre", "quarter"), {
+      quarters: QUARTERS,
+      drill: false,
+    });
+    expect(tip(option, [param(0, 0, 100), param(1, 0, 110)])).toContain(
+      "Within noise against Q1 2193",
+    );
+    expect(tip(option, [param(0, 1, 100), param(1, 1, 160)])).not.toContain("Within noise");
+    expect(noiseFlags(categoryModel(compared, "genre", "quarter"))).toEqual({
+      compared: 2,
+      flagged: 1,
+    });
   });
 });

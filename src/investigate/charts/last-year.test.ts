@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { QueryResult } from "~/query/types";
 import { categoryModel, categoryOption } from "./category-chart";
+import { lastYearNoise } from "./evidence";
 import {
   changeLine,
   formatDelta,
+  ghostNoisy,
   formatPercent,
   lastYearLabels,
   lastYearRows,
@@ -68,9 +70,23 @@ describe("the words for last year (Plot, #291)", () => {
 
   it("fills the table: a zero reads as zero, no figure as None", () => {
     expect(lastYearRows(result, "genre", "revenue")).toEqual([
-      { group: "Fiction", now: "$41,200", then: "$38,900", delta: "+$2,300", percent: "+5.9%" },
-      { group: "Memoir", now: "$400", then: "$0", delta: "+$400", percent: "New" },
-      { group: "Poetry", now: "$0", then: "$120", delta: "-$120", percent: "-100.0%" },
+      {
+        group: "Fiction",
+        now: "$41,200",
+        then: "$38,900",
+        delta: "+$2,300",
+        percent: "+5.9%",
+        noise: false,
+      },
+      { group: "Memoir", now: "$400", then: "$0", delta: "+$400", percent: "New", noise: false },
+      {
+        group: "Poetry",
+        now: "$0",
+        then: "$120",
+        delta: "-$120",
+        percent: "-100.0%",
+        noise: false,
+      },
     ]);
     const averages: QueryResult = {
       ...result,
@@ -83,7 +99,7 @@ describe("the words for last year (Plot, #291)", () => {
       },
     };
     expect(lastYearRows(averages, "genre", "avg_discount")).toEqual([
-      { group: "Fiction", now: "10.0%", then: "None", delta: "", percent: "" },
+      { group: "Fiction", now: "10.0%", then: "None", delta: "", percent: "", noise: false },
     ]);
   });
 
@@ -98,5 +114,54 @@ describe("the words for last year (Plot, #291)", () => {
     }) as { series: { itemStyle: { color: string; opacity: number } }[] };
     expect(option.series[1]!.itemStyle.color).toBe(option.series[0]!.itemStyle.color);
     expect(option.series[1]!.itemStyle.opacity).toBeLessThan(1);
+  });
+
+  it("flags a change within noise after it, or after Δ where there's no %, and on the chart's change line (Plot, #297)", () => {
+    // Fiction: +2,300 within 1.96 x sqrt(1,000^2 + 1,300^2) = 3,214: within noise.
+    // Memoir: +400 from nothing, spread 1.96 x 150 = 294: clear. Poetry: -120 against 1.96 x 60 = 118: clear.
+    const judged: QueryResult = {
+      ...result,
+      evidence: {
+        unit: null,
+        rows: [
+          { n: 980, se: 1000 },
+          { n: 9, se: 150 },
+          { n: 0, se: 0 },
+        ],
+        total: { n: 989, se: 1010 },
+      },
+    };
+    const rows = lastYearRows(judged, "genre", "revenue");
+    expect(rows.map((r) => [r.percent, r.noise])).toEqual([
+      ["+5.9% · within noise", true],
+      ["New", false],
+      ["-100.0%", false],
+    ]);
+    expect(rows[0]!.delta).toBe("+$2,300");
+    expect(lastYearNoise(judged)).toEqual({ compared: 3, flagged: 1 });
+    const ghost = withLastYear(
+      categoryModel(judged, "genre"),
+      judged,
+      lastYearLabels("2194-Q1", "genre"),
+    );
+    expect([0, 1, 2].map((i) => ghostNoisy(ghost, i))).toEqual([true, false, false]);
+
+    const discount: QueryResult = {
+      columns: [result.columns[0]!, { ...result.columns[1]!, key: "avg_discount" }],
+      rows: [{ genre: "Fiction", avg_discount: 0.101 }],
+      total: 0.101,
+      source: "test",
+      evidence: { unit: "sale lines", rows: [{ n: 400, se: 0.004 }], total: { n: 400, se: 0.004 } },
+      lastYear: {
+        rows: [{ value: 0.1 }],
+        total: { value: 0.1 },
+        evidence: { rows: [{ n: 380, se: 0.004 }], total: { n: 380, se: 0.004 } },
+      },
+    };
+    expect(lastYearRows(discount, "genre", "avg_discount")[0]).toMatchObject({
+      delta: "+0.1 pts · within noise",
+      percent: "",
+      noise: true,
+    });
   });
 });
