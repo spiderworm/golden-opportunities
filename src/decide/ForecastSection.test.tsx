@@ -1,16 +1,13 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import type { ForecastHints } from "~/forecast/forecast";
 import {
   draftProblem,
   EMPTY_FORECAST,
-  entryProblem,
   ForecastSection,
   forecastFields,
-  forecastMeasures,
-  parseAmount,
   type ForecastDraft,
-  type ForecastHints,
 } from "./ForecastSection";
 
 const text = (html: string) =>
@@ -39,58 +36,53 @@ const hints: ForecastHints = {
   },
 };
 
-describe("the forecast's checks (Frank's reasons, Plot's lines)", () => {
-  it("reads what players type as amounts", () => {
-    expect(parseAmount("$140,000")).toBe(140000);
-    expect(parseAmount(" 140000 ")).toBe(140000);
-    expect(parseAmount("12.5")).toBe(12.5);
-    expect(parseAmount("lots")).toBeNull();
-    expect(parseAmount("")).toBeNull();
+describe("what the plan is sent with (Frank's fields)", () => {
+  it("sends nothing while closed, and leaves out a measure left empty", () => {
+    expect(forecastFields({ ...EMPTY_FORECAST, revenue: entry("1", "1", "1") })).toEqual({});
+    expect(forecastFields(open())).toEqual({});
+    expect(
+      forecastFields(open({ revenue: entry("$140,000", "130,000", "150000"), note: "Sale." })),
+    ).toEqual({ forecastRevenue: "$140000,130000,150000", forecastNote: "Sale." });
   });
 
-  it("allows a measure left empty, and refuses one half done or out of order", () => {
-    expect(entryProblem("revenue", entry("", "", ""))).toBeNull();
-    expect(entryProblem("revenue", entry("140000", "130000", "150000"))).toBeNull();
-    expect(entryProblem("revenue", entry("140000", "", "150000"))).toBe("partial");
-    expect(entryProblem("revenue", entry("lots", "1", "2"))).toBe("number");
-    expect(entryProblem("revenue", entry("-1", "-2", "0"))).toBe("negative");
-    expect(entryProblem("revenue", entry("140000", "145000", "150000"))).toBe("low_above_point");
-    expect(entryProblem("revenue", entry("160000", "130000", "150000"))).toBe("point_above_high");
-    // Units are whole.
-    expect(entryProblem("units", entry("12.5", "10", "15"))).toBe("number");
-  });
-
-  it("finds the first problem in the form's order, and none while it's closed", () => {
-    const bad = open({ revenue: entry("1", "", ""), units: entry("x", "1", "2") });
-    expect(draftProblem(bad)).toEqual({ field: "revenue", reason: "partial" });
-    expect(draftProblem({ ...bad, open: false })).toBeNull();
-    // Counted by code point, as the server counts it: 500 emoji is 500, not 1,000.
-    expect(draftProblem(open({ note: "\u{1F4DA}".repeat(500) }))).toBeNull();
-    expect(draftProblem(open({ note: "x".repeat(501) }))).toEqual({
-      field: "note",
-      reason: "too_long",
+  it("sends a half-filled measure as typed, so it's refused by its field rather than dropped", () => {
+    expect(forecastFields(open({ units: entry("13000", "", "") }))).toEqual({
+      forecastUnits: "13000,,",
     });
   });
 });
 
-describe("what the plan is sent with (Frank's fields)", () => {
-  it("sends nothing while closed, and leaves out a measure left empty", () => {
-    expect(forecastFields({ ...EMPTY_FORECAST, revenue: entry("1", "1", "1") })).toEqual({});
-    expect(
-      forecastFields(open({ revenue: entry("$140,000", "130,000", "150000"), note: "  Sale. " })),
-    ).toEqual({ forecastRevenue: "140000,130000,150000", forecastNote: "Sale." });
-    expect(forecastFields(open({ units: entry("13000", "12000", "15000") }))).toEqual({
-      forecastUnits: "13000,12000,15000",
-    });
+describe("the browser's check is the door's (Frank's forecastFromForm)", () => {
+  const q = "2194-Q1" as const;
+  it("files a whole forecast, and none while closed", () => {
+    expect(draftProblem(open({ revenue: entry("$140,000", "130,000", "150,000") }), q)).toBeNull();
+    expect(draftProblem({ ...EMPTY_FORECAST, revenue: entry("x", "", "") }, q)).toBeNull();
   });
 
-  it("names the measures forecast for analytics, never their values", () => {
+  it("names the field and Frank's reason", () => {
+    expect(draftProblem(open({ revenue: entry("140000", "", "150000") }), q)).toEqual({
+      field: "revenue",
+      reason: "partial",
+    });
+    expect(draftProblem(open({ revenue: entry("lots", "1", "2") }), q)).toEqual({
+      field: "revenue",
+      reason: "number",
+    });
+    expect(draftProblem(open({ units: entry("12.5", "10", "15") }), q)).toEqual({
+      field: "units",
+      reason: "number",
+    });
+    expect(draftProblem(open({ revenue: entry("140000", "145000", "150000") }), q)).toEqual({
+      field: "revenue",
+      reason: "low_above_point",
+    });
+    expect(draftProblem(open({ revenue: entry("1", "1", "1"), note: "x".repeat(501) }), q)).toEqual(
+      { field: "note", reason: "too_long" },
+    );
+    // Counted by code point, as the door counts it: 500 emoji is 500.
     expect(
-      forecastMeasures(
-        open({ revenue: entry("1", "1", "1"), units: entry("2", "1", "3"), note: "why" }),
-      ),
-    ).toBe("revenue+units");
-    expect(forecastMeasures(open())).toBe("");
+      draftProblem(open({ revenue: entry("1", "1", "1"), note: "\u{1F4DA}".repeat(500) }), q),
+    ).toBeNull();
   });
 });
 
