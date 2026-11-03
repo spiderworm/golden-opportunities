@@ -341,12 +341,13 @@ export function MeasureChart({
     const { markers } = markersFor(
       result.events.list,
       state.by,
-      many ? many.categories : model.categories,
+      // The categories as drawn: % of total's, in its own order, or the measures', or the chart's.
+      shares ? shares.categories : many ? many.categories : model.categories,
     );
     // Only the result's cap hides events from the caption's count: one off the axis is outside what the chart
     // shows, and isn't mentioned (Plot, #357).
     return { markers, hidden: result.events.hidden };
-  }, [marking, result.events, state.by, many, model]);
+  }, [marking, result.events, state.by, shares, many, model]);
   const markedOption = useMemo(
     () => (marked ? withMarkers(option, marked.markers) : option),
     [option, marked],
@@ -606,7 +607,11 @@ export function MeasureChart({
           <>
             {top && <p className={styles.shareHeadline}>{top}</p>}
             <EChart
-              option={shareOption(shares, { selected })}
+              option={
+                marked
+                  ? withMarkers(shareOption(shares, { selected }), marked.markers)
+                  : shareOption(shares, { selected })
+              }
               height={shareHeight(shares)}
               label={`${title}. ${top ? `${top}. ` : ""}Click to look closer.`}
               onCategoryClick={drillAt}

@@ -117,3 +117,32 @@ describe("event markers (Plot's copy, section 7)", () => {
     expect(crowded.series[0]!.markLine.label.show).toBe(false);
   });
 });
+
+describe("markers on % of total (Audit, #357)", () => {
+  it("draw on the shares chart, at each month's place in its own order", async () => {
+    const { categoryModel } = await import("./category-chart");
+    const { shareModel, shareOption } = await import("./share-chart");
+    const months = ["2194-01", "2194-02", "2194-03"];
+    const result = {
+      columns: [
+        { key: "month", label: "Month", type: "string", nullable: false },
+        { key: "revenue", label: "Revenue", type: "number", nullable: false },
+      ],
+      rows: months.map((month, i) => ({ month, revenue: 100 * (i + 1) })),
+      total: 600,
+      source: "test",
+    } as const;
+    const shares = shareModel(categoryModel(result as never, "month"), 600)!;
+    const { markers } = markersFor([release], "month", shares.categories);
+    const marked = withMarkers(shareOption(shares), markers) as {
+      series: { markLine?: { data: { xAxis: number }[] } }[];
+      tooltip: { formatter: (p: { dataIndex: number }[]) => string };
+    };
+    expect(marked.series[0]!.markLine!.data).toEqual([
+      { xAxis: shares.categories.indexOf("2194-02"), name: "Release" },
+    ]);
+    expect(
+      marked.tooltip.formatter([{ dataIndex: shares.categories.indexOf("2194-02") }]),
+    ).toContain("Feb 4, 2194 · Release");
+  });
+});
