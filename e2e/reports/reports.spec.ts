@@ -66,6 +66,12 @@ test("a report from two pins, read in Decide without touching the plan", async (
   await expect(read.getByRole("heading", { name: "Revenue by month" })).toBeVisible();
   await expect(read.getByRole("table", { name: "Revenue by weekday and month" })).toBeVisible();
   await expect(read.getByRole("textbox")).toHaveCount(0);
+  // Each item reads as a chart or a table (David, 3 Nov 2026): the bar chart, pressed, is its rows.
+  const asTable = read.getByRole("button", { name: "Table: Revenue by month" });
+  await expect(asTable).toHaveAttribute("aria-pressed", "false");
+  await asTable.click();
+  await expect(asTable).toHaveAttribute("aria-pressed", "true");
+  await expect(read.getByRole("columnheader", { name: "Month" })).toBeVisible();
   // Leaving would clear the plan, so it asks; Escape stays.
   await read.getByRole("button", { name: "Edit in Reports" }).click();
   await expect(page.getByRole("alertdialog")).toContainText("Leaving Decide clears it.");
