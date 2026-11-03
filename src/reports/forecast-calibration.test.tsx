@@ -6,9 +6,8 @@ import {
   calibrationLines,
   calibrationOption,
   CALIBRATION_COPY as COPY,
-  type Calibration,
-  type MeasureCalibration,
 } from "./forecast-calibration";
+import type { Calibration, MeasureCalibration } from "~/forecast/forecast";
 
 const measure = (over: Partial<MeasureCalibration>): MeasureCalibration => ({
   measure: "revenue",

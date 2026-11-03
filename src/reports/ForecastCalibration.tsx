@@ -5,9 +5,8 @@ import {
   calibrationLines,
   calibrationOption,
   CALIBRATION_COPY as COPY,
-  type Calibration,
-  type MeasureCalibration,
 } from "./forecast-calibration";
+import type { Calibration, MeasureCalibration } from "~/forecast/forecast";
 import styles from "./Reports.module.css";
 
 // The player's forecasts, judged over the played quarters (Plot's copy, section 10): how many quarters were forecast,

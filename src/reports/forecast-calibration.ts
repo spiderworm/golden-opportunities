@@ -4,36 +4,15 @@
 import type { EChartsCoreOption } from "echarts/core";
 
 import { quarterName } from "~/decide/q2-copy";
-import type { QuarterId } from "~/game/quarters";
 import { chartTheme, tooltipStyle } from "~/platform/charts/chart-theme";
 import { escapeHtml } from "~/platform/charts/escape";
 import { moneyText } from "~/result/copy";
-import type { ForecastMeasure, ForecastResult } from "~/result/forecast-result";
-
-/** One measure's calibration (Frank's MeasureCalibration). */
-export interface MeasureCalibration {
-  measure: ForecastMeasure;
-  /** Played quarters forecast for this measure. */
-  n: number;
-  /** Of those, how many landed inside the 80% range. */
-  hits: number;
-  hitRate: number | null;
-  /** Mean percent error of the actual (Sim): above zero means the forecasts ran high. */
-  bias: number | null;
-  /** Median half-width of the range, as a share of the expected figure. */
-  sharpness: number | null;
-  /** Enough quarters to judge (3 or more). */
-  judged: boolean;
-}
-export interface Calibration {
-  /** Played quarters with a forecast. */
-  forecast: number;
-  played: number;
-  revenue: MeasureCalibration;
-  units: MeasureCalibration;
-  /** Oldest first. */
-  history: ForecastResult[];
-}
+import type {
+  Calibration,
+  ForecastMeasure,
+  ForecastResult,
+  MeasureCalibration,
+} from "~/forecast/forecast";
 
 export const CALIBRATION_COPY = {
   heading: "Your forecasts",
@@ -117,12 +96,12 @@ export function calibrationOption(
           `${s.range}: ${forecastAmount(measure, r.forecast.low)} to ${forecastAmount(measure, r.forecast.high)}`,
           `${s.actual}: ${forecastAmount(measure, r.actual)}`,
         ];
-        return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${escapeHtml(quarterName(row.quarter as QuarterId))}</div>${lines.map((l) => `<div>${escapeHtml(l)}</div>`).join("")}`;
+        return `<div style="font-size:12px;color:${chartTheme.textMuted};margin-bottom:4px">${escapeHtml(quarterName(row.quarter))}</div>${lines.map((l) => `<div>${escapeHtml(l)}</div>`).join("")}`;
       },
     },
     xAxis: {
       type: "category",
-      data: rows.map((row) => quarterName(row.quarter as QuarterId)),
+      data: rows.map((row) => quarterName(row.quarter)),
       axisLine: { lineStyle: { color: chartTheme.axis } },
       axisTick: { show: false },
       axisLabel: { color: chartTheme.textMuted, fontSize: 11 },
