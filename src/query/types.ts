@@ -79,7 +79,15 @@ export interface Query {
   sort?: { column: Dimension | Measure; direction: "asc" | "desc" };
   /** 1–200; defaults to 200. Total is computed before this limit. */
   limit?: number;
+  /** "last_year": each row's and the total's figure a year earlier too, as `lastYear` (last-year.ts). */
+  vs?: "last_year";
 }
+
+/**
+ * A figure a year earlier: null when there's no last year to compare (it's before the data, or outside the
+ * periods the player can see); `value` null when last year had no value (an average over no sales).
+ */
+export type LastYear = { value: number | null } | null;
 
 export type Period = `${number}-Q${1 | 2 | 3 | 4}`;
 /** Trusted server state, NEVER accepted from a query request or an agent tool. */
@@ -117,6 +125,8 @@ export interface QueryResult {
   total: number | null;
   /** Player-visible provenance, including fact grain, scope, and truncation. */
   source: string;
+  /** With `vs: "last_year"`: each row's figure a year earlier, in the rows' order, and the total's. */
+  lastYear?: { rows: LastYear[]; total: LastYear };
 }
 
 export type QueryErrorCode =
@@ -195,9 +205,13 @@ const isAgentDimension = (d: Dimension): d is AgentDimension =>
 export const AGENT_MEASURE_DIMENSIONS = Object.fromEntries(
   AGENT_MEASURES.map((m) => [m, MEASURE_DIMENSIONS[m].filter(isAgentDimension)]),
 ) as unknown as Readonly<Record<AgentMeasure, readonly AgentDimension[]>>;
-/** The first measure or dimension in a valid query that Dewey may not use yet, or null if it may use them all. */
-export function investigateOnly(query: Query): Measure | Dimension | null {
+/**
+ * The first measure, dimension or option in a valid query that Dewey may not use yet, or null if it may use them
+ * all. Last year's figures wait for Sage and the figures gate (Goldy, 3 Nov 2026).
+ */
+export function investigateOnly(query: Query): Measure | Dimension | "vs" | null {
   if (!(AGENT_MEASURES as readonly Measure[]).includes(query.measure)) return query.measure;
+  if (query.vs) return "vs";
   const used = [
     ...query.by,
     ...(Object.keys(query.filter ?? {}) as Dimension[]),

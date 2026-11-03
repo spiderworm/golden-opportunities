@@ -114,6 +114,25 @@ means null; eligible days with no orders means zero. avg_order_value is null
 when there are no orders. Both calculations respect visibility before any
 aggregation; neither averages already-computed group values.
 
+## Last year
+
+`vs: "last_year"` (David, 3 Nov 2026: "vs. same quarter last year") adds
+`lastYear: { rows, total }` to the result: each row's figure a year earlier, in
+the rows' order, and the total's. Last year is the same measure, breakdown and
+filters with the quarter and month filters a year back (`last-year.ts`). A row
+grouped by quarter or month is matched to its quarter or month a year earlier;
+any other row to the same group, over the year-earlier quarters of the query's
+scope.
+
+A figure is `null` when its quarters a year earlier aren't all in the view's
+periods: before 2193, or outside what the player can see. Otherwise it's
+`{ value }`, and a group with no sales last year is a zero for sums and counts
+and `{ value: null }` for averages, as with any group. `change(now, before)`
+gives the difference and the fractional change, `"new"` when last year was zero
+(never Infinity). Undated measures have no last year: `INCOMPATIBLE_DIMENSION`.
+Groups that sold last year but not this year are not added as rows. Dewey can't
+use `vs` yet.
+
 ## What Dewey may use
 
 Dewey's tools see only `AGENT_MEASURES`, `AGENT_DIMENSIONS` and
