@@ -5,7 +5,7 @@ import { chartTheme, heatColor } from "~/platform/charts/chart-theme";
 import { Dropdown } from "~/platform/ui/Dropdown";
 import { cellSelected, heatAxis, heatModel, type HeatModel } from "./charts/heat-model";
 import { DIMENSION_LABELS, formatDimensionShort, formatDimensionValue, formatMeasure, MEASURE_LABELS } from "./format";
-import { CHART_MEASURES, HEAT_DIMENSIONS, type ChartMeasure, type Filters, type HeatDimension, type HeatState, type InvestigateState } from "./state";
+import { CHART_MEASURES, HEAT_DIMENSIONS, HEAT_WINDOW, heatWindow, type ChartMeasure, type Filters, type HeatDimension, type HeatState, type InvestigateState } from "./state";
 import styles from "./Investigate.module.css";
 
 export interface HeatmapProps {
@@ -19,11 +19,16 @@ export interface HeatmapProps {
 
 /** What a heatmap says when the terminal's row limit left cells out: those cells are blank, not zero. */
 export const CUT_NOTE = "This grid is too large to show in full. Narrow it with a filter.";
+/** The same, when the player chose every quarter over a long ledger: the window is the other way out (Plot). */
+export const CUT_NOTE_ALL = "This grid is too large to show in full. Narrow it with a filter, or choose Last eight quarters.";
+/** Why Period can't be changed: the screen's own quarter filter decides the span. */
+const PERIOD_FOLLOWS = "Following the screen's quarter filter.";
 /** A cut-off cell's label (Plot, #264). */
 const CUT_CELL = "Not shown: the grid was cut off.";
 
 /** "Revenue by weekday and month". */
-export const heatTitle = (heat: HeatState) => `${MEASURE_LABELS[heat.measure]} by ${DIMENSION_LABELS[heat.rows].toLowerCase()} and ${DIMENSION_LABELS[heat.cols].toLowerCase()}`;
+export const heatTitle = (heat: HeatState, windowed = false) =>
+  `${MEASURE_LABELS[heat.measure]} by ${DIMENSION_LABELS[heat.rows].toLowerCase()} and ${DIMENSION_LABELS[heat.cols].toLowerCase()}${windowed ? ", last eight quarters" : ""}`;
 
 /**
  * The heatmap card: one measure down one dimension and across another (David, 2 Nov 2026: "the same level of
@@ -41,11 +46,16 @@ export function Heatmap({ state, result, quarters, onCell, onHeat }: HeatmapProp
   };
   // The grid draws the result it has, for the heatmap that was asked; the controls show the latest choice.
   const shown = state.heat;
+  // A long ledger's heatmap shows its last eight quarters unless the player chose every one (heatWindow); its axes
+  // follow the same span as its query.
+  const window = heatWindow(state, quarters);
+  const scope = window ? { ...state.filters, quarter: window } : state.filters;
+  const long = quarters.length > HEAT_WINDOW;
   const model = useMemo(
-    () => heatModel(result, shown.measure, shown.rows, heatAxis(shown.rows, result, quarters, state.filters), shown.cols, heatAxis(shown.cols, result, quarters, state.filters)),
-    [result, shown.measure, shown.rows, shown.cols, quarters, state.filters],
+    () => heatModel(result, shown.measure, shown.rows, heatAxis(shown.rows, result, quarters, scope), shown.cols, heatAxis(shown.cols, result, quarters, scope)),
+    [result, shown.measure, shown.rows, shown.cols, quarters, state.filters, window?.join()],
   );
-  const title = heatTitle(shown);
+  const title = heatTitle(shown, window !== null);
   // Each axis offers every dimension but the other axis's: never the same one twice.
   const axisOptions = (other: HeatDimension) => HEAT_DIMENSIONS.filter((d) => d !== other).map((d) => ({ value: d, label: DIMENSION_LABELS[d] }));
 
@@ -65,11 +75,24 @@ export function Heatmap({ state, result, quarters, onCell, onHeat }: HeatmapProp
           />
           <Dropdown mode="single" name="Rows" value={heat.rows} onChange={(rows: HeatDimension) => choose({ ...heat, rows })} options={axisOptions(heat.cols)} />
           <Dropdown mode="single" name="Columns" value={heat.cols} onChange={(cols: HeatDimension) => choose({ ...heat, cols })} options={axisOptions(heat.rows)} />
+          {/* Only once the ledger holds more than eight quarters: before that, every quarter is the last eight (Plot). */}
+          {long && (
+            <Dropdown
+              mode="single"
+              name="Period"
+              value={heat.period}
+              onChange={(period: HeatState["period"]) => choose({ ...heat, period })}
+              options={[
+                { value: "recent" as const, label: "Last eight quarters" },
+                { value: "all" as const, label: "Every quarter" },
+              ].map((o) => ({ ...o, disabledReason: state.filters.quarter?.length ? PERIOD_FOLLOWS : null }))}
+            />
+          )}
         </div>
       </header>
       <HeatScale measure={shown.measure} model={model} />
       <HeatGrid model={model} measure={shown.measure} rowsBy={shown.rows} colsBy={shown.cols} filters={state.filters} label={title} onCell={onCell} />
-      {model.cut && <p className={styles.source}>{CUT_NOTE}</p>}
+      {model.cut && <p className={styles.source}>{long && shown.period === "all" && !state.filters.quarter?.length ? CUT_NOTE_ALL : CUT_NOTE}</p>}
       <p className={styles.source}>
         {`Click a cell to filter the screen to that ${DIMENSION_LABELS[shown.rows].toLowerCase()} and ${DIMENSION_LABELS[shown.cols].toLowerCase()}. Source: ${result.source}`}
       </p>

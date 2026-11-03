@@ -98,6 +98,20 @@ export interface HeatState {
   measure: ChartMeasure;
   rows: HeatDimension;
   cols: HeatDimension;
+  /** The heatmap's span once the ledger holds more than eight quarters: the last eight (the default), or every one. */
+  period: "recent" | "all";
+}
+
+/** How many quarters the heatmap's default window covers (Frank and Plot, #264: 7 × 24 cells fits the 200-group limit). */
+export const HEAT_WINDOW = 8;
+
+/**
+ * The quarters the heatmap's default window keeps, or null when it covers everything: until the ledger holds more
+ * than eight quarters, when the player chose every quarter, or when the screen already filters by quarter.
+ */
+export function heatWindow(state: Pick<InvestigateState, "heat" | "filters">, quarters: readonly string[]): string[] | null {
+  if (quarters.length <= HEAT_WINDOW || state.heat.period === "all" || state.filters.quarter?.length) return null;
+  return [...quarters].sort().slice(-HEAT_WINDOW);
 }
 
 export interface InvestigateState {
@@ -119,7 +133,7 @@ export const DEFAULT_STATE: InvestigateState = {
   by: "month",
   compare: false,
   filters: {},
-  heat: { measure: "revenue", rows: "weekday", cols: "month" },
+  heat: { measure: "revenue", rows: "weekday", cols: "month", period: "recent" },
 };
 
 const MAX_VALUES = 50;
@@ -172,7 +186,7 @@ function readHeat(params: URLSearchParams, chartMeasure: ChartMeasure): HeatStat
   const rows = oneOf(HEAT_DIMENSIONS, params.get("heat_rows"), DEFAULT_STATE.heat.rows);
   const cols = oneOf(HEAT_DIMENSIONS, params.get("heat_cols"), DEFAULT_STATE.heat.cols);
   const axes = rows === cols ? { rows: DEFAULT_STATE.heat.rows, cols: DEFAULT_STATE.heat.cols } : { rows, cols };
-  return { measure: oneOf(CHART_MEASURES, params.get("heat"), chartMeasure), ...axes };
+  return { measure: oneOf(CHART_MEASURES, params.get("heat"), chartMeasure), ...axes, period: params.get("heat_period") === "all" ? "all" : "recent" };
 }
 
 export function toSearchParams(state: InvestigateState): URLSearchParams {
@@ -186,6 +200,7 @@ export function toSearchParams(state: InvestigateState): URLSearchParams {
   if (state.heat.measure !== state.measure) params.set("heat", state.heat.measure);
   if (state.heat.rows !== DEFAULT_STATE.heat.rows) params.set("heat_rows", state.heat.rows);
   if (state.heat.cols !== DEFAULT_STATE.heat.cols) params.set("heat_cols", state.heat.cols);
+  if (state.heat.period === "all") params.set("heat_period", "all");
   for (const dimension of FILTER_DIMENSIONS) {
     for (const value of state.filters[dimension] ?? []) params.append(dimension, value);
   }

@@ -76,6 +76,8 @@ export function loader({ request }: Route.LoaderArgs) {
     measure: state.measure,
     by: state.by,
     filters: Object.keys(state.filters).length,
+    // Whether the heatmap's grid was cut off by the row limit (Plot, #264).
+    heatmapCut: investigation.heatmap.truncated === true,
   });
   return { state, ...investigation, planned: currentQuarter(session.save) === null, dataVersion: dataVersion(session.save), evidence };
 }
@@ -240,7 +242,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             update(next);
           }}
           onHeat={(heat) => {
-            track("investigate_heatmap_changed", { measure: heat.measure, rows: heat.rows, cols: heat.cols });
+            track("investigate_heatmap_changed", { measure: heat.measure, rows: heat.rows, cols: heat.cols, period: heat.period });
             update({ ...state, heat });
           }}
         />

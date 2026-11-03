@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { heatWindow } from "./state";
 import { awardChoice, canAddMeasure, canCompare, measuresOf, DEFAULT_STATE, onlyShownChanged, removeFilter, shownFilters, withShown, discountChoice, filtersExcept, monthsInScope, parseState, setAward, setDiscount, setSeries, seriesChoice, toggleCell, toggleFilterValue, toSearchParams } from "./state";
 
 describe("investigate state", () => {
   it("round-trips through the URL", () => {
-    const state = { measure: "units", also: [], by: "genre", compare: true, filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] }, heat: { measure: "units", rows: "weekday", cols: "month" } } as const;
+    const state = { measure: "units", also: [], by: "genre", compare: true, filters: { genre: ["Fiction", "Memoir"], quarter: ["2193-Q4"] }, heat: { measure: "units", rows: "weekday", cols: "month", period: "recent" } } as const;
     const params = toSearchParams({ ...state, also: [], filters: { genre: [...state.filters.genre], quarter: [...state.filters.quarter] }, heat: { ...state.heat } });
     expect(params.toString()).toBe("measure=units&by=genre&compare=quarter&quarter=2193-Q4&genre=Fiction&genre=Memoir");
     expect(parseState(params)).toEqual(state);
@@ -145,9 +146,9 @@ describe("investigate state", () => {
 
   it("keeps the heatmap's measure and axes in the URL; without them, weekday by month in the chart's measure", () => {
     // Every link before: the heatmap follows the chart's measure.
-    expect(parseState(new URLSearchParams("measure=orders")).heat).toEqual({ measure: "orders", rows: "weekday", cols: "month" });
+    expect(parseState(new URLSearchParams("measure=orders")).heat).toEqual({ measure: "orders", rows: "weekday", cols: "month", period: "recent" });
     const chosen = parseState(new URLSearchParams("measure=orders&heat=units&heat_rows=genre&heat_cols=quarter"));
-    expect(chosen.heat).toEqual({ measure: "units", rows: "genre", cols: "quarter" });
+    expect(chosen.heat).toEqual({ measure: "units", rows: "genre", cols: "quarter", period: "recent" });
     expect(toSearchParams(chosen).toString()).toBe("measure=orders&heat=units&heat_rows=genre&heat_cols=quarter");
     // Never the same dimension twice, nor one a grid can't hold: back to the defaults.
     expect(parseState(new URLSearchParams("heat_rows=month&heat_cols=month")).heat).toMatchObject({ rows: "weekday", cols: "month" });
@@ -155,8 +156,19 @@ describe("investigate state", () => {
     expect(parseState(new URLSearchParams("heat=profit")).heat.measure).toBe("revenue");
   });
 
+  it("keeps a long ledger's heatmap to its last eight quarters unless every quarter is chosen or the screen filters by quarter", () => {
+    const ten = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4", "2194-Q1", "2194-Q2", "2194-Q3", "2194-Q4", "2195-Q1", "2195-Q2"];
+    expect(heatWindow(DEFAULT_STATE, ten)).toEqual(ten.slice(2));
+    expect(heatWindow(DEFAULT_STATE, ten.slice(0, 8))).toBeNull();
+    const all = parseState(new URLSearchParams("heat_period=all"));
+    expect(all.heat.period).toBe("all");
+    expect(toSearchParams(all).toString()).toBe("heat_period=all");
+    expect(heatWindow(all, ten)).toBeNull();
+    expect(heatWindow({ ...DEFAULT_STATE, filters: { quarter: ["2194-Q1"] } }, ten)).toBeNull();
+  });
+
   it("filters to a heatmap cell's row and column values, and clears them on a second click", () => {
-    const state = { ...DEFAULT_STATE, heat: { measure: "revenue" as const, rows: "genre" as const, cols: "price_band" as const } };
+    const state = { ...DEFAULT_STATE, heat: { measure: "revenue" as const, rows: "genre" as const, cols: "price_band" as const, period: "recent" as const } };
     const cell = toggleCell(state, "Fiction", "under $10");
     expect(cell.filters).toEqual({ genre: ["Fiction"], price_band: ["under $10"] });
     expect(toggleCell(cell, "Fiction", "under $10").filters).toEqual({});
