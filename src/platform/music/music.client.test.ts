@@ -93,4 +93,31 @@ describe("loadMusic", () => {
     expect(await loadMusic(fetcher)).toBeNull();
     expect(fetcher).not.toHaveBeenCalled();
   });
+
+  it("starts paused, once, when the entry page's Play the music was unticked, without reporting that pause", async () => {
+    const calls: string[] = [];
+    createMusic.mockImplementationOnce((options) => {
+      const o = options as { track: (event: string, props?: object) => void };
+      let song: string | null = null;
+      return {
+        options,
+        state: () => ({ song }),
+        skip: async () => void ((song = "nebula-waltz"), calls.push("skip")),
+        pause: () => (
+          calls.push("pause"),
+          o.track("music_paused", { id: song, where: "settings" })
+        ),
+      } as never;
+    });
+    const page = { cookie: "ob_music=off" };
+    vi.stubGlobal("document", page);
+    const fetcher = respond({
+      songs: [{ id: "nebula-waltz", file: "nebula-waltz.mp3", title: "Nebula Waltz" }],
+    });
+    await loadMusic(fetcher);
+    expect(calls).toEqual(["skip", "pause"]);
+    expect(track).not.toHaveBeenCalledWith("music_paused", expect.anything());
+    // The choice is cleared, so it applies to this start only.
+    expect(page.cookie).toBe("ob_music=; Path=/; Max-Age=0; SameSite=Lax");
+  });
 });
