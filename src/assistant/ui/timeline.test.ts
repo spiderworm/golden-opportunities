@@ -39,6 +39,12 @@ describe("Dewey's chat on a timeline (David, 3 Nov 2026; Plot's copy)", () => {
     expect(timelineHeadings([], "2194-Q1")).toEqual([]);
   });
 
+  it("puts turns from a game before Play again under Earlier, not dated ahead of Today (Audit, #390)", () => {
+    expect(timelineLabel("2194-Q3", "2194-Q1")).toBe("Earlier");
+    const replies = [{ quarter: "2194-Q2" }, { quarter: "2194-Q3" }, { quarter: "2194-Q1" }];
+    expect(timelineHeadings(replies, "2194-Q1")).toEqual(["Earlier", null, "Today"]);
+  });
+
   it("knows a quarter when it sees one", () => {
     expect(isQuarter("2194-Q1")).toBe(true);
     expect(isQuarter("2194-Q5")).toBe(false);
