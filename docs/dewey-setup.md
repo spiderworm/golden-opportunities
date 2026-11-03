@@ -81,7 +81,7 @@ Each copy of the game caps its own model use every day, a UTC day (David, 3 Nov 
 
 ## Known limit: a loop with a real game
 
-Questions without a game cost nothing: they ask no model, count toward no daily or hourly limit, and have a minute cap of their own, so a loop of them can't keep other players from asking. A loop that starts a real game first is different. Its questions are real ones, so they count toward the copy's caps and the shared minute cap, and the game has no per-visitor limit beyond the daily one. That's cost doing its job (the daily caps bound it), but such a loop could use up the day's questions for everyone. If traffic turns abusive, close the game with `ORBITAL_CLOSED=1` or a `.data/closed` file, which is the backstop; per-client limits are the next step.
+Questions without a game cost nothing: they ask no model and count toward no daily or hourly limit. Those with no save cookie at all have a minute cap of their own, so a loop of them can't keep other players from asking. A loop that sends a made-up save cookie is different: the minute cap is chosen from the cookie alone, so it lands in the shared one and can keep other players' questions refused while it runs, though it still costs no model time. A loop that starts a real game first is different. Its questions are real ones, so they count toward the copy's caps and the shared minute cap, and the game has no per-visitor limit beyond the daily one. That's cost doing its job (the daily caps bound it), but such a loop could use up the day's questions for everyone. If traffic turns abusive, close the game with `ORBITAL_CLOSED=1` or a `.data/closed` file, which is the backstop; per-client limits are the next step.
 
 ## What Dewey can reach
 
