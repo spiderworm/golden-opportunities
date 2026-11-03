@@ -32,7 +32,8 @@
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  align-items: start;
   gap: 16px;
   margin: 0;
   padding: 0;
@@ -41,7 +42,7 @@
 
 .card {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   align-content: start;
   min-width: 0;
   padding: 20px 22px;
@@ -67,4 +68,408 @@
   color: var(--color-accent-soft);
   font-size: 11px;
   font-weight: 600;
+}
+
+/* The last played quarter's report card, as tiles: overall, then the four measures (section 1). */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tile {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel);
+}
+
+/* Labels wrap rather than shorten (Readers served). */
+.tileLabel {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tileValue {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.tile > :last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* The chart, then the record under it: the record's seven columns need the page's width (measured at 1440 px,
+   beside the chart they scrolled). With one quarter played, the chart is hidden. */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.summary {
+  display: grid;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.scoreLine {
+  color: var(--color-text-muted);
+}
+
+.parts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.parts dt {
+  color: var(--color-text-muted);
+}
+
+.parts dd {
+  margin: 0;
+}
+
+.plain {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A form's button that reads as the link it leads to. */
+.linkButton {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent-soft);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Investigate's breakpoint: the tiles wrap, and every card goes to one column. */
+@media (max-width: 1100px) {
+  .tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* The greeting, with New report at its right (the reference's top line). */
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.newReport {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.primary {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.danger {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-down);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.actions a {
+  color: var(--color-accent-soft);
+}
+
+/* A note or summary's first two lines, on its card. */
+.clamp {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: pre-wrap;
+}
+
+/* Plain text, line breaks kept: no links, no markdown. */
+.note {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.report {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 22px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel);
+}
+
+.reportHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reportTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.reportCharts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A heatmap's twelve columns need the row: at a card's width its figures run together (measured at 1440 px). */
+.reportCharts > [data-wide] {
+  grid-column: 1 / -1;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field > span {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.field input,
+.field textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-space);
+  color: var(--color-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.board {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-down);
+}
+
+.dialog,
+.inlineDialog {
+  display: grid;
+  gap: 14px;
+  padding: 20px 22px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel-raised);
+  color: var(--color-text);
+}
+
+.dialog:not([open]) {
+  display: none;
+}
+
+.dialog::backdrop {
+  background: rgb(4 6 16 / 0.6);
+}
+
+/* A pin's Add to report, and its menu of the player's reports. */
+.addTo {
+  position: relative;
+}
+
+.addToButton {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 13px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.addToButton:hover,
+.addToButton[aria-expanded="true"] {
+  background: var(--color-panel-raised);
+  color: var(--color-text);
+}
+
+.addToMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-panel-raised);
+  box-shadow: 0 12px 32px rgb(4 6 16 / 0.5);
+}
+
+.addToMenu a {
+  color: var(--color-text);
+}
+
+/* Reports in Decide (section 4): the button in the plan's heading, and the side panel over the boss scene. */
+.decideButton {
+  margin-left: auto;
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.decideButton:hover,
+.decideButton[aria-expanded="true"] {
+  background: var(--color-panel-raised);
+}
+
+/* Above Decide's layers (2, 5) and the picker (6), under the bell's menu (10) (Sage, #284). */
+.decidePanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  box-sizing: border-box;
+  width: 480px;
+  max-width: 100vw;
+  padding: 24px;
+  overflow-y: auto;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-panel);
+  box-shadow: -12px 0 32px rgb(4 6 16 / 0.5);
+}
+
+.decidePanel .reportCharts {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.decideAsk {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 9;
+  width: min(420px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 14px;
+  padding: 20px 22px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-panel-raised);
+  box-shadow: 0 12px 32px rgb(4 6 16 / 0.5);
+}
+
+@media (max-width: 1100px) {
+  .decidePanel {
+    width: 100vw;
+  }
+}
+
+/* Plain buttons in a row of actions (the editor's, the dialogs'): quiet chips, as the page's other controls. */
+.actions button:not(.linkButton, .danger, .primary) {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.actions button:not(.linkButton, .danger, .primary):hover:not(:disabled) {
+  background: var(--color-panel-raised);
+}
+
+.actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

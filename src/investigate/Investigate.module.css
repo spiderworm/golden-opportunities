@@ -76,14 +76,16 @@
   padding: 0 18px;
   border-radius: var(--radius-control);
   background: var(--color-accent);
-  color: var(--color-text);
+  /* White, not the text colour: 4.6:1 on the accent against 4.2:1. */
+  color: #fff;
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
 }
 
+/* Darker on hover, not lighter: white on the soft accent is 3:1; on this, 5.9:1 (Audit, #283). */
 .planLink:hover {
-  background: var(--color-accent-soft);
+  background: #5a4be6;
 }
 
 /* Refetching keeps the frame: the previous figures stay, dimmed, until the new ones land. */
@@ -493,7 +495,7 @@
   cursor: pointer;
 }
 
-.toggle:hover:not(:disabled) {
+.toggle:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--color-panel-raised);
 }
 
@@ -502,7 +504,8 @@
   background: var(--color-accent-wash);
 }
 
-.toggle:disabled {
+.toggle:disabled,
+.toggle[aria-disabled="true"] {
   color: var(--color-text-subtle);
   cursor: not-allowed;
 }
@@ -779,6 +782,21 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+/* On a pin card, the chip is the size of its neighbour, Add to report. */
+.pinActions .toggle {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  font-size: 12px;
+}
+
+.pinActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
 }
 
 .pinTitle {

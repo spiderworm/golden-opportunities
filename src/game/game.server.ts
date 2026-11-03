@@ -11,7 +11,7 @@ import { eventOf, resolveSaveId, saveCookie, saves, startGame } from "./session.
 import { SaveError } from "./store.server";
 import { isOutcome, isQuarterOutcome } from "./outcome";
 import { currentQuarter as quarterOf, isFinished } from "./progress";
-import type { QuarterId } from "./quarters";
+import { isQuarterId, type QuarterId } from "./quarters";
 import {
   Q1_DISCOVERIES,
   Q2_DISCOVERIES,
@@ -23,6 +23,7 @@ import { isLocalBrowserRequest } from "../query/access.server";
 import { onQuarterCommitted } from "../alma/hook.server";
 import { almaRecordFor } from "../alma/hook.server";
 import type { AlmaRecord } from "../alma/record";
+import type { PlayerReport } from "../reports/player";
 import { MEASURE_NAMES } from "../alma/sentences";
 import type { BossId } from "../platform/bosses/bosses";
 import { simulateTurn } from "../simulation/turn";
@@ -497,6 +498,36 @@ export function resetGame(request: Request): string {
     return failure(error);
   }
 }
+/** A played quarter's shop report was opened on Reports, its card or its full results. Refuses an unplayed quarter. */
+export function markReportSeen(request: Request, quarter: unknown): void {
+  try {
+    refuseUnlessLocalPost(request);
+    if (!isQuarterId(quarter) || !saves.markReportSeen(resolveSaveId(request), quarter))
+      throw new Response("That quarter hasn't been played.", {
+        status: 400,
+        headers: { "Cache-Control": "no-store" },
+      });
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/**
+ * Changes the player's reports (reports.md section 3), from the Reports action. `change` gets the save and returns
+ * the new list, or null to write nothing; local same-origin POSTs only, as every write.
+ */
+export function writeReports(
+  request: Request,
+  change: (save: GameSave) => PlayerReport[] | null,
+): GameSave | null {
+  try {
+    refuseUnlessLocalPost(request);
+    return saves.writeReports(resolveSaveId(request), change);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 /** The opening transmission has been seen (opened or put off): the bell's alert is read, and the transmission doesn't return. Idempotent. */
 export function markAlertSeen(request: Request): void {
   try {

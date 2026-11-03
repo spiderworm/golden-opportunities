@@ -3,8 +3,8 @@ import type { IconName } from "./icons";
 export interface NavItem {
   label: string;
   icon: IconName;
-  /** Where the item goes. Items without one are features still to come. */
-  to?: string;
+  /** Where the item goes. */
+  to: string;
   /** Which of the shell's counts it shows as a badge, gone at zero (Reports: its new shop reports). */
   count?: keyof NavCounts;
 }

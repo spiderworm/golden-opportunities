@@ -8,11 +8,13 @@ import { eligibleDays, groupDays, CALENDAR_DIMENSIONS, WEEKDAYS } from "./calend
 import { checkLabel, serializeResult } from "./result";
 import { PRICE_BANDS, QUERY_LIMITS } from "./types";
 import { rollUpSales, type SaleCells } from "./sale-cells";
+import { lastYearMissing, lastYearQuery, quartersCovered, yearEarlier } from "./last-year";
 import type {
   Dimension,
   Measure,
   Query,
   QueryResult,
+  LastYear,
   QueryRow,
   QueryTrack,
   QueryView,
@@ -457,6 +459,38 @@ function execute(query: Query, view: QueryView): QueryResult {
   };
 }
 
+/**
+ * The query, and with `vs: "last_year"` the same query a year earlier beside it (last-year.ts): each row's figure
+ * from the row a year back (its quarter or month a year earlier), and the total's. A figure whose quarters a year
+ * back aren't all visible has no last year (null); a group that sold nothing last year is a zero for totals.
+ */
+function executeWithLastYear(query: Query, view: QueryView): QueryResult {
+  const result = execute(query, view);
+  if (!query.vs) return result;
+  // Every group last year, not just the first 200: a group cut off would read as a zero.
+  const before = execute({ ...lastYearQuery(query), limit: Number.MAX_SAFE_INTEGER }, view);
+  const groups = new Map(
+    before.rows.map((row) => [JSON.stringify(query.by.map((d) => row[d] ?? null)), row]),
+  );
+  const figure = (row: QueryRow | undefined, missing: string | null, fallback: number | null) =>
+    missing ? null : { value: row ? ((row[query.measure] as number | null) ?? null) : fallback };
+  const nothing = query.measure.startsWith("avg_") ? null : 0;
+  const rows: LastYear[] = result.rows.map((row) => {
+    const key = query.by.map((d) => {
+      const v = row[d] ?? null;
+      return v === null ? null : yearEarlier(d, v);
+    });
+    return figure(
+      groups.get(JSON.stringify(key)),
+      lastYearMissing(quartersCovered(query, view.periods, row), view.periods),
+      nothing,
+    );
+  });
+  const missing = lastYearMissing(quartersCovered(query, view.periods), view.periods);
+  const total: LastYear = missing ? null : { value: before.total };
+  return { ...result, lastYear: { rows, total } };
+}
+
 /** Fixed grammar only. Visibility always comes from trusted server state. */
 export function runQuery(
   input: unknown,
@@ -483,7 +517,7 @@ export function runQuery(
     let result = key ? cached(key) : undefined;
     const cacheHit = result !== undefined;
     if (!result) {
-      result = execute(query, view);
+      result = executeWithLastYear(query, view);
       const body = serializeResult(result);
       if (key) remember(key, result, body.length + key.length);
     }

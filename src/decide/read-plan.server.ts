@@ -21,11 +21,27 @@ export class PlanRefused extends Error {
 export async function readAnyPlan(
   request: Request,
   deadlineMs = DEADLINE_MS,
-): Promise<{ form: "moves"; plan: Plan } | ({ form: "picks" } & QuarterPlan)> {
+): Promise<
+  ({ form: "moves"; plan: Plan } | ({ form: "picks" } & QuarterPlan)) & { reportsRead: number }
+> {
   const form = await readForm(request, deadlineMs);
+  const reportsRead = reportsReadFrom(form);
   return form.has("picks")
-    ? { form: "picks", ...q2PlanFrom(form) }
-    : { form: "moves", plan: planFrom(form) };
+    ? { form: "picks", ...q2PlanFrom(form), reportsRead }
+    : { form: "moves", plan: planFrom(form), reportsRead };
+}
+
+/**
+ * How many reports the player read in Decide's panel before submitting (reports.md section 5): an optional field,
+ * a count for plan_submitted and nothing else. Taken off the form, so the plan's own fields are checked as before;
+ * a malformed count is 0, never a refused plan.
+ */
+function reportsReadFrom(form: URLSearchParams): number {
+  const value = form.get("reportsRead");
+  if (value === null) return 0;
+  form.delete("reportsRead");
+  // An analytics count can't stop a plan being filed (Orbit, #287): anything but a small count reads as none.
+  return /^\d{1,3}$/.test(value) ? Number(value) : 0;
 }
 
 /** Q1's plan in one field: `levers=repick,events`, or `levers=` to hold course. */

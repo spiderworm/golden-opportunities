@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { Query } from "~/query/types";
-import { addPin, MAX_PINS, parsePins, parsePinSpec, pinKey, type Pin, type PinSpec } from "./spec";
+import {
+  addPin,
+  noChart,
+  drawnKind,
+  MAX_PINS,
+  parsePins,
+  parsePinSpec,
+  pinKey,
+  shownAsTable,
+  type Pin,
+  type PinSpec,
+} from "./spec";
 
 const spec = {
   title: "Revenue by quarter",
@@ -10,6 +21,27 @@ const spec = {
 const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
 describe("pin specs", () => {
+  it("keeps a scatter plot: two measures across one grouping that isn't time", () => {
+    const scatter = {
+      title: "Units sold against revenue, by title",
+      kind: "scatter",
+      query: { measure: "revenue", by: ["title"], filter: { genre: ["Mystery"] } },
+      also: ["units"],
+    } as const;
+    expect(parsePinSpec(copy(scatter))).toEqual(scatter);
+    // One measure, three, a breakdown over time, two breakdowns, or none: not a scatter plot.
+    expect(parsePinSpec({ ...copy(scatter), also: undefined })).toBeNull();
+    expect(parsePinSpec({ ...copy(scatter), also: ["units", "orders"] })).toBeNull();
+    for (const by of [["month"], ["weekday"], ["title", "quarter"], []])
+      expect(
+        parsePinSpec({ ...copy(scatter), query: { measure: "revenue", by } }),
+        by.join(),
+      ).toBeNull();
+    // A scatter plot and the bars of the same query are two pins.
+    const pinned = parsePinSpec(copy(scatter))!;
+    expect(pinKey(pinned)).not.toBe(pinKey({ ...pinned, kind: "bar" } as PinSpec));
+  });
+
   it("keeps a heatmap: one measure down one grid dimension and across another", () => {
     const heat = {
       title: "Units sold by genre and price band",
@@ -286,5 +318,57 @@ describe("pins saved before months had a year", () => {
     const stored = parsePins(JSON.stringify([{ id: "p", pinnedBy: "dewey", ...old }]))[0]!;
     expect(pinKey(parsePinSpec(old)!)).toBe(pinKey(stored));
     expect(pinKey(old)).not.toBe(pinKey(stored));
+  });
+});
+
+describe("a pin's chart or table view (David, 3 Nov 2026)", () => {
+  const bar = {
+    title: "Revenue by genre",
+    kind: "bar" as const,
+    query: { measure: "revenue" as const, by: ["genre" as const] },
+  };
+  const table = {
+    title: "Revenue by month",
+    kind: "table" as const,
+    query: { measure: "revenue" as const, by: ["month" as const] },
+  };
+
+  it("keeps a toggled view on the pin, and refuses one that isn't a yes or no", () => {
+    expect(parsePinSpec({ ...bar, table: true })).toEqual({ ...bar, table: true });
+    expect(parsePinSpec({ ...table, table: false })).toEqual({ ...table, table: false });
+    expect(parsePinSpec(bar)).toEqual(bar);
+    expect(parsePinSpec({ ...bar, table: "yes" })).toBeNull();
+  });
+
+  it("shows a pin by its toggle, else its kind; and draws a table as the terminal would", () => {
+    expect(shownAsTable(bar)).toBe(false);
+    expect(shownAsTable({ ...bar, table: true })).toBe(true);
+    expect(shownAsTable(table)).toBe(true);
+    expect(shownAsTable({ ...table, table: false })).toBe(false);
+    expect(drawnKind(table)).toBe("line");
+    expect(drawnKind({ ...table, query: { ...table.query, by: ["genre"] } })).toBe("bar");
+    expect(drawnKind({ ...bar, kind: "line" })).toBe("line");
+  });
+
+  it("says why there's no chart: a single figure, or a comparison", () => {
+    expect(noChart(bar)).toBeNull();
+    expect(noChart({ ...bar, query: { measure: "revenue", by: [] } })).toBe("figure");
+    expect(
+      noChart({
+        title: "Q3 against Q4",
+        kind: "comparison",
+        comparison: {
+          measure: "revenue",
+          across: "quarter",
+          from: "2193-Q3",
+          to: "2193-Q4",
+          by: [],
+        },
+      }),
+    ).toBe("comparison");
+  });
+
+  it("matches the same pin whichever way it's shown", () => {
+    expect(pinKey({ ...bar, table: true })).toBe(pinKey(bar));
   });
 });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { AddToReport } from "~/reports/AddToReport";
 import {
-  Link,
   useLocation,
   useNavigation,
   useSearchParams,
@@ -22,6 +22,8 @@ import { Heatmap, heatTitle } from "./Heatmap";
 import { investigate } from "./investigation.server";
 import { MeasureChart } from "./MeasureChart";
 import { MetricTiles } from "./MetricTiles";
+import { PlanLink } from "./PlanLink";
+import { scatterTitle } from "./charts/scatter-chart";
 import { runQuery } from "~/query/run-query.server";
 import { recordDiscoveries, type ObservedQuery } from "~/game/discoveries.server";
 import { getGameSession } from "~/game/session.server";
@@ -47,6 +49,7 @@ import {
   type InvestigateState,
   measuresOf,
   heatWindow,
+  scatterProblem,
 } from "./state";
 import { PinnedCharts } from "./pins/PinnedCharts";
 import type { PinSpec } from "./pins/spec";
@@ -156,15 +159,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   return (
     <div className={styles.layout}>
       <div className={styles.page} data-refreshing={refreshing || undefined} aria-busy={refreshing}>
-        <div className={styles.pageActions}>
-          <Link
-            to={planned ? "/result" : "/decide"}
-            className={styles.planLink}
-            onClick={() => track("investigate_plan_link", { to: planned ? "result" : "decide" })}
-          >
-            {planned ? "See the results" : "Write the plan"}
-          </Link>
-        </div>
+        <PlanLink planned={planned} />
         <FilterBar
           filters={state.filters}
           options={options}
@@ -258,6 +253,14 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             track("investigate_compare_toggled", { compare });
             update({ ...state, compare });
           }}
+          onScatter={(on) => {
+            track("investigate_scatter_toggled", { on });
+            update({ ...state, scatter: on });
+          }}
+          onLastYear={(on) => {
+            track("investigate_last_year_toggled", { on });
+            update({ ...state, lastYear: on });
+          }}
           onDrill={(value) => {
             const next = toggleFilterValue(state, state.by, value);
             track("investigate_drilldown", {
@@ -315,14 +318,31 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
             });
             update({ ...state, heat });
           }}
-          onPin={() => pins.add(heatPin, "player")}
+          // Pinned as it's shown: its table, if that's the view.
+          onPin={(table) => pins.add(table ? { ...heatPin, table } : heatPin, "player")}
           pinned={pins.has(heatPin)}
+          onTable={(table) =>
+            track("table_toggled", {
+              where: "heatmap",
+              shown: table,
+              kind: "heatmap",
+            })
+          }
         />
         <PinnedCharts
           pins={pins.pins}
           quarters={options.quarter}
           onRemove={pins.remove}
           onError={(code) => track("investigate_pin_failed", { code })}
+          addToReport={(pin) => <AddToReport pin={pin} />}
+          onTable={(pin, table) => {
+            pins.setTable(pin.id, table);
+            track("table_toggled", {
+              where: "pin",
+              shown: table,
+              kind: pin.kind,
+            });
+          }}
         />
       </div>
       {/* Dewey: a column beside the dashboard on wide screens, after it below that. */}
@@ -357,11 +377,18 @@ function heatPinFor(state: InvestigateState, quarters: readonly string[]): PinSp
 /** The main chart as a pin: the same query it runs, so the pin shows what the player saw. */
 function pinSpecFor(state: InvestigateState): PinSpec {
   const filter = filtersExcept(state.filters, [state.by]);
-  const title = `${measuresLabel(measuresOf(state))} by ${DIMENSION_LABELS[state.by].toLowerCase()}${state.compare ? " and quarter" : ""}`;
+  const scatter = state.scatter && scatterProblem(state.by, state.also) === null;
+  const title = scatter
+    ? scatterTitle(measuresOf(state), state.by)
+    : `${measuresLabel(measuresOf(state))} by ${DIMENSION_LABELS[state.by].toLowerCase()}${state.compare ? " and quarter" : ""}`;
   return {
     title,
-    // Over time, several measures are lines, as on the main chart.
-    kind: state.also.length && (state.by === "month" || state.by === "quarter") ? "line" : "bar",
+    // Over time, several measures are lines, as on the main chart; two can be a scatter plot instead of bars.
+    kind: scatter
+      ? "scatter"
+      : state.also.length && (state.by === "month" || state.by === "quarter")
+        ? "line"
+        : "bar",
     ...(state.also.length ? { also: [...state.also] } : {}),
     query: {
       measure: state.measure,
