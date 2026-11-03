@@ -171,7 +171,7 @@ function Faces({ slots, talking, activity, onDrawn, onFailed }: DeweyFacesProps)
 }
 
 /** One face's state, eased frame to frame. */
-interface Mood {
+export interface Mood {
   talk: number;
   think: number;
   /** The lightbulb: 1 as an answer arrives, fading. */
@@ -182,7 +182,7 @@ interface Mood {
   was: Activity["kind"] | null;
 }
 
-function newMood(talking: boolean, doing: Activity["kind"] | null): Mood {
+export function newMood(talking: boolean, doing: Activity["kind"] | null): Mood {
   return {
     talk: talking ? 1 : 0,
     think: doing === "thinking" ? 1 : 0,
@@ -193,7 +193,7 @@ function newMood(talking: boolean, doing: Activity["kind"] | null): Mood {
 }
 
 /** Eases a face toward what it's doing; thinking outranks talking, and an answer arriving lights the lamp. */
-function step(mood: Mood, talking: boolean, doing: Activity["kind"] | null, delta: number) {
+export function step(mood: Mood, talking: boolean, doing: Activity["kind"] | null, delta: number) {
   const ease = Math.min(1, delta * EASE);
   const thinking = doing === "thinking";
   mood.think += ((thinking ? 1 : 0) - mood.think) * ease;
@@ -316,7 +316,12 @@ const LAMP = { x: -0.14, y: 0.725, z: 0.25 };
  * the atlas's frames, under his glasses; and his desk lamp's glow, brighter as he thinks, flaring when the answer
  * comes. The disc's shape is found by casting rays at the model.
  */
-function faceParts(dewey: Group, body: Object3D) {
+export function faceParts(
+  dewey: Group,
+  body: Object3D,
+  /** Over everything, as in the chat's own little scenes; in the station his lamp's glow is hidden by what's in front. */
+  { overlay = true }: { overlay?: boolean } = {},
+) {
   dewey.updateMatrixWorld(true);
   const ray = new Raycaster();
   const surface = (x: number, y: number) => {
@@ -367,7 +372,7 @@ function faceParts(dewey: Group, body: Object3D) {
       blending: AdditiveBlending,
       depthWrite: false,
       // The bulb's light, not a solid: it shows round the shade when he leans back.
-      depthTest: false,
+      depthTest: !overlay,
     }),
   );
   lamp.position.set(LAMP.x, LAMP.y, LAMP.z);
@@ -379,7 +384,7 @@ function faceParts(dewey: Group, body: Object3D) {
       transparent: true,
       blending: AdditiveBlending,
       depthWrite: false,
-      depthTest: false,
+      depthTest: !overlay,
     }),
   );
   bulb.position.set(LAMP.x, LAMP.y, LAMP.z + 0.01);
