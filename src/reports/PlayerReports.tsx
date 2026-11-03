@@ -150,7 +150,11 @@ export function ReportCharts({
   return (
     <ol className={styles.reportCharts}>
       {items.map((item) => (
-        <li key={pinKey(item.spec)} className={styles.card}>
+        <li
+          key={pinKey(item.spec)}
+          className={styles.card}
+          data-wide={item.spec.kind === "heatmap" || undefined}
+        >
           <h4 className={styles.cardTitle}>{item.spec.title}</h4>
           {everyQuarter(item.spec) && <span className={styles.muted}>{COPY.everyQuarter}</span>}
           <PinChart spec={item.spec} quarters={quarters} onError={() => {}} />
@@ -314,7 +318,11 @@ function Editor({
       </label>
       <ol className={styles.reportCharts}>
         {draft.items.map((item, i) => (
-          <li key={pinKey(item.spec)} className={styles.card}>
+          <li
+            key={pinKey(item.spec)}
+            className={styles.card}
+            data-wide={item.spec.kind === "heatmap" || undefined}
+          >
             <h4 className={styles.cardTitle}>{item.spec.title}</h4>
             <PinChart spec={item.spec} quarters={quarters} onError={() => {}} />
             <label className={styles.field}>
