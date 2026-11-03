@@ -31,7 +31,7 @@ function keys(object: Record<string, unknown>, allowed: readonly string[], name:
 /** Strict allowlist, shared by HTTP and direct server callers. Returns a fresh value. */
 export function validateQuery(input: unknown): Query {
   if (!isRecord(input)) invalid("Query must be a JSON object.");
-  keys(input, ["measure", "by", "filter", "sort", "limit"], "Query");
+  keys(input, ["measure", "by", "filter", "sort", "limit", "vs"], "Query");
   if (!measure(input.measure)) invalid(`Measure must be one of: ${MEASURES.join(", ")}.`);
   if (
     !Array.isArray(input.by) ||
@@ -99,6 +99,16 @@ export function validateQuery(input: unknown): Query {
     )
       invalid(`limit must be an integer from 1 to ${QUERY_LIMITS.rows}.`);
     result.limit = input.limit;
+  }
+  if (Object.hasOwn(input, "vs")) {
+    if (input.vs !== "last_year") invalid('vs must be "last_year".');
+    // Last year is a year of quarters earlier: the undated snapshot has none.
+    if (!MEASURE_DIMENSIONS[result.measure].includes("quarter"))
+      throw new QueryError(
+        "INCOMPATIBLE_DIMENSION",
+        `${result.measure} is undated, so it has no last year to compare.`,
+      );
+    result.vs = "last_year";
   }
   return result;
 }
