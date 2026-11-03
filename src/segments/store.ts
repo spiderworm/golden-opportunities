@@ -6,12 +6,22 @@ import { useSyncExternalStore } from "react";
 import type { SegmentAnswer } from "./api";
 import type { Segment, SegmentChange } from "./segments";
 
-let current: Segment[] | null = null;
+/** The list, and the data version of the load it came from: a change's answer keeps the version it had. */
+let current: { segments: Segment[]; version: string | null } | null = null;
 const listeners = new Set<() => void>();
 
-export function keepSegments(segments: Segment[]): void {
-  current = segments;
+export function keepSegments(segments: Segment[], version?: string): void {
+  current = { segments, version: version ?? current?.version ?? null };
   for (const listener of listeners) listener();
+}
+
+/**
+ * A fresh load's list, kept with the data version it was loaded under: Investigate's clientLoader. Here, not inline
+ * there: React Router splits the clientLoader into its own chunk by the names it uses, and `view.dataVersion` there
+ * pulled in the loader's server-only `dataVersion` import, which failed the production build (#387).
+ */
+export function keepLoadedSegments(view: { segments: Segment[]; dataVersion: string }): void {
+  keepSegments(view.segments, view.dataVersion);
 }
 
 function subscribe(listener: () => void) {
@@ -19,15 +29,27 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-/** The segments as the server last said, or the loader's until it has. */
-export function useSegments(loaded: Segment[]): Segment[] {
-  return (
-    useSyncExternalStore(
-      subscribe,
-      () => current,
-      () => null,
-    ) ?? loaded
+/**
+ * The segments as the server last said, or the loader's until it has. A list kept under another data version (a
+ * game since replaced by Play again) is never shown: the page's own load is, until the server answers again
+ * (Chart, #387).
+ */
+export function useSegments(loaded: Segment[], version: string): Segment[] {
+  const kept = useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => null,
   );
+  return listFor(kept, loaded, version);
+}
+
+/** Which list the page shows: the kept one, unless it was kept under another data version, or none was. */
+export function listFor(
+  kept: { segments: Segment[]; version: string | null } | null,
+  loaded: Segment[],
+  version: string,
+): Segment[] {
+  return kept && (kept.version === null || kept.version === version) ? kept.segments : loaded;
 }
 
 /** One change, through POST /api/segments; the answer's list is kept, refused or not. */
