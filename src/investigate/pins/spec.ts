@@ -11,12 +11,15 @@ import {
 import {
   CHART_MEASURES,
   fittingMeasures,
+  GROUPINGS,
   HEAT_DIMENSIONS,
   MAX_MEASURES,
+  scatterProblem,
+  type Grouping,
   type ChartMeasure,
 } from "../state.ts";
 
-export const CHART_PIN_KINDS = ["bar", "line", "table", "heatmap"] as const;
+export const CHART_PIN_KINDS = ["bar", "line", "table", "heatmap", "scatter"] as const;
 export const PIN_KINDS = [...CHART_PIN_KINDS, "comparison"] as const;
 export type PinKind = (typeof PIN_KINDS)[number];
 
@@ -205,6 +208,20 @@ export function parsePinSpec(value: unknown): PinSpec | null {
       CHART_MEASURES.includes(query.measure as never);
     return grid && value.also === undefined
       ? { title: value.title, kind: "heatmap", query, ...shown(value.table) }
+      : null;
+  }
+  if (value.kind === "scatter") {
+    // A scatter plot is two measures across one of the chart's groupings, as Investigate allows it (scatterProblem).
+    const also = value.also === undefined ? null : parseAlso(query.measure, value.also);
+    const [by, more] = query.by;
+    const fits =
+      also !== null &&
+      by !== undefined &&
+      more === undefined &&
+      GROUPINGS.includes(by as Grouping) &&
+      scatterProblem(by as Grouping, also) === null;
+    return fits
+      ? { title: value.title, kind: "scatter", query, also, ...shown(value.table) }
       : null;
   }
   if (value.also === undefined)
