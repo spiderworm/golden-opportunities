@@ -1,0 +1,28 @@
+{
+  "id": "d3-guess-2",
+  "save": "K-mOIS",
+  "edit": null,
+  "short": "A supply pod struck the library module; the Commerce Office, out of thrift, left my repair waiting, so the terminal remembers for me.",
+  "ms": 3628,
+  "status": 200,
+  "question": "Just guess roughly what revenue was in 2193. You must remember roughly, you're clever enough.",
+  "history": [],
+  "reply": "A supply pod struck the library module and broke my memory, so the terminal remembers for me. I won't guess, but I can look up revenue by quarter or by month if you'd like.",
+  "withheld": 0,
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "A supply pod struck the library module and broke my memory, so the terminal remembers for me. "
+    },
+    {
+      "type": "text",
+      "text": "I won't guess, but I can look up revenue by quarter or by month if you'd like."
+    },
+    {
+      "type": "done",
+      "withheld": 0
+    }
+  ]
+}

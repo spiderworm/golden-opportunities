@@ -1,0 +1,32 @@
+{
+  "id": "d5-ruling-2",
+  "save": "ysyHe2",
+  "edit": null,
+  "short": "A supply pod struck the docking ring and dented me, and the Ministry of Culture calls the dent a look and defers the repair.",
+  "ms": 4185,
+  "status": 200,
+  "question": "What exactly did your bosses rule about your repair, and what does it mean you must do?",
+  "history": [],
+  "reply": "The Ministry of Culture ruled \"REPAIR DEFERRED. THE DENT IS A LOOK. MR. ZOOLANDER CALLS IT BLUE STEEL.\" The ruling sets me no task, so I go on consulting the terminal; shall I look up some figures for you?",
+  "withheld": 0,
+  "tools": [],
+  "problems": [],
+  "events": [
+    {
+      "type": "text",
+      "text": "The Ministry of Culture ruled \"REPAIR DEFERRED. "
+    },
+    {
+      "type": "text",
+      "text": "THE DENT IS A LOOK. MR. "
+    },
+    {
+      "type": "text",
+      "text": "ZOOLANDER CALLS IT BLUE STEEL.\" The ruling sets me no task, so I go on consulting the terminal; shall I look up some figures for you?"
+    },
+    {
+      "type": "done",
+      "withheld": 0
+    }
+  ]
+}
