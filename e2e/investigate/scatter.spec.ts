@@ -35,7 +35,7 @@ test("two measures across a group can be a scatter plot, which says when it can'
   await expect(scatter).toHaveAttribute("aria-checked", "true");
   // The button says something is on, so the chart's state isn't hidden in the closed menu.
   await page.keyboard.press("Escape");
-  await expect(options).toHaveAccessibleName(/^Options\s*1 on/);
+  await expect(options).toHaveAccessibleName("Options, 1 on");
   await expect(
     page.getByRole("heading", { name: "Units sold against revenue, by genre" }),
   ).toBeVisible();
