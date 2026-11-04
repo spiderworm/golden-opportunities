@@ -10,6 +10,7 @@ import {
   PORTRAIT,
   sendsQuestion,
   talkingTurn,
+  withNewline,
 } from "./AssistantPanel";
 import { Group } from "three";
 import { mouthOpen, pose, screenFrame } from "./DeweyFaces3D";
@@ -126,11 +127,25 @@ it("asks in a box that wraps what's typed, labelled and limited as before", () =
   expect(html).not.toMatch(/<input/);
 });
 
-it("sends on Enter, and makes a new line on Shift+Enter or while an IME is composing", () => {
-  expect(sendsQuestion({ key: "Enter", shiftKey: false, isComposing: false })).toBe(true);
-  expect(sendsQuestion({ key: "Enter", shiftKey: true, isComposing: false })).toBe(false);
-  expect(sendsQuestion({ key: "Enter", shiftKey: false, isComposing: true })).toBe(false);
-  expect(sendsQuestion({ key: "a", shiftKey: false, isComposing: false })).toBe(false);
+it("sends on Enter, and makes a new line on Shift+Enter, Option+Enter or while an IME is composing", () => {
+  const key = { key: "Enter", shiftKey: false, altKey: false, isComposing: false };
+  expect(sendsQuestion(key)).toBe(true);
+  expect(sendsQuestion({ ...key, shiftKey: true })).toBe(false);
+  expect(sendsQuestion({ ...key, altKey: true })).toBe(false);
+  expect(sendsQuestion({ ...key, isComposing: true })).toBe(false);
+  expect(sendsQuestion({ ...key, key: "a" })).toBe(false);
+});
+
+it("puts Option+Enter's new line at the caret or over the selection, within the limit (David, 4 Nov 2026)", () => {
+  // At the caret, and the caret after it.
+  expect(withNewline("ab", 1, 1, 500)).toEqual({ value: "a\nb", caret: 2 });
+  expect(withNewline("", 0, 0, 500)).toEqual({ value: "\n", caret: 1 });
+  expect(withNewline("ab", 2, 2, 500)).toEqual({ value: "ab\n", caret: 3 });
+  // Over a selection, which it replaces.
+  expect(withNewline("abcd", 1, 3, 500)).toEqual({ value: "a\nd", caret: 2 });
+  // Replacing a selection frees room; at the limit with none selected, nothing changes.
+  expect(withNewline("abc", 0, 3, 3)).toEqual({ value: "\n", caret: 1 });
+  expect(withNewline("abc", 3, 3, 3)).toBeNull();
 });
 
 it("fits the box to its text, border and all, however tall, with no limit", () => {
