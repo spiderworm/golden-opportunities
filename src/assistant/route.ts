@@ -3,6 +3,7 @@
 
 import { SaveError } from "~/game/store.server";
 import { cookieSaveId, resolveSaveId, saves } from "~/game/session.server";
+import { createHash } from "node:crypto";
 import { quarterAt } from "~/simulation/quarters";
 import { backstoryOf, type BackstoryText } from "~/alma/backstory";
 import { catalogNames } from "~/alma/backstory.server";
@@ -112,12 +113,19 @@ function provider(request: Request, { pins }: { pins: boolean }): AssistantProvi
 }
 
 /**
- * The game's current quarter for the chat's timeline: the one whose first day is the station date the header
- * shows (game/quarters.ts's stationDate), or null without a game (David, 3 Nov 2026).
+ * Where the game is, for the chat's timeline (David, 3 Nov 2026), or null without a game. `quarter`: the one whose
+ * first day is the station date the header shows (game/quarters.ts's stationDate). `game`: a key for this game, so
+ * turns from before Play again or Reset game (a new save) read as earlier (Chart, #390). It's a one-way hash of the
+ * save's id, which the cookie carries, so the browser never sees the id.
  */
-function currentQuarterOf(request: Request): string | null {
+function timelineOf(request: Request): { quarter: string; game: string } | null {
   try {
-    return quarterAt(saves.read(resolveSaveId(request)).played.length);
+    const save = saves.read(resolveSaveId(request));
+    const game = createHash("sha256")
+      .update(`dewey-timeline:${save.id}`)
+      .digest("hex")
+      .slice(0, 16);
+    return { quarter: quarterAt(save.played.length), game };
   } catch {
     return null;
   }
@@ -158,13 +166,13 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   const availability = await assistantAvailability({ track });
   // The greeting's backstory sentence, checked; shown as plain text, never rendered (section 6).
   const short = backstory(request)?.short;
-  const quarter = currentQuarterOf(request);
+  const timeline = timelineOf(request);
   const body = {
     ...(availability.state === "ready"
       ? { available: true }
       : { available: false, reason: availability.reason, ...offlineCopy() }),
     ...(short ? { short } : {}),
-    ...(quarter ? { quarter } : {}),
+    ...(timeline ?? {}),
   };
   return Response.json(body, { headers: { "cache-control": "no-store" } });
 };

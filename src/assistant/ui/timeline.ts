@@ -10,13 +10,26 @@ const QUARTER = /^(\d{4})-Q([1-4])$/;
 export const isQuarter = (value: unknown): value is string =>
   typeof value === "string" && QUARTER.test(value);
 
+/** Whether a value is a game's key as GET /api/assistant gives it: a one-way hash of its save, never the save. */
+export const isGameKey = (value: unknown): value is string =>
+  typeof value === "string" && /^[0-9a-f]{16}$/.test(value);
+
+/** When a reply was asked, or where the game is now: its quarter and its game, either unknown. */
+export interface Moment {
+  quarter?: string;
+  game?: string;
+}
+
 /**
  * A reply's heading (Plot's copy): "Today" for the current quarter, the first day of an earlier one in the
  * station's date style ("2194 Apr 1"), and "Earlier" for a reply kept before quarters were recorded or from an
  * earlier game.
  */
-export function timelineLabel(quarter: string | undefined, current: string | undefined): string {
+export function timelineLabel({ quarter, game }: Moment, now: Moment): string {
   if (!quarter || !isQuarter(quarter)) return "Earlier";
+  // Another game's turn, from before Play again or Reset game, which keep the chat (Chart, #390).
+  if (game && now.game && game !== now.game) return "Earlier";
+  const current = now.quarter;
   if (quarter === current) return "Today";
   // A quarter after the current one is from a game before Play again, which keeps the chat (Audit, #390): it's
   // earlier, whatever its date says. "YYYY-Qn" compares in time order as text.
@@ -26,12 +39,7 @@ export function timelineLabel(quarter: string | undefined, current: string | und
 }
 
 /** The heading to draw before each reply, or null where it continues the one before's group. Oldest first. */
-export function timelineHeadings(
-  replies: readonly { quarter?: string }[],
-  current: string | undefined,
-): (string | null)[] {
-  return replies.map((r, i) => {
-    const label = timelineLabel(r.quarter, current);
-    return i > 0 && timelineLabel(replies[i - 1]!.quarter, current) === label ? null : label;
-  });
+export function timelineHeadings(replies: readonly Moment[], now: Moment): (string | null)[] {
+  const labels = replies.map((r) => timelineLabel(r, now));
+  return labels.map((label, i) => (i > 0 && labels[i - 1] === label ? null : label));
 }

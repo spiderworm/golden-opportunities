@@ -1,14 +1,15 @@
 // Whether the assistant can answer on this machine, asked before the player types (GET /api/assistant).
 
-import { isQuarter } from "./timeline.ts";
+import { isGameKey, isQuarter } from "./timeline.ts";
 
 /**
  * `short`: the game's backstory in one sentence, for the greeting (docs/design/backstory.md, section 6).
  * `quarter`: the game's current quarter, whose first day is the station date ("2194-Q2"), for the chat's timeline.
+ * `game`: a key for the game (a hash of its save), so the timeline knows another game's turns.
  */
 export type AssistantStatus = (
   { available: true } | { available: false; reason: string; message: string; hint: string }
-) & { short?: string; quarter?: string };
+) & { short?: string; quarter?: string; game?: string };
 
 /**
  * The server's answer, read defensively. If the status can't be read, the panel stays usable: asking reports
@@ -22,6 +23,7 @@ export async function fetchStatus(fetcher: typeof fetch = fetch): Promise<Assist
     const short = {
       ...(typeof body.short === "string" && body.short.length <= 140 ? { short: body.short } : {}),
       ...(isQuarter(body.quarter) ? { quarter: body.quarter } : {}),
+      ...(isGameKey(body.game) ? { game: body.game } : {}),
     };
     if (
       body.available === false &&

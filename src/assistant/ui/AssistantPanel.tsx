@@ -65,6 +65,8 @@ interface Reply {
   state: "streaming" | "done" | "stopped" | "failed" | typeof INTERRUPTED;
   /** The game's quarter when it was asked, for the timeline (timeline.ts); absent on a reply kept before. */
   quarter?: string;
+  /** The game it was asked in, so another game's turns read as earlier; absent on a reply kept before. */
+  game?: string;
 }
 
 /** While an answer streams, the conversation is saved at most this often. */
@@ -225,7 +227,7 @@ export function AssistantPanel({
   const offline = !status.available;
   // The chat's timeline: a heading where each quarter's replies start, worked out from the game's current quarter as
   // it's drawn, so a quarter later "Today" is that quarter's date (timeline.ts).
-  const headings = timelineHeadings(replies, status.quarter);
+  const headings = timelineHeadings(replies, status);
 
   // Dewey's faces: his portrait, or in 3D where the browser draws WebGL 2 and motion is welcome. Neither shows until
   // the panel has committed to one (David, 3 Nov, AGENTS.md "Commit before you show": no portrait-then-canvas swap):
@@ -321,6 +323,7 @@ export function AssistantPanel({
         lookups: [],
         state: "streaming",
         ...(status.quarter ? { quarter: status.quarter } : {}),
+        ...(status.game ? { game: status.game } : {}),
       },
     ]);
     const controller = new AbortController();
