@@ -14,9 +14,9 @@
 // A first-time player starts at 75% (David, 2 Nov 2026); one who has set a
 // volume keeps theirs. The player reads this once, only while none is saved.
 //
-// A player who unticked "Play the music" on the entry page (David, 3 Nov 2026) starts with the player paused: the
-// first song is queued and paused before anything can play, and stays paused, through reloads too, until they
-// press play. The choice is recorded once, as entry_accepted's music; the startup pause itself isn't.
+// A player who unticked "Play the music" on the entry page (David, 3 Nov 2026) starts with the player paused,
+// through the player's own startPaused (Music, #321): the first song waits for their play, through reloads too, and
+// nothing is reported, since entry_accepted's music records the choice.
 // One who left it ticked hears it at once: the page Continue opens still has Continue's user activation, so the
 // browser lets it sound (measured in Chromium, under Chrome's autoplay policy, and WebKit, #317). If a browser
 // refuses, it waits for the first tap or key press, as before. A fresh agreement wins over the player's own
@@ -42,20 +42,19 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
   // A computer's web app: the kit's desktop defaults. Through Web Audio, so the
   // saved volume holds from the first note (audio-context.ts).
   const entry = takeEntryChoice();
-  const paused = entry === "off";
-  // While the entry's choice is applied, its own pause or resume isn't the player's, so it isn't reported:
-  // entry_accepted already records the choice.
-  let starting = entry !== null;
-  const quiet = entry === "off" ? "music_paused" : "music_resumed";
+  // While a ticked box's resume is applied, it isn't the player's, so it isn't reported: entry_accepted already
+  // records the choice. An unticked box needs no such care: the player's own startPaused reports nothing.
+  let starting = entry === "on";
   const music = studio().music({
     songs: { manifest: MANIFEST_URL, fetcher },
     base: "/music/",
     context: musicContext,
     legacyVolume: () => START_VOLUME,
     mediaKeys: { album: "Orbital Books" },
-    ...(entry && {
+    startPaused: entry === "off",
+    ...(entry === "on" && {
       track: (event: string, props?: Parameters<Started["track"]>[1]) => {
-        if (starting && event === quiet) return;
+        if (starting && event === "music_resumed") return;
         studio().track(event, props);
       },
     }),
@@ -69,17 +68,7 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
       starting = false;
       return m;
     });
-  if (!paused) return music;
-  return music.then(async (m) => {
-    if (m) {
-      // A fresh player has no song until it first plays, and pause needs one: queue the first, which can't sound
-      // before a tap or key press, then pause it.
-      if (!m.state().song) await m.skip("settings");
-      m.pause("settings");
-    }
-    starting = false;
-    return m;
-  });
+  return music;
 }
 
 /** The entry page's "Play the music", just answered: "on" or "off" once, and the cookie is cleared so it applies only now. */
