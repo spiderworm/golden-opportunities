@@ -1,0 +1,13 @@
+[WebServer] (node:24758) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:24759) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › e2e/five-year-validation.spec.ts:4:1 › five-year history renders, survives reload, and opens the next year (7.5s)
+(node:24888) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [webkit] › e2e/five-year-validation.spec.ts:4:1 › five-year history renders, survives reload, and opens the next year (5.0s)
+
+  2 passed (14.2s)

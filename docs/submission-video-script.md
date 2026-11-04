@@ -6,6 +6,7 @@ not spoken. This is the video script, not the submission README.
 
 ## Before recording
 
+- Use a browser that has already accepted the entry page, or show that step briefly.
 - Rehearse on the version being submitted. Choose one question that supports a
   clear demonstration without uncovering the best strategy.
 - Prepare a save before the decision and a matching save after it, so a recording
@@ -62,7 +63,7 @@ plausible plan. Briefly show the relevant rules or assumptions. Submit it.
 
 “Now I have to make a call. Based on what I've looked at, I'm going to try
 [chosen action]. There are tradeoffs, and I'm not going to give away the best
-solutions in the trailer.
+solutions in this video.
 
 “The original data gives the shop its history. The simulation adds assumptions
 about how the business responds, which you can inspect. So this outcome belongs
@@ -117,7 +118,7 @@ after stepping away from the keyboard.”
 **4:35–5:00. Screen:** End in the next quarter, with the new question or the
 accumulated history visible. Show where to find the code and run instructions.
 
-“With more time, I'd [David's own next priority, and why it matters].
+“With more time, I'd make the simulation run continuously, with pause and speed controls, so you could watch the numbers change and intervene during the quarter.”
 
 “The code, run instructions, and supporting data are included in the submission.
 What I'd love you to try is this: ask a question, collect some evidence, make a
