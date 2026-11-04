@@ -1,0 +1,55 @@
+
+> orbital-books@0.1.0 test:e2e
+> playwright test e2e/game --workers=2
+
+[WebServer] (node:8094) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] [plugin builtin:vite-reporter]
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] (node:8096) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 28 tests using 2 workers
+
+(node:8098) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8097) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › e2e/game/decide-scene.spec.ts:3:1 › the bosses brief the plan together: the Administrator first, then whichever bubble is selected (5.9s)
+  ✓   1 [chromium] › e2e/game/cache-two-tabs.spec.ts:15:1 › a tab overtaken by another tab's plan stops serving the old quarter's views (7.2s)
+  ✓   3 [chromium] › e2e/game/decide-scene.spec.ts:51:1 › where the browser can draw them, the bosses stand in 3D under the same bubbles (1.8s)
+  ✓   5 [chromium] › e2e/game/decide-scene.spec.ts:177:1 › a failed fetch of the 3D scene is tried once more (2.2s)
+  ✓   4 [chromium] › e2e/game/decide-scene.spec.ts:71:1 › in 2D, a boss opens its bubble when clicked, and opening bubbles moves nothing (2.9s)
+  ✓   6 [chromium] › e2e/game/decide-scene.spec.ts:201:1 › a bubble focused in the 2D scene stays focused when the 3D scene takes over (1.3s)
+  ✓   8 [chromium] › e2e/game/decide-scene.spec.ts:306:1 › the form keeps what the player is doing when the 3D scene takes over (9.1s)
+  ✓   7 [chromium] › e2e/game/decide-scene.spec.ts:226:1 › in 3D, a robot opens its bubble when clicked, and opening bubbles moves nothing (10.8s)
+  ✓   9 [chromium] › e2e/game/decide-scene.spec.ts:337:1 › leaving Decide while the bosses are still loading is no error, and a failed load is tried again next visit (7.5s)
+  ✓  10 [chromium] › e2e/game/m1-loop.spec.ts:99:1 › M1: discover, choose two moves, play; a separate save holds course with hints (14.7s)
+  ✓  11 [chromium] › e2e/game/q2-decide.spec.ts:29:1 › Q2: pick a book for each month, or none, and one more move, then play the quarter (9.8s)
+  ✓  13 [chromium] › e2e/game/removal.spec.ts:23:1 › three strikes, and the panel removes the player at Q3 2194; Play again starts over (22.1s)
+  ✓  14 [chromium] › e2e/game/reset.spec.ts:5:1 › Settings resets the game after a confirm step, from Q2 back to the January arrival (7.4s)
+(node:11550) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  15 [webkit] › e2e/game/cache-two-tabs.spec.ts:15:1 › a tab overtaken by another tab's plan stops serving the old quarter's views (6.7s)
+  ✓  16 [webkit] › e2e/game/decide-scene.spec.ts:3:1 › the bosses brief the plan together: the Administrator first, then whichever bubble is selected (1.2s)
+  ✓  17 [webkit] › e2e/game/decide-scene.spec.ts:51:1 › where the browser can draw them, the bosses stand in 3D under the same bubbles (1.2s)
+  ✓  18 [webkit] › e2e/game/decide-scene.spec.ts:71:1 › in 2D, a boss opens its bubble when clicked, and opening bubbles moves nothing (3.2s)
+  -  19 [webkit] › e2e/game/decide-scene.spec.ts:177:1 › a failed fetch of the 3D scene is tried once more
+  ✓  20 [webkit] › e2e/game/decide-scene.spec.ts:201:1 › a bubble focused in the 2D scene stays focused when the 3D scene takes over (1.4s)
+  ✓  21 [webkit] › e2e/game/decide-scene.spec.ts:226:1 › in 3D, a robot opens its bubble when clicked, and opening bubbles moves nothing (4.8s)
+  ✓  22 [webkit] › e2e/game/decide-scene.spec.ts:306:1 › the form keeps what the player is doing when the 3D scene takes over (6.6s)
+  ✓  23 [webkit] › e2e/game/decide-scene.spec.ts:337:1 › leaving Decide while the bosses are still loading is no error, and a failed load is tried again next visit (7.3s)
+  ✓  24 [webkit] › e2e/game/m1-loop.spec.ts:99:1 › M1: discover, choose two moves, play; a separate save holds course with hints (13.5s)
+  ✓  12 [chromium] › e2e/game/q2-loop.spec.ts:42:1 › Q1, then Q2 with a pick, then the service record, then on to Q3 (1.4m)
+(node:14791) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  25 [webkit] › e2e/game/q2-decide.spec.ts:29:1 › Q2: pick a book for each month, or none, and one more move, then play the quarter (10.7s)
+  ✓  27 [webkit] › e2e/game/removal.spec.ts:23:1 › three strikes, and the panel removes the player at Q3 2194; Play again starts over (15.7s)
+  ✓  26 [webkit] › e2e/game/q2-loop.spec.ts:42:1 › Q1, then Q2 with a pick, then the service record, then on to Q3 (19.8s)
+  ✓  28 [webkit] › e2e/game/reset.spec.ts:5:1 › Settings resets the game after a confirm step, from Q2 back to the January arrival (8.9s)
+
+  1 skipped
+  27 passed (2.6m)

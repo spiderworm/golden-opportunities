@@ -1,0 +1,145 @@
+{
+  "id": "9cBtNdPRZxxfLgCOZKq-BmSfRxalDRwlHnweuXTxXuI",
+  "rows": [
+    {
+      "quarter": "2194-Q1",
+      "revenue": 113113.7873,
+      "units": 8800,
+      "score": 86,
+      "next": "2194-Q2"
+    },
+    {
+      "quarter": "2194-Q2",
+      "revenue": 184920.584,
+      "units": 14482,
+      "score": 79,
+      "next": "2194-Q3"
+    },
+    {
+      "quarter": "2194-Q3",
+      "revenue": 290291.9454,
+      "units": 22901,
+      "score": 72,
+      "next": "2194-Q4"
+    },
+    {
+      "quarter": "2194-Q4",
+      "revenue": 177877.9744,
+      "units": 13921,
+      "score": 72,
+      "next": "2195-Q1"
+    },
+    {
+      "quarter": "2195-Q1",
+      "revenue": 114521.6172,
+      "units": 8757,
+      "score": 75,
+      "next": "2195-Q2"
+    },
+    {
+      "quarter": "2195-Q2",
+      "revenue": 185976.1299,
+      "units": 14665,
+      "score": 80,
+      "next": "2195-Q3"
+    },
+    {
+      "quarter": "2195-Q3",
+      "revenue": 293029.7368,
+      "units": 23002,
+      "score": 73,
+      "next": "2195-Q4"
+    },
+    {
+      "quarter": "2195-Q4",
+      "revenue": 178330.1009,
+      "units": 13921,
+      "score": 74,
+      "next": "2196-Q1"
+    },
+    {
+      "quarter": "2196-Q1",
+      "revenue": 117838.7165,
+      "units": 9033,
+      "score": 78,
+      "next": "2196-Q2"
+    },
+    {
+      "quarter": "2196-Q2",
+      "revenue": 181644.3588,
+      "units": 14258,
+      "score": 73,
+      "next": "2196-Q3"
+    },
+    {
+      "quarter": "2196-Q3",
+      "revenue": 294782.6194,
+      "units": 23214,
+      "score": 75,
+      "next": "2196-Q4"
+    },
+    {
+      "quarter": "2196-Q4",
+      "revenue": 180432.5093,
+      "units": 14204,
+      "score": 74,
+      "next": "2197-Q1"
+    },
+    {
+      "quarter": "2197-Q1",
+      "revenue": 115163.0414,
+      "units": 8681,
+      "score": 76,
+      "next": "2197-Q2"
+    },
+    {
+      "quarter": "2197-Q2",
+      "revenue": 193782.7185,
+      "units": 14931,
+      "score": 81,
+      "next": "2197-Q3"
+    },
+    {
+      "quarter": "2197-Q3",
+      "revenue": 301173.8816,
+      "units": 23447,
+      "score": 72,
+      "next": "2197-Q4"
+    },
+    {
+      "quarter": "2197-Q4",
+      "revenue": 178756.7754,
+      "units": 13981,
+      "score": 75,
+      "next": "2198-Q1"
+    },
+    {
+      "quarter": "2198-Q1",
+      "revenue": 115445.7078,
+      "units": 8678,
+      "score": 76,
+      "next": "2198-Q2"
+    },
+    {
+      "quarter": "2198-Q2",
+      "revenue": 186171.9158,
+      "units": 14575,
+      "score": 80,
+      "next": "2198-Q3"
+    },
+    {
+      "quarter": "2198-Q3",
+      "revenue": 295850.5448,
+      "units": 23318,
+      "score": 75,
+      "next": "2198-Q4"
+    },
+    {
+      "quarter": "2198-Q4",
+      "revenue": 175602.9641,
+      "units": 13748,
+      "score": 75,
+      "next": "2199-Q1"
+    }
+  ]
+}
