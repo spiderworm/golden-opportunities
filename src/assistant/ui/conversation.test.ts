@@ -314,10 +314,18 @@ describe("each reply's quarter, for the timeline (David, 3 Nov 2026)", () => {
     const replies = [
       reply(1),
       { ...reply(2), quarter: "2194-Q1" },
-      { ...reply(3), quarter: "2194-Q2" },
+      { ...reply(3), quarter: "2194-Q2", game: "0123456789abcdef" },
     ];
     saveConversation(storage, "inst", replies);
     expect(loadConversation(storage, "inst")).toEqual(replies);
+  });
+
+  it("drops a turn whose game key isn't one", () => {
+    for (const game of ["a-save-id", "0123456789ABCDEF", 7]) {
+      const storage = new MemoryStorage();
+      saveConversation(storage, "inst", [{ ...reply(1), quarter: "2194-Q1", game } as never]);
+      expect(loadConversation(storage, "inst"), String(game)).toEqual([]);
+    }
   });
 
   it("drops a turn whose quarter isn't one", () => {

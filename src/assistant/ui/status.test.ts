@@ -35,4 +35,11 @@ it("reads the game's current quarter for the timeline, only when it's one", asyn
   expect(await fetchStatus(respond({ available: true, quarter: "soon" }))).toEqual({
     available: true,
   });
+  // And the game's key, only when it's one.
+  expect(
+    await fetchStatus(respond({ available: true, quarter: "2194-Q2", game: "0123456789abcdef" })),
+  ).toEqual({ available: true, quarter: "2194-Q2", game: "0123456789abcdef" });
+  expect(await fetchStatus(respond({ available: true, game: "a-save-id" }))).toEqual({
+    available: true,
+  });
 });
