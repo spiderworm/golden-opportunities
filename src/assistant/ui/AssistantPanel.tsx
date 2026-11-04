@@ -76,13 +76,32 @@ const QUESTION_MAX = 500;
 export const greeting = (short?: string) =>
   `Hello. I'm ${NAME}, on loan from the station library.${short ? ` ${short}` : ""} Ask me about your sales and I'll find the numbers or draw the chart. What they mean is up to you.`;
 
-/** Enter sends the question; Shift+Enter starts a new line in it, and Enter while composing (an IME) is the IME's. */
+/**
+ * Enter sends the question; Shift+Enter and Option+Enter (Alt+Enter) start a new line in it, and Enter while
+ * composing (an IME) is the IME's.
+ */
 export function sendsQuestion(key: {
   key: string;
   shiftKey: boolean;
+  altKey: boolean;
   isComposing: boolean;
 }): boolean {
-  return key.key === "Enter" && !key.shiftKey && !key.isComposing;
+  return key.key === "Enter" && !key.shiftKey && !key.altKey && !key.isComposing;
+}
+
+/**
+ * Option+Enter's new line (David, 4 Nov 2026: "I also need Option+Enter to add a new line… a standard in all web
+ * UIs, for all chat input boxes"), put in by hand since browsers don't all type one for it: it replaces the
+ * selection, and the caret goes after it. Null where it would take the question past its limit, as typing would.
+ */
+export function withNewline(
+  value: string,
+  start: number,
+  end: number,
+  max: number,
+): { value: string; caret: number } | null {
+  const next = value.slice(0, start) + "\n" + value.slice(end);
+  return next.length > max ? null : { value: next, caret: start + 1 };
 }
 
 /**
@@ -471,10 +490,21 @@ export function AssistantPanel({
           disabled={offline}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => {
+            if (e.key === "Enter" && e.altKey && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              const el = e.currentTarget;
+              const next = withNewline(el.value, el.selectionStart, el.selectionEnd, QUESTION_MAX);
+              if (!next) return;
+              // Drawn at once, so the caret is set in the text it belongs to.
+              flushSync(() => setQuestion(next.value));
+              el.setSelectionRange(next.caret, next.caret);
+              return;
+            }
             if (
               !sendsQuestion({
                 key: e.key,
                 shiftKey: e.shiftKey,
+                altKey: e.altKey,
                 isComposing: e.nativeEvent.isComposing,
               })
             )
