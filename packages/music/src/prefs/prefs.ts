@@ -6,6 +6,10 @@
 export type Prefs = {
   /** 0 (Mute) to 1, as the slider shows it */
   volume: number;
+  /** the volume the player last set above Mute, once the slider was let go
+   * (not each point of a drag): play from Mute comes back to it (David, 5 Nov
+   * 2026); null if they never have */
+  lastVolume: number | null;
   excluded: string[];
   hearted: string[];
   /** songs the game had last time; null before the first open */
@@ -29,6 +33,7 @@ export function loadPrefs(key: string, store: Store | undefined, legacyVolume?: 
   const volume = typeof saved.volume === "number" ? saved.volume : (legacyVolume?.() ?? 1);
   return {
     volume: Math.min(1, Math.max(0, Number.isFinite(volume) ? volume : 1)),
+    lastVolume: typeof saved.lastVolume === "number" && saved.lastVolume > 0 && saved.lastVolume <= 1 ? saved.lastVolume : null,
     excluded: list(saved.excluded),
     hearted: list(saved.hearted),
     known: Array.isArray(saved.known) ? list(saved.known) : null,

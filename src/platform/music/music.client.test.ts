@@ -118,7 +118,7 @@ describe("loadMusic", () => {
     expect(page.cookie).toBe("ob_music=; Path=/; Max-Age=0; SameSite=Lax");
   });
 
-  it("plays when the entry page was just answered with the music on, even over a pause the player remembers", async () => {
+  it("plays when the entry page was just answered with the music on, even over a pause shared by another open tab", async () => {
     const calls: string[] = [];
     createMusic.mockImplementationOnce((options) => {
       const o = options as { track: (event: string, props?: object) => void };

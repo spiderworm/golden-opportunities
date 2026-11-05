@@ -6,14 +6,21 @@
   "type": "module",
   "exports": {
     "./player": "./src/player/player.ts",
+    "./context": "./src/player/context.ts",
     "./desktop": "./src/player/desktop.ts",
     "./manifest": "./src/manifest/manifest.ts",
     "./popup": "./src/ui/popup.ts",
     "./dock": "./src/ui/dock.ts",
     "./panel": "./src/ui/panel.ts",
+    "./native": "./src/player/native.ts",
     "./music.css": "./src/ui/music.css"
   },
   "scripts": {
     "test": "node --test 'src/**/*.test.ts'"
+  },
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
   }
 }

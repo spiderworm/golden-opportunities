@@ -43,7 +43,7 @@ test("at full volume it's the loudness, and Mute is silent", () => {
   assert.equal(FakeAudio.made.at(-1)!.volume, 0);
 });
 
-test("remember: after a reload it carries on with the same song, and a pause the player chose holds", () => {
+test("remember: after a reload it carries on with the same song, and a pause is over (David, 5 Nov 2026: a pause ends when the app restarts)", () => {
   const m = new Map<string, string>();
   const storage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
   const list = ["a", "b", "c", "d"].map((id) => ({ id, file: id + ".mp3", title: id.toUpperCase() }));
@@ -53,12 +53,22 @@ test("remember: after a reload it carries on with the same song, and a pause the
   FakeAudio.made.at(-1)!.currentTime = 42;
   first.pause("dock");
 
+  assert.equal(JSON.parse(m.get("r.music.session")!).paused, true);
+
   const again = createMusic({ key: "r", songs: list, base: "", storage, remember: true });
   assert.equal(again.state().song?.id, playing);
-  assert.equal(again.state().paused, true); // so the dock's play resumes it (a tap won't)
-  again.start(); // a tap: but the player paused it
-  assert.equal(FakeAudio.made.at(-1)!.src, "");
+  assert.equal(again.state().paused, false);
+  again.start(); // a tap: on with the song, from where it was
+  assert.equal(FakeAudio.made.at(-1)!.src, playing + ".mp3");
   assert.equal(JSON.parse(m.get("r.music.session")!).t, 42);
+
+  // keepPause: the pause holds, so the dock's play resumes it (a tap won't)
+  m.set("r.music.session", JSON.stringify({ ...JSON.parse(m.get("r.music.session")!), paused: true }));
+  const kept = createMusic({ key: "r", songs: list, base: "", storage, remember: { keepPause: true } });
+  assert.equal(kept.state().song?.id, playing);
+  assert.equal(kept.state().paused, true);
+  kept.start();
+  assert.equal(FakeAudio.made.at(-1)!.src, "");
 
   // an old session starts afresh
   m.set("r.music.session", JSON.stringify({ ...JSON.parse(m.get("r.music.session")!), at: Date.now() - 7 * 3600_000 }));
@@ -88,7 +98,7 @@ test("the app's storage, from @tellim/platform, is where its choices are kept", 
   assert.throws(() => createMusic({ songs, base: "" }));
 });
 
-test("startPaused: the first song waits, paused, for the player's play, with nothing reported, and a reload holds it", async () => {
+test("startPaused: the first song waits, paused, for the player's play, with nothing reported, and a reload still started paused holds it", async () => {
   const m = new Map<string, string>();
   const storage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
   const events: string[] = [];
@@ -101,7 +111,7 @@ test("startPaused: the first song waits, paused, for the player's play, with not
   assert.equal(FakeAudio.made.at(-1)!.src, "");
   assert.deepEqual(events, []);
 
-  const again = createMusic({ key: "p", songs: list, base: "", storage, remember: true });
+  const again = createMusic({ key: "p", songs: list, base: "", storage, remember: true, startPaused: true });
   assert.equal(again.state().song?.id, queued!.id);
   assert.equal(again.state().paused, true);
   await again.resume("dock");
@@ -121,4 +131,45 @@ test("startPaused with a session restored: that song, paused", async () => {
   const again = createMusic({ key: "q", songs: list, base: "", storage, remember: true, startPaused: true });
   assert.equal(again.state().song?.id, playing);
   assert.equal(again.state().paused, true);
+});
+
+test("status: on, paused (the player's pause), or off (the volume at Mute, which wins over a pause)", () => {
+  const music = createMusic({ key: "s", songs, base: "", storage: store({}) });
+  music.start();
+  assert.equal(music.status(), "on");
+  music.pause("settings");
+  assert.equal(music.status(), "paused");
+  music.setVolume(0);
+  assert.equal(music.status(), "off");
+});
+
+test("play at Mute comes back to the volume last set, once its slider was let go (not each point of a drag), or full without one", async () => {
+  const saved = new Map<string, string>();
+  const storage = { getItem: (k: string) => saved.get(k) ?? null, setItem: (k: string, v: string) => void saved.set(k, v) };
+  const music = createMusic({ key: "m", songs, base: "", storage });
+  const deck = FakeAudio.made.at(-1)!;
+  music.start();
+  // a drag: 0.6, 0.4, let go at 0.4
+  music.setVolume(0.6);
+  music.setVolume(0.4);
+  music.volumeSettled("settings");
+  // a drag down to Mute, let go there
+  music.setVolume(0.2);
+  music.setVolume(0);
+  music.volumeSettled("settings");
+  assert.equal(music.status(), "off");
+  music.start(); // a touch: still Mute
+  assert.equal(music.volume(), 0);
+  await music.resume("popup"); // the play button
+  assert.equal(music.volume(), 0.4);
+  assert.ok(Math.abs(deck.volume - 0.4 ** 2 * 0.55) < 1e-9, "heard at it");
+  // kept: the next open comes back to it too
+  const again = createMusic({ key: "m", songs, base: "", storage });
+  again.setVolume(0);
+  await again.resume("dock");
+  assert.equal(again.volume(), 0.4);
+  // never set: full
+  const fresh = createMusic({ key: "n", songs, base: "", storage: store({ volume: 0 }) });
+  await fresh.resume("popup");
+  assert.equal(fresh.volume(), 1);
 });

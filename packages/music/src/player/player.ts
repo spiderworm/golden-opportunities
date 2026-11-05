@@ -18,6 +18,8 @@
 import { createQueue, type QueuePlace, type Song } from "../queue/queue.ts";
 import { createSync, type Shared, type SyncOptions } from "../sync/sync.ts";
 import { mediaKeys, type NowPlaying } from "./media-keys.ts";
+import { ownContext, stillWhenStopped } from "./context.ts";
+import { DUCK, duckOn, type DuckShape } from "./duck.ts";
 import { loadPrefs, meetSongs, ordered, savePrefs, type Prefs } from "../prefs/prefs.ts";
 
 export type { Song };
@@ -48,8 +50,12 @@ export type MusicOptions = {
   leadMs?: number;
   /** the songs' level at full volume (0.55, as both games had it) */
   loudness?: number;
-  /** the game's AudioContext, made on its first touch: music goes through Web Audio */
-  context?: () => AudioContext | null | undefined;
+  /** music through Web Audio: the game's AudioContext, made on its first
+   * touch, or "own", the music's own (./context), which sleeps while the
+   * music's stopped, so Android's Bluetooth doesn't count its silence as
+   * playing. A game whose context its sound effects share can do the same
+   * with stillWhenStopped(music, ctx, { busy }). */
+  context?: "own" | (() => AudioContext | null | undefined);
   /** the game's effects: given the music's node, return the node to connect to the speakers */
   effects?: (ctx: AudioContext, music: AudioNode) => AudioNode;
   /** a volume from the game's old setting (0–1), read once if there's none yet */
@@ -58,10 +64,13 @@ export type MusicOptions = {
   saveFailed?: (key: string, error: unknown) => void;
   storage?: Pick<Storage, "getItem" | "setItem">;
   /** Carry on after a reload, a closed tab or a crash: the song, the place
-   * in it, the queue, and a pause the player chose. A session last saved
-   * longer ago than `maxAgeMs` (true: 6 hours) starts afresh, as an app
-   * opening does: the pinned songs first again. */
-  remember?: boolean | { maxAgeMs: number };
+   * in it and the queue. A session last saved longer ago than `maxAgeMs`
+   * (true: 6 hours) starts afresh, as an app opening does: the pinned songs
+   * first again. A pause ends when the app starts again, in every game
+   * (David, 5 Nov 2026: "A pause ends when the app restarts for every game.
+   * Music being turned off stays off"); `keepPause: true` keeps it. The
+   * app's other tabs, still open, keep theirs (`oneTab`). */
+  remember?: boolean | { maxAgeMs?: number; keepPause?: boolean };
   /** The app's tabs are one app, and one tab is heard (../sync): the song,
    * the place, the pause and the playlist are the same in every tab, and the
    * tab the player is on plays. Another app on the host that's playing isn't
@@ -110,6 +119,20 @@ export function createMusic(o: MusicOptions) {
   const track = o.track ?? (() => {});
   const gapMs = o.gapMs ?? 500;
   const loudness = o.loudness ?? 0.55;
+  // the player's sense of away, for its own context's keeper: the page
+  // hidden (when the music pauses then) or any reason the game gives (setAway)
+  const awayHeard = new Set<() => void>();
+  const awayChanged = () => awayHeard.forEach((f) => f());
+  const awayNow = {
+    get hidden() {
+      return hidden() || away.size > 0;
+    },
+    addEventListener: (_: string, f: () => void) => void awayHeard.add(f),
+    removeEventListener: (_: string, f: () => void) => void awayHeard.delete(f),
+  };
+  const own = o.context === "own" ? ownContext(o.track, awayNow) : null;
+  if (own && typeof document !== "undefined") document.addEventListener("visibilitychange", awayChanged);
+  const context = o.context === "own" ? own!.get : o.context;
   let prefs: Prefs = meetSongs(loadPrefs(key, store, o.legacyVolume), o.songs.map((s) => s.id));
   const save = () => savePrefs(key, store, prefs, o.saveFailed);
   save();
@@ -124,7 +147,7 @@ export function createMusic(o: MusicOptions) {
   const sync = o.oneTab && typeof window !== "undefined" ? createSync(o.app?.id ?? key, typeof o.oneTab === "object" ? o.oneTab : {}) : null;
   const deck = new Audio();
   deck.preload = "auto";
-  let wired: { gain: GainNode } | null = null;
+  let wired: { gain: GainNode; ducking: GainNode } | null = null;
   let song: Song | null = null;
   let cause: Cause = "auto";
   let by: Where | undefined; // where the skip or back was
@@ -155,16 +178,18 @@ export function createMusic(o: MusicOptions) {
   const changed = () => listeners.forEach((f) => f(state()));
 
   function wire() {
-    if (wired || !o.context) return;
-    const ctx = o.context();
+    if (wired || !context) return;
+    const ctx = context();
     if (!ctx) return;
     const source = ctx.createMediaElementSource(deck);
     const gain = ctx.createGain();
     gain.gain.value = level();
     source.connect(gain);
-    (o.effects ? o.effects(ctx, gain) : gain).connect(ctx.destination);
+    const ducking = ctx.createGain(); // the duck's own, after the volume's
+    gain.connect(ducking);
+    (o.effects ? o.effects(ctx, ducking) : ducking).connect(ctx.destination);
     deck.volume = 1;
-    wired = { gain };
+    wired = { gain, ducking };
   }
 
   function setLevel() {
@@ -217,7 +242,8 @@ export function createMusic(o: MusicOptions) {
   }
 
   // remember: where it is, saved by the tab that has the music
-  const rememberFor = o.remember ? (typeof o.remember === "object" ? o.remember.maxAgeMs : SIX_HOURS) : 0;
+  const rememberFor = o.remember ? ((typeof o.remember === "object" ? o.remember.maxAgeMs : undefined) ?? SIX_HOURS) : 0;
+  const keepPause = typeof o.remember === "object" && o.remember.keepPause === true;
   const sessionKey = `${key}.music.session`;
   function remember() {
     if (!rememberFor || !song) return;
@@ -229,8 +255,10 @@ export function createMusic(o: MusicOptions) {
     }
   }
   // carry on from the place saved (on load, and from the tab whose music
-  // this one takes: it saves its place as it lets go)
-  function restore() {
+  // this one takes: it saves its place as it lets go). On load, the app
+  // starting again, a pause is over (unless keepPause); an open tab of the
+  // app's, if any, gives its own pause as it answers (sync).
+  function restore(atLoad = false) {
     try {
       const s = JSON.parse(store?.getItem(sessionKey) ?? "null") as Session | null;
       if (s && Date.now() - s.at < rememberFor && o.songs.some((x) => x.id === s.id)) {
@@ -247,13 +275,13 @@ export function createMusic(o: MusicOptions) {
           announced = null;
           loaded = false;
           resumeAt = Math.max(0, Number(s.t) || 0);
-          paused = s.paused === true;
+          paused = s.paused === true && (keepPause || !atLoad);
         }
       }
     } catch {}
   }
   if (rememberFor) {
-    restore();
+    restore(true);
     let last = 0;
     deck.addEventListener("timeupdate", () => {
       if (Date.now() - last < 5000) return;
@@ -508,6 +536,13 @@ export function createMusic(o: MusicOptions) {
     /** the player's play: after their pause, or with another tab's music
      * (oneTab), which it takes; false if that tab wouldn't let go */
     resume(where: Where): Promise<boolean> {
+      // play at Mute: back to the volume they last set (David, 5 Nov 2026: "If I
+      // mute the music... then press the play button, the music should start
+      // again at... whatever place I had volume at last before I muted it")
+      if (prefs.volume <= 0) {
+        music.setVolume(prefs.lastVolume ?? 1);
+        track("music_volume_set", { level: Math.round(prefs.volume * 20) * 5, where });
+      }
       if (!paused && !yielded) return Promise.resolve(true);
       return withMusic(() => {
         started = true;
@@ -549,6 +584,19 @@ export function createMusic(o: MusicOptions) {
 
     /** the music volume, 0 (Mute) to 1: the game's music volume setting */
     volume: () => prefs.volume,
+    /** Let the music down a moment under the game's sound, and back (./duck;
+     * Waddleberg's shape, unless given). Only through Web Audio (`context`):
+     * false without it. */
+    duck(shape: Partial<DuckShape> = {}): boolean {
+      if (!wired) return false;
+      duckOn(wired.ducking, { ...DUCK, ...shape });
+      return true;
+    },
+    /** the music, as a game's settings say it (David, 5 Nov 2026: "Music can be on,
+     * off, or paused"): off is the volume at Mute, which stays off through a
+     * restart and wins over a pause; paused is the player's pause, which a
+     * restart ends (remember) */
+    status: (): "on" | "paused" | "off" => (prefs.volume <= 0 ? "off" : paused ? "paused" : "on"),
     setVolume(v: number) {
       prefs = { ...prefs, volume: Math.min(1, Math.max(0, v)) };
       save();
@@ -559,7 +607,12 @@ export function createMusic(o: MusicOptions) {
       changed();
     },
     /** the slider has settled: one event, not one a step */
+    /** the slider let go: the volume the player set (a drag's every point isn't) */
     volumeSettled(where: Where) {
+      if (prefs.volume > 0) {
+        prefs = { ...prefs, lastVolume: prefs.volume };
+        save();
+      }
       track("music_volume_set", { level: Math.round(prefs.volume * 20) * 5, where });
     },
 
@@ -638,6 +691,7 @@ export function createMusic(o: MusicOptions) {
     setAway(reason: string, on: boolean) {
       if (on) away.add(reason);
       else away.delete(reason);
+      awayChanged();
       if (away.size) deck.pause();
       else play();
       steer();
@@ -661,6 +715,7 @@ export function createMusic(o: MusicOptions) {
     },
   };
   if (o.mediaKeys !== false) mediaKeys(music, typeof o.mediaKeys === "object" ? o.mediaKeys : {});
+  if (own) stillWhenStopped(music, own.keeper);
   return music;
 }
 
