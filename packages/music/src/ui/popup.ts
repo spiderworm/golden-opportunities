@@ -129,10 +129,13 @@ export function createPopup(music: Music, root: HTMLElement, host: PopupHost) {
     reveal(SHOW_MS);
   }
 
+  // A pop-up already up stays where it is as the next song is named (David,
+  // 4 Nov 2026: up for a song's end, Waddleberg moved it down onto the hint
+  // line for a longer name): a name too long for its place ends in "…".
   function reveal(ms: number) {
     draw();
+    if (!shown) host.place(el, false);
     shown = true;
-    host.place(el, false);
     el.classList.add("on");
     linger(ms);
   }

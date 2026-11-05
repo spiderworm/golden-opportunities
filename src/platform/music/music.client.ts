@@ -15,12 +15,13 @@
 // volume keeps theirs. The player reads this once, only while none is saved.
 //
 // A player who unticked "Play the music" on the entry page (David, 3 Nov 2026) starts with the player paused,
-// through the player's own startPaused (Music, #321): the first song waits for their play, through reloads too, and
-// nothing is reported, since entry_accepted's music records the choice.
+// through the player's own startPaused (Music, #321): the first song waits for their play on this start. Nothing
+// is reported, since entry_accepted's music records the choice. A pause ends on restart; Off (volume 0) stays off.
+// Another open tab can still share its pause through oneTab.
 // One who left it ticked hears it at once: the page Continue opens still has Continue's user activation, so the
 // browser lets it sound (measured in Chromium, under Chrome's autoplay policy, and WebKit, #317). If a browser
-// refuses, it waits for the first tap or key press, as before. A fresh agreement wins over the player's own
-// remembered state either way (David, 3 Nov 2026: "if the user has paused the music player, then deletes cookies,
+// refuses, it waits for the first tap or key press, as before. A ticked agreement also resumes a pause shared
+// by another open tab (David, 3 Nov 2026: "if the user has paused the music player, then deletes cookies,
 // is shown that screen, and keeps the play the music checkbox checked, then we should start the player").
 import type { Started } from "@tellim/kit/app";
 import type { Music } from "@tellim/kit/music/player";
@@ -61,8 +62,8 @@ export function loadMusic(fetcher: typeof fetch = fetch): Promise<Music | null> 
   });
   if (entry === "on")
     return music.then(async (m) => {
-      // A pause remembered from before (the player's own session, kept in the browser) would stop start(), so resume
-      // it instead; resume does nothing to a player that isn't paused, so that one starts.
+      // Another open tab may have shared its pause through oneTab. The ticked agreement asks for music now,
+      // so resume it; a saved pause from a previous app run is no longer restored.
       if (m?.state().paused) await m.resume("settings");
       else m?.start();
       starting = false;

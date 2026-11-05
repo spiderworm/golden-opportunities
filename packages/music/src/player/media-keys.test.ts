@@ -123,3 +123,31 @@ test("without a Media Session, nothing happens", () => {
   const music = createMusic({ key: "t", songs, base: "", storage: storage(), mediaKeys: false });
   assert.doesNotThrow(() => mediaKeys(music, {}, undefined)());
 });
+
+test("an app's own session, given where the browser has none, gets the buttons and the song's name", async () => {
+  const s = session();
+  const Metadata = (globalThis as any).MediaMetadata;
+  delete (globalThis as any).MediaMetadata; // as in Android's WebView
+  try {
+    const music = createMusic({ key: "t", songs, base: "", storage: storage(), mediaKeys: { album: "Waddleberg", session: s } });
+    music.start();
+    assert.deepEqual(s.metadata, { title: music.state().song!.title, album: "Waddleberg" });
+    assert.equal(s.playbackState, "playing");
+    s.press("pause");
+    assert.equal(music.state().paused, true);
+    assert.equal(s.playbackState, "paused");
+  } finally {
+    (globalThis as any).MediaMetadata = Metadata;
+  }
+});
+
+test("the device's play at Mute is the player's play: back to the volume last set", () => {
+  const { music, s } = made();
+  music.start();
+  music.setVolume(0.5);
+  music.volumeSettled("settings");
+  music.setVolume(0);
+  music.volumeSettled("settings");
+  s.press("play");
+  assert.equal(music.volume(), 0.5);
+});

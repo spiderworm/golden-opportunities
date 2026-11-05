@@ -5,6 +5,7 @@
 // pause there are the player's own (a pause from the headphones holds, as
 // the dock's does), next skips and previous is the dock's back.
 import type { MusicState, Song, Where } from "./player.ts";
+import { nativeSession } from "./native.ts";
 
 /** what the device shows besides the song's name */
 export type NowPlaying = {
@@ -13,6 +14,9 @@ export type NowPlaying = {
   artist?: string;
   /** e.g. the game's icon */
   artwork?: MediaImage[];
+  /** the device's media session where the browser has none and the
+   * package's own (native.ts, in an Android app) won't do */
+  session?: Session;
 };
 
 /** the player's side of it (the player itself, which hands its controls over as it's made) */
@@ -25,16 +29,18 @@ type Player = {
   back(where: Where): unknown;
   start(): void;
 };
-type Session = Pick<MediaSession, "setActionHandler" | "metadata" | "playbackState">;
+/** what's used of a Media Session (navigator.mediaSession, or an app's own) */
+export type Session = Pick<MediaSession, "setActionHandler" | "metadata" | "playbackState">;
 
-/** Hand the device's controls to `music`; returns the undo. A browser without the Media Session does nothing. */
-export function mediaKeys(music: Player, shown: NowPlaying = {}, session: Session | undefined = globalThis.navigator?.mediaSession): () => void {
+/** Hand the device's controls to `music`; returns the undo. In an Android app, the package's plugin is the session (native.ts); elsewhere, without the Media Session, nothing happens. */
+export function mediaKeys(music: Player, shown: NowPlaying = {}, session: Session | undefined = shown.session ?? globalThis.navigator?.mediaSession ?? nativeSession()): () => void {
   if (!session) return () => {};
+  const { session: _, ...about } = shown;
   const actions: [MediaSessionAction, () => void][] = [
-    // after the player's pause (or with another tab's music), the player's
-    // play; else whatever stopped it wasn't the player (a headset that went
-    // away, say), and it carries on
-    ["play", () => (music.state().paused || music.state().elsewhere ? void music.resume("device") : music.start())],
+    // after the player's pause (or with another tab's music, or at Mute), the
+    // player's play; else whatever stopped it wasn't the player (a headset
+    // that went away, say), and it carries on
+    ["play", () => (music.state().paused || music.state().elsewhere || music.state().volume <= 0 ? void music.resume("device") : music.start())],
     ["pause", () => music.pause("device")],
     ["stop", () => music.pause("device")],
     ["nexttrack", () => void music.skip("device")],
@@ -49,7 +55,9 @@ export function mediaKeys(music: Player, shown: NowPlaying = {}, session: Sessio
   const show = (s: MusicState) => {
     if (s.song !== named) {
       named = s.song;
-      session.metadata = s.song && typeof MediaMetadata !== "undefined" ? new MediaMetadata({ title: s.song.title, ...shown }) : null;
+      // (an app's own session, where there's no MediaMetadata, takes it as it is)
+      const init = s.song && { title: s.song.title, ...about };
+      session.metadata = !init ? null : typeof MediaMetadata !== "undefined" ? new MediaMetadata(init) : (init as MediaMetadata);
     }
     session.playbackState = !s.song ? "none" : s.playing ? "playing" : "paused";
   };
