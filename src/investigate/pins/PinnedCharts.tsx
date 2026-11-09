@@ -267,15 +267,22 @@ interface PinChartProps {
 export function PinChart({
   segments = [],
   reportSegment = null,
+  move,
   ...props
 }: PinChartProps & {
   /** The player's saved segments now. */
   segments?: readonly Segment[];
   /** The report's own segment, over every chart in it. */
   reportSegment?: Segment | null;
+  /**
+   * A report run for another quarter (src/reports/run-for.ts): the chart, with its segments, as it runs then, and
+   * the line saying why, if it shows as saved.
+   */
+  move?: (run: PinSpec) => { spec: PinSpec; note: string | null };
 }) {
   const { spec, quarters } = props;
   const run = segmented(spec, segments, quarters, reportSegment);
+  const shown = run.spec && move ? move(run.spec) : null;
   const { onTooMany } = props;
   // Nothing drawn, so nothing too many to chart.
   useEffect(() => {
@@ -288,8 +295,9 @@ export function PinChart({
       ) : (
         run.segment && <p className={styles.pinMeta}>{SEGMENT_COPY.onChart(run.segment.name)}</p>
       )}
+      {shown?.note && <p className={styles.pinMeta}>{shown.note}</p>}
       {run.spec ? (
-        <RunPinChart {...props} spec={run.spec} />
+        <RunPinChart {...props} spec={shown?.spec ?? run.spec} />
       ) : (
         <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
           {run.unresolved

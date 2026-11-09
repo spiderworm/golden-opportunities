@@ -8,7 +8,9 @@ import { quarterName } from "~/game/event-title";
 import { measureTexts, RESULT_COPY, scoreText, SERVICE_RECORD } from "~/result/copy";
 import { DECIDE_COPY as COPY, REPORTS_COPY } from "./copy";
 import type { PlayerReport } from "./player";
-import { ReportCharts, ReportSegmentLine } from "./PlayerReports";
+import { ReportCharts, ReportSegmentLine, runForEvent } from "./PlayerReports";
+import { runQuarter, type RunChoice } from "./run-for";
+import { pickerEscape, RunForNote, RunForPicker } from "./RunFor";
 import type { Segment } from "~/segments/segments";
 import { ForecastCalibration } from "./ForecastCalibration";
 import type { Calibration } from "~/forecast/forecast";
@@ -180,8 +182,12 @@ export function Panel({
   initial?: Chosen;
 }) {
   const [chosen, setChosenState] = useState<Chosen>(initial);
+  // Run for another quarter, while this report is open: each report opens as saved.
+  const [choice, setChoice] = useState<RunChoice>("saved");
+  const runFor = runQuarter(choice, quarters);
   const setChosen = (next: Chosen) => {
     setChosenState(next);
+    setChoice("saved");
     if (next)
       onRead(
         next,
@@ -192,7 +198,7 @@ export function Panel({
   useEffect(() => heading.current?.focus(), [chosen]);
   // Escape closes the panel here, and stops: Decide's own Escape (a pinned move's line) waits for the next press.
   const escape = (e: KeyboardEvent) => {
-    if (e.key !== "Escape") return;
+    if (e.key !== "Escape" || pickerEscape(e.target)) return;
     e.stopPropagation();
     onClose();
   };
@@ -216,6 +222,16 @@ export function Panel({
                 : COPY.forecasts)}
         </h2>
         <div className={styles.actions}>
+          {report && (
+            <RunForPicker
+              choice={choice}
+              quarters={quarters}
+              onChoose={(next) => {
+                track("report_run_for", runForEvent("decide", next, report));
+                setChoice(next);
+              }}
+            />
+          )}
           {chosen && (
             <button type="button" className={styles.linkButton} onClick={() => setChosen(null)}>
               {COPY.back}
@@ -229,6 +245,7 @@ export function Panel({
       {report ? (
         <>
           <ReportSegmentLine report={report} segments={segments} />
+          <RunForNote quarter={runFor} onBack={() => setChoice("saved")} />
           {report.summary && <p className={styles.note}>{report.summary}</p>}
           <ReportCharts
             items={report.items}
@@ -236,6 +253,7 @@ export function Panel({
             segments={segments}
             segment={report.segment}
             where="decide"
+            runFor={runFor}
           />
           <button
             type="button"

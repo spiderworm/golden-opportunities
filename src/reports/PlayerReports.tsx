@@ -18,7 +18,9 @@ import { track } from "~/platform/analytics/analytics.client";
 import { filterOf, segmented } from "~/segments/apply";
 import { SEGMENT_COPY } from "~/segments/copy";
 import type { Segment } from "~/segments/segments";
-import { PLAYER_COPY as COPY } from "./copy";
+import { PLAYER_COPY as COPY, RUN_FOR_COPY } from "./copy";
+import { moveChart, newestQuarter, runOffset, runQuarter, type RunChoice } from "./run-for";
+import { RunForNote, RunForPicker } from "./RunFor";
 import {
   checkReport,
   editCounts,
@@ -158,6 +160,8 @@ function ReportView({
   quarters: readonly string[];
   segments: readonly Segment[];
 }) {
+  const [choice, setChoice] = useState<RunChoice>("saved");
+  const runFor = runQuarter(choice, quarters);
   return (
     <article className={styles.report} aria-labelledby="report-title">
       <header className={styles.reportHeader}>
@@ -165,18 +169,28 @@ function ReportView({
           {report.title}
         </h3>
         <div className={styles.actions}>
+          <RunForPicker
+            choice={choice}
+            quarters={quarters}
+            onChoose={(next) => {
+              track("report_run_for", runForEvent("report", next, report));
+              setChoice(next);
+            }}
+          />
           {editable && <Link to={`?edit=${report.id}`}>{COPY.edit}</Link>}
           {editable && <DeleteReport report={report} />}
           <Link to="/reports">{COPY.close}</Link>
         </div>
       </header>
       <ReportSegmentLine report={report} segments={segments} />
+      <RunForNote quarter={runFor} onBack={() => setChoice("saved")} />
       {report.summary && <p className={styles.note}>{report.summary}</p>}
       <ReportCharts
         items={report.items}
         quarters={quarters}
         segments={segments}
         segment={report.segment}
+        runFor={runFor}
       />
     </article>
   );
@@ -202,6 +216,12 @@ export function ReportSegmentLine({
   );
 }
 
+/** report_run_for: where, what it's run for as a kind (never a title), and the report's number of charts. */
+export function runForEvent(where: "report" | "decide", choice: RunChoice, report: PlayerReport) {
+  const to = choice === "saved" ? "saved" : /^\d{4}-Q[1-4]$/.test(choice) ? "quarter" : choice;
+  return { where, to, charts: report.items.length };
+}
+
 /** A report's charts, each with its note: shared by Reports and Decide's panel. */
 export function ReportCharts({
   items,
@@ -209,6 +229,7 @@ export function ReportCharts({
   segments,
   segment: id,
   where = "report",
+  runFor = null,
 }: {
   items: PlayerReport["items"];
   quarters: readonly string[];
@@ -217,9 +238,26 @@ export function ReportCharts({
   segment?: string;
   /** Where it's read, for table_toggled: on Reports, or in Decide's panel. */
   where?: "report" | "decide";
+  /** The quarter it's run for (src/reports/run-for.ts), or null as saved. */
+  runFor?: string | null;
 }) {
   const keys = itemKeys(items);
   const segment = segments.find((s) => s.id === id) ?? null;
+  // Run for another quarter: every chart moves by the same number of quarters, counted from the newest any of them
+  // names as it runs now, with its segments (Goldy's call; Plot, section 9).
+  const move = useMemo(() => {
+    if (!runFor) return undefined;
+    const runs = items.flatMap((i) => segmented(i.spec, segments, quarters, segment).spec ?? []);
+    const newest = newestQuarter(runs, quarters);
+    const by = newest ? runOffset(newest, runFor) : 0;
+    return (run: PinSpec) => {
+      const moved = moveChart(run, by, quarters);
+      return {
+        spec: moved.spec,
+        note: moved.stays && RUN_FOR_COPY.stays[moved.stays](quarterName(runFor)),
+      };
+    };
+  }, [runFor, items, segments, quarters, segment]);
   return (
     <ol className={styles.reportCharts}>
       {items.map((item, i) => (
@@ -233,6 +271,7 @@ export function ReportCharts({
             quarters={quarters}
             segments={segments}
             segment={segment}
+            move={move}
             onTable={(table) =>
               track("table_toggled", { where, shown: table, kind: item.spec.kind })
             }
@@ -253,6 +292,7 @@ function ToggledChart({
   quarters,
   segments,
   segment,
+  move,
   table: kept,
   onTable,
 }: {
@@ -261,6 +301,8 @@ function ToggledChart({
   segments: readonly Segment[];
   /** The report's own segment, if it has one and it's still saved. */
   segment: Segment | null;
+  /** The report run for another quarter: the chart as it runs then (PinChart's). */
+  move?: (run: PinSpec) => { spec: PinSpec; note: string | null };
   table?: boolean;
   onTable: (table: boolean) => void;
 }) {
@@ -293,6 +335,7 @@ function ToggledChart({
         quarters={quarters}
         segments={segments}
         reportSegment={segment}
+        move={move}
         table={table}
         onTooMany={setTooMany}
         onError={(code) => track("report_chart_failed", { code })}

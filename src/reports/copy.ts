@@ -131,3 +131,20 @@ export function greeting(newReports: number): string {
   if (newReports === 0) return "No new reports.";
   return newReports === 1 ? "You have 1 new report." : `You have ${newReports} new reports.`;
 }
+
+/** "Run for…" on a report (Plot, chart-features-copy.md section 9); `quarter` as "Q1 2194". */
+export const RUN_FOR_COPY = {
+  button: "Run for…",
+  legend: "Run this report for",
+  asSaved: "As saved",
+  note: (quarter: string) =>
+    `Run for ${quarter}: every chart moves by the same number of quarters, so each keeps its own span.`,
+  back: "Back to as saved",
+  stays: {
+    every: () => "Over every quarter, so it stays as saved.",
+    past: () => "Moving this chart would go past the ledgers, so it shows as saved.",
+    cant: (quarter: string) => `This chart can't run for ${quarter}, so it shows as saved.`,
+    ratings: () => "Ratings aren't recorded by quarter, so this chart shows as saved.",
+    checkouts: () => "Checkouts aren't recorded by year, so this chart shows as saved.",
+  },
+} as const;

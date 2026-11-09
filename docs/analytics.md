@@ -157,6 +157,7 @@ One event to a line, under its area, so changes to different events don't collid
 - `report_edited` (the same counts, `renamed`, and the charts `added`, `removed` and `moved`)
 - `report_edit_cancelled` (`changed`)
 - `report_deleted` (`charts`)
+- `report_run_for` (Run for… on a report: `where` (`report` or `decide`), `to` (`saved`, `latest`, `latest-1`, `latest-4` or `quarter` for a played quarter, never which) and the report's `charts`)
 - `report_refused` (`reason`: `full`, `limit`, `no_title`, `no_charts` or `invalid`)
 - `report_chart_failed` (`code`). Counts only: never a title, summary, note or chart title (reports.md section 5)
 
