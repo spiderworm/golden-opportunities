@@ -1,6 +1,7 @@
 // Pinned charts: what a pin holds, and checks for pins read back from storage.
 import { yearMonth } from "../../query/months.ts";
 import { shiftQuarter } from "../../query/relative.ts";
+import { SEGMENT_ID } from "../../segments/id.ts";
 import {
   DIMENSIONS,
   MEASURES,
@@ -159,8 +160,7 @@ const isString = (v: unknown, max: number): v is string =>
   typeof v === "string" && v.length > 0 && v.length <= max;
 const only = (o: Record<string, unknown>, keys: readonly string[]) =>
   Object.keys(o).every((k) => keys.includes(k));
-/** A segment's id as the server makes them (src/segments/segments.ts): the pin keeps it, or null if it's malformed. */
-const SEGMENT_ID = /^[a-z0-9-]{1,40}$/;
+/** A segment's id (src/segments/id.ts): the pin keeps it, or null if it's malformed. */
 const segmentOf = (value: unknown): { segment?: string } | null =>
   value === undefined
     ? {}

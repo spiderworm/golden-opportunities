@@ -5,6 +5,7 @@
 // save store loads this in plain Node, without the ~ alias.
 import { FILTER_DIMENSIONS, readFilters, type Filters } from "../investigate/state.ts";
 import { plain } from "../reports/player.ts";
+import { SEGMENT_ID } from "./id.ts";
 
 export interface Segment {
   /** The server's: one sent by the browser is ignored. */
@@ -44,7 +45,6 @@ type Refused = { ok: false; reason: SegmentRefusal; name?: string };
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
-const ID = /^[a-z0-9-]{1,40}$/;
 
 /** A name as the player typed it, trimmed: 1 to 60 characters of one plain line, or why not. */
 export function checkName(value: unknown): { ok: true; name: string } | Refused {
@@ -95,7 +95,7 @@ export function validSegments(value: unknown): value is Segment[] {
   return value.every((s) => {
     if (!isObject(s) || Object.keys(s).some((k) => !["id", "name", "filters"].includes(k)))
       return false;
-    if (typeof s.id !== "string" || !ID.test(s.id) || ids.has(s.id)) return false;
+    if (typeof s.id !== "string" || !SEGMENT_ID.test(s.id) || ids.has(s.id)) return false;
     const name = checkName(s.name);
     if (!name.ok || name.name !== s.name || names.has(name.name.toLowerCase())) return false;
     ids.add(s.id);

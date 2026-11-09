@@ -75,6 +75,7 @@ describe("a chart's own segment", () => {
       spec: plain,
       segment: null,
       empty: null,
+      unresolved: null,
     });
   });
 });
@@ -98,6 +99,7 @@ describe("a report's segment, as AND with each chart's filters", () => {
       spec: null,
       segment: paperbacks,
       empty: hardcover,
+      unresolved: null,
     });
   });
 
@@ -126,6 +128,20 @@ describe("a report's segment, as AND with each chart's filters", () => {
       waterfall: { by: "genre", then: "2193-Q4", now: "2194-Q1" },
     };
     expect(segmented(drove, [], quarters, lastQuarter).spec).toEqual(drove);
+  });
+
+  it("gives a relative quarter that's not in the ledgers yet as the reason, not a clash (Frank, #407)", () => {
+    const yearAgo: Segment = { id: "s5", name: "A year ago", filters: { quarter: ["latest-4"] } };
+    const dated: PinSpec = {
+      ...byGenre,
+      query: { ...byGenre.query, filter: { quarter: ["2194-Q1"] } },
+    };
+    expect(segmented(dated, [], quarters, yearAgo)).toMatchObject({
+      spec: null,
+      empty: null,
+      unresolved: "latest-4",
+    });
+    expect(segmented(byGenre, [paperbacks], quarters, yearAgo).unresolved).toBe("latest-4");
   });
 
   it("reads relative quarters as the quarters they are now", () => {

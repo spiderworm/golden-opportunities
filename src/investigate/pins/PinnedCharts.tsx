@@ -292,7 +292,9 @@ export function PinChart({
         <RunPinChart {...props} spec={run.spec} />
       ) : (
         <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
-          {SEGMENT_COPY.nothingMatches(run.empty!.name)}
+          {run.unresolved
+            ? relativeReason(run.unresolved, quarters)
+            : SEGMENT_COPY.nothingMatches(run.empty!.name)}
         </p>
       )}
     </>

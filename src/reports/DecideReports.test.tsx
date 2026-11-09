@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { Panel, type Chosen } from "./DecideReports";
 import type { PlayerReport } from "./player";
 import type { ShopReport } from "./shop.server";
+import type { Segment } from "~/segments/segments";
 
 const player: PlayerReport[] = [
   {
@@ -185,5 +186,70 @@ describe("Reports in Decide", () => {
     expect(html).toContain("Weekday author nights");
     expect(html).not.toContain("What you found");
     expect(html).not.toContain("Sundays sell more hardcovers.");
+  });
+});
+
+describe("a report's segment on its charts (Plot, Chart and Audit, #407)", () => {
+  const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
+  const report = (segment: string, carried?: string): PlayerReport => ({
+    id: "r2",
+    title: "Segmented",
+    items: [
+      {
+        spec: {
+          title: "Revenue by genre",
+          kind: "bar",
+          query: { measure: "revenue", by: ["genre"], filter: { format: ["Trade paperback"] } },
+          ...(carried ? { segment: carried } : {}),
+        },
+      },
+    ],
+    segment,
+    created: "2194-Q1",
+    edited: "2194-Q1",
+  });
+  const show = (r: PlayerReport, segments: Segment[]) => {
+    const Stub = createRoutesStub([
+      {
+        path: "/decide",
+        Component: () => (
+          <Panel
+            player={[r]}
+            shop={[]}
+            quarters={quarters}
+            segments={segments}
+            onClose={() => {}}
+            onEdit={() => {}}
+            initial={{ type: "player", id: r.id }}
+          />
+        ),
+      },
+    ]);
+    return renderToString(<Stub initialEntries={["/decide"]} />)
+      .replace(/&#x27;/g, "'")
+      .replace(/&quot;/g, '"');
+  };
+  const hardcovers: Segment = { id: "h1", name: "Hardcovers", filters: { format: ["Hardcover"] } };
+  const fiction: Segment = { id: "f1", name: "Fiction", filters: { genre: ["Fiction"] } };
+
+  it("says what the report shows, and where nothing matches, says so with Table off and no caption", () => {
+    const html = show(report("h1"), [hardcovers]);
+    expect(html).toContain("Every chart here shows Hardcovers.");
+    expect(html).toContain("Nothing matches both this chart's filters and Hardcovers.");
+    expect(html).toContain("Nothing matches, so there's no table or chart");
+    expect(html).toMatch(/aria-disabled="true"/);
+    expect(html).not.toContain("Every quarter played so far");
+    expect(show(report("f1"), [fiction])).toContain("Every quarter played so far");
+  });
+
+  it("decides the caption from the filters the chart runs with: its segment's now", () => {
+    const quartered: Segment = {
+      id: "p1",
+      name: "Paperbacks lately",
+      filters: { format: ["Trade paperback"], quarter: ["2193-Q4"] },
+    };
+    const html = show(report("f1", "p1"), [fiction, quartered]);
+    expect(html).toContain("Segment: Paperbacks lately");
+    expect(html).not.toContain("Every quarter played so far");
   });
 });

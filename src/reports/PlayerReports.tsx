@@ -15,7 +15,7 @@ import { MAX_SERIES } from "~/platform/charts/chart-theme";
 import { noChart, pinKey, shownAsTable, type PinSpec } from "~/investigate/pins/spec";
 import { usePins } from "~/investigate/pins/usePins";
 import { track } from "~/platform/analytics/analytics.client";
-import { filterOf } from "~/segments/apply";
+import { filterOf, segmented } from "~/segments/apply";
 import { SEGMENT_COPY } from "~/segments/copy";
 import type { Segment } from "~/segments/segments";
 import { PLAYER_COPY as COPY } from "./copy";
@@ -266,8 +266,13 @@ function ToggledChart({
 }) {
   const [local, setLocal] = useState(spec.kind !== "comparison" && shownAsTable(spec));
   const [tooMany, setTooMany] = useState<number | null>(null);
+  // Nothing matches both its filters and the report's segment: no table or chart, and Table says so, keeping its state
+  // (Plot, #407).
+  // What it runs with: its segment's filters now, and the report's segment (Chart and Audit, #407).
+  const run = segmented(spec, segments, quarters, segment).spec;
+  const empty = run === null;
   const why = noChartReason(noChart(spec), tooMany, MAX_SERIES);
-  const table = why !== null || (kept ?? local);
+  const table = (why !== null && !empty) || (kept ?? local);
   return (
     <>
       <div className={styles.itemHeader}>
@@ -275,14 +280,14 @@ function ToggledChart({
         <TableToggle
           table={table}
           label={spec.title}
-          disabledReason={why}
+          disabledReason={empty ? SEGMENT_COPY.noTable : why}
           onChange={(next) => {
             setLocal(next);
             onTable(next);
           }}
         />
       </div>
-      {everyQuarter(spec, segment) && <span className={styles.muted}>{COPY.everyQuarter}</span>}
+      {run && everyQuarter(run) && <span className={styles.muted}>{COPY.everyQuarter}</span>}
       <PinChart
         spec={spec}
         quarters={quarters}
@@ -296,14 +301,11 @@ function ToggledChart({
   );
 }
 
-/**
- * A chart over every quarter grows as quarters are played: its caption says so. Not when the report's segment names
- * quarters or months; a chart's own segment was its filters when it was pinned, so they say.
- */
-function everyQuarter(spec: PinSpec, segment: Segment | null): boolean {
+/** A chart over every quarter grows as quarters are played: its caption says so. Asked of what it runs with. */
+function everyQuarter(spec: PinSpec): boolean {
   // A comparison and a waterfall name their quarters.
   if (spec.kind === "comparison" || spec.kind === "waterfall") return false;
-  const filter = { ...(segment?.filters ?? {}), ...filterOf(spec) };
+  const filter = filterOf(spec);
   return !filter.quarter && !filter.month;
 }
 
