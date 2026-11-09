@@ -303,7 +303,10 @@ David agreed the design: "Agreed on all points. Let's do it" (req_a59d77f07115).
 - **`Run for…` on a report:**
   - It's a button beside the report's title. Its picker, titled `Run this report for`, offers `As saved` (the default), the three relative quarters, then each played quarter, newest first.
   - Charts move by the same number of quarters, counted from the report's newest, so each keeps its own span (Goldy's call). The note says `Run for Q1 2194: every chart moves by the same number of quarters, so each keeps its own span.`, with the button `Back to as saved`.
+  - When no chart in the report can move, the note says so instead: `Run for Q1 2194: none of these charts can move, so each shows as saved.`, still with `Back to as saved`. Each chart's own line below says why (Chart, #410).
+  - A chart that moves gets a line under its title that names what it shows now, because a title can name the quarters it was saved with (`What drove revenue's change, Q3 2193 to Q4 2193, by genre`, or a comparison's two sides). The line names the quarters as the chart shows them: `Now: Q4 2193 to Q1 2194` for a waterfall, `Now: Q4 2193 against Q1 2194` or `Now: 2193 Jul against 2193 Aug` for a comparison, and `Now: Q1 2194` or `Now: 2194 Jan and 2194 Feb` for a chart filtered to quarters or months (listed as `periodLabel` lists them, in the date style). Every moved chart gets it, whether or not its title names a quarter, so the rule stays simple.
   - A chart over every quarter isn't moved, and says `Over every quarter, so it stays as saved.`
+    That line replaces the chart's `Every quarter played so far` caption while the report is run for another quarter, so the chart shows one line, not two that say the same thing (Chart, #410).
   - A chart that can't move says why:
     - `This chart can't run for Q1 2194, so it shows as saved.`
     - `Moving this chart would go past the ledgers, so it shows as saved.`
