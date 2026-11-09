@@ -20,7 +20,7 @@ import { SEGMENT_COPY } from "~/segments/copy";
 import type { Segment } from "~/segments/segments";
 import { PLAYER_COPY as COPY, RUN_FOR_COPY } from "./copy";
 import { moveChart, newestQuarter, runOffset, runQuarter, type RunChoice } from "./run-for";
-import { RunForNote, RunForPicker } from "./RunFor";
+import { nowShows, RunForNote, RunForPicker } from "./RunFor";
 import {
   checkReport,
   editCounts,
@@ -190,7 +190,13 @@ function ReportView({
         </div>
       </header>
       <ReportSegmentLine report={report} segments={segments} />
-      <RunForNote quarter={runFor} onBack={() => setChoice("saved")} />
+      <RunForNote
+        quarter={runFor}
+        movable={
+          !!runFor && planRun(report.items, segments, quarters, report.segment, runFor).movable
+        }
+        onBack={() => setChoice("saved")}
+      />
       {report.summary && <p className={styles.note}>{report.summary}</p>}
       <ReportCharts
         items={report.items}
@@ -229,6 +235,27 @@ export function runForEvent(where: "report" | "decide", choice: RunChoice, repor
   return { where, to, charts: report.items.length };
 }
 
+/**
+ * A report run for a quarter: how many quarters its charts move (from the newest any names as it runs now, with its
+ * segments), and whether any of them can.
+ */
+export function planRun(
+  items: PlayerReport["items"],
+  segments: readonly Segment[],
+  quarters: readonly string[],
+  segment: Segment | string | null | undefined,
+  runFor: string,
+) {
+  const own =
+    typeof segment === "string"
+      ? (segments.find((s) => s.id === segment) ?? null)
+      : (segment ?? null);
+  const runs = items.flatMap((i) => segmented(i.spec, segments, quarters, own).spec ?? []);
+  const newest = newestQuarter(runs, quarters);
+  const by = newest ? runOffset(newest, runFor) : 0;
+  return { by, movable: runs.some((r) => moveChart(r, by, quarters).stays === null) };
+}
+
 /** A report's charts, each with its note: shared by Reports and Decide's panel. */
 export function ReportCharts({
   items,
@@ -254,15 +281,15 @@ export function ReportCharts({
   // names as it runs now, with its segments (Goldy's call; Plot, section 9).
   const move = useMemo(() => {
     if (!runFor) return undefined;
-    const runs = items.flatMap((i) => segmented(i.spec, segments, quarters, segment).spec ?? []);
-    const newest = newestQuarter(runs, quarters);
-    const by = newest ? runOffset(newest, runFor) : 0;
+    const { by } = planRun(items, segments, quarters, segment, runFor);
     return (run: PinSpec) => {
       const moved = moveChart(run, by, quarters);
-      return {
-        spec: moved.spec,
-        note: moved.stays && RUN_FOR_COPY.stays[moved.stays](quarterName(runFor)),
-      };
+      if (moved.stays)
+        return { spec: moved.spec, note: RUN_FOR_COPY.stays[moved.stays](quarterName(runFor)) };
+      // Moved: its title may name the quarters it was saved with, so a line says what it shows now. Not when the
+      // move is none (Plot and Chart, #412).
+      const shows = by === 0 ? null : nowShows(moved.spec);
+      return { spec: moved.spec, note: shows && RUN_FOR_COPY.now(shows) };
     };
   }, [runFor, items, segments, quarters, segment]);
   return (
@@ -336,7 +363,10 @@ function ToggledChart({
           }}
         />
       </div>
-      {run && everyQuarter(run) && <span className={styles.muted}>{COPY.everyQuarter}</span>}
+      {/* Run for another quarter, its stays-as-saved line says it instead (Plot, #412). */}
+      {run && !move && everyQuarter(run) && (
+        <span className={styles.muted}>{COPY.everyQuarter}</span>
+      )}
       <PinChart
         spec={spec}
         quarters={quarters}

@@ -8,7 +8,7 @@ import { quarterName } from "~/game/event-title";
 import { measureTexts, RESULT_COPY, scoreText, SERVICE_RECORD } from "~/result/copy";
 import { DECIDE_COPY as COPY, REPORTS_COPY } from "./copy";
 import type { PlayerReport } from "./player";
-import { ReportCharts, ReportSegmentLine, runForEvent } from "./PlayerReports";
+import { planRun, ReportCharts, ReportSegmentLine, runForEvent } from "./PlayerReports";
 import { runQuarter, type RunChoice } from "./run-for";
 import { pickerEscape, RunForNote, RunForPicker } from "./RunFor";
 import type { Segment } from "~/segments/segments";
@@ -245,7 +245,13 @@ export function Panel({
       {report ? (
         <>
           <ReportSegmentLine report={report} segments={segments} />
-          <RunForNote quarter={runFor} onBack={() => setChoice("saved")} />
+          <RunForNote
+            quarter={runFor}
+            movable={
+              !!runFor && planRun(report.items, segments, quarters, report.segment, runFor).movable
+            }
+            onBack={() => setChoice("saved")}
+          />
           {report.summary && <p className={styles.note}>{report.summary}</p>}
           <ReportCharts
             items={report.items}
