@@ -287,7 +287,7 @@ David: "Named filter sets ("awarded paperbacks under $20") that can be applied t
 - **Edge cases:**
   - `Nothing matches both this chart's filters and {name}.`
     That line stands alone: the period caption above it (`Every quarter played so far`) is hidden, and the `Table` toggle is disabled with `Nothing matches, so there's no table or chart`, keeping its pressed state (#407).
-  - After a deletion, on what used the segment: `This used a segment that's since been deleted, so it shows its own filters now.`
+  - When the segment is gone, on what used it: `This used a segment that's no longer saved, so it shows its own filters now.` One line covers both ways it goes: the player deleted it, or started a new game (Play again or Reset game), which keeps the browser's pins but starts with no segments. "Deleted" would blame the player for a reset they didn't think of as deleting anything (Audit, #407).
 - **Privacy:** segment names are the player's own words, kept in the save and never in analytics, which records counts only, not even lengths. The privacy page's line: `…and the names of segments you save. The play data counts them, never what they say.`
 
 ## 9. Relative quarters, and running a report for another quarter (Sim)
