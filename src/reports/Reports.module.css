@@ -603,3 +603,18 @@
   border-radius: 50%;
   background: #199e70;
 }
+
+/*
+ * Run for…'s picker: narrow enough to open inside Decide's side panel, which clips what's outside it (measured at
+ * 1440 px: a reason beside "Same quarter, a year earlier" made the list 552 px, 243 px of it, radios included, past
+ * the panel's left edge). A reason wraps under its option instead.
+ */
+.runFor fieldset {
+  width: max-content;
+  max-width: 280px;
+}
+
+.runFor label {
+  flex-wrap: wrap;
+  white-space: normal;
+}

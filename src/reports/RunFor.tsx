@@ -36,7 +36,7 @@ export function RunForPicker({
   ];
   return (
     // Marked, so a panel that closes on Escape (Decide's) leaves this Escape to the open picker.
-    <span data-run-for="">
+    <span data-run-for="" className={styles.runFor}>
       <Dropdown
         mode="single"
         name={COPY.button}
