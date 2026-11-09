@@ -306,7 +306,7 @@ describe("a report run for another quarter (Plot, section 9)", () => {
     const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
     expect(text).toContain("Run for…");
     expect(text).toMatch(
-      /Run this report for As saved Latest quarter Quarter before latest Same quarter, a year earlier .*Q4 2193 Q3 2193 Q2 2193 Q1 2193/,
+      /Run this report for As saved Latest quarter: Q4 2193 Quarter before latest: Q3 2193 Same quarter, a year earlier .*Q4 2193 Q3 2193 Q2 2193 Q1 2193/,
     );
   });
 });

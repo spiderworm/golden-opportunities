@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { quarterName } from "~/game/event-title";
-import { RELATIVE_HINT, RELATIVE_NAMES, relativeReason } from "~/investigate/format";
+import { RELATIVE_HINT, relativeLabel, relativeReason } from "~/investigate/format";
 import { Dropdown, type DropdownOption } from "~/platform/ui/Dropdown";
 import { RELATIVE_QUARTERS } from "~/query/relative";
 import { RUN_FOR_COPY as COPY } from "./copy";
@@ -50,7 +50,8 @@ export function RunForPicker({
     { value: "saved", label: COPY.asSaved },
     ...RELATIVE_QUARTERS.map((token) => ({
       value: token,
-      label: RELATIVE_NAMES[token],
+      // As the quarter filter shows them: "Latest quarter: Q4 2193" (Plot, #410).
+      label: relativeLabel(token, quarters),
       hint: RELATIVE_HINT,
       disabledReason: relativeReason(token, quarters),
     })),
