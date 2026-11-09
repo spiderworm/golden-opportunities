@@ -135,7 +135,8 @@ function reportEvent(intent: string, written: ReportOutcome) {
 const measureName = (id: MeasureId) => RESULT_COPY.reportCard.measures[id];
 
 export default function Reports({ loaderData }: Route.ComponentProps) {
-  const { reports, record, removedAt, player, editable, quarters, calibration } = loaderData;
+  const { reports, record, removedAt, player, editable, quarters, calibration, segments } =
+    loaderData;
   const newReports = reports.filter((r) => r.new).length;
   // Once per visit to the page, with what it showed: counts only.
   useEffect(() => {
@@ -190,7 +191,7 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
           </>
         )}
       </section>
-      <PlayerReports reports={player} editable={editable} quarters={quarters} />
+      <PlayerReports reports={player} editable={editable} quarters={quarters} segments={segments} />
       {/* How the player's own forecasts have done, once a quarter is played (David, req_6d136a2b7fb3). */}
       {calibration.played > 0 && <ForecastCalibration calibration={calibration} />}
     </div>

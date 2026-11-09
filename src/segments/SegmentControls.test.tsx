@@ -26,6 +26,7 @@ const menu = (segments: Segment[], applied: Segment | null, edited = false) =>
         edited={edited}
         onApply={() => {}}
         onDeleted={() => {}}
+        usesOf={async () => ({ pins: 0, reports: 0 })}
       />,
     ),
   );
@@ -67,6 +68,20 @@ describe("refusals, in Plot's words", () => {
       "A segment holds up to 50 filter values. Remove some to save it.",
     );
     expect(refusalCopy("missing")).toBe("That segment was deleted in another tab.");
+  });
+});
+
+describe("Delete's question", () => {
+  it("says what uses the segment, only the parts that apply, singular for one", () => {
+    expect(SEGMENT_COPY.deleteInUse("Fiction", { pins: 2, reports: 1 })).toBe(
+      `Delete "Fiction"? It's used by 2 pinned charts and 1 report. They'll go back to their own filters.`,
+    );
+    expect(SEGMENT_COPY.deleteInUse("Fiction", { pins: 1, reports: 0 })).toBe(
+      `Delete "Fiction"? It's used by 1 pinned chart. They'll go back to their own filters.`,
+    );
+    expect(SEGMENT_COPY.deleteInUse("Fiction", { pins: 0, reports: 3 })).toBe(
+      `Delete "Fiction"? It's used by 3 reports. They'll go back to their own filters.`,
+    );
   });
 });
 

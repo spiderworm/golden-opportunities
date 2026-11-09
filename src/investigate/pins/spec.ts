@@ -50,6 +50,8 @@ export interface ChartPinSpec {
   table?: boolean;
   /** Shown as shares of its total, or largest first with the running share, as the main chart was (req_fa2e6a0dbbec). */
   share?: ShareMode;
+  /** The saved segment it was pinned with, by id: its filters are the segment's now (src/segments/apply.ts). */
+  segment?: string;
 }
 
 /**
@@ -136,6 +138,8 @@ export interface WaterfallPinSpec {
   };
   /** Shown as its table: the pin's Table toggle. Not part of pinKey. */
   table?: boolean;
+  /** The saved segment it was pinned with, by id, as a chart's. */
+  segment?: string;
 }
 
 export type PinSpec = ChartPinSpec | ComparisonPinSpec | WaterfallPinSpec;
@@ -155,6 +159,14 @@ const isString = (v: unknown, max: number): v is string =>
   typeof v === "string" && v.length > 0 && v.length <= max;
 const only = (o: Record<string, unknown>, keys: readonly string[]) =>
   Object.keys(o).every((k) => keys.includes(k));
+/** A segment's id as the server makes them (src/segments/segments.ts): the pin keeps it, or null if it's malformed. */
+const SEGMENT_ID = /^[a-z0-9-]{1,40}$/;
+const segmentOf = (value: unknown): { segment?: string } | null =>
+  value === undefined
+    ? {}
+    : typeof value === "string" && SEGMENT_ID.test(value)
+      ? { segment: value }
+      : null;
 
 /** The query's shape, checked as the contract bounds it. The server checks it again. */
 export function parseQuery(value: unknown): Query | null {
@@ -262,6 +274,20 @@ export function parseWaterfall(value: unknown): WaterfallPinSpec["waterfall"] | 
 
 export function parsePinSpec(value: unknown): PinSpec | null {
   if (!isObject(value) || !isString(value.title, TITLE_MAX)) return null;
+  if (value.kind === "comparison") {
+    if (!only(value, ["title", "kind", "comparison"])) return null;
+    const comparison = parseComparison(value.comparison);
+    return comparison && { title: value.title, kind: "comparison", comparison };
+  }
+  // A comparison is Dewey's, never pinned with a segment; anything else may carry one.
+  const segment = segmentOf(value.segment);
+  if (!segment) return null;
+  const { segment: _segment, ...rest } = value;
+  const spec = parseUnsegmented({ ...rest, title: value.title });
+  return spec && spec.kind !== "comparison" ? { ...spec, ...segment } : spec;
+}
+
+function parseUnsegmented(value: Record<string, unknown> & { title: string }): PinSpec | null {
   if (value.kind === "waterfall") {
     if (!only(value, ["title", "kind", "waterfall", "table"])) return null;
     if (value.table !== undefined && typeof value.table !== "boolean") return null;
@@ -274,11 +300,6 @@ export function parsePinSpec(value: unknown): PinSpec | null {
         ...(typeof value.table === "boolean" ? { table: value.table } : {}),
       }
     );
-  }
-  if (value.kind === "comparison") {
-    if (!only(value, ["title", "kind", "comparison"])) return null;
-    const comparison = parseComparison(value.comparison);
-    return comparison && { title: value.title, kind: "comparison", comparison };
   }
   if (
     !only(value, ["title", "kind", "query", "also", "table", "share"]) ||
@@ -379,7 +400,16 @@ const sortedFilter = (filter: Partial<Record<Dimension, readonly string[]>> | un
 export function pinKey(spec: PinSpec): string {
   if (spec.kind === "waterfall") {
     const w = spec.waterfall;
-    return JSON.stringify([spec.kind, w.by, w.then, w.now, sortedFilter(w.filter), !!w.split]);
+    return JSON.stringify([
+      spec.kind,
+      w.by,
+      w.then,
+      w.now,
+      sortedFilter(w.filter),
+      !!w.split,
+      // With a segment, another pin from the same chart without one: it follows the segment's edits.
+      ...(spec.segment ? [`segment:${spec.segment}`] : []),
+    ]);
   }
   if (spec.kind === "comparison") {
     const c = spec.comparison;
@@ -408,6 +438,7 @@ export function pinKey(spec: PinSpec): string {
     ...(query.vs ? [query.vs] : []),
     ...(spec.share ? [`share:${spec.share}`] : []),
     ...(spec.also?.length ? [spec.also] : []),
+    ...(spec.segment ? [`segment:${spec.segment}`] : []),
   ]);
 }
 

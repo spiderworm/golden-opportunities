@@ -57,12 +57,17 @@ import {
   type WaterfallPinSpec,
 } from "./spec";
 import { noChartReason, TableToggle } from "~/platform/ui/TableToggle";
+import { segmented } from "~/segments/apply";
+import { SEGMENT_COPY } from "~/segments/copy";
+import type { Segment } from "~/segments/segments";
 
 const CHART_HEIGHT = 240;
 
 export interface PinnedChartsProps {
   pins: Pin[];
   quarters: readonly string[];
+  /** The player's saved segments now, for the pins that carry one (src/segments/apply.ts). */
+  segments: readonly Segment[];
   onRemove: (id: string) => void;
   onError: (code: string) => void;
   /** Each pin's Add to report control (reports.md section 3), if the page offers one. */
@@ -75,6 +80,7 @@ export interface PinnedChartsProps {
 export function PinnedCharts({
   pins,
   quarters,
+  segments,
   onRemove,
   onError,
   addToReport,
@@ -100,6 +106,7 @@ export function PinnedCharts({
               <PinnedChart
                 pin={pin}
                 quarters={quarters}
+                segments={segments}
                 onRemove={() => onRemove(pin.id)}
                 onError={onError}
                 addToReport={addToReport?.(pin)}
@@ -183,6 +190,7 @@ export async function runPin(pin: PinSpec, signal: AbortSignal): Promise<Loaded>
 function PinnedChart({
   pin,
   quarters,
+  segments,
   onRemove,
   onError,
   addToReport,
@@ -190,6 +198,7 @@ function PinnedChart({
 }: {
   pin: Pin;
   quarters: readonly string[];
+  segments: readonly Segment[];
   onRemove: () => void;
   onError: (code: string) => void;
   addToReport?: ReactNode;
@@ -229,22 +238,18 @@ function PinnedChart({
           </button>
         </div>
       </header>
-      <PinChart spec={pin} quarters={quarters} onError={onError} onTooMany={setTooMany} />
+      <PinChart
+        spec={pin}
+        quarters={quarters}
+        segments={segments}
+        onError={onError}
+        onTooMany={setTooMany}
+      />
     </article>
   );
 }
 
-/**
- * A pin's chart, run again through POST /api/query whenever it's shown: on the board, and in a report, which holds a
- * copy of the pin (reports.md section 3). Nothing a chart showed is kept.
- */
-export function PinChart({
-  spec,
-  quarters,
-  onError,
-  onTooMany,
-  table: asked,
-}: {
+interface PinChartProps {
   spec: PinSpec;
   quarters: readonly string[];
   onError: (code: string) => void;
@@ -252,7 +257,49 @@ export function PinChart({
   table?: boolean;
   /** Told the number of groups when there are too many to chart, so the toggle can say so; null when not. */
   onTooMany?: (groups: number | null) => void;
+}
+
+/**
+ * A pin's chart, run again through POST /api/query whenever it's shown: on the board, and in a report, which holds a
+ * copy of the pin (reports.md section 3). Nothing a chart showed is kept. With its segment's filters, if it carries
+ * one, and the report's segment, if it has one (src/segments/apply.ts), saying so under the title (Plot, section 8).
+ */
+export function PinChart({
+  segments = [],
+  reportSegment = null,
+  ...props
+}: PinChartProps & {
+  /** The player's saved segments now. */
+  segments?: readonly Segment[];
+  /** The report's own segment, over every chart in it. */
+  reportSegment?: Segment | null;
 }) {
+  const { spec, quarters } = props;
+  const run = segmented(spec, segments, quarters, reportSegment);
+  const { onTooMany } = props;
+  // Nothing drawn, so nothing too many to chart.
+  useEffect(() => {
+    if (!run.spec) onTooMany?.(null);
+  }, [run.spec === null]);
+  return (
+    <>
+      {run.segment === "deleted" ? (
+        <p className={styles.pinMeta}>{SEGMENT_COPY.deleted}</p>
+      ) : (
+        run.segment && <p className={styles.pinMeta}>{SEGMENT_COPY.onChart(run.segment.name)}</p>
+      )}
+      {run.spec ? (
+        <RunPinChart {...props} spec={run.spec} />
+      ) : (
+        <p className={styles.pinError} style={{ minHeight: CHART_HEIGHT }}>
+          {SEGMENT_COPY.nothingMatches(run.empty!.name)}
+        </p>
+      )}
+    </>
+  );
+}
+
+function RunPinChart({ spec, quarters, onError, onTooMany, table: asked }: PinChartProps) {
   const table = spec.kind !== "comparison" && (asked ?? shownAsTable(spec));
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const key = pinKey(spec);

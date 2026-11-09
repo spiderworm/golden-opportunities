@@ -270,6 +270,38 @@ describe("pin specs", () => {
   });
 });
 
+describe("a pin with a saved segment (Goldy's defaults, req_7a658226468d)", () => {
+  it("keeps the segment's id on a chart, a heatmap or a waterfall, and refuses a malformed one", () => {
+    expect(parsePinSpec({ ...spec, segment: "seg-1" })).toEqual({ ...spec, segment: "seg-1" });
+    const waterfall = {
+      title: "What drove it",
+      kind: "waterfall",
+      waterfall: { by: "genre", then: "latest-1", now: "latest" },
+      segment: "seg-1",
+    };
+    expect(parsePinSpec(waterfall)).toEqual(waterfall);
+    for (const segment of ["", "Seg 1", 7, "x".repeat(41)])
+      expect(parsePinSpec({ ...spec, segment })).toBeNull();
+  });
+
+  it("never carries one on a comparison, which is Dewey's", () => {
+    const comparison = {
+      title: "Fiction against Mystery",
+      kind: "comparison",
+      comparison: { measure: "revenue", across: "genre", from: "Fiction", to: "Mystery", by: [] },
+    };
+    expect(parsePinSpec(comparison)).not.toBeNull();
+    expect(parsePinSpec({ ...comparison, segment: "seg-1" })).toBeNull();
+  });
+
+  it("is another pin from the same chart without it", () => {
+    expect(pinKey(copy({ ...spec, segment: "seg-1" }) as PinSpec)).not.toBe(pinKey(spec));
+    expect(pinKey(copy({ ...spec, segment: "seg-1" }) as PinSpec)).toBe(
+      pinKey(copy({ ...spec, title: "Other", segment: "seg-1" }) as PinSpec),
+    );
+  });
+});
+
 describe("pins saved before months had a year", () => {
   it("read their month filters and month comparisons as 2193's, so they keep matching", () => {
     expect(

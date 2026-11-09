@@ -19,6 +19,9 @@ export function reportsData(request: Request) {
     editable: removedQuarter(save) === null,
     // The periods the player can see, for a chart's month axis, as Investigate's board has them.
     quarters: [...queryView.periods].sort(),
+    // The player's saved segments, for the reports and charts that carry one (src/segments/apply.ts): their names
+    // are the player's own words, as the reports are.
+    segments: save.segments ?? [],
     // How the player's own forecasts have done (src/forecast): Reports' section, and Decide's panel's, read-only.
     calibration: calibration(request),
   };

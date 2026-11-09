@@ -15,6 +15,9 @@ import { MAX_SERIES } from "~/platform/charts/chart-theme";
 import { noChart, pinKey, shownAsTable, type PinSpec } from "~/investigate/pins/spec";
 import { usePins } from "~/investigate/pins/usePins";
 import { track } from "~/platform/analytics/analytics.client";
+import { filterOf } from "~/segments/apply";
+import { SEGMENT_COPY } from "~/segments/copy";
+import type { Segment } from "~/segments/segments";
 import { PLAYER_COPY as COPY } from "./copy";
 import {
   checkReport,
@@ -31,7 +34,13 @@ import styles from "./Reports.module.css";
 // the page is lives in the URL (?report=, ?edit=, ?new=1, and &add= for a pin brought from Investigate), so Back
 // works and a pin's "Add to report" can link straight in.
 
-type Draft = { title: string; summary: string; items: { spec: PinSpec; note: string }[] };
+type Draft = {
+  title: string;
+  summary: string;
+  items: { spec: PinSpec; note: string }[];
+  /** The report's own segment's id, or "" for none. */
+  segment: string;
+};
 type Answer =
   { ok: true; id: string; intent: string } | { ok: false; reason: RefusalReason | "busy" };
 
@@ -50,13 +59,16 @@ function inputOf(draft: Draft) {
     title: draft.title,
     ...(draft.summary.trim() ? { summary: draft.summary } : {}),
     items: draft.items.map(({ spec, note }) => (note.trim() ? { spec, note } : { spec })),
+    ...(draft.segment ? { segment: draft.segment } : {}),
   };
 }
 
-const draftOf = (report?: PlayerReport): Draft => ({
+/** A report as the editor starts it. A segment deleted since it was chosen reads as None, and goes when it's saved. */
+const draftOf = (report: PlayerReport | undefined, segments: readonly Segment[]): Draft => ({
   title: report?.title ?? "",
   summary: report?.summary ?? "",
   items: (report?.items ?? []).map((i) => ({ spec: i.spec, note: i.note ?? "" })),
+  segment: segments.some((s) => s.id === report?.segment) ? report!.segment! : "",
 });
 
 /** New report, beside the greeting; off at the limit, saying why. */
@@ -82,10 +94,13 @@ export function PlayerReports({
   reports,
   editable,
   quarters,
+  segments,
 }: {
   reports: PlayerReport[];
   editable: boolean;
   quarters: readonly string[];
+  /** The player's saved segments, for the charts and reports that carry one. */
+  segments: readonly Segment[];
 }) {
   const [params] = useSearchParams();
   const open = reports.find((r) => r.id === params.get("report"));
@@ -102,9 +117,10 @@ export function PlayerReports({
           report={editing}
           add={params.get("add")}
           quarters={quarters}
+          segments={segments}
         />
       ) : open ? (
-        <ReportView report={open} editable={editable} quarters={quarters} />
+        <ReportView report={open} editable={editable} quarters={quarters} segments={segments} />
       ) : reports.length === 0 ? (
         <p className={styles.muted}>{COPY.empty}</p>
       ) : (
@@ -135,10 +151,12 @@ function ReportView({
   report,
   editable,
   quarters,
+  segments,
 }: {
   report: PlayerReport;
   editable: boolean;
   quarters: readonly string[];
+  segments: readonly Segment[];
 }) {
   return (
     <article className={styles.report} aria-labelledby="report-title">
@@ -152,9 +170,35 @@ function ReportView({
           <Link to="/reports">{COPY.close}</Link>
         </div>
       </header>
+      <ReportSegmentLine report={report} segments={segments} />
       {report.summary && <p className={styles.note}>{report.summary}</p>}
-      <ReportCharts items={report.items} quarters={quarters} />
+      <ReportCharts
+        items={report.items}
+        quarters={quarters}
+        segments={segments}
+        segment={report.segment}
+      />
     </article>
+  );
+}
+
+/**
+ * Under a report's title, its own segment: `Every chart here shows {name}.`, or, once it's deleted, that the charts
+ * show their own filters now (Plot, section 8). Shared by Reports and Decide's panel.
+ */
+export function ReportSegmentLine({
+  report,
+  segments,
+}: {
+  report: Pick<PlayerReport, "segment">;
+  segments: readonly Segment[];
+}) {
+  if (!report.segment) return null;
+  const segment = segments.find((s) => s.id === report.segment);
+  return (
+    <p className={styles.muted}>
+      {segment ? SEGMENT_COPY.onReport(segment.name) : SEGMENT_COPY.deleted}
+    </p>
   );
 }
 
@@ -162,14 +206,20 @@ function ReportView({
 export function ReportCharts({
   items,
   quarters,
+  segments,
+  segment: id,
   where = "report",
 }: {
   items: PlayerReport["items"];
   quarters: readonly string[];
+  /** The player's saved segments now, and the report's own segment's id, if it has one. */
+  segments: readonly Segment[];
+  segment?: string;
   /** Where it's read, for table_toggled: on Reports, or in Decide's panel. */
   where?: "report" | "decide";
 }) {
   const keys = itemKeys(items);
+  const segment = segments.find((s) => s.id === id) ?? null;
   return (
     <ol className={styles.reportCharts}>
       {items.map((item, i) => (
@@ -181,6 +231,8 @@ export function ReportCharts({
           <ToggledChart
             spec={item.spec}
             quarters={quarters}
+            segments={segments}
+            segment={segment}
             onTable={(table) =>
               track("table_toggled", { where, shown: table, kind: item.spec.kind })
             }
@@ -199,11 +251,16 @@ export function ReportCharts({
 function ToggledChart({
   spec,
   quarters,
+  segments,
+  segment,
   table: kept,
   onTable,
 }: {
   spec: PinSpec;
   quarters: readonly string[];
+  segments: readonly Segment[];
+  /** The report's own segment, if it has one and it's still saved. */
+  segment: Segment | null;
   table?: boolean;
   onTable: (table: boolean) => void;
 }) {
@@ -225,10 +282,12 @@ function ToggledChart({
           }}
         />
       </div>
-      {everyQuarter(spec) && <span className={styles.muted}>{COPY.everyQuarter}</span>}
+      {everyQuarter(spec, segment) && <span className={styles.muted}>{COPY.everyQuarter}</span>}
       <PinChart
         spec={spec}
         quarters={quarters}
+        segments={segments}
+        reportSegment={segment}
         table={table}
         onTooMany={setTooMany}
         onError={(code) => track("report_chart_failed", { code })}
@@ -237,11 +296,15 @@ function ToggledChart({
   );
 }
 
-/** A chart over every quarter grows as quarters are played: its caption says so. */
-function everyQuarter(spec: PinSpec): boolean {
+/**
+ * A chart over every quarter grows as quarters are played: its caption says so. Not when the report's segment names
+ * quarters or months; a chart's own segment was its filters when it was pinned, so they say.
+ */
+function everyQuarter(spec: PinSpec, segment: Segment | null): boolean {
   // A comparison and a waterfall name their quarters.
   if (spec.kind === "comparison" || spec.kind === "waterfall") return false;
-  return !spec.query.filter?.quarter && !spec.query.filter?.month;
+  const filter = { ...(segment?.filters ?? {}), ...filterOf(spec) };
+  return !filter.quarter && !filter.month;
 }
 
 /**
@@ -301,12 +364,14 @@ function Editor({
   report,
   add,
   quarters,
+  segments,
 }: {
   report?: PlayerReport;
   add: string | null;
   quarters: readonly string[];
+  segments: readonly Segment[];
 }) {
-  const initial = useMemo(() => draftOf(report), [report]);
+  const initial = useMemo(() => draftOf(report, segments), [report]);
   const [draft, setDraft] = useState<Draft>(initial);
   const [error, setError] = useState<string | null>(null);
   const { pins } = usePins(track);
@@ -378,6 +443,7 @@ function Editor({
       return { ...d, items };
     });
   const full = draft.items.length >= REPORT_LIMITS.items;
+  const draftSegment = segments.find((s) => s.id === draft.segment) ?? null;
   const inReport = new Set(draft.items.map((i) => pinKey(i.spec)));
 
   return (
@@ -406,6 +472,20 @@ function Editor({
           onChange={(e) => setDraft({ ...draft, summary: e.target.value })}
         />
       </label>
+      <label className={styles.field}>
+        <span>{SEGMENT_COPY.reportField}</span>
+        <select
+          value={draft.segment}
+          onChange={(e) => setDraft({ ...draft, segment: e.target.value })}
+        >
+          <option value="">{SEGMENT_COPY.none}</option>
+          {segments.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <ol className={styles.reportCharts}>
         {draft.items.map((item, i) => (
           <li
@@ -417,6 +497,8 @@ function Editor({
             <ToggledChart
               spec={item.spec}
               quarters={quarters}
+              segments={segments}
+              segment={draftSegment}
               table={item.spec.kind !== "comparison" && shownAsTable(item.spec)}
               onTable={(table) => {
                 if (item.spec.kind !== "comparison") setItem(i, { spec: { ...item.spec, table } });

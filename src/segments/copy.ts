@@ -21,6 +21,21 @@ export const SEGMENT_COPY = {
   delete: "Delete",
   update: (name: string) => `Update "${name}"`,
   deleteQuestion: (name: string) => `Delete "${name}"? This can't be undone.`,
+  /** Only the parts that apply, singular for one: "It's used by 2 pinned charts and 1 report." */
+  deleteInUse: (name: string, uses: { pins: number; reports: number }) => {
+    const parts = [
+      uses.pins ? plural(uses.pins, "pinned chart", "pinned charts") : null,
+      uses.reports ? plural(uses.reports, "report", "reports") : null,
+    ].filter((p) => p !== null);
+    return `Delete "${name}"? It's used by ${parts.join(" and ")}. They'll go back to their own filters.`;
+  },
+  /** On a pin's card or a report's chart, under its title. */
+  onChart: (name: string) => `Segment: ${name}`,
+  /** Under a report's title, when the report has a segment. */
+  onReport: (name: string) => `Every chart here shows ${name}.`,
+  reportField: "Segment for this report",
+  nothingMatches: (name: string) => `Nothing matches both this chart's filters and ${name}.`,
+  deleted: "This used a segment that's since been deleted, so it shows its own filters now.",
   deleteButton: "Delete segment",
   keep: "Keep it",
 } as const;
