@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+
 import { quarterName } from "~/game/event-title";
 import { RELATIVE_HINT, RELATIVE_NAMES, relativeReason } from "~/investigate/format";
 import { Dropdown, type DropdownOption } from "~/platform/ui/Dropdown";
@@ -9,6 +11,29 @@ import styles from "./Reports.module.css";
 // "Run for…" (Plot, chart-features-copy.md section 9): beside a report's title, a picker of As saved, the three
 // relative quarters and each played quarter, newest first; once it's run for one, a note with Back to as saved. A view
 // only: nothing saved changes. Reports and Decide's panel keep the choice while the report is open.
+
+/** The list's widest, as Reports.module.css's .runFor has it. */
+const PANEL_MAX = 280;
+/** Kept clear between the list and the edge of its room. */
+const EDGE = 8;
+
+/**
+ * Which way the list opens from a button at `buttonLeft`..`buttonRight`, inside room from `left` to `right`, and how
+ * wide it may be: leftward if it fits, else rightward if it fits, else toward the roomier side, narrowed to fit.
+ */
+export function placeList(buttonLeft: number, buttonRight: number, left: number, right: number) {
+  const leftward = buttonRight - left - EDGE;
+  const rightward = right - buttonLeft - EDGE;
+  const align: "start" | "end" =
+    leftward >= PANEL_MAX
+      ? "end"
+      : rightward >= PANEL_MAX
+        ? "start"
+        : leftward >= rightward
+          ? "end"
+          : "start";
+  return { align, width: Math.max(0, Math.min(PANEL_MAX, align === "end" ? leftward : rightward)) };
+}
 
 /** The button and its picker. */
 export function RunForPicker({
@@ -34,14 +59,45 @@ export function RunForPicker({
       .reverse()
       .map((q) => ({ value: q, label: quarterName(q) })),
   ];
+  // The list opens toward the side with room inside whatever clips it: Decide's side panel, else the window. Measured
+  // in Decide: from a button at the panel's right, a leftward list fits (1440 px); where the header wraps and the
+  // button sits at the left edge (390 px), a leftward one was off the screen, so it opens rightward.
+  const root = useRef<HTMLSpanElement>(null);
+  const [placed, setPlace] = useState<{ align: "start" | "end"; width: number }>({
+    align: "end",
+    width: PANEL_MAX,
+  });
+  const place = () => {
+    const button = root.current?.getBoundingClientRect();
+    if (!button) return;
+    // The room: the clipping panel (Decide's aside), within the window.
+    const clip = root.current!.closest("aside")?.getBoundingClientRect();
+    const left = Math.max(clip?.left ?? 0, 0);
+    const right = Math.min(clip?.right ?? window.innerWidth, window.innerWidth);
+    const { align, width } = placeList(button.left, button.right, left, right);
+    setPlace((now) => (now.align === align && now.width === width ? now : { align, width }));
+  };
+  useEffect(() => {
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, []);
   return (
-    // Marked, so a panel that closes on Escape (Decide's) leaves this Escape to the open picker.
-    <span data-run-for="" className={styles.runFor}>
+    // Marked, so a panel that closes on Escape (Decide's) leaves this Escape to the open picker. Placed again as it's
+    // opened, since the header may have wrapped since.
+    <span
+      ref={root}
+      data-run-for=""
+      className={styles.runFor}
+      style={{ "--run-for-width": `${placed.width}px` } as CSSProperties}
+      onPointerDownCapture={place}
+      onKeyDownCapture={place}
+    >
       <Dropdown
         mode="single"
         name={COPY.button}
         legend={COPY.legend}
-        align="end"
+        align={placed.align}
         trigger={{ className: styles.linkButton, content: COPY.button }}
         value={choice}
         options={options}

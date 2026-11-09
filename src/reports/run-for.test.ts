@@ -70,3 +70,16 @@ describe("running a report for another quarter (Plot, section 9)", () => {
     expect(moveChart(saved, 0, quarters)).toEqual({ spec: saved, stays: null });
   });
 });
+
+describe("where Run for…'s list opens (measured in Decide's side panel)", () => {
+  it("opens leftward where it fits, rightward where only that fits, else narrowed to the roomier side", async () => {
+    const { placeList } = await import("./RunFor");
+    // 1440 px: the button at the side panel's right (panel 960 to 1440).
+    expect(placeList(1202, 1269, 960, 1440)).toEqual({ align: "end", width: 280 });
+    // 390 px: the header wrapped, the button at the left edge.
+    expect(placeList(24, 92, 0, 390)).toEqual({ align: "start", width: 280 });
+    // Neither side holds 280 px: the roomier side, narrowed.
+    expect(placeList(100, 160, 0, 300)).toEqual({ align: "start", width: 192 });
+    expect(placeList(200, 260, 0, 300)).toEqual({ align: "end", width: 252 });
+  });
+});
