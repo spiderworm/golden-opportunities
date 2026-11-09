@@ -59,6 +59,23 @@ describe("running a report for another quarter (Plot, section 9)", () => {
     });
   });
 
+  it("moves months across a year's end, and a comparison across months (Frank, #410)", () => {
+    expect(moveChart(chart({ month: ["2194-01", "2194-02"] }), -1, quarters).spec).toEqual(
+      chart({ month: ["2193-10", "2193-11"] }),
+    );
+    expect(moveChart(chart({ month: ["2193-11"] }), 1, quarters).spec).toEqual(
+      chart({ month: ["2194-02"] }),
+    );
+    const months: PinSpec = {
+      title: "October against November",
+      kind: "comparison",
+      comparison: { measure: "revenue", across: "month", from: "2193-10", to: "2193-11", by: [] },
+    };
+    expect(moveChart(months, -1, quarters).spec).toMatchObject({
+      comparison: { from: "2193-07", to: "2193-08" },
+    });
+  });
+
   it("shows as saved, saying why, a chart over every quarter, past the ledgers, or undated", () => {
     expect(moveChart(chart({ genre: ["Memoir"] }), 1, quarters).stays).toBe("every");
     expect(moveChart(chart({ quarter: ["2193-Q1"] }), -1, quarters).stays).toBe("past");

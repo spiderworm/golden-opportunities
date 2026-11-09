@@ -122,7 +122,14 @@ export function PlayerReports({
           segments={segments}
         />
       ) : open ? (
-        <ReportView report={open} editable={editable} quarters={quarters} segments={segments} />
+        // Keyed by report, so Run for… opens each report as saved (Chart, #410).
+        <ReportView
+          key={open.id}
+          report={open}
+          editable={editable}
+          quarters={quarters}
+          segments={segments}
+        />
       ) : reports.length === 0 ? (
         <p className={styles.muted}>{COPY.empty}</p>
       ) : (
