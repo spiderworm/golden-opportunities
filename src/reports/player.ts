@@ -11,13 +11,18 @@ export interface PlayerReport {
   title: string;
   summary?: string;
   items: { spec: PinSpec; note?: string }[];
+  /**
+   * A saved segment over every chart, by id (src/segments/apply.ts), as AND with each chart's own filters. Kept when
+   * the segment is deleted: the report then says so and shows the charts' own filters.
+   */
+  segment?: string;
   /** The quarter being played when it was created and last edited, for "edited Q2 2194". */
   created: QuarterId;
   edited: QuarterId;
 }
 
 /** What the browser sends: a report without what the server assigns. */
-export type ReportInput = Pick<PlayerReport, "title" | "summary" | "items">;
+export type ReportInput = Pick<PlayerReport, "title" | "summary" | "items" | "segment">;
 
 export const REPORT_LIMITS = {
   /** Tune: at 12, New report is off and says why. */
@@ -52,7 +57,13 @@ function optional(value: unknown, max: number): string | undefined | null {
 export function checkReport(
   value: unknown,
 ): { ok: true; report: ReportInput } | { ok: false; reason: RefusalReason } {
-  if (!isObject(value) || !only(value, ["title", "summary", "items"]))
+  if (!isObject(value) || !only(value, ["title", "summary", "items", "segment"]))
+    return { ok: false, reason: "invalid" };
+  // A segment's id as the server makes them (src/segments/segments.ts); whether it's still saved isn't checked.
+  if (
+    value.segment !== undefined &&
+    (typeof value.segment !== "string" || !/^[a-z0-9-]{1,40}$/.test(value.segment))
+  )
     return { ok: false, reason: "invalid" };
   const title = typeof value.title === "string" ? value.title.trim() : null;
   if (title === null) return { ok: false, reason: "invalid" };
@@ -71,7 +82,15 @@ export function checkReport(
     if (!spec || note === null) return { ok: false, reason: "invalid" };
     items.push(note === undefined ? { spec } : { spec, note });
   }
-  return { ok: true, report: { title, ...(summary === undefined ? {} : { summary }), items } };
+  return {
+    ok: true,
+    report: {
+      title,
+      ...(summary === undefined ? {} : { summary }),
+      items,
+      ...(typeof value.segment === "string" ? { segment: value.segment } : {}),
+    },
+  };
 }
 
 /** The save's reports, as written: every report valid, ids distinct, at most the limit. */
@@ -79,7 +98,10 @@ export function validReports(value: unknown): value is PlayerReport[] {
   if (!Array.isArray(value) || value.length > REPORT_LIMITS.reports) return false;
   const ids = new Set<string>();
   return value.every((r) => {
-    if (!isObject(r) || !only(r, ["id", "title", "summary", "items", "created", "edited"]))
+    if (
+      !isObject(r) ||
+      !only(r, ["id", "title", "summary", "items", "segment", "created", "edited"])
+    )
       return false;
     if (typeof r.id !== "string" || !/^[a-z0-9-]{1,40}$/.test(r.id) || ids.has(r.id)) return false;
     ids.add(r.id);
@@ -113,4 +135,7 @@ export const reportCounts = (r: ReportInput) => ({
   charts: r.items.length,
   notes: r.items.filter((i) => i.note).length,
   summary: !!r.summary,
+  // Whether it has a segment of its own, and how many charts carry one: never which, or its name.
+  segment: !!r.segment,
+  segmented: r.items.filter((i) => i.spec.kind !== "comparison" && i.spec.segment).length,
 });

@@ -46,7 +46,14 @@ export function usePins(track: Track): Pins {
           : spec.kind === "waterfall"
             ? { measure: "revenue" as const, by: [spec.waterfall.by] }
             : spec.query;
-      track("investigate_pin_added", { pinnedBy, kind: spec.kind, measure, dimensions: by.length });
+      track("investigate_pin_added", {
+        pinnedBy,
+        kind: spec.kind,
+        measure,
+        dimensions: by.length,
+        // Whether it carries a saved segment: never which, or its name.
+        segment: spec.kind !== "comparison" && !!spec.segment,
+      });
       return true;
     },
     [track],

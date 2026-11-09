@@ -151,15 +151,27 @@ export interface SegmentMenuProps {
   onApply: (segment: Segment | null) => void;
   /** A segment is gone (deleted here): the bar stops naming it. */
   onDeleted: (id: string) => void;
+  /** How many pinned charts and reports use a segment, for Delete's question; asked as it opens. */
+  usesOf: (segment: Segment) => Promise<Uses>;
 }
 
+type Uses = { pins: number; reports: number };
+
 /** `Segment: None`, `Segment: {name}` or `Segment: {name}, edited`, and each segment with Rename, Edit filters and Delete. */
-export function SegmentMenu({ segments, applied, edited, onApply, onDeleted }: SegmentMenuProps) {
+export function SegmentMenu({
+  segments,
+  applied,
+  edited,
+  onApply,
+  onDeleted,
+  usesOf,
+}: SegmentMenuProps) {
   const button = useRef<HTMLButtonElement>(null);
   const { open, setOpen, root } = usePanel(button);
   const panelId = useId();
   const [renaming, setRenaming] = useState<Segment | null>(null);
   const [deleting, setDeleting] = useState<Segment | null>(null);
+  const [uses, setUses] = useState<Uses>({ pins: 0, reports: 0 });
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const summary = applied ? (edited ? COPY.edited(applied.name) : applied.name) : COPY.none;
@@ -243,9 +255,11 @@ export function SegmentMenu({ segments, applied, edited, onApply, onDeleted }: S
                 type="button"
                 className={styles.link}
                 aria-label={`${COPY.delete} ${segment.name}`}
-                onClick={() => {
+                onClick={async () => {
                   setOpen(false);
                   setDeleteError(null);
+                  // The question opens once it knows what uses the segment, so it's asked once, as it stays.
+                  setUses(await usesOf(segment));
                   setDeleting(segment);
                 }}
               >
@@ -267,7 +281,13 @@ export function SegmentMenu({ segments, applied, edited, onApply, onDeleted }: S
         }}
       />
       <Dialog
-        title={deleting ? COPY.deleteQuestion(deleting.name) : ""}
+        title={
+          !deleting
+            ? ""
+            : uses.pins || uses.reports
+              ? COPY.deleteInUse(deleting.name, uses)
+              : COPY.deleteQuestion(deleting.name)
+        }
         open={deleting !== null}
         role="alertdialog"
         onClose={() => setDeleting(null)}

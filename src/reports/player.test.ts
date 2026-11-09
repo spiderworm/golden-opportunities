@@ -35,6 +35,15 @@ describe("a player's report", () => {
     });
   });
 
+  it("keeps a segment of its own by id, and refuses one that isn't an id", () => {
+    expect(checkReport(input({ segment: "seg-1" }))).toMatchObject({
+      ok: true,
+      report: { segment: "seg-1" },
+    });
+    for (const segment of ["", "Fiction!", 3, "x".repeat(41)])
+      expect(checkReport(input({ segment } as never))).toEqual({ ok: false, reason: "invalid" });
+  });
+
   it("says why it refuses, as report_refused names it", () => {
     expect(checkReport(input({ title: "  " }))).toEqual({ ok: false, reason: "no_title" });
     expect(checkReport(input({ items: [] }))).toEqual({ ok: false, reason: "no_charts" });
@@ -183,6 +192,14 @@ describe("a player's report", () => {
       charts: 2,
       notes: 1,
       summary: true,
+      segment: false,
+      segmented: 0,
+    });
+    // A segment, the report's own or a chart's, is counted, never named.
+    const carried = { spec: { ...a.spec, segment: "s1" } } as typeof a;
+    expect(reportCounts({ title: "T", items: [carried, b], segment: "s2" })).toMatchObject({
+      segment: true,
+      segmented: 1,
     });
   });
 });

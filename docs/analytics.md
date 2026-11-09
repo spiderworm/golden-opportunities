@@ -89,7 +89,7 @@ One event to a line, under its area, so changes to different events don't collid
 - `investigate_title_closed`
 - `investigate_table_toggled`
 - `investigate_plan_link`
-- `investigate_pin_added`
+- `investigate_pin_added` (`pinnedBy`, `kind`, `measure`, `dimensions`, and `segment`: whether it carries a saved segment, never which)
 - `investigate_pin_removed`
 - `investigate_pin_rejected`
 - `investigate_pin_failed`
@@ -153,7 +153,7 @@ One event to a line, under its area, so changes to different events don't collid
 
 - `reports_viewed` (counts of shop reports, new ones and the player's)
 - `report_shop_opened` (the quarter, whether it was new, and `via`: `card` or `results`)
-- `report_created` (`charts`, `notes` with one, `summary` (yes or no), and `from`: `reports` or `investigate`)
+- `report_created` (`charts`, `notes` with one, `summary` (yes or no), `segment` (whether the report has a saved segment of its own), `segmented` (how many of its charts carry one), and `from`: `reports` or `investigate`)
 - `report_edited` (the same counts, `renamed`, and the charts `added`, `removed` and `moved`)
 - `report_edit_cancelled` (`changed`)
 - `report_deleted` (`charts`)
@@ -162,7 +162,7 @@ One event to a line, under its area, so changes to different events don't collid
 
 ### Reports (server)
 
-- `game_report_saved` (`intent`: create, update or delete, the player's report count, and the report's `charts`, `notes` and `summary`)
+- `game_report_saved` (`intent`: create, update or delete, the player's report count, and the report's `charts`, `notes`, `summary`, `segment` and `segmented`)
 - `game_report_refused` (`intent` and `reason`)
 
 ### Saved segments

@@ -8,7 +8,8 @@ import { quarterName } from "~/game/event-title";
 import { measureTexts, RESULT_COPY, scoreText, SERVICE_RECORD } from "~/result/copy";
 import { DECIDE_COPY as COPY, REPORTS_COPY } from "./copy";
 import type { PlayerReport } from "./player";
-import { ReportCharts } from "./PlayerReports";
+import { ReportCharts, ReportSegmentLine } from "./PlayerReports";
+import type { Segment } from "~/segments/segments";
 import { ForecastCalibration } from "./ForecastCalibration";
 import type { Calibration } from "~/forecast/forecast";
 import { useReportsData } from "./useReportsData";
@@ -25,6 +26,7 @@ interface Loaded {
   player: PlayerReport[];
   quarters: string[];
   calibration: Calibration;
+  segments: Segment[];
 }
 
 /** One report open in the panel: the player's, by id, or a shop report, by quarter. */
@@ -62,7 +64,7 @@ export function DecideReports({
   };
 
   if (!data) return null;
-  const { player, reports, quarters, calibration } = data;
+  const { player, reports, quarters, calibration, segments } = data;
   // Open whenever there's something in it to read: the player's reports, or a played quarter's forecast to judge
   // (Goldy and Plot, req_6d136a2b7fb3). "No reports yet" only with neither.
   const forecasts = calibration.forecast;
@@ -104,6 +106,7 @@ export function DecideReports({
             player={player}
             shop={reports}
             quarters={quarters}
+            segments={segments}
             calibration={calibration}
             onClose={() => {
               setOpen(false);
@@ -155,6 +158,7 @@ export function Panel({
   player,
   shop,
   quarters,
+  segments = [],
   calibration = null,
   onClose,
   onEdit,
@@ -164,6 +168,8 @@ export function Panel({
   player: PlayerReport[];
   shop: ShopReport[];
   quarters: string[];
+  /** The player's saved segments, for the reports and charts that carry one. */
+  segments?: readonly Segment[];
   /** How the player's forecasts have done, read-only (src/forecast); none to show without it. */
   calibration?: Calibration | null;
   onClose: () => void;
@@ -222,8 +228,15 @@ export function Panel({
       </header>
       {report ? (
         <>
+          <ReportSegmentLine report={report} segments={segments} />
           {report.summary && <p className={styles.note}>{report.summary}</p>}
-          <ReportCharts items={report.items} quarters={quarters} where="decide" />
+          <ReportCharts
+            items={report.items}
+            quarters={quarters}
+            segments={segments}
+            segment={report.segment}
+            where="decide"
+          />
           <button
             type="button"
             className={styles.linkButton}

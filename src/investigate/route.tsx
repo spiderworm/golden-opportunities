@@ -63,6 +63,9 @@ import {
 } from "./state";
 import { PinnedCharts } from "./pins/PinnedCharts";
 import { waterfallPinFor, type PinSpec } from "./pins/spec";
+import type { PlayerReport } from "~/reports/player";
+import { REPORTS_DATA_URL } from "~/reports/useReportsData";
+import { segmentUses } from "~/segments/apply";
 import { SegmentActions, SegmentMenu } from "~/segments/SegmentControls";
 import { filterCount, sameFilters, type Segment } from "~/segments/segments";
 import { keepLoadedSegments, useSegments } from "~/segments/store";
@@ -174,8 +177,11 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
   // Relative quarters as the quarters they are now, for everything on screen that reasons about quarters; the URL,
   // the filter bar and the pinned queries keep the tokens (src/query/relative.ts).
   const dated = resolvedState(state, options.quarter);
-  const chartPin = pinSpecFor(state, options.quarter);
-  const heatPin = heatPinFor(state, options.quarter);
+  // Pinned with the segment it shows, unless its filters have been edited since: the pin then follows the segment's
+  // edits (src/segments/apply.ts).
+  const carried = applied && !edited ? applied.id : null;
+  const chartPin = withPinSegment(pinSpecFor(state, options.quarter), carried);
+  const heatPin = withPinSegment(heatPinFor(state, options.quarter), carried);
 
   /** The next question, with the bar's filters kept: a filter that gets a value stays on the bar when it's cleared. */
   // Not a default parameter: React Router's route splitting (on since the clientLoader, #191) can't follow a
@@ -272,6 +278,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
               onDeleted={(id) => {
                 if (id === segmentId) update(state, undefined, null);
               }}
+              usesOf={(segment) => segmentUsesNow(segment.id, pins.pins)}
             />
           }
           segmentActions={
@@ -421,6 +428,7 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
         <PinnedCharts
           pins={pins.pins}
           quarters={options.quarter}
+          segments={segments}
           onRemove={pins.remove}
           onError={(code) => track("investigate_pin_failed", { code })}
           addToReport={(pin) => <AddToReport pin={pin} />}
@@ -446,6 +454,29 @@ export default function Investigate({ loaderData }: Route.ComponentProps) {
       </DeweyColumn>
     </div>
   );
+}
+
+/**
+ * How many pinned charts and reports use a segment: the board's pins, here, and the reports, from the save as
+ * /api/reports has them. If they can't be read, the pins alone: the question still asks before it deletes.
+ */
+async function segmentUsesNow(id: string, pins: readonly PinSpec[]) {
+  let reports: PlayerReport[] = [];
+  try {
+    const response = await fetch(REPORTS_DATA_URL, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (response.ok) reports = ((await response.json()) as { player: PlayerReport[] }).player;
+  } catch {
+    // The network: the pins' count stands.
+  }
+  return segmentUses(id, pins, reports);
+}
+
+/** A pin made while a saved segment is on, unedited, carries it by id. */
+function withPinSegment(spec: PinSpec, segment: string | null): PinSpec {
+  return segment && spec.kind !== "comparison" ? { ...spec, segment } : spec;
 }
 
 /** The heatmap as a pin: the same query it runs (investigation.server.ts, heatmapQuery), drawn as a heatmap. */
