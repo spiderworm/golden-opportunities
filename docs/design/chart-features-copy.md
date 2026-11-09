@@ -29,6 +29,7 @@ David: "I'd like to allow (as often as we can make work) tables to toggle to cha
 | No breakdown: a single figure | `A single figure has no chart` |
 | More groups than the chart draws | `Too many groups to chart ({n}). Filter to {max} or fewer.` |
 | A comparison of two values (Dewey's `comparison`) | `Two values read best as a table` |
+| Nothing matches a report chart's filters and the report's segment (#407) | `Nothing matches, so there's no table or chart` |
 
 - **Analytics:** Investigate's `investigate_table_toggled { shown }` stays as it is. Pins and Dewey record the same `shown`, under event names their builders choose.
 
@@ -285,6 +286,7 @@ David: "Named filter sets ("awarded paperbacks under $20") that can be applied t
   - for a whole report: the editor's field `Segment for this report` (with `None`), and under the report's title, `Every chart here shows {name}.`
 - **Edge cases:**
   - `Nothing matches both this chart's filters and {name}.`
+    That line stands alone: the period caption above it (`Every quarter played so far`) is hidden, and the `Table` toggle is disabled with `Nothing matches, so there's no table or chart`, keeping its pressed state (#407).
   - After a deletion, on what used the segment: `This used a segment that's since been deleted, so it shows its own filters now.`
 - **Privacy:** segment names are the player's own words, kept in the save and never in analytics, which records counts only, not even lengths. The privacy page's line: `…and the names of segments you save. The play data counts them, never what they say.`
 
