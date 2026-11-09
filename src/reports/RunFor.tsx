@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { quarterName } from "~/game/event-title";
-import { RELATIVE_HINT, relativeLabel, relativeReason } from "~/investigate/format";
+import {
+  formatDimensionValue,
+  periodLabel,
+  RELATIVE_HINT,
+  relativeLabel,
+  relativeReason,
+} from "~/investigate/format";
+import type { PinSpec } from "~/investigate/pins/spec";
 import { Dropdown, type DropdownOption } from "~/platform/ui/Dropdown";
 import { RELATIVE_QUARTERS } from "~/query/relative";
 import { RUN_FOR_COPY as COPY } from "./copy";
@@ -109,16 +116,51 @@ export function RunForPicker({
 }
 
 /** Under the title, once it's run for another quarter: what that does, and the way back. */
-export function RunForNote({ quarter, onBack }: { quarter: string | null; onBack: () => void }) {
+export function RunForNote({
+  quarter,
+  movable,
+  onBack,
+}: {
+  quarter: string | null;
+  /** Whether any chart can move; when none can, the note says so (Plot, #412). */
+  movable: boolean;
+  onBack: () => void;
+}) {
   if (!quarter) return null;
   return (
     <p className={styles.muted} role="status">
-      {COPY.note(quarterName(quarter))}{" "}
+      {movable ? COPY.note(quarterName(quarter)) : COPY.noneMove(quarterName(quarter))}{" "}
       <button type="button" className={styles.linkButton} onClick={onBack}>
         {COPY.back}
       </button>
     </p>
   );
+}
+
+/** A list in words, as periodLabel joins quarters: "a", "a and b", "a, b and c". */
+const listed = (parts: readonly string[]) =>
+  parts.length < 2 ? (parts[0] ?? "") : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+
+/**
+ * What a moved chart shows now, for its "Now:" line (Plot, #412): a waterfall's two quarters, a comparison's sides
+ * across quarters or months, else its months, the narrower filter, or its quarters as periodLabel lists them. Null if
+ * it names none.
+ */
+export function nowShows(spec: PinSpec): string | null {
+  if (spec.kind === "waterfall")
+    return `${quarterName(spec.waterfall.then)} to ${quarterName(spec.waterfall.now)}`;
+  if (
+    spec.kind === "comparison" &&
+    (spec.comparison.across === "quarter" || spec.comparison.across === "month")
+  ) {
+    const c = spec.comparison;
+    return `${formatDimensionValue(c.across, c.from)} against ${formatDimensionValue(c.across, c.to)}`;
+  }
+  const filter = spec.kind === "comparison" ? spec.comparison.filter : spec.query.filter;
+  if (filter?.month?.length)
+    return listed([...filter.month].sort().map((m) => formatDimensionValue("month", m)));
+  if (filter?.quarter?.length) return periodLabel(filter.quarter);
+  return null;
 }
 
 /** Whether an Escape is the open picker's to close, not the panel's around it. */

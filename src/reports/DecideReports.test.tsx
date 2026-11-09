@@ -310,3 +310,49 @@ describe("a report run for another quarter (Plot, section 9)", () => {
     );
   });
 });
+
+describe("a report run for another quarter, after #412", () => {
+  const quarters = ["2193-Q1", "2193-Q2", "2193-Q3", "2193-Q4"];
+  const q3: PlayerReport["items"][number] = {
+    spec: {
+      title: "Revenue by genre, Q3",
+      kind: "bar",
+      query: { measure: "revenue", by: ["genre"], filter: { quarter: ["2193-Q3"] } },
+    },
+  };
+  const every: PlayerReport["items"][number] = {
+    spec: { title: "Revenue by genre", kind: "bar", query: { measure: "revenue", by: ["genre"] } },
+  };
+  const show = (items: PlayerReport["items"], runFor: string | null) =>
+    renderToString(
+      <ReportCharts items={items} quarters={quarters} segments={[]} runFor={runFor} />,
+    ).replace(/&#x27;/g, "'");
+
+  it("says what a moved chart shows now, but not when the move is none", () => {
+    expect(show([q3], "2193-Q2")).toContain("Now: Q2 2193");
+    expect(show([q3], "2193-Q3")).not.toContain("Now:");
+  });
+
+  it("gives an every-quarter chart one line, not its caption too", () => {
+    const html = show([every], "2193-Q2");
+    expect(html).toContain("Over every quarter, so it stays as saved.");
+    expect(html).not.toContain("Every quarter played so far");
+    expect(show([every], null)).toContain("Every quarter played so far");
+  });
+
+  it("says when none of a report's charts can move", async () => {
+    const { planRun } = await import("./PlayerReports");
+    const { RunForNote } = await import("./RunFor");
+    expect(planRun([every], [], quarters, undefined, "2193-Q2").movable).toBe(false);
+    expect(planRun([q3, every], [], quarters, undefined, "2193-Q2").movable).toBe(true);
+    const note = (movable: boolean) =>
+      renderToString(<RunForNote quarter="2193-Q2" movable={movable} onBack={() => {}} />).replace(
+        /&#x27;/g,
+        "'",
+      );
+    expect(note(false)).toContain(
+      "Run for Q2 2193: none of these charts can move, so each shows as saved.",
+    );
+    expect(note(true)).toContain("every chart moves by the same number of quarters");
+  });
+});

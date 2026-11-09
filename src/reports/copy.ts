@@ -140,6 +140,11 @@ export const RUN_FOR_COPY = {
   note: (quarter: string) =>
     `Run for ${quarter}: every chart moves by the same number of quarters, so each keeps its own span.`,
   back: "Back to as saved",
+  /** When none of the report's charts can move (Plot, #412). */
+  noneMove: (quarter: string) =>
+    `Run for ${quarter}: none of these charts can move, so each shows as saved.`,
+  /** Under a moved chart's title: what it shows now (Plot, #412). */
+  now: (shows: string) => `Now: ${shows}`,
   stays: {
     every: () => "Over every quarter, so it stays as saved.",
     past: () => "Moving this chart would go past the ledgers, so it shows as saved.",

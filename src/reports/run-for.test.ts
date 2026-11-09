@@ -100,3 +100,30 @@ describe("where Run for…'s list opens (measured in Decide's side panel)", () =
     expect(placeList(200, 260, 0, 300)).toEqual({ align: "end", width: 252 });
   });
 });
+
+describe("a moved chart's Now: line (Plot and Chart, #412)", () => {
+  it("names what it shows now: a waterfall's quarters, a comparison's sides, else months or quarters", async () => {
+    const { nowShows } = await import("./RunFor");
+    expect(
+      nowShows({
+        title: "What drove it",
+        kind: "waterfall",
+        waterfall: { by: "genre", then: "2193-Q4", now: "2194-Q1" },
+      }),
+    ).toBe("Q4 2193 to Q1 2194");
+    expect(
+      nowShows({
+        title: "July against August",
+        kind: "comparison",
+        comparison: { measure: "revenue", across: "month", from: "2193-07", to: "2193-08", by: [] },
+      }),
+    ).toBe("2193 Jul against 2193 Aug");
+    expect(nowShows(chart({ quarter: ["2194-Q1"] }))).toBe("Q1 2194");
+    expect(nowShows(chart({ month: ["2194-02", "2194-01", "2194-03"] }))).toBe(
+      "2194 Jan, 2194 Feb and 2194 Mar",
+    );
+    // Months are the narrower filter.
+    expect(nowShows(chart({ quarter: ["2194-Q1"], month: ["2194-01"] }))).toBe("2194 Jan");
+    expect(nowShows(chart({}))).toBeNull();
+  });
+});
