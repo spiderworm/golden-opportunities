@@ -1,6 +1,12 @@
 // A saved segment on a chart (Goldy's defaults, req_7a658226468d): a pin or a report's chart that carries one by id,
 // and a report's own segment over every chart in it. Client-safe. Relative .ts imports, as segments.ts has them.
-import { isRelativeQuarter, resolveQuarters } from "../query/relative.ts";
+import {
+  isAvailable,
+  isRelativeQuarter,
+  resolveQuarter,
+  resolveQuarters,
+  type RelativeQuarter,
+} from "../query/relative.ts";
 import type { Dimension } from "../query/types.ts";
 import type { PinSpec } from "../investigate/pins/spec.ts";
 import type { Segment } from "./segments.ts";
@@ -15,6 +21,11 @@ export interface Segmented {
   segment: Segment | "deleted" | null;
   /** The report's segment, when nothing matches both it and the chart's filters. */
   empty: Segment | null;
+  /**
+   * The relative quarter in the report's segment that's no quarter in the ledgers yet ("latest-4" in the game's first
+   * year), when that's why nothing runs: the card gives its reason, not a clash (Frank, #407).
+   */
+  unresolved: RelativeQuarter | null;
 }
 
 /** The filters a spec runs with, whatever its kind. */
@@ -112,15 +123,16 @@ export function segmented(
     ) as Filter;
     run = withFilter(spec, { ...without(own.filters as Filter, kept), ...keep });
   }
-  if (!report) return { spec: run, segment: own, empty: null };
-  const both = intersect(
-    filterOf(run),
-    without(report.filters as Filter, shapeDimensions(run)),
-    quarters,
-  );
-  return both
-    ? { spec: withFilter(run, both), segment: own, empty: null }
-    : { spec: null, segment: own, empty: report };
+  const none: Omit<Segmented, "spec"> = { segment: own, empty: null, unresolved: null };
+  if (!report) return { ...none, spec: run };
+  const theirs = without(report.filters as Filter, shapeDimensions(run));
+  // Only relative quarters, none of them one the player can see.
+  const unseen = (v: string) =>
+    isRelativeQuarter(v) && !isAvailable(resolveQuarter(v, quarters), quarters);
+  if (theirs.quarter?.length && theirs.quarter.every(unseen))
+    return { ...none, spec: null, unresolved: theirs.quarter[0] as RelativeQuarter };
+  const both = intersect(filterOf(run), theirs, quarters);
+  return both ? { ...none, spec: withFilter(run, both) } : { ...none, spec: null, empty: report };
 }
 
 /** How many pins and report charts carry a segment, and how many reports have it as their own: for Delete's confirm. */

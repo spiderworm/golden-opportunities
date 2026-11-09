@@ -466,10 +466,12 @@ async function segmentUsesNow(id: string, pins: readonly PinSpec[]) {
     const response = await fetch(REPORTS_DATA_URL, {
       headers: { Accept: "application/json" },
       cache: "no-store",
+      // The question waits on this: past 3 seconds, the pins' count stands (Audit and Chart, #407).
+      signal: AbortSignal.timeout(3000),
     });
     if (response.ok) reports = ((await response.json()) as { player: PlayerReport[] }).player;
   } catch {
-    // The network: the pins' count stands.
+    // The network, or the timeout: the pins' count stands.
   }
   return segmentUses(id, pins, reports);
 }

@@ -35,7 +35,10 @@ export const SEGMENT_COPY = {
   onReport: (name: string) => `Every chart here shows ${name}.`,
   reportField: "Segment for this report",
   nothingMatches: (name: string) => `Nothing matches both this chart's filters and ${name}.`,
-  deleted: "This used a segment that's since been deleted, so it shows its own filters now.",
+  /** Table's reason on that chart, as the other Table reasons are given (Plot, #407). */
+  noTable: "Nothing matches, so there's no table or chart",
+  /** Deleted, or gone with Play again or Reset game while the pin stayed (Plot, #409). */
+  deleted: "This used a segment that's no longer saved, so it shows its own filters now.",
   deleteButton: "Delete segment",
   keep: "Keep it",
 } as const;

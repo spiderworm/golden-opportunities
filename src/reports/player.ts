@@ -4,6 +4,7 @@
 // Relative .ts imports: the save store loads this in plain Node (store.server.test.ts), without the ~ alias.
 import { isQuarterId, type QuarterId } from "../game/quarters.ts";
 import { parsePinSpec, pinKey, type PinSpec } from "../investigate/pins/spec.ts";
+import { SEGMENT_ID } from "../segments/id.ts";
 
 export interface PlayerReport {
   /** The server's: one sent by the browser is ignored. */
@@ -62,7 +63,7 @@ export function checkReport(
   // A segment's id as the server makes them (src/segments/segments.ts); whether it's still saved isn't checked.
   if (
     value.segment !== undefined &&
-    (typeof value.segment !== "string" || !/^[a-z0-9-]{1,40}$/.test(value.segment))
+    (typeof value.segment !== "string" || !SEGMENT_ID.test(value.segment))
   )
     return { ok: false, reason: "invalid" };
   const title = typeof value.title === "string" ? value.title.trim() : null;
