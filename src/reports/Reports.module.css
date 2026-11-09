@@ -610,8 +610,11 @@
  * the panel's left edge). A reason wraps under its option instead.
  */
 .runFor fieldset {
+  box-sizing: border-box;
   width: max-content;
-  max-width: 280px;
+  /* Set by RunForPicker to the room on the side it opens toward, at most 280 px. */
+  max-width: var(--run-for-width, 280px);
+  min-width: 0;
 }
 
 .runFor label {
