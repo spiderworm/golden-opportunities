@@ -570,3 +570,73 @@ describe("a pin as shares (req_fa2e6a0dbbec)", () => {
     expect(parsePinSpec({ ...spec, also: ["units"] })).toBeNull();
   });
 });
+
+describe("a lookup of several measures, pinned from Dewey's chat (req_2d436ee864cd)", () => {
+  const several = (also: string[], by: string[] = ["quarter"], kind = "line") => ({
+    title: "Revenue and units sold by quarter",
+    kind,
+    query: { measure: "revenue", also, by },
+  });
+
+  it("keeps one Investigate's chart draws as its own pins are: the first measure, and also beside it", () => {
+    expect(parsePinSpec(several(["units"]))).toEqual({
+      title: "Revenue and units sold by quarter",
+      kind: "line",
+      query: { measure: "revenue", by: ["quarter"] },
+      also: ["units"],
+    });
+    // The same pin, whichever way it came: so it's pinned once.
+    expect(pinKey(parsePinSpec(several(["units"]))!)).toBe(
+      pinKey(parsePinSpec({ ...spec, kind: "line", also: ["units"] })!),
+    );
+  });
+
+  it("keeps any other as one query, shown as its table with the reason, in Plot's order", () => {
+    const cases: [ReturnType<typeof several> | object, string][] = [
+      [
+        {
+          ...several(["checkouts"]),
+          query: { measure: "avg_rating", also: ["checkouts"], by: ["genre"] },
+        },
+        "books",
+      ],
+      [several(["units", "orders", "avg_discount"]), "measures"],
+      [several(["units", "avg_discount"]), "axes"],
+      [several(["units"], ["quarter", "genre"]), "breakdown"],
+    ];
+    for (const [value, why] of cases) {
+      const pin = parsePinSpec(value)!;
+      expect(pin, why).not.toBeNull();
+      expect(
+        pin.kind !== "comparison" && pin.kind !== "waterfall" && pin.query.also,
+        why,
+      ).toBeTruthy();
+      expect(noChart(pin)).toBe(why);
+    }
+    // A figure for each measure: still one figure's reason.
+    expect(noChart(parsePinSpec(several(["units"], []))!)).toBe("figure");
+    // Another pin from the same query with its first measure only.
+    const four = parsePinSpec(several(["units", "orders", "avg_discount"]))!;
+    expect(pinKey(four)).not.toBe(pinKey(parsePinSpec({ ...spec, kind: "line" })!));
+  });
+
+  it("refuses measures the server would: too many, repeated, from different records, beside last year", () => {
+    for (const query of [
+      { measure: "revenue", also: [], by: ["quarter"] },
+      { measure: "revenue", also: ["units", "orders", "avg_discount", "avg_order_value"], by: [] },
+      { measure: "revenue", also: ["revenue"], by: [] },
+      { measure: "revenue", also: ["avg_rating"], by: [] },
+      { measure: "revenue", also: ["units"], by: ["genre"], vs: "last_year" },
+      { measure: "revenue", also: "units", by: [] },
+    ])
+      expect(parsePinSpec({ title: "T", kind: "bar", query }), JSON.stringify(query)).toBeNull();
+    // Never both ways at once, and never a heatmap or scatter plot.
+    expect(parsePinSpec({ ...several(["units"]), also: ["orders"] })).toBeNull();
+    expect(parsePinSpec(several(["units"], ["genre", "format"], "heatmap"))).toBeNull();
+  });
+
+  it("leaves every pin of one measure as it was", () => {
+    expect(parsePinSpec(spec)).toEqual(spec);
+    expect(noChart(parsePinSpec(spec)!)).toBeNull();
+  });
+});
