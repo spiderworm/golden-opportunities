@@ -178,7 +178,8 @@ measure nobody asked for.
   measure; it's absent without `also`. `truncated` is one flag for the whole
   result. `perMeasure(query, result)` (`result.ts`) splits a result into the
   single-measure lookups it stands for, for code that reads one measure at a
-  time.
+  time. Each split keeps the lookup's rows: sorted by another measure, its rows
+  keep that order and cut, though its query no longer names the sort.
 - **Source line.** Measures of one grain share its count, and each names its
   calculation: "Revenue and units from 56,350 visible matching sale lines:
   revenue, sum of …; units, one unit per sale line; allowed periods: …".
