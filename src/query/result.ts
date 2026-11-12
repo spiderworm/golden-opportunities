@@ -38,9 +38,14 @@ export function serializeResult(result: QueryResult): string {
 }
 
 /**
- * A lookup of several measures as one lookup per measure, each as it would have come alone: its query with only that
- * measure, and its result with only that measure's column, figures, total and evidence (contract.md, "Several
- * measures"). For code that reads one measure at a time, such as discovery's rules (Plot). One measure: as it is.
+ * A lookup of several measures as one lookup per measure: its query with only that measure, and its result with only
+ * that measure's column, figures, total and evidence (contract.md, "Several measures"). For code that reads one measure
+ * at a time, such as discovery's rules (Plot). One measure: as it is.
+ *
+ * Each measure's figures, total and evidence are what it gives alone, but its rows are the lookup's: sorted by
+ * another measure, a split's query drops that sort while its rows keep that order, and with a limit they're the top
+ * N by that other measure, not its own (Frank and Audit, #415). Such a split is `truncated` whenever rows were cut,
+ * and discovery's rules skip truncated results (Plot).
  */
 export function perMeasure(
   query: Query,
