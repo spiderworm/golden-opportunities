@@ -663,6 +663,43 @@
   color: var(--color-text-subtle);
 }
 
+/*
+ * A lookup of several measures (Plot, section 11): a figure over too few is faded on its own, since another measure
+ * in its row may have plenty. Its groups stay in view while its columns scroll sideways in their box, on a phone
+ * too, and the page itself never scrolls sideways. Its last row, All, is the overall figures.
+ */
+.table .fadedCell {
+  color: var(--color-text-subtle);
+}
+
+.measuresTable th:first-child,
+.measuresTable td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-panel);
+}
+
+.measuresTable thead th:first-child {
+  z-index: 2;
+}
+
+.measuresTable .allRow th {
+  position: static;
+  top: auto;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.measuresTable .allRow th:first-child {
+  position: sticky;
+}
+
+.measuresTable .allRow td {
+  font-weight: 600;
+}
+
 .tableNote {
   margin: 8px 12px 0;
   color: var(--color-text-subtle);
