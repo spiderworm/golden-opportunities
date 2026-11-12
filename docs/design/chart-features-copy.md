@@ -351,6 +351,34 @@ David: "Build it now. Forecast revenue and total units with hints, values for pr
   - with neither, `No reports yet`, which goes to Reports.
   - A filed but unplayed forecast changes nothing. There's never a `Your reports (0)` (Goldy and Plot, #396).
 
+## 11. Several measures in one lookup (Sim, Sage and Chart)
+
+David decided (12 Nov 2026; his go-ahead is req_2d436ee864cd, and the quote below is as Goldy relayed it): when a player asks for several measures together ("revenue and units by quarter"), Dewey answers with one table. Unrelated measures aren't forced together ("A natural read of what they're asking for makes most sense to me"), and Dewey never adds a measure nobody asked for.
+
+- **Which measures go together** is Sim's grouping: sales measures with sales measures, and book measures (ratings and checkouts) with book measures. A query takes 1 to 4.
+- **For Dewey** (the engine's words, which Dewey reads and the player doesn't):
+  - Refused, when the measures can't share a lookup: `{a} and {b} can't share a query: {a} comes from sales, and {b} from book records (ratings and checkouts). Query them separately.`
+  - More than four: `measures takes 1 to 4 measures.`
+  - `describe_data` gets a rule, its lists built from Sim's groups: `Ask for up to 4 measures in one query when they come from the same records: sales measures ({list}) together, or book measures ({list}) together. The result is one table, with a column for each measure. Ask only for the measures the player asked for, and query unrelated ones separately.`
+  - `query_data`'s description begins `Runs one query, for one measure or several that share their records,`.
+  - When the player names measures that can't share a lookup, Dewey runs two and says so in one short sentence. He gives the reason only if asked.
+- **The source line** has one clause per measure for its calculation, and the shared parts once. Measures over the same records share one count: `Revenue and units sold from 12,345 visible matching sale lines: revenue, sum of price × (1 - discount)…; units sold, one unit per sale line; allowed periods: …`. Measures over different records each get their own count: `Average rating from 812 visible matching ratings: …; checkouts from 4,210 visible matching book/month checkout rows: …`.
+- **The table:**
+  - It has a column per measure, in the order the query names them, headed with the measure's name (`Revenue`, `Units sold`, `Average rating`).
+  - Each figure is formatted for its own measure, with its own evidence (section 4).
+  - The overall figures are the table's last row, and its breakdown cell reads `All`, as on single-measure tables. It doesn't read "Total", because an average's overall figure isn't a sum. There's no separate totals line under the table.
+- **The chart** follows Investigate's rule for several measures (David, 2 Nov 2026): one chart with a series per measure, up to 3 measures, on at most two axes, one per unit, each axis named and colored for its measures. It draws lines over months or quarters and grouped bars otherwise. The legend is Investigate's. With no pin title, the title is `measuresLabel` with the breakdown: `Revenue and units sold by quarter`, or `Revenue, units sold and orders by genre`.
+- **No chart, so `Table` is disabled,** with one of these reasons (section 1's style):
+
+| Why | Tooltip |
+| --- | --- |
+| Four measures | `Too many measures to chart (4). A chart shows 3 at most.` |
+| A third unit, like revenue, units sold and average discount | `These measures need three axes, and a chart has two` |
+| A rating with sales measures | `Ratings and sales don't share a chart` |
+| Several measures with a second breakdown | `A chart of several measures takes one breakdown` |
+
+- **Discoveries:** a lookup of several measures counts for each measure it shows, as if each had been looked up alone. That's how Investigate's chart of several measures already counts, and it fits David's rule that "if dewey looked it up, they did it for the user" (3 Nov 2026). The engine's contract (`src/query/contract.md`) says so.
+
 ## Analytics, for all of them
 
 Events say what happened, never content (CLAUDE.md). The new toggles record their state, as `investigate_table_toggled { shown }` does, for example `investigate_last_year_toggled { on }` and `investigate_scatter_toggled { on }`. The builders pick the final names.
