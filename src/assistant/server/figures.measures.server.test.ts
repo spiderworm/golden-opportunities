@@ -2,6 +2,7 @@
 // unit, and a ref that names none resolves to nothing (engine-notes.md, "Several measures in one lookup").
 import { describe, expect, it } from "vitest";
 import { Refs, renderSentence, WITHHELD } from "./figures.server.ts";
+import { RULES } from "./prompt.server.ts";
 
 const SOURCE = "Sales from visible matching sale lines; grouped by quarter.";
 // As the tool server gives it (withMeasuresEvidence): a column per measure, totals by measure, and each average's
@@ -203,6 +204,14 @@ describe("a lookup of several measures", () => {
     ]);
     expect(say("{{a.genre}} sold {{a.units}} units.", filtered)).toBe("Poetry sold 3 units.");
   });
+});
+
+it("lets through the prompt's own line for measures that can't share a table", () => {
+  const line = "Those can't share a table, so I looked them up separately.";
+  expect(RULES).toContain(line);
+  expect(say(line)).toBe(line);
+  // The model's own version, from the real-model run of measures-two-lookups: "two" is a number word.
+  expect(say("The two measures can't share a table, so each has its own lookup.")).toBe(WITHHELD);
 });
 
 describe("a lookup of one measure, unchanged", () => {
