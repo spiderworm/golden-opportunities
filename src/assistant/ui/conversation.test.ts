@@ -336,3 +336,33 @@ describe("each reply's quarter, for the timeline (David, 3 Nov 2026)", () => {
     }
   });
 });
+
+describe("a lookup of several measures in a kept conversation (req_2d436ee864cd)", () => {
+  const withMeasures = (measures: unknown) => {
+    const r = reply(1);
+    const chart = (r.lookups as { type: string }[]).find((l) => l.type === "chart")!;
+    return { ...r, lookups: [{ ...chart, measures }] };
+  };
+  const one = { unit: null, rows: [{ n: 120, se: 11 }], total: { n: 120, se: 11 } };
+  const good = { revenue: { total: 5, evidence: one }, units: { total: 120 } };
+
+  it("restores each measure's total and evidence", () => {
+    const storage = new MemoryStorage();
+    saveConversation(storage, "inst", [withMeasures(good)]);
+    expect(loadConversation(storage, "inst")).toEqual([withMeasures(good)]);
+  });
+
+  it("drops a turn whose measures don't check out", () => {
+    for (const measures of [
+      { revenue: { total: 5 } },
+      { ...good, units: { total: "7" } },
+      { ...good, units: { total: 7, extra: 1 } },
+      { ...good, units: { total: 7, evidence: { ...one, rows: [] } } },
+      [good],
+    ]) {
+      const storage = new MemoryStorage();
+      saveConversation(storage, "inst", [withMeasures(measures)]);
+      expect(loadConversation(storage, "inst"), JSON.stringify(measures)).toEqual([]);
+    }
+  });
+});
