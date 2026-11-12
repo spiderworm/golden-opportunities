@@ -98,8 +98,8 @@ One event to a line, under its area, so changes to different events don't collid
 
 ### Queries (server)
 
-- `query_completed`
-- `query_failed`
+- `query_completed` (the first measure, `measureCount` (1 to 4) and `measures` (the measures asked, from the fixed list, joined with commas), the dimension and row counts, duration and a cache hit; never filter values or rows)
+- `query_failed` (the same, with an error code from a fixed list)
 - `query_request_completed`
 - `query_request_failed`
 

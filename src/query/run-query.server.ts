@@ -7,7 +7,7 @@ import { validateView } from "./view.server";
 import { emit, trackQuery } from "./telemetry.server";
 import { eligibleDays, groupDays, CALENDAR_DIMENSIONS, WEEKDAYS } from "./calendar";
 import { checkLabel, serializeResult } from "./result";
-import { PRICE_BANDS, QUERY_LIMITS } from "./types";
+import { isSalesMeasure, PRICE_BANDS, QUERY_LIMITS, queryMeasures } from "./types";
 import { rollUpSales, type SaleCells } from "./sale-cells";
 import { lastYearMissing, lastYearQuery, quartersCovered, yearEarlier } from "./last-year";
 import { resolveQuery } from "./relative";
@@ -19,6 +19,7 @@ import type {
   Query,
   QueryResult,
   LastYear,
+  MeasureEvidence,
   QueryRow,
   QueryTrack,
   QueryView,
@@ -59,7 +60,11 @@ type Dimensions = Partial<Record<Dimension, string | null>>;
 /** A fact from a sale cell (sale-cells.ts) stands for `weight` lines, with `orders` distinct orders among them. */
 interface Fact {
   dimensions: Dimensions;
+  /** A rating's stars, a checkout row's count, or 1 for a sale line. */
   value: number;
+  /** A sale line's revenue in millionths and its discount in basis points, when a measure asked needs them. */
+  revenue?: number;
+  discount?: number;
   orderId?: string;
   simulated?: boolean;
   awards?: readonly string[];
@@ -203,7 +208,7 @@ const lineRevenue = (listPrice: number, discount: number) =>
   wholeUnits(listPrice, 100) * (DISCOUNT_UNIT - basisPoints(discount));
 function saleFact(
   sale: DeepReadonly<SaleLine>,
-  measure: Measure,
+  measures: readonly Measure[],
   periods: Set<string>,
   simulated: boolean,
 ): Fact | null {
@@ -237,12 +242,11 @@ function saleFact(
       discounted: sale.discount > 0 ? "yes" : "no",
       discount_rate: `${Number((sale.discount * 100).toFixed(8))}%`,
     },
-    value:
-      measure === "revenue" || measure === "avg_order_value"
-        ? lineRevenue(sale.listPrice, sale.discount)
-        : measure === "avg_discount"
-          ? basisPoints(sale.discount)
-          : 1,
+    value: 1,
+    ...(measures.some(byOrderTotals)
+      ? { revenue: lineRevenue(sale.listPrice, sale.discount) }
+      : {}),
+    ...(measures.includes("avg_discount") ? { discount: basisPoints(sale.discount) } : {}),
     orderId: sale.orderId,
     simulated,
     awards: awardsOf(sale.book),
@@ -291,21 +295,23 @@ function* facts(query: Query, view: QueryView, history: SaleCells | null): Gener
         awards: awardsOf(checkout.book),
       };
   } else {
+    // Every sales measure asked reads the same facts, so one pass serves them all (contract.md, "Several measures").
+    const measures = queryMeasures(query);
     const periods = new Set<string>(view.periods);
     if (!history)
       for (const sale of data.saleLines) {
-        const fact = saleFact(sale, query.measure, periods, false);
+        const fact = saleFact(sale, measures, periods, false);
         if (fact) yield fact;
       }
     for (const sale of view.simulatedSales ?? []) {
-      const fact = saleFact(sale, query.measure, periods, true);
+      const fact = saleFact(sale, measures, periods, true);
       if (fact) yield fact;
     }
     // Cells are facts for their sample line, weighted by how many lines they hold (sale-cells.ts). 2193's come
     // first, then the save's, numbered on from them, as execute numbers their spanning orders.
     const offset = history?.cells.length ?? 0;
     history?.cells.forEach((cell, at) => {
-      const fact = saleFact(cell.line, query.measure, periods, false);
+      const fact = saleFact(cell.line, measures, periods, false);
       if (fact)
         cells.push({
           ...fact,
@@ -316,7 +322,7 @@ function* facts(query: Query, view: QueryView, history: SaleCells | null): Gener
         });
     });
     view.simulatedCells?.cells.forEach((cell, at) => {
-      const fact = saleFact(cell.line, query.measure, periods, true);
+      const fact = saleFact(cell.line, measures, periods, true);
       if (fact)
         cells.push({
           ...fact,
@@ -343,16 +349,19 @@ const aggregate = (): Aggregate => ({
 /** Measures whose spread is their orders' totals'. */
 const byOrderTotals = (measure: Measure) => measure === "revenue" || measure === "avg_order_value";
 const orderCount = (target: Aggregate) => target.orders.size + target.cellOrders - target.overlap;
+/** A fact's figure for a measure: its revenue, its discount, or its own value. */
+const valueOf = (fact: Fact, measure: Measure) =>
+  byOrderTotals(measure) ? fact.revenue! : measure === "avg_discount" ? fact.discount! : fact.value;
 function add(target: Aggregate, fact: Fact, measure: Measure): void {
   const weight = fact.weight ?? 1;
-  target.sum += fact.value * weight;
+  const v = valueOf(fact, measure);
+  target.sum += v * weight;
   target.count += weight;
-  if (measure === "avg_discount" || measure === "avg_rating")
-    target.squares += fact.value * fact.value * weight;
+  if (measure === "avg_discount" || measure === "avg_rating") target.squares += v * v * weight;
   if (byOrderTotals(measure)) {
     if (fact.cell === undefined)
-      target.totals.set(fact.orderId!, (target.totals.get(fact.orderId!) ?? 0) + fact.value);
-    else target.squares += fact.squares! * (fact.value / REVENUE_UNIT) ** 2;
+      target.totals.set(fact.orderId!, (target.totals.get(fact.orderId!) ?? 0) + v);
+    else target.squares += fact.squares! * (v / REVENUE_UNIT) ** 2;
   }
   if (!["orders", "revenue", "avg_order_value", "orders_per_day"].includes(measure)) return;
   if (fact.cell === undefined) target.orders.add(fact.orderId!);
@@ -420,112 +429,8 @@ function compare(
     );
   return sign * (a < b ? -1 : a > b ? 1 : 0);
 }
-function execute(query: Query, view: QueryView): QueryResult {
-  const groups = new Map<string, { dimensions: Dimensions; aggregate: Aggregate }>();
-  const total = aggregate();
-  const days = query.measure === "orders_per_day" ? eligibleDays(query, view) : [];
-  const denominators = new Map<string, number>();
-  const filters = Object.entries(query.filter ?? {}).map(
-    ([dimension, values]) => [dimension as Dimension, new Set(values)] as const,
-  );
-  let simulated = 0;
-  const inTotal = new Set<number>();
-  const cellGroup = new Map<number, Aggregate>();
-  const cellRevenue = new Map<number, number>();
-  if (!query.by.length) groups.set("[]", { dimensions: {}, aggregate: aggregate() });
-  const history = undated(query.measure) ? null : historyOf(loadBookshop());
-  for (const fact of facts(query, view, history)) {
-    if (
-      !filters.every(([dimension, values]) => {
-        if (dimension === "award") return fact.awards!.some((award) => values.has(award));
-        const v = fact.dimensions[dimension];
-        return v != null && values.has(v);
-      })
-    )
-      continue;
-    add(total, fact, query.measure);
-    if (fact.simulated) simulated += fact.weight ?? 1;
-    if (fact.cell !== undefined) {
-      inTotal.add(fact.cell);
-      if (byOrderTotals(query.measure)) cellRevenue.set(fact.cell, fact.value);
-    }
-    const values = query.by.map((dimension) => fact.dimensions[dimension] ?? null);
-    values.forEach(checkLabel);
-    const key = JSON.stringify(values);
-    let group = groups.get(key);
-    if (!group) {
-      group = {
-        dimensions: Object.fromEntries(query.by.map((dimension, i) => [dimension, values[i]])),
-        aggregate: aggregate(),
-      };
-      groups.set(key, group);
-    }
-    add(group.aggregate, fact, query.measure);
-    if (fact.cell !== undefined) cellGroup.set(fact.cell, group.aggregate);
-  }
-  // An order spanning several of an aggregate's cells was counted once in each: count it once (sale-cells.ts).
-  const offset = history?.cells.length ?? 0;
-  const spanning = [
-    ...(history?.spanning ?? []),
-    ...(view.simulatedCells?.spanning ?? []).map((touched) => touched.map((at) => offset + at)),
-  ];
-  const spanningLines = [
-    ...(history?.spanningLines ?? []),
-    ...(view.simulatedCells?.spanningLines ?? []),
-  ];
-  const spread = byOrderTotals(query.measure);
-  spanning.forEach((touched, order) => {
-    const seen = new Map<Aggregate, number>();
-    let visible = 0;
-    for (const at of touched) {
-      if (inTotal.has(at)) visible++;
-      const group = cellGroup.get(at);
-      if (group) seen.set(group, (seen.get(group) ?? 0) + 1);
-    }
-    if (visible > 1) total.overlap += visible - 1;
-    for (const [group, count] of seen) if (count > 1) group.overlap += count - 1;
-    if (spread && visible > 1) addCrossTerms(touched, spanningLines[order]!);
-  });
-  /**
-   * An order's total in an aggregate is the sum of its parts in the aggregate's cells. Each cell counted its own
-   * part's square, so this adds the rest of the total's square: twice the product of each pair of parts.
-   */
-  function addCrossTerms(touched: readonly number[], lines: readonly number[]) {
-    const parts = new Map<Aggregate, { sum: number; squares: number }>();
-    const part = (target: Aggregate, dollars: number) => {
-      const p = parts.get(target) ?? { sum: 0, squares: 0 };
-      p.sum += dollars;
-      p.squares += dollars * dollars;
-      parts.set(target, p);
-    };
-    touched.forEach((at, i) => {
-      const revenue = cellRevenue.get(at);
-      if (revenue === undefined) return;
-      const dollars = (revenue * lines[i]!) / REVENUE_UNIT;
-      part(total, dollars);
-      const group = cellGroup.get(at);
-      if (group) part(group, dollars);
-    });
-    for (const [target, p] of parts) target.squares += p.sum * p.sum - p.squares;
-  }
-  const unit = evidenceUnit(query.measure);
-  const evidence = new Map<QueryRow, Evidence>();
-  const rows: QueryRow[] = [...groups.values()].map((group) => {
-    let dayCount = 0;
-    if (query.measure === "orders_per_day") {
-      const key = JSON.stringify(
-        CALENDAR_DIMENSIONS.map((dimension) => group.dimensions[dimension]),
-      );
-      dayCount = denominators.get(key) ?? groupDays(days, group.dimensions);
-      denominators.set(key, dayCount);
-    }
-    const row = {
-      ...group.dimensions,
-      [query.measure]: value(group.aggregate, query.measure, dayCount),
-    };
-    evidence.set(row, evidenceOf(group.aggregate, query.measure, dayCount));
-    return row;
-  });
+/** Rows in the query's order: by its sort, then by its grouping's values. */
+function sortRows(rows: QueryRow[], query: Query): void {
   rows.sort((a, b) => {
     if (query.sort) {
       const compared = compare(
@@ -542,16 +447,22 @@ function execute(query: Query, view: QueryView): QueryResult {
     }
     return 0;
   });
-  const visibleRows = rows.slice(0, query.limit ?? QUERY_LIMITS.rows);
-  const grain =
-    query.measure === "avg_rating" || query.measure === "ratings"
-      ? "ratings"
-      : query.measure === "checkouts"
-        ? "book/month checkout rows"
-        : "sale lines";
-  const calculation = {
+}
+const GRAINS: Record<Measure, string> = {
+  revenue: "sale lines",
+  units: "sale lines",
+  orders: "sale lines",
+  avg_discount: "sale lines",
+  avg_order_value: "sale lines",
+  orders_per_day: "sale lines",
+  avg_rating: "ratings",
+  ratings: "ratings",
+  checkouts: "book/month checkout rows",
+};
+function calculationOf(measure: Measure, days: number): string {
+  return {
     avg_order_value: "sum of revenue / distinct OrderID",
-    orders_per_day: `distinct OrderID / eligible calendar days including zero-sale days; total denominator ${days.length} days; group denominators use only calendar dimensions`,
+    orders_per_day: `distinct OrderID / eligible calendar days including zero-sale days; total denominator ${days} days; group denominators use only calendar dimensions`,
     revenue: "sum of price × (1 - discount), without per-line rounding, summed exactly",
     units: "one unit per sale line",
     orders: "distinct OrderID; total counted independently of groups",
@@ -559,37 +470,272 @@ function execute(query: Query, view: QueryView): QueryResult {
     avg_rating: "arithmetic mean of individual ratings, joined directly to books",
     checkouts: "sum of Number of Checkouts, joined directly to books",
     ratings: "count of individual ratings, joined directly to books",
-  }[query.measure];
+  }[measure];
+}
+/** "Revenue", "Revenue and units", "Revenue, units and orders". */
+function measureNames(measures: readonly Measure[]): string {
+  const names = measures.map((m, i) => (i ? labels[m].toLowerCase() : labels[m]));
+  return names.length < 2 ? names[0]! : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+/**
+ * What a figure or figures were taken from, for the source line: the measures of one grain share its count, and each
+ * names its calculation (Plot, contract.md "Several measures"). One measure reads as it always has.
+ */
+function headOf(measures: readonly Measure[], count: number, days: number): string {
+  const calculations =
+    measures.length === 1
+      ? calculationOf(measures[0]!, days)
+      : measures.map((m) => `${labels[m].toLowerCase()}, ${calculationOf(m, days)}`).join("; ");
+  return `${measureNames(measures)} from ${count.toLocaleString("en-US")} visible matching ${GRAINS[measures[0]!]}: ${calculations}`;
+}
+function tailOf(query: Query, filters: number, shown: number, groups: number): string {
+  return `${query.by.length ? `; grouped by ${query.by.join(", ")}` : ""}${filters ? `; exact filters on ${Object.keys(query.filter ?? {}).join(", ")}` : ""}. Showing ${shown} of ${groups} groups; total is before the row limit.`;
+}
+function columnsOf(query: Query): QueryResult["columns"] {
+  return [
+    ...query.by.map((key) => ({
+      key,
+      label: labels[key],
+      type: "string" as const,
+      nullable: ["genre", "series", "title", "author", "awarded", "volume", "in_series"].includes(
+        key,
+      ),
+    })),
+    ...queryMeasures(query).map((m) => ({
+      key: m,
+      label: labels[m],
+      type: "number" as const,
+      nullable: m.startsWith("avg_") || m === "orders_per_day",
+    })),
+  ];
+}
+/** A result's figures for each measure, first first: the first's as `total` and `evidence`, all of them in `measures`. */
+function withFigures(
+  query: Query,
+  figures: { total: number | null; evidence: MeasureEvidence }[],
+): Pick<QueryResult, "total" | "evidence" | "measures"> {
+  const measures = queryMeasures(query);
+  return {
+    total: figures[0]!.total,
+    evidence: figures[0]!.evidence,
+    ...(query.also
+      ? { measures: Object.fromEntries(measures.map((m, i) => [m, figures[i]!])) }
+      : {}),
+  };
+}
+
+/**
+ * A lookup over one family of facts: sales, or one book-record measure. Every sales measure asked is aggregated in
+ * the same pass over the same facts, each in its own aggregate, so each figure is exactly what it would be alone.
+ */
+function execute(query: Query, view: QueryView): QueryResult {
+  return query.also && !isSalesMeasure(query.measure)
+    ? lineUp(query, view)
+    : aggregateFamily(query, view).result;
+}
+/** One pass over one family's facts; with how many facts matched, for a source line that lines it up with others. */
+function aggregateFamily(query: Query, view: QueryView): { result: QueryResult; count: number } {
+  const measures = queryMeasures(query);
+  type Group = { dimensions: Dimensions; aggregates: Aggregate[] };
+  const fresh = () => measures.map(aggregate);
+  const groups = new Map<string, Group>();
+  const total = fresh();
+  const days = measures.includes("orders_per_day") ? eligibleDays(query, view) : [];
+  const denominators = new Map<string, number>();
+  const filters = Object.entries(query.filter ?? {}).map(
+    ([dimension, values]) => [dimension as Dimension, new Set(values)] as const,
+  );
+  let simulated = 0;
+  const inTotal = new Set<number>();
+  const cellGroup = new Map<number, Aggregate[]>();
+  const cellRevenue = new Map<number, number>();
+  const spread = measures.some(byOrderTotals);
+  if (!query.by.length) groups.set("[]", { dimensions: {}, aggregates: fresh() });
+  const history = undated(query.measure) ? null : historyOf(loadBookshop());
+  for (const fact of facts(query, view, history)) {
+    if (
+      !filters.every(([dimension, values]) => {
+        if (dimension === "award") return fact.awards!.some((award) => values.has(award));
+        const v = fact.dimensions[dimension];
+        return v != null && values.has(v);
+      })
+    )
+      continue;
+    measures.forEach((m, i) => add(total[i]!, fact, m));
+    if (fact.simulated) simulated += fact.weight ?? 1;
+    if (fact.cell !== undefined) {
+      inTotal.add(fact.cell);
+      if (spread) cellRevenue.set(fact.cell, fact.revenue!);
+    }
+    const values = query.by.map((dimension) => fact.dimensions[dimension] ?? null);
+    values.forEach(checkLabel);
+    const key = JSON.stringify(values);
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        dimensions: Object.fromEntries(query.by.map((dimension, i) => [dimension, values[i]])),
+        aggregates: fresh(),
+      };
+      groups.set(key, group);
+    }
+    measures.forEach((m, i) => add(group.aggregates[i]!, fact, m));
+    if (fact.cell !== undefined) cellGroup.set(fact.cell, group.aggregates);
+  }
+  // An order spanning several of an aggregate's cells was counted once in each: count it once (sale-cells.ts). Each
+  // measure's aggregate counts it; only those that count orders read it.
+  const offset = history?.cells.length ?? 0;
+  const spanning = [
+    ...(history?.spanning ?? []),
+    ...(view.simulatedCells?.spanning ?? []).map((touched) => touched.map((at) => offset + at)),
+  ];
+  const spanningLines = [
+    ...(history?.spanningLines ?? []),
+    ...(view.simulatedCells?.spanningLines ?? []),
+  ];
+  spanning.forEach((touched, order) => {
+    const seen = new Map<Aggregate[], number>();
+    let visible = 0;
+    for (const at of touched) {
+      if (inTotal.has(at)) visible++;
+      const group = cellGroup.get(at);
+      if (group) seen.set(group, (seen.get(group) ?? 0) + 1);
+    }
+    if (visible > 1) for (const a of total) a.overlap += visible - 1;
+    for (const [group, count] of seen) if (count > 1) for (const a of group) a.overlap += count - 1;
+    if (spread && visible > 1) addCrossTerms(touched, spanningLines[order]!);
+  });
+  /**
+   * An order's total in an aggregate is the sum of its parts in the aggregate's cells. Each cell counted its own
+   * part's square, so this adds the rest of the total's square: twice the product of each pair of parts. Only the
+   * measures whose spread is their orders' totals keep it.
+   */
+  function addCrossTerms(touched: readonly number[], lines: readonly number[]) {
+    const parts = new Map<Aggregate[], { sum: number; squares: number }>();
+    const part = (target: Aggregate[], dollars: number) => {
+      const p = parts.get(target) ?? { sum: 0, squares: 0 };
+      p.sum += dollars;
+      p.squares += dollars * dollars;
+      parts.set(target, p);
+    };
+    touched.forEach((at, i) => {
+      const revenue = cellRevenue.get(at);
+      if (revenue === undefined) return;
+      const dollars = (revenue * lines[i]!) / REVENUE_UNIT;
+      part(total, dollars);
+      const group = cellGroup.get(at);
+      if (group) part(group, dollars);
+    });
+    for (const [target, p] of parts)
+      measures.forEach((m, i) => {
+        if (byOrderTotals(m)) target[i]!.squares += p.sum * p.sum - p.squares;
+      });
+  }
+  const evidence = new Map<QueryRow, Evidence[]>();
+  const rows: QueryRow[] = [...groups.values()].map((group) => {
+    let dayCount = 0;
+    if (measures.includes("orders_per_day")) {
+      const key = JSON.stringify(
+        CALENDAR_DIMENSIONS.map((dimension) => group.dimensions[dimension]),
+      );
+      dayCount = denominators.get(key) ?? groupDays(days, group.dimensions);
+      denominators.set(key, dayCount);
+    }
+    const row: QueryRow = { ...group.dimensions };
+    measures.forEach((m, i) => (row[m] = value(group.aggregates[i]!, m, dayCount)));
+    evidence.set(
+      row,
+      measures.map((m, i) => evidenceOf(group.aggregates[i]!, m, dayCount)),
+    );
+    return row;
+  });
+  sortRows(rows, query);
+  const visibleRows = rows.slice(0, query.limit ?? QUERY_LIMITS.rows);
+  const count = total[0]!.count;
   const scope = undated(query.measure)
     ? "undated source snapshot; no observed year or sales-quarter attribution"
-    : `allowed periods: ${[...view.periods].sort().join(", ") || "none"}; ${total.count - simulated} source and ${simulated} simulated sale lines`;
-  const source = `${labels[query.measure]} from ${total.count.toLocaleString("en-US")} visible matching ${grain}: ${calculation}; ${scope}${query.by.length ? `; grouped by ${query.by.join(", ")}` : ""}${filters.length ? `; exact filters on ${filters.map(([dimension]) => dimension).join(", ")}` : ""}. Showing ${visibleRows.length} of ${rows.length} groups; total is before the row limit.`;
+    : `allowed periods: ${[...view.periods].sort().join(", ") || "none"}; ${count - simulated} source and ${simulated} simulated sale lines`;
+  const source = `${headOf(measures, count, days.length)}; ${scope}${tailOf(query, filters.length, visibleRows.length, rows.length)}`;
+  const result: QueryResult = {
+    truncated: visibleRows.length < rows.length,
+    columns: columnsOf(query),
+    rows: visibleRows,
+    source,
+    ...withFigures(
+      query,
+      measures.map((m, i) => ({
+        total: value(total[i]!, m, days.length),
+        evidence: {
+          unit: evidenceUnit(m),
+          rows: visibleRows.map((row) => evidence.get(row)![i]!),
+          total: evidenceOf(total[i]!, m, days.length),
+        },
+      })),
+    ),
+  };
+  return { result, count };
+}
+
+/**
+ * Book-record measures together (ratings, average rating, checkouts): each totalled alone by the grouping, then lined
+ * up on the groups' values, never joined fact to fact (contract.md: ratings are never multiplied by sales or each
+ * other). A group one measure lacks is a zero for a count and null for an average, with evidence to match.
+ */
+function lineUp(query: Query, view: QueryView): QueryResult {
+  const measures = queryMeasures(query);
+  const { also: _also, sort: _sort, limit: _limit, ...base } = query;
+  const runs = measures.map((measure) =>
+    aggregateFamily({ ...base, measure, limit: Number.MAX_SAFE_INTEGER }, view),
+  );
+  const alone = runs.map((run) => run.result);
+  const keyOf = (row: QueryRow) => JSON.stringify(query.by.map((d) => row[d] ?? null));
+  const lined = new Map<string, { row: QueryRow; evidence: Evidence[] }>();
+  alone.forEach((result, i) => {
+    result.rows.forEach((row, at) => {
+      const key = keyOf(row);
+      let entry = lined.get(key);
+      if (!entry) {
+        const dimensions: QueryRow = Object.fromEntries(query.by.map((d) => [d, row[d] ?? null]));
+        entry = { row: dimensions, evidence: [] };
+        for (const [j, m] of measures.entries()) {
+          entry.row[m] = m.startsWith("avg_") ? null : 0;
+          entry.evidence[j] = { n: 0, se: m.startsWith("avg_") ? null : 0 };
+        }
+        lined.set(key, entry);
+      }
+      entry.row[measures[i]!] = row[measures[i]!] ?? null;
+      entry.evidence[i] = result.evidence!.rows[at]!;
+    });
+  });
+  const rows = [...lined.values()].map((e) => e.row);
+  sortRows(rows, query);
+  const visibleRows = rows.slice(0, query.limit ?? QUERY_LIMITS.rows);
+  // The measures of one grain share its count (ratings and their average); each grain is its own clause.
+  const heads: string[] = [];
+  const done = new Set<Measure>();
+  measures.forEach((m, i) => {
+    if (done.has(m)) return;
+    const same = measures.filter((o) => GRAINS[o] === GRAINS[m]);
+    same.forEach((o) => done.add(o));
+    const head = headOf(same, runs[i]!.count, 0);
+    heads.push(i ? head[0]!.toLowerCase() + head.slice(1) : head);
+  });
+  const source = `${heads.join("; ")}; undated source snapshot; no observed year or sales-quarter attribution${tailOf(query, Object.keys(query.filter ?? {}).length, visibleRows.length, rows.length)}`;
   return {
     truncated: visibleRows.length < rows.length,
-    columns: [
-      ...query.by.map((key) => ({
-        key,
-        label: labels[key],
-        type: "string" as const,
-        nullable: ["genre", "series", "title", "author", "awarded", "volume", "in_series"].includes(
-          key,
-        ),
-      })),
-      {
-        key: query.measure,
-        label: labels[query.measure],
-        type: "number",
-        nullable: query.measure.startsWith("avg_") || query.measure === "orders_per_day",
-      },
-    ],
+    columns: columnsOf(query),
     rows: visibleRows,
-    total: value(total, query.measure, days.length),
     source,
-    evidence: {
-      unit,
-      rows: visibleRows.map((row) => evidence.get(row)!),
-      total: evidenceOf(total, query.measure, days.length),
-    },
+    ...withFigures(
+      query,
+      alone.map((result, i) => ({
+        total: result.total,
+        evidence: {
+          unit: result.evidence!.unit,
+          rows: visibleRows.map((row) => lined.get(keyOf(row))!.evidence[i]!),
+          total: result.evidence!.total,
+        },
+      })),
+    ),
   };
 }
 
@@ -761,6 +907,9 @@ export function runQuery(
     }
     emit(track, "query_completed", {
       measure: query.measure,
+      // How many measures, and which, from the fixed list: never a value or a row.
+      measureCount: queryMeasures(query).length,
+      measures: queryMeasures(query).join(","),
       dimensionCount: query.by.length,
       rowCount: result.rows.length,
       durationMs: performance.now() - started,
@@ -770,6 +919,8 @@ export function runQuery(
   } catch (error) {
     emit(track, "query_failed", {
       measure: query?.measure ?? "invalid",
+      measureCount: query ? queryMeasures(query).length : 0,
+      measures: query ? queryMeasures(query).join(",") : "invalid",
       dimensionCount: query?.by.length ?? 0,
       rowCount: 0,
       durationMs: performance.now() - started,
