@@ -147,3 +147,22 @@ it("gives an average rating's cell its likely range, and one measure's table sta
   };
   expect(text(renderToString(<ResultTable result={one} />))).not.toContain("|All|");
 });
+
+it("gives several measures with no breakdown their one row, without an All row repeating it (Audit, #419)", () => {
+  const overall: QueryResult = {
+    ...several,
+    columns: several.columns.filter((c) => c.key !== "genre"),
+    rows: [{ revenue: 1290, avg_order_value: 23.5, units: 85 }],
+    measures: {
+      revenue: { total: 1290, evidence: { unit: null, rows: [], total: { n: 85, se: 0 } } },
+      avg_order_value: {
+        total: 23.5,
+        evidence: { unit: "orders", rows: [{ n: 54, se: 1 }], total: { n: 54, se: 1 } },
+      },
+      units: { total: 85, evidence: { unit: null, rows: [], total: { n: 85, se: 0 } } },
+    },
+  };
+  const html = renderToString(<ResultTable result={overall} />);
+  expect(html.match(/\$1,290/g)).toHaveLength(1);
+  expect(text(html)).not.toContain("|All|");
+});

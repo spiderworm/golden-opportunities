@@ -153,14 +153,17 @@ function MeasuresResultTable({ result, height }: { result: QueryResult; height?:
                 {measures.flatMap((m) => figureCells(m, row[m] as number | null | undefined, i))}
               </tr>
             ))}
-            <tr className={styles.allRow}>
-              {dimensions.map((c, k) => (
-                <th key={c.key} scope="row">
-                  {k === 0 ? ALL_ROW : ""}
-                </th>
-              ))}
-              {measures.flatMap((m) => figureCells(m, figures(m).total, "all"))}
-            </tr>
+            {/* With no breakdown, the one row is the overall figures already (Audit, #419). */}
+            {dimensions.length > 0 && (
+              <tr className={styles.allRow}>
+                {dimensions.map((c, k) => (
+                  <th key={c.key} scope="row">
+                    {k === 0 ? ALL_ROW : ""}
+                  </th>
+                ))}
+                {measures.flatMap((m) => figureCells(m, figures(m).total, "all"))}
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

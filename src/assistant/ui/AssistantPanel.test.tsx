@@ -432,6 +432,19 @@ describe("a lookup of several measures (req_2d436ee864cd; Plot, section 11)", ()
     expect(html).not.toMatch(/Total:/);
   });
 
+  it("with no breakdown, shows its one row without an All row repeating it (Audit, #419)", () => {
+    const overall = {
+      ...data,
+      columns: (data as Extract<Lookup, { type: "data" }>).columns.filter(
+        (c) => c.key !== "quarter",
+      ),
+      rows: [{ revenue: 50, units: 7 }],
+    } as Lookup;
+    const html = renderToString(<LookupView lookup={overall} />);
+    expect(html.match(/>50</g)).toHaveLength(1);
+    expect(html).not.toMatch(/>All</);
+  });
+
   it("titles its chart from every measure, and says why there's none where the page's chart can't draw it", () => {
     const fine = renderToString(
       <LookupView lookup={data} ChartView={ChartView} chartProblem={() => null} />,

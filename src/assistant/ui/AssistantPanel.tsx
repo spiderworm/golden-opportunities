@@ -760,7 +760,8 @@ export function LookupView({
   const totalRow: Record<string, unknown> | null =
     lookup.type === "comparison"
       ? { ...(breakdown ? { [breakdown.key]: "All" } : {}), ...lookup.total }
-      : several
+      : // With no breakdown, the one row is the overall figures already (Audit, #419).
+        several && lookup.columns.some((c) => c.type === "string")
         ? {
             ...Object.fromEntries(
               lookup.columns
