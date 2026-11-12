@@ -134,6 +134,7 @@ export function AssistantPanel({
   track = platformTrack,
   ChartView,
   TableView,
+  chartProblem,
   onPin,
   onPinLookup,
   isPinned,
@@ -146,6 +147,11 @@ export function AssistantPanel({
   ChartView?: ChartRenderer;
   /** Draws his tables with their evidence, as the page's own are; without it, the panel's plain table. */
   TableView?: TableRenderer;
+  /**
+   * Why a lookup's query can't be drawn by ChartView, if it can't, for its Table toggle: a lookup of several measures
+   * that one chart doesn't take (Plot, section 11). The page's own rule, as ChartView is its own chart.
+   */
+  chartProblem?: (query: Query) => string | null;
   onPin?: (chart: ChartSpec) => boolean | void;
   /** The player pinning a lookup shown here; no Pin buttons without it. The page can refuse one. */
   onPinLookup?: (pin: LookupPin) => boolean | void;
@@ -350,7 +356,11 @@ export function AssistantPanel({
         else if (event.type === "pin" && onPin) {
           // Pins are only offered when onPin is wired; the page can still refuse one (Chart's pins.add).
           const placed = onPin(event.chart) !== false;
-          track("assistant_pin_placed", { placed, kind: event.chart.kind });
+          track("assistant_pin_placed", {
+            placed,
+            kind: event.chart.kind,
+            measures: measureCount(event.chart.query),
+          });
           update((r) => ({ ...r, lookups: [...r.lookups, { ...event, placed }] }));
         } else if (event.type === "error") {
           outcome = "failed";
@@ -378,7 +388,11 @@ export function AssistantPanel({
   /** The player's Pin on a lookup; returns whether the page took it. */
   function pinLookup(pin: LookupPin): boolean {
     const placed = onPinLookup?.(pin) !== false;
-    track("assistant_lookup_pinned", { kind: pin.kind, placed });
+    track("assistant_lookup_pinned", {
+      kind: pin.kind,
+      placed,
+      measures: pin.kind === "comparison" ? 1 : measureCount(pin.query),
+    });
     return placed;
   }
 
@@ -437,9 +451,15 @@ export function AssistantPanel({
                       lookup={l}
                       ChartView={ChartView}
                       TableView={TableView}
+                      chartProblem={chartProblem}
                       pinning={onPinLookup && { onPin: pinLookup, isPinned }}
-                      onTable={(type, table) =>
-                        track("table_toggled", { where: "dewey", shown: table, kind: type })
+                      onTable={(type, table, measures) =>
+                        track("table_toggled", {
+                          where: "dewey",
+                          shown: table,
+                          kind: type,
+                          measures,
+                        })
                       }
                     />
                   ))}
@@ -622,14 +642,19 @@ export function LookupView({
   pinning,
   ChartView,
   TableView,
+  chartProblem,
   onTable,
 }: {
   lookup: Lookup;
   pinning?: Pinning;
   ChartView?: ChartRenderer;
   TableView?: TableRenderer;
-  /** The Table toggle switched (David, 3 Nov 2026): the lookup's type and whether its table now shows. */
-  onTable?: (type: "data" | "chart" | "comparison", table: boolean) => void;
+  chartProblem?: (query: Query) => string | null;
+  /**
+   * The Table toggle switched (David, 3 Nov 2026): the lookup's type, whether its table now shows, and how many
+   * measures it has (a count, never which).
+   */
+  onTable?: (type: "data" | "chart" | "comparison", table: boolean, measures: number) => void;
 }) {
   // A chart starts as a chart, a table as a table; the player can switch, where the page can draw charts.
   const [table, setTable] = useState(lookup.type !== "chart");
@@ -661,7 +686,11 @@ export function LookupView({
       ? NO_CHART.comparison
       : lookup.type === "data" && query && !query.by.length
         ? NO_CHART.figure
-        : null;
+        : chart
+          ? (chartProblem?.(chart.query) ?? null)
+          : null;
+  // A lookup of several measures (Sim's `measures`): its overall figures are its table's All row, not a Total line.
+  const several = lookup.type !== "comparison" && Object.keys(lookup.measures ?? {}).length > 1;
   const toggle = ChartView && (chart || why) && (
     <TableToggle
       table={why !== null || table}
@@ -669,7 +698,7 @@ export function LookupView({
       disabledReason={why}
       onChange={(next) => {
         setTable(next);
-        onTable?.(lookup.type, next);
+        onTable?.(lookup.type, next, chart ? measureCount(chart.query) : 1);
       }}
     />
   );
@@ -701,7 +730,7 @@ export function LookupView({
           {controls}
         </div>
         <ChartView chart={chart} result={result as QueryResult} />
-        {result.total !== null && result.columns.length > 1 && (
+        {!several && result.total !== null && result.columns.length > 1 && (
           <p style={styles.muted}>Total: {number.format(result.total)}</p>
         )}
         <p style={styles.source}>{`Source: ${result.source}`}</p>
@@ -731,7 +760,18 @@ export function LookupView({
   const totalRow: Record<string, unknown> | null =
     lookup.type === "comparison"
       ? { ...(breakdown ? { [breakdown.key]: "All" } : {}), ...lookup.total }
-      : null;
+      : several
+        ? {
+            ...Object.fromEntries(
+              lookup.columns
+                .filter((c) => c.type === "string")
+                .map((c, k) => [c.key, k === 0 ? "All" : ""]),
+            ),
+            ...Object.fromEntries(
+              Object.entries(lookup.measures!).map(([m, figures]) => [m, figures!.total]),
+            ),
+          }
+        : null;
   return (
     <figure style={styles.lookup}>
       {controls && (
@@ -780,6 +820,7 @@ export function LookupView({
         </div>
       )}
       {(lookup.type === "data" || lookup.type === "chart") &&
+        !several &&
         lookup.total !== null &&
         lookup.columns.length > 1 && (
           <p style={styles.muted}>Total: {number.format(lookup.total)}</p>
@@ -789,12 +830,22 @@ export function LookupView({
   );
 }
 
-/** A table's title for its chart when it has no pin to name it: "Revenue by genre", from its columns. */
-function tableTitle(lookup: { columns: { label: string; type: string }[] }): string {
-  const measure = lookup.columns.find((c) => c.type === "number")?.label ?? "";
+/**
+ * A table's title for its chart when it has no pin to name it, from its columns: "Revenue by genre", or for several
+ * measures "Revenue and units sold by quarter" (Plot, section 11).
+ */
+export function tableTitle(lookup: { columns: { label: string; type: string }[] }): string {
+  const names = lookup.columns
+    .filter((c) => c.type === "number")
+    .map((c, i) => (i === 0 ? c.label : c.label.toLowerCase()));
+  const measure =
+    names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
   const by = lookup.columns.find((c) => c.type === "string")?.label ?? "";
   return by ? `${measure} by ${by.toLowerCase()}` : measure;
 }
+
+/** How many measures a query asks for, for analytics: a count, never which. */
+const measureCount = (query: Pick<Query, "also">) => 1 + (query.also?.length ?? 0);
 
 /** Pins a lookup to Investigate's board, where it runs again as the player's own query. */
 function PinButton({ pin, pinning }: { pin: LookupPin; pinning: Pinning }) {
