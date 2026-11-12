@@ -9,6 +9,8 @@ import {
   type Dimension,
   type Measure,
   type Query,
+  isSalesMeasure,
+  queryMeasures,
 } from "../../query/types.ts";
 import {
   CHART_MEASURES,
@@ -22,6 +24,8 @@ import {
   resolvedState,
   HEAT_DIMENSIONS,
   MAX_MEASURES,
+  MAX_UNITS,
+  MEASURE_UNITS,
   scatterProblem,
   type Grouping,
   type ChartMeasure,
@@ -59,12 +63,36 @@ export interface ChartPinSpec {
  * Why a pin can't be drawn as a chart, before it's run: a comparison reads as a table, and one number is a figure
  * (NO_CHART's keys); null if it can. Too many groups is known only once it's run.
  */
-export const noChart = (spec: PinSpec): "comparison" | "figure" | null =>
+export const noChart = (spec: PinSpec): NoChart =>
   spec.kind === "comparison"
     ? "comparison"
-    : spec.kind === "waterfall" || spec.query.by.length
+    : spec.kind === "waterfall"
       ? null
-      : "figure";
+      : !spec.query.by.length
+        ? "figure"
+        : severalMeasuresProblem(spec.query);
+
+/** NO_CHART's keys for a chart that can't be drawn before it's run (TableToggle.tsx). */
+export type NoChart = "comparison" | "figure" | SeveralMeasuresProblem | null;
+export type SeveralMeasuresProblem = "books" | "measures" | "axes" | "breakdown";
+
+/**
+ * Why a lookup of several measures (Query.also) can't be one chart, or null when it can: Investigate's rule for
+ * several measures (David, 2 Nov 2026), up to three on at most two axes, one per unit, over one breakdown. Checked in
+ * Plot's order (section 11): book measures, which Investigate's chart doesn't draw; four measures; a third unit; a
+ * second breakdown. One measure: null.
+ */
+export function severalMeasuresProblem(
+  query: Pick<Query, "measure" | "also" | "by">,
+): SeveralMeasuresProblem | null {
+  const measures = queryMeasures(query);
+  if (measures.length < 2) return null;
+  if (!measures.every((m) => CHART_MEASURES.includes(m as ChartMeasure))) return "books";
+  if (measures.length > MAX_MEASURES) return "measures";
+  if (new Set(measures.map((m) => MEASURE_UNITS[m as ChartMeasure])).size > MAX_UNITS)
+    return "axes";
+  return query.by.length > 1 ? "breakdown" : null;
+}
 
 /** Whether a pin shows as a table now: its toggle, or else its kind. */
 export const shownAsTable = (spec: ChartPinSpec | WaterfallPinSpec) =>
@@ -170,9 +198,9 @@ const segmentOf = (value: unknown): { segment?: string } | null =>
 
 /** The query's shape, checked as the contract bounds it. The server checks it again. */
 export function parseQuery(value: unknown): Query | null {
-  if (!isObject(value) || !only(value, ["measure", "by", "filter", "sort", "limit", "vs"]))
+  if (!isObject(value) || !only(value, ["measure", "also", "by", "filter", "sort", "limit", "vs"]))
     return null;
-  const { measure, by, filter, sort, limit, vs } = value;
+  const { measure, also, by, filter, sort, limit, vs } = value;
   // Last year beside the quarter (Frank's #301): the only comparison a query names.
   if (vs !== undefined && vs !== "last_year") return null;
   if (!MEASURES.includes(measure as never)) return null;
@@ -180,6 +208,21 @@ export function parseQuery(value: unknown): Query | null {
     return null;
   if (!by.every((d) => DIMENSIONS.includes(d))) return null;
   const query: Query = { measure: measure as Query["measure"], by: by as Dimension[] };
+  if (also !== undefined) {
+    // Several measures in one lookup, as the server checks them (contract.md, "Several measures"): one to three more,
+    // distinct, from the same records as the first, and never beside last year.
+    if (
+      !Array.isArray(also) ||
+      also.length < 1 ||
+      also.length > QUERY_LIMITS.measures - 1 ||
+      !also.every((m) => MEASURES.includes(m)) ||
+      new Set([measure, ...also]).size !== also.length + 1 ||
+      also.some((m) => isSalesMeasure(m) !== isSalesMeasure(measure as Measure)) ||
+      vs !== undefined
+    )
+      return null;
+    query.also = [...(also as Measure[])];
+  }
 
   if (filter !== undefined) {
     if (!isObject(filter)) return null;
@@ -309,6 +352,7 @@ function parseUnsegmented(value: Record<string, unknown> & { title: string }): P
     return null;
   const query = parseQuery(value.query);
   if (!query) return null;
+  if (query.also) return severalMeasuresPin(value, query);
   if (value.kind === "heatmap") {
     // A heatmap is one measure down one of the grid's dimensions and across another (Investigate's HeatState).
     const grid =
@@ -365,6 +409,32 @@ function parseUnsegmented(value: Record<string, unknown> & { title: string }): P
 }
 
 const shown = (table: unknown) => (typeof table === "boolean" ? { table } : {});
+
+/**
+ * A lookup of several measures, pinned from Dewey's chat (req_2d436ee864cd). One Investigate's chart draws is kept as
+ * its pins are, the query's first measure and `also` beside it, so the board draws it as its own; any other is kept as
+ * one query and shows as its table, saying why (severalMeasuresProblem). A bar or line only, never with `also` too.
+ */
+function severalMeasuresPin(value: Record<string, unknown>, query: Query): ChartPinSpec | null {
+  if (
+    value.also !== undefined ||
+    value.share !== undefined ||
+    !["bar", "line", "table"].includes(value.kind as string)
+  )
+    return null;
+  const kind = value.kind as ChartPinSpec["kind"];
+  if (query.by.length === 1 && severalMeasuresProblem(query) === null) {
+    const { also, ...first } = query;
+    return {
+      title: value.title as string,
+      kind,
+      query: first,
+      also: [...(also as ChartMeasure[])],
+      ...shown(value.table),
+    };
+  }
+  return { title: value.title as string, kind, query, ...shown(value.table) };
+}
 
 /** Pins as stored; anything malformed is dropped rather than trusted. */
 export function parsePins(json: string | null): Pin[] {
@@ -438,6 +508,8 @@ export function pinKey(spec: PinSpec): string {
     ...(query.vs ? [query.vs] : []),
     ...(spec.share ? [`share:${spec.share}`] : []),
     ...(spec.also?.length ? [spec.also] : []),
+    // A lookup of several measures kept as one query: another pin from one with only its first measure.
+    ...(query.also?.length ? [`measures:${query.also.join(",")}`] : []),
     ...(spec.segment ? [`segment:${spec.segment}`] : []),
   ]);
 }
