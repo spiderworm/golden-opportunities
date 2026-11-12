@@ -1,6 +1,6 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { issueGameQueryToken } from "../game/query-token.server";
-import { agentEvidence } from "./agent-evidence.server";
+import { agentEvidence, agentMeasureEvidence } from "./agent-evidence.server";
 import { validateQuery } from "./validate";
 import { saves } from "../game/session.server";
 import { rmSync } from "node:fs";
@@ -202,6 +202,8 @@ describe("bounded query resource endpoint", () => {
       [{ measure: "units", by: [], filter: { award: ["Pulitzer"] } }, "award"],
       [{ measure: "units", by: ["volume"] }, "volume"],
       [{ measure: "units", by: [], filter: { in_series: ["yes"] } }, "in_series"],
+      // Anywhere in a lookup of several measures (contract.md, "Several measures").
+      [{ measure: "avg_rating", also: ["ratings"], by: ["genre"] }, "ratings"],
     ] as const) {
       const response = await handle(request(JSON.stringify(query), agent));
       expect(response.status).toBe(400);
@@ -304,6 +306,20 @@ describe("Dewey's lookups' evidence, for his panel (Goldy's and Chart's design)"
     expect(agent.status).toBe(200);
     const kept = agentEvidence(getQueryToken(), validateQuery(JSON.parse(payload)));
     expect(kept?.rows).toHaveLength((await agent.json()).rows.length);
+    // A lookup of several measures keeps each one's too.
+    const several = { measure: "revenue", also: ["units"], by: ["genre"] };
+    const both = await handle(
+      new Request(url, {
+        method: "POST",
+        headers: { authorization: `Bearer ${getQueryToken()}`, "content-type": "application/json" },
+        body: JSON.stringify(several),
+      }),
+    );
+    expect(both.status).toBe(200);
+    const measures = agentMeasureEvidence(getQueryToken(), validateQuery(several));
+    expect(Object.keys(measures!)).toEqual(["revenue", "units"]);
+    expect(measures!.units!.evidence.rows).toHaveLength((await both.json()).rows.length);
+    expect(agentMeasureEvidence(getQueryToken(), validateQuery(JSON.parse(payload)))).toBeNull();
     // The browser's own query keeps nothing under any token.
     const before = agentEvidence("browser", validateQuery(JSON.parse(payload)));
     await handle(request());
