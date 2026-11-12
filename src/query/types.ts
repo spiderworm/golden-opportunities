@@ -74,7 +74,13 @@ export type AgentDimension = (typeof AGENT_DIMENSIONS)[number];
 export type AgentMeasure = (typeof AGENT_MEASURES)[number];
 
 export interface Query {
+  /** The first measure: the column a single-measure caller reads, and the one `total` and `evidence` are for. */
   measure: Measure;
+  /**
+   * Further measures in the same lookup (contract.md, "Several measures"): one to three, distinct and not `measure`,
+   * of the same family, so one table answers "revenue and units by quarter". Their columns follow the first's.
+   */
+  also?: readonly Measure[];
   /** Zero, one, or two distinct dimensions; enforced at runtime. */
   by: readonly Dimension[];
   /** Exact values, OR within a dimension and AND across dimensions. */
@@ -154,12 +160,24 @@ export interface QueryResult {
    * (evidence.ts). `unit` names what an average is over, null for other measures. Dewey's tool server turns it into
    * fields the figures gate renders by ref (withEvidence), never passing the standard errors to the model.
    */
-  evidence?: { unit: EvidenceUnit | null; rows: Evidence[]; total: Evidence };
+  evidence?: MeasureEvidence;
+  /**
+   * With `also`: every requested measure's total and evidence, the first's included, keyed by measure (contract.md,
+   * "Several measures"). `total` and `evidence` above stay the first measure's.
+   */
+  measures?: Partial<Record<Measure, { total: number | null; evidence: MeasureEvidence }>>;
+}
+/** A measure's evidence: its unit, and each row's and the total's (evidence.ts). */
+export interface MeasureEvidence {
+  unit: EvidenceUnit | null;
+  rows: Evidence[];
+  total: Evidence;
 }
 
 export type QueryErrorCode =
   | "INVALID_QUERY"
   | "INCOMPATIBLE_DIMENSION"
+  | "INCOMPATIBLE_MEASURES"
   | "UNAVAILABLE_FACTS"
   | "INVALID_VIEW"
   | "UNAUTHORIZED"
@@ -185,6 +203,8 @@ export const EVIDENCE_HEADER = "X-Orbital-Evidence";
 
 export const QUERY_LIMITS = {
   dimensions: 2,
+  /** Measures in one lookup: `measure` and up to three `also`. */
+  measures: 4,
   rows: 200,
   filterValues: 50,
   filterValueLength: 200,
@@ -238,7 +258,9 @@ export const AGENT_MEASURE_DIMENSIONS = Object.fromEntries(
  * all. Last year's figures wait for Sage and the figures gate (Goldy, 3 Nov 2026).
  */
 export function investigateOnly(query: Query): Measure | Dimension | "vs" | null {
-  if (!(AGENT_MEASURES as readonly Measure[]).includes(query.measure)) return query.measure;
+  const measures = queryMeasures(query);
+  const unreviewed = measures.find((m) => !(AGENT_MEASURES as readonly Measure[]).includes(m));
+  if (unreviewed) return unreviewed;
   if (query.vs) return "vs";
   const used = [
     ...query.by,
@@ -246,7 +268,25 @@ export function investigateOnly(query: Query): Measure | Dimension | "vs" | null
     ...(query.sort ? [query.sort.column] : []),
   ];
   return (
-    (used.find((key) => key !== query.measure && !isAgentDimension(key as Dimension)) as
-      Dimension | undefined) ?? null
+    (used.find(
+      (key) => !measures.includes(key as Measure) && !isAgentDimension(key as Dimension),
+    ) as Dimension | undefined) ?? null
   );
 }
+
+/** Every measure a query asks for, the first first. */
+export const queryMeasures = (query: Pick<Query, "measure" | "also">): readonly Measure[] => [
+  query.measure,
+  ...(query.also ?? []),
+];
+
+/** Sales measures come from sale lines; the others from ratings or checkouts, and the two never share a lookup. */
+export const SALES_MEASURES = [
+  "revenue",
+  "units",
+  "orders",
+  "avg_discount",
+  "avg_order_value",
+  "orders_per_day",
+] as const satisfies readonly Measure[];
+export const isSalesMeasure = (m: Measure) => (SALES_MEASURES as readonly Measure[]).includes(m);

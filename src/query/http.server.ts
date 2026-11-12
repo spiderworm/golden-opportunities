@@ -29,6 +29,7 @@ const headers = {
 const status: Record<QueryErrorCode, number> = {
   INVALID_QUERY: 400,
   INCOMPATIBLE_DIMENSION: 400,
+  INCOMPATIBLE_MEASURES: 400,
   UNAVAILABLE_FACTS: 403,
   INVALID_VIEW: 500,
   UNAUTHORIZED: 401,
@@ -182,7 +183,7 @@ export function createQueryHandler(options: Options = {}): (request: Request) =>
         // the answer goes back, so it's there when the assistant's server builds the browser's event. Keyed on the
         // checked query the run used; the token is pinned to one data version (query-token.server.ts).
         if (access.kind === "agent" && access.token)
-          keepAgentEvidence(access.token, query, result.evidence);
+          keepAgentEvidence(access.token, query, result.evidence, Date.now(), result.measures);
         const serialized = serializeResult(result);
         if (request.headers.get(EVIDENCE_HEADER) !== "none")
           recordEvidence(access, view, query, result);

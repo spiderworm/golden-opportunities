@@ -84,3 +84,94 @@ describe("fixed query grammar", () => {
     );
   });
 });
+
+describe("several measures in one lookup", () => {
+  const code = (c: string) => expect.objectContaining({ code: c });
+
+  it("takes up to three more of the same family, in order, sorted by any of them", () => {
+    expect(
+      validateQuery({
+        measure: "revenue",
+        also: ["units", "orders", "avg_order_value"],
+        by: ["quarter"],
+        sort: { column: "units", direction: "desc" },
+      }),
+    ).toEqual({
+      measure: "revenue",
+      also: ["units", "orders", "avg_order_value"],
+      by: ["quarter"],
+      sort: { column: "units", direction: "desc" },
+    });
+    expect(
+      validateQuery({ measure: "avg_rating", also: ["checkouts"], by: ["genre"] }).also,
+    ).toEqual(["checkouts"]);
+    // One measure stays as it was: no `also`.
+    expect(validateQuery({ measure: "revenue", by: [] })).not.toHaveProperty("also");
+  });
+
+  it.each([
+    { measure: "revenue", also: [], by: [] },
+    { measure: "revenue", also: ["units", "orders", "avg_discount", "orders_per_day"], by: [] },
+    { measure: "revenue", also: ["revenue"], by: [] },
+    { measure: "revenue", also: ["units", "units"], by: [] },
+    { measure: "revenue", also: ["profit"], by: [] },
+    { measure: "revenue", also: "units", by: [] },
+    // Sorted by a measure it didn't ask for.
+    {
+      measure: "revenue",
+      also: ["units"],
+      by: ["genre"],
+      sort: { column: "orders", direction: "asc" },
+    },
+    // Last year is one measure at a time for now.
+    { measure: "revenue", also: ["units"], by: ["quarter"], vs: "last_year" },
+  ])("refuses a malformed list %#", (input) => {
+    expect(() => validateQuery(input)).toThrow(code("INVALID_QUERY"));
+  });
+
+  it("refuses sales with ratings or checkouts, naming which is which", () => {
+    expect(() => validateQuery({ measure: "revenue", also: ["avg_rating"], by: [] })).toThrow(
+      "revenue and avg_rating can't share a query: revenue comes from sales, and avg_rating from book records (ratings and checkouts). Query them separately.",
+    );
+    expect(() => validateQuery({ measure: "checkouts", also: ["units"], by: [] })).toThrow(
+      "units and checkouts can't share a query",
+    );
+    expect(() => validateQuery({ measure: "checkouts", also: ["units"], by: [] })).toThrow(
+      code("INCOMPATIBLE_MEASURES"),
+    );
+  });
+
+  it("allows only the dimensions every measure has", () => {
+    // Checkouts have months; ratings don't.
+    expect(() =>
+      validateQuery({ measure: "checkouts", also: ["avg_rating"], by: ["month"] }),
+    ).toThrow(/avg_rating does not support month/);
+    expect(() =>
+      validateQuery({ measure: "ratings", also: ["avg_rating"], by: [], filter: { stars: ["5"] } }),
+    ).toThrow(code("INCOMPATIBLE_DIMENSION"));
+    expect(validateQuery({ measure: "checkouts", by: ["month"] }).by).toEqual(["month"]);
+  });
+});
+
+describe("Dewey's gate over several measures", () => {
+  it("names the first Investigate-only measure anywhere in the list", async () => {
+    const { investigateOnly } = await import("./types");
+    expect(
+      investigateOnly(validateQuery({ measure: "avg_rating", also: ["checkouts"], by: [] })),
+    ).toBeNull();
+    expect(
+      investigateOnly(validateQuery({ measure: "avg_rating", also: ["ratings"], by: ["genre"] })),
+    ).toBe("ratings");
+    // Sorting by an asked measure isn't a dimension Dewey lacks.
+    expect(
+      investigateOnly(
+        validateQuery({
+          measure: "revenue",
+          also: ["units"],
+          by: ["genre"],
+          sort: { column: "units", direction: "desc" },
+        }),
+      ),
+    ).toBeNull();
+  });
+});
