@@ -70,3 +70,80 @@ it("gives last year's table a Based on column for an average, both years, and fa
   expect(html.match(/<tr class="[^"]*faded/g)).toHaveLength(1);
   expect(text(html)).toContain("Faded where there are fewer than 30 ratings");
 });
+
+// Several measures in one lookup (Plot, section 11).
+const several: QueryResult = {
+  columns: [
+    { key: "genre", label: "Genre", type: "string", nullable: true },
+    { key: "revenue", label: "Revenue", type: "number", nullable: false },
+    { key: "avg_order_value", label: "Average order value", type: "number", nullable: true },
+    { key: "units", label: "Units sold", type: "number", nullable: false },
+  ],
+  rows: [
+    { genre: "Fiction", revenue: 1200, avg_order_value: 24, units: 80 },
+    { genre: "Poetry", revenue: 90, avg_order_value: 18, units: 5 },
+  ],
+  total: 1290,
+  source: "S",
+  evidence: { unit: null, rows: [], total: { n: 85, se: 0 } },
+  measures: {
+    revenue: { total: 1290, evidence: { unit: null, rows: [], total: { n: 85, se: 0 } } },
+    avg_order_value: {
+      total: 23.5,
+      evidence: {
+        unit: "orders",
+        rows: [
+          { n: 50, se: 1 },
+          { n: 4, se: 3 },
+        ],
+        total: { n: 54, se: 1 },
+      },
+    },
+    units: { total: 85, evidence: { unit: null, rows: [], total: { n: 85, se: 0 } } },
+  },
+};
+
+it("gives several measures a column each, in order, with an average's Based on after it and All last", () => {
+  const html = renderToString(<ResultTable result={several} />);
+  expect(text(html)).toContain("|Genre|Revenue|Average order value|Based on|Units sold|");
+  expect(text(html)).toContain("|Fiction|$1,200|$24.00|50 orders|80|");
+  expect(text(html)).toContain("|All|$1,290|$23.50|54 orders|85|");
+  expect(html).toContain('aria-label="Based on, average order value"');
+});
+
+it("fades only the figure over too few, not its row, and says so under the table", () => {
+  const html = renderToString(<ResultTable result={several} />);
+  // Poetry's average order value and its count: two cells, while its revenue and units stay as they are.
+  expect(html.match(/fadedCell/g)).toHaveLength(2);
+  expect(html).not.toMatch(/<tr class="[^"]*faded/);
+  expect(text(html)).toContain("Faded where there are fewer than 30 orders");
+});
+
+it("gives an average rating's cell its likely range, and one measure's table stays as it was", () => {
+  const books: QueryResult = {
+    columns: [
+      { key: "genre", label: "Genre", type: "string", nullable: true },
+      { key: "avg_rating", label: "Average rating", type: "number", nullable: true },
+      { key: "checkouts", label: "Checkouts", type: "number", nullable: false },
+    ],
+    rows: [{ genre: "Fiction", avg_rating: 4.1, checkouts: 300 }],
+    total: 4.1,
+    source: "S",
+    measures: {
+      avg_rating: {
+        total: 4.1,
+        evidence: { unit: "ratings", rows: [{ n: 212, se: 0.05 }], total: { n: 212, se: 0.05 } },
+      },
+      checkouts: { total: 300, evidence: { unit: null, rows: [], total: { n: 300, se: 0 } } },
+    },
+  };
+  expect(renderToString(<ResultTable result={books} />)).toMatch(
+    /title="Likely range: [\d.]+ to [\d.]+ stars"/,
+  );
+  // One measure, even with `measures` filled in: the single table, with no All row.
+  const one: QueryResult = {
+    ...ratings([212]),
+    measures: { avg_rating: { total: 4, evidence: ratings([212]).evidence! } },
+  };
+  expect(text(renderToString(<ResultTable result={one} />))).not.toContain("|All|");
+});
