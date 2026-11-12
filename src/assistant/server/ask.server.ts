@@ -7,7 +7,7 @@ import { ASSISTANT_NAME } from "../name.ts";
 import { chartTitle, lookupPin, type ChartSpec } from "../tools/definitions.ts";
 import { isSameOriginBrowserRequest } from "../../platform/origin.server.ts";
 import { checkedEvidence } from "../tools/server.ts";
-import type { QueryResult } from "../../query/types.ts";
+import type { Measure, QueryResult } from "../../query/types.ts";
 import { acquire, arrive, arriveWithoutGame, ndjson } from "./assistant.server.ts";
 import { markOffline, offlineCopy, type OfflineReason } from "./availability.server.ts";
 import { Refs, scrubDeep, sentenceGate, WITHHELD } from "./figures.server.ts";
@@ -157,6 +157,17 @@ export const TIMED_OUT = "The assistant took too long, so it was stopped.";
 const OFFLINE_KINDS = new Set(["missing", "signed_out", "broken"]);
 export const FAILED = "Something went wrong with the assistant.";
 
+/** How many measures a successful lookup asked for (0 for a tool that isn't one): a count, never which. */
+export function measureCount(tool: string, input: unknown): number {
+  if (!["query_data", "show_chart", "pin_chart", "compare_data"].includes(tool)) return 0;
+  const query =
+    tool === "show_chart" || tool === "pin_chart"
+      ? (input as { query?: unknown } | null)?.query
+      : input;
+  const also = (query as { also?: unknown } | null)?.also;
+  return 1 + (Array.isArray(also) ? Math.min(also.length, 3) : 0);
+}
+
 /** A lookup's pin: the input the tool server ran, checked again here; the player pins it from the panel. */
 const pinFor = (event: { name: string; input: unknown }) => {
   const pin = lookupPin(event.name, event.input);
@@ -177,7 +188,7 @@ const pinFor = (event: { name: string; input: unknown }) => {
 export function withEvidence(
   wire: WireEvent | null,
   event: ProviderEvent,
-  provider: Pick<AssistantProvider, "evidenceFor">,
+  provider: Pick<AssistantProvider, "evidenceFor" | "measureEvidenceFor">,
 ): WireEvent | null {
   if (!wire || (wire.type !== "data" && wire.type !== "chart") || !provider.evidenceFor)
     return wire;
@@ -191,7 +202,43 @@ export function withEvidence(
     return wire;
   }
   const checked = checkedEvidence(evidence, wire.rows.length);
-  return checked ? { ...wire, evidence: checked } : wire;
+  const withFirst = checked ? { ...wire, evidence: checked } : wire;
+  // Several measures: each one's evidence beside its total, where it checks out the same way (Sim's `measures`).
+  if (!wire.measures || !provider.measureEvidenceFor) return withFirst;
+  let raw: QueryResult["measures"] | null;
+  try {
+    raw = provider.measureEvidenceFor(query);
+  } catch {
+    return withFirst;
+  }
+  const measures = Object.fromEntries(
+    Object.entries(wire.measures).map(([m, entry]) => {
+      const e = checkedEvidence(raw?.[m as Measure]?.evidence, wire.rows.length);
+      return [m, e ? { ...entry, evidence: e } : entry];
+    }),
+  ) as QueryResult["measures"];
+  return { ...withFirst, measures };
+}
+
+/**
+ * A lookup of several measures, for the panel: the first measure's total as `total`, as a lookup of one has it,
+ * and each measure's total under `measures` (Sim's shape, #415); evidence joins them in withEvidence. Totals that
+ * aren't numbers or null leave the lookup with none.
+ */
+function wireTotals(input: unknown, output: Record<string, unknown>) {
+  const totals = output.totals;
+  const query = input as { measure?: unknown; also?: unknown } | null;
+  if (!totals || typeof totals !== "object" || !Array.isArray(query?.also))
+    return { total: output.total as number | null };
+  const measures = [query.measure, ...query.also].filter((m): m is string => typeof m === "string");
+  const total = (m: string) => {
+    const t = (totals as Record<string, unknown>)[m];
+    return typeof t === "number" && Number.isFinite(t) ? t : null;
+  };
+  return {
+    total: total(measures[0]!),
+    measures: Object.fromEntries(measures.map((m) => [m, { total: total(m) }])),
+  };
 }
 
 export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
@@ -219,7 +266,7 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
       type: "data",
       columns: output.columns,
       rows: output.rows,
-      total: output.total as number | null,
+      ...wireTotals(event.input, output),
       source: output.source,
       ...pinFor(event),
     } as WireEvent;
@@ -239,7 +286,7 @@ export function toWire(event: ProviderEvent, pins = true): WireEvent | null {
       pin: chart,
       columns: output.columns,
       rows: output.rows,
-      total: output.total as number | null,
+      ...wireTotals((event.input as { query?: unknown } | null)?.query, output),
       source: output.source,
     } as WireEvent;
   }
@@ -386,6 +433,10 @@ export function ask(
       chars: 0,
       withheld: 0,
       figures: 0,
+      // How many measures Dewey's lookups asked for, never which: the most in one lookup, and how many asked for
+      // several (Goldy's brief for several measures in one lookup, 12 Nov).
+      mostMeasures: 0,
+      severalMeasures: 0,
     };
     let outcome = "aborted";
     const nonce = randomBytes(6).toString("hex");
@@ -436,6 +487,9 @@ export function ask(
             if (event.type === "tool") {
               afterTool = true;
               if (!event.isError) {
+                const measures = measureCount(event.name, event.input);
+                stats.mostMeasures = Math.max(stats.mostMeasures, measures);
+                if (measures > 1) stats.severalMeasures++;
                 try {
                   // A chart's lookup is a query_data lookup to the figures gate: the same refs, cited the same way.
                   refs.addTool(

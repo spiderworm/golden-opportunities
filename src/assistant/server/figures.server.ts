@@ -13,6 +13,7 @@
 // Fallback, if refs prove brittle with the model: no figures in prose at all, only "the table is under this
 // message", with the same lexical ban.
 
+import { evidenceUnit } from "../../query/evidence.ts";
 import type { Measure } from "../../query/types.ts";
 import { FORMAT_WORDS } from "../../simulation/words.ts";
 
@@ -97,19 +98,88 @@ interface Lookup {
   /** Whether the rows hold every group, so "the highest" can be said of them. */
   complete: boolean;
   name: "query_data" | "compare_data";
+  /** The first measure: a single-measure lookup's only one. */
   measure: Measure;
+  /** Every measure the lookup asked for, the first first (Sim's `also`): one for compare_data. */
+  measures: Measure[];
   dims: string[];
   rows: Map<string, Row>;
   ordered: Row[];
+  /** compare_data's total figures, or a query_data lookup's first measure's total. */
   total: unknown;
+  /** query_data: each measure's total. */
+  totals: Map<Measure, unknown>;
   /** Filter values the data confirmed: a one-value filter on a lookup that found something. */
   filtered: Map<string, string>;
   /** compare_data: the compared values, where the data had something on that side (null otherwise). */
   from: string | null;
   to: string | null;
-  /** query_data of an average: what its n counts ("ratings"), and the total's evidence; null for other measures. */
-  unit: Unit | null;
-  totalEvidence: Row;
+  /** query_data: what each average's n counts ("ratings"), for the averages among its measures. */
+  units: Map<Measure, Unit>;
+  /** query_data: each average's total evidence (n, range_low, range_high, range_none). */
+  totalEvidence: Map<Measure, Row>;
+  /**
+   * Several measures: the tool server names each one's evidence fields by measure (`avg_rating_n`), in a row and at
+   * the top, since one bare `n` couldn't say whose it is (withEvidence in tools/server.ts).
+   */
+  several: boolean;
+}
+
+const EVIDENCE_FIELDS = ["n", "range_low", "range_high", "range_none"] as const;
+/** One measure's evidence fields from a row (or the top of a lookup), by the names the tool server gave them. */
+const evidenceOf = (row: Row, measure: Measure, several: boolean): Row =>
+  Object.fromEntries(EVIDENCE_FIELDS.map((f) => [f, row[several ? `${measure}_${f}` : f]]));
+
+/** A ref, parsed: its lookup, its row number ("" for the total), and up to two fields ("a3.avg_rating.n"). */
+interface ParsedRef {
+  id: string;
+  row: string;
+  field: string;
+  sub: string | undefined;
+  round: number | undefined;
+}
+const REF_SHAPE = /^([a-z]+)(\d*)((?:\.[a-z_]+){0,3})(?:\|round:(\d+))?$/;
+function parseRef(ref: string): ParsedRef | null {
+  const m = REF_SHAPE.exec(ref);
+  if (!m) return null;
+  const [, id, row, dotted, roundText] = m;
+  let path = dotted ? dotted.slice(1).split(".") : [];
+  // "b.total.change" is "b.change", and "a.total.revenue" is "a.revenue": the total is what a ref without a row means.
+  if (!row && path[0] === "total" && path.length > 1) path = path.slice(1);
+  if (path.length > 2) return null;
+  const field = (path[0] ?? "").replace(/^total_/, "");
+  return {
+    id: id!,
+    row: row!,
+    field,
+    sub: path[1],
+    round: roundText === undefined ? undefined : Number(roundText),
+  };
+}
+const MEASURE_PARTS = ["n", "range", "max", "min"] as const;
+type MeasurePart = "" | (typeof MEASURE_PARTS)[number];
+/**
+ * What a query_data ref's figure is: which measure, and what of it (its value, n, range, max or min). A measure is
+ * named by its column ("a3.units", "a.avg_rating.n"), or, in a lookup of one measure, left out ("a3", "a.total",
+ * "a3.n"). In a lookup of several, a ref that names no measure resolves to nothing: it never picks one (Goldy's
+ * brief, 12 Nov). Null if the ref names no figure.
+ */
+function figureOf(lookup: Lookup, field: string, sub: string | undefined) {
+  const part = (p: string | undefined): MeasurePart | null =>
+    p === undefined
+      ? ""
+      : (MEASURE_PARTS as readonly string[]).includes(p)
+        ? (p as MeasurePart)
+        : null;
+  if ((lookup.measures as string[]).includes(field)) {
+    const what = part(sub);
+    return what === null ? null : { measure: field as Measure, what, named: true };
+  }
+  if (sub !== undefined || lookup.measures.length > 1) return null;
+  if (field === "" || field === "total")
+    return { measure: lookup.measure, what: "" as const, named: false };
+  const what = part(field);
+  return what ? { measure: lookup.measure, what, named: false } : null;
 }
 
 /** What an average's n counts (query/evidence.ts's units), and one of it. */
@@ -136,6 +206,21 @@ const label = (v: unknown) => (v === null || v === undefined ? "Unknown" : Strin
 const join = (names: string[]) =>
   names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 
+/**
+ * What each average's n counts, as the tool server said: `unit` for a lookup of one measure, and for several,
+ * `evidence_units` keyed by measure. A unit that isn't the measure's own average's is ignored.
+ */
+function unitsOf(name: string, out: Row, measures: Measure[], several: boolean) {
+  const units = new Map<Measure, Unit>();
+  if (name !== "query_data") return units;
+  const given = several ? out.evidence_units : { [measures[0]!]: out.unit };
+  if (!given || typeof given !== "object") return units;
+  for (const m of measures) {
+    const unit = (given as Row)[m];
+    if (isUnit(unit) && evidenceUnit(m) === unit) units.set(m, unit);
+  }
+  return units;
+}
 /** The refs this answer's successful lookups returned, and the period names they confirm. */
 export class Refs {
   private readonly lookups = new Map<string, Lookup>();
@@ -176,12 +261,9 @@ export class Refs {
    * a subject (an edition or title label). Null if it doesn't resolve.
    */
   describe(ref: string, known = Infinity): RefInfo | null {
-    const m = /^([a-z]+)(\d*)(?:\.([a-z_]+))?(?:\|round:\d+)?$/.exec(
-      ref.replace(/^([a-z]+)\.total\.(?=[a-z])/, "$1.total_"),
-    );
-    if (!m) return null;
-    const [, id, rowNumber, rawField = ""] = m;
-    const field = rawField.replace(/^total_/, "");
+    const parsed = parseRef(ref);
+    if (!parsed) return null;
+    const { id, row: rowNumber, field } = parsed;
     const lookup = this.lookups.get(id);
     if (!lookup || lookup.seq >= known) return null;
     const row = rowNumber ? lookup.rows.get(id + rowNumber) : undefined;
@@ -189,7 +271,11 @@ export class Refs {
     const isLabel =
       field !== "" && ((row && lookup.dims.includes(field)) || lookup.filtered.has(field));
     const value = !isLabel && field !== "rows";
-    const info: RefInfo = { value, currency: value && KINDS[lookup.measure] === "currency" };
+    // The ref's own measure, when it names one ("a3.revenue"), for whether it's in dollars.
+    const measure = (lookup.measures as string[]).includes(field)
+      ? (field as Measure)
+      : lookup.measure;
+    const info: RefInfo = { value, currency: value && KINDS[measure] === "currency" };
     if (!isLabel) return info;
     const at = (dim: string) =>
       row && lookup.dims.includes(dim) ? label(row[dim]) : lookup.filtered.get(dim);
@@ -259,6 +345,25 @@ export class Refs {
       !Array.isArray(out.rows)
     )
       return;
+    // Several measures (Sim's `also`): only on query_data, each a known measure, distinct, with each one's total.
+    const also = args.also;
+    if (also !== undefined && (name !== "query_data" || !Array.isArray(also))) return;
+    const measures = [measure, ...((also as unknown[] | undefined) ?? [])];
+    if (
+      measures.length > 4 ||
+      !measures.every((m) => typeof m === "string" && Object.hasOwn(KINDS, m)) ||
+      new Set(measures).size !== measures.length
+    )
+      return;
+    const several = measures.length > 1;
+    const totals = new Map<Measure, unknown>();
+    if (name === "query_data") {
+      if (several) {
+        const given = out.totals;
+        if (!given || typeof given !== "object") return;
+        for (const m of measures as Measure[]) totals.set(m, (given as Row)[m]);
+      } else totals.set(measure as Measure, out.total);
+    }
     const rows = out.rows as Row[];
     const seq = this.lookups.size;
     const period = (name: string) => {
@@ -296,7 +401,7 @@ export class Refs {
     const filtered = new Map<string, string>();
     const found =
       name === "query_data"
-        ? isNum(out.total) && out.total !== 0
+        ? [...totals.values()].some((t) => isNum(t) && t !== 0)
         : rows.length > 0 ||
           Object.values((out.total ?? {}) as Row).some((v) => isNum(v) && v !== 0);
     if (found && args.filter && typeof args.filter === "object") {
@@ -317,21 +422,21 @@ export class Refs {
       complete: out.complete === true,
       name,
       measure: measure as Measure,
+      measures: measures as Measure[],
       dims,
       rows: new Map(rows.filter((r) => typeof r.ref === "string").map((r) => [r.ref as string, r])),
       ordered: rows,
       total: out.total,
+      totals,
       filtered,
       from,
       to,
-      unit: name === "query_data" && isUnit(out.unit) ? out.unit : null,
+      units: unitsOf(name, out, measures as Measure[], several),
       // The total's evidence, its agreeing-ratings word included, as a row's (Audit, #347).
-      totalEvidence: {
-        n: out.n,
-        range_low: out.range_low,
-        range_high: out.range_high,
-        range_none: out.range_none,
-      },
+      totalEvidence: new Map(
+        (measures as Measure[]).map((m) => [m, evidenceOf(out, m, several)] as const),
+      ),
+      several,
     });
   }
 
@@ -340,31 +445,40 @@ export class Refs {
    * or its lookup hadn't come back when the text citing it arrived (`known`, from the text's stamp).
    */
   render(ref: string, known = Infinity): string | null {
-    const m = /^([a-z]+)(\d*)(?:\.([a-z_]+))?(?:\|round:(\d+))?$/.exec(
-      ref.replace(/^([a-z]+)\.total\.(?=[a-z])/, "$1.total_"),
-    );
-    if (!m) return null;
-    const [, id, rowNumber, rawField = "", roundText] = m;
-    // "b.total.change" is "b.change": the total is what a ref without a row means.
-    const field = rawField.replace(/^total_/, "");
-    const round = roundText === undefined ? undefined : Number(roundText);
+    const parsed = parseRef(ref);
+    if (!parsed) return null;
+    const { id, row: rowNumber, field, sub, round } = parsed;
     if (round !== undefined && !ROUNDINGS.includes(round)) return null;
     const lookup = this.lookups.get(id);
     if (!lookup || lookup.seq >= known) return null;
-    const kind = KINDS[lookup.measure];
+    const oneField = sub === undefined && field !== "";
     if (rowNumber) {
       const row = lookup.rows.get(id + rowNumber);
       if (!row) return null;
-      if (field && lookup.dims.includes(field)) return round ? null : label(row[field]);
-      if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
-      if (field === "n" || field === "range")
-        return round ? null : this.evidence(lookup, row, field, row[lookup.measure]);
-      // A row's figure, as {{a1}} or by its own measure's column, {{a1.revenue}} (Probe's #252 red-team); any
-      // other measure's name isn't this lookup's, so it doesn't resolve.
-      if (lookup.name === "query_data")
-        return (!field || field === lookup.measure) && isNum(row[lookup.measure])
-          ? signed(kind, row[lookup.measure] as number, round)
-          : null;
+      if (oneField && lookup.dims.includes(field)) return round ? null : label(row[field]);
+      if (oneField && lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
+      if (lookup.name === "query_data") {
+        // A row's figure, as {{a1}} or by its measure's column, {{a1.revenue}} (Probe's #252 red-team), and its
+        // evidence, {{a1.n}} or {{a1.avg_rating.n}}. A measure the lookup didn't ask for doesn't resolve, and in a
+        // lookup of several, neither does a figure that names no measure.
+        if (field === "total") return null;
+        const figure = figureOf(lookup, field, sub);
+        if (!figure || figure.what === "max" || figure.what === "min") return null;
+        const value = row[figure.measure];
+        if (figure.what === "n" || figure.what === "range")
+          return round
+            ? null
+            : this.evidence(
+                lookup,
+                figure.measure,
+                evidenceOf(row, figure.measure, lookup.several),
+                figure.what,
+                value,
+              );
+        return isNum(value) ? signed(KINDS[figure.measure], value, round) : null;
+      }
+      if (sub !== undefined) return null;
+      if (field === "n" || field === "range") return null;
       return this.comparison(
         lookup,
         row,
@@ -373,15 +487,25 @@ export class Refs {
         lookup.dims.map((d) => label(row[d])).join(", "),
       );
     }
-    if (field === "rows") return round ? null : whole.format(lookup.ordered.length);
-    if (lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
-    if (field === "n" || field === "range")
-      return round ? null : this.evidence(lookup, lookup.totalEvidence, field, lookup.total);
+    if (field === "rows" && sub === undefined)
+      return round ? null : whole.format(lookup.ordered.length);
+    if (oneField && lookup.filtered.has(field)) return round ? null : lookup.filtered.get(field)!;
     if (lookup.name === "query_data") {
-      if (field === "total") return isNum(lookup.total) ? signed(kind, lookup.total, round) : null;
-      if (field === "max" || field === "min") return this.extreme(lookup, field, round);
-      return null;
+      // The total ({{a.total}}, or {{a.revenue}} by its measure), its evidence, and the row with the most or least.
+      if (field === "") return null;
+      const figure = figureOf(lookup, field, sub);
+      if (!figure) return null;
+      const { measure, what } = figure;
+      const total = lookup.totals.get(measure);
+      if (what === "n" || what === "range")
+        return round
+          ? null
+          : this.evidence(lookup, measure, lookup.totalEvidence.get(measure) ?? {}, what, total);
+      if (what === "max" || what === "min") return this.extreme(lookup, measure, what, round);
+      return isNum(total) ? signed(KINDS[measure], total, round) : null;
     }
+    if (sub !== undefined) return null;
+    if (field === "n" || field === "range") return null;
     if (field === "largest_fall" || field === "largest_rise")
       return this.largest(lookup, field, round);
     if (field === "largest_fall_percent" || field === "largest_rise_percent")
@@ -440,11 +564,12 @@ export class Refs {
    */
   private evidence(
     lookup: Lookup,
+    measure: Measure,
     figures: Row,
     field: "n" | "range",
     value: unknown,
   ): string | null {
-    const { unit } = lookup;
+    const unit = lookup.units.get(measure);
     if (!unit) return null;
     if (field === "n") {
       const n = figures.n;
@@ -452,7 +577,7 @@ export class Refs {
         ? `${whole.format(n)} ${n === 1 ? UNITS[unit] : unit}`
         : null;
     }
-    if (lookup.measure !== "avg_rating") return null;
+    if (measure !== "avg_rating") return null;
     const { range_low: low, range_high: high, range_none: none, n } = figures;
     // Every rating the same: no likely range, and the clause says why (Plot, #343). Only where the tool server said
     // so ("agree", from a standard error of exactly 0 over two ratings or more), with a whole-star average; a range
@@ -509,15 +634,20 @@ export class Refs {
     return `${join(names)} ${fall ? "fell" : "rose"} the most in percent, ${fall ? "a fall" : "a rise"} of ${onePlace.format(most)}%`;
   }
 
-  private extreme(lookup: Lookup, field: "max" | "min", round?: number): string | null {
-    const rows = lookup.ordered.filter((r) => isNum(r[lookup.measure]));
+  private extreme(
+    lookup: Lookup,
+    measure: Measure,
+    field: "max" | "min",
+    round?: number,
+  ): string | null {
+    const rows = lookup.ordered.filter((r) => isNum(r[measure]));
     if (!lookup.dims.length || !rows.length || !lookup.complete) return null;
-    const values = rows.map((r) => r[lookup.measure] as number);
+    const values = rows.map((r) => r[measure] as number);
     const target = field === "max" ? Math.max(...values) : Math.min(...values);
     const names = rows
-      .filter((r) => r[lookup.measure] === target)
+      .filter((r) => r[measure] === target)
       .map((r) => lookup.dims.map((d) => label(r[d])).join(", "));
-    const kind = KINDS[lookup.measure];
+    const kind = KINDS[measure];
     const word =
       kind === "count"
         ? field === "max"
@@ -526,7 +656,7 @@ export class Refs {
         : field === "max"
           ? "the highest"
           : "the lowest";
-    return `${join(names)} had ${word} ${NOUNS[lookup.measure]}, ${signed(kind, target, round)}`;
+    return `${join(names)} had ${word} ${NOUNS[measure]}, ${signed(kind, target, round)}`;
   }
 }
 
@@ -811,13 +941,21 @@ const FORECAST_CLAIMS = new RegExp(
 function evidenceBound(refs: string[]): boolean {
   const parsed = refs.map((ref) => {
     const m = /^([a-z]+)(\d*)(?:\.([a-z_.]+))?(?:\|.*)?$/.exec(ref.trim());
-    return m ? { at: `${m[1]}${m[2]}`, field: (m[3] ?? "").replace(/^total[._]?/, "") } : null;
+    if (!m) return null;
+    const path = (m[3] ?? "").replace(/^total[._]?/, "").split(".");
+    // "a3.avg_rating.n" is avg_rating's evidence; "a3.n" a lookup of one measure's.
+    const measure = path.find((p) => Object.hasOwn(KINDS, p)) ?? null;
+    return { at: `${m[1]}${m[2]}`, field: path.at(-1)!, measure };
   });
   const isEvidence = (p: (typeof parsed)[number]) =>
     p !== null && ["n", "range", "noise"].includes(p.field);
   const evidence = parsed.filter(isEvidence);
   if (!evidence.length) return true;
   const at = evidence[0]!.at;
+  // In a lookup of several measures, evidence names its measure, and qualifies only that measure's figure: no ref
+  // in the sentence may name another ("{{a3.revenue}}, over {{a3.avg_order_value.n}}" would lend one the other's).
+  const named = new Set(parsed.flatMap((p) => (p?.measure ? [p.measure] : [])));
+  if (named.size > 1) return false;
   // And the row is in the sentence itself, by a ref of its own (its figure, or its name, {{e1.genre}}): an evidence
   // ref alone, or beside a name in prose, would attach to whatever came before ("Poetry rose by 200. That is
   // within noise."; Probe's second red-team of #337).
