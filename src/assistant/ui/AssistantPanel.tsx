@@ -994,7 +994,9 @@ const styles = {
     padding: 10,
     background: "var(--color-panel-raised)",
     borderRadius: "var(--radius-control)",
-  },
+    // The page's tables' sticky cells take this, to match the lookup they sit on.
+    "--table-surface": "var(--color-panel-raised)",
+  } as React.CSSProperties,
   table: { borderCollapse: "collapse", width: "100%", fontSize: 13 },
   rows: { maxHeight: 240, overflowY: "auto" },
   th: {

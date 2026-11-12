@@ -672,12 +672,17 @@
   color: var(--color-text-subtle);
 }
 
+/* --table-surface: what the table sits on, so its sticky cells match it (Dewey's lookups are raised). */
 .measuresTable th:first-child,
 .measuresTable td:first-child {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: var(--color-panel);
+  background: var(--table-surface, var(--color-panel));
+}
+
+.measuresTable thead th {
+  background: var(--table-surface, var(--color-panel));
 }
 
 .measuresTable thead th:first-child {
