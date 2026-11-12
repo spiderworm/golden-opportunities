@@ -137,7 +137,7 @@ from `lastYear`: last year's figures are context (Audit, #292).
 ## Several measures
 
 A player who asks for several measures together ("revenue and units by
-quarter") gets one table (David, 12 Nov 2026: "if a user asks for revenue and
+quarter") gets one table (David, 12 Nov 2026, as Goldy relayed it: "if a user asks for revenue and
 units sold over a quarter, that they appear in a single table"). Unrelated
 measures aren't forced together unless that's asked for, and Dewey never adds a
 measure nobody asked for.
