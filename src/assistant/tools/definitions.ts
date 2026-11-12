@@ -11,7 +11,9 @@ import {
   AGENT_DIMENSIONS as DIMENSIONS,
   AGENT_MEASURE_DIMENSIONS as MEASURE_DIMENSIONS,
   AGENT_MEASURES as MEASURES,
+  isSalesMeasure,
   QUERY_LIMITS,
+  type AgentMeasure,
   type Dimension,
   type Measure,
   type Query,
@@ -64,8 +66,19 @@ export interface ComparisonResult {
   source: string;
 }
 
+/** How many measures one lookup may ask for: the first and up to three more (Sim's `also`). */
+export const MAX_MEASURES = 4;
 const queryProperties = {
   measure: { type: "string", enum: MEASURES, description: "What to measure." },
+  also: {
+    type: "array",
+    items: { type: "string", enum: MEASURES },
+    minItems: 1,
+    maxItems: MAX_MEASURES - 1,
+    uniqueItems: true,
+    description:
+      "More measures for the same table, only ones the player asked for together with the first: each gets its own column. Leave it out for one measure.",
+  },
   by: {
     type: "array",
     items: { type: "string", enum: DIMENSIONS },
@@ -112,7 +125,7 @@ export const TOOLS = [
   {
     name: "query_data",
     description:
-      "Runs one query on the store's data, exactly as the player's dashboard would, over the periods the player can see. Returns a ref for the result and one for each row, columns, rows, the total, and a source line describing where the figures come from. The player sees the result and its source under your reply. Cite its figures by ref, as your rules say.",
+      "Runs one query, for one measure or several that share their records, on the store's data, exactly as the player's dashboard would, over the periods the player can see. When the player asks for several measures together (\"revenue and units by quarter\"), ask for them in one query, the first in measure and the rest in also, so they share one table; ask only for the measures the player named, never one to fill out the table. If the terminal says two measures can't share a query, run one query for each. Returns a ref for the result and one for each row, columns, rows, the total, and a source line describing where the figures come from. The player sees the result and its source under your reply. Cite its figures by ref, as your rules say; with several measures, each figure by its measure's name.",
     inputSchema: {
       type: "object",
       properties: queryProperties,
@@ -123,7 +136,7 @@ export const TOOLS = [
   {
     name: "compare_data",
     description:
-      "Compares one measure between two values of one dimension (two quarters, two weekdays, two genres), optionally broken down by one other dimension. Returns a ref for the result and one for each row, each side's figure, the change (to minus from), the percent change and the direction, computed by the data terminal, with a source line. Use it whenever the player asks for a difference, a change, a rise or fall, which is higher, or a percent change, in either order. Cite its figures and comparisons by ref, as your rules say; never state a direction yourself.",
+      "Compares one measure (never several: compare each separately) between two values of one dimension (two quarters, two weekdays, two genres), optionally broken down by one other dimension. Returns a ref for the result and one for each row, each side's figure, the change (to minus from), the percent change and the direction, computed by the data terminal, with a source line. Use it whenever the player asks for a difference, a change, a rise or fall, which is higher, or a percent change, in either order. Cite its figures and comparisons by ref, as your rules say; never state a direction yourself.",
     inputSchema: {
       type: "object",
       properties: {
@@ -162,7 +175,7 @@ export const TOOLS = [
   {
     name: "show_chart",
     description:
-      "Runs one query, exactly as query_data does, and draws its result as a chart under your reply instead of a table. Use it when the player asks for a chart, graph or plot, or to see something drawn. It returns the same refs, rows, total and source as query_data; cite its figures by ref, as your rules say. The terminal chooses the chart (a line over months or quarters, bars for anything else) and titles it from its query.",
+      "Runs one query, exactly as query_data does, and draws its result as a chart under your reply instead of a table. Use it when the player asks for a chart, graph or plot, or to see something drawn. Several measures the player asked for together go in one chart, as query_data takes them. It returns the same refs, rows, total and source as query_data; cite its figures by ref, as your rules say. The terminal chooses the chart (a line over months or quarters, bars for anything else) and titles it from its query.",
     inputSchema: {
       type: "object",
       properties: {
@@ -180,7 +193,7 @@ export const TOOLS = [
   {
     name: "pin_chart",
     description:
-      "Pins a chart of one query to the player's dashboard. Only when the player asks you to pin or keep a chart. The terminal chooses the chart as show_chart does (a line over months or quarters, bars for anything else, a table for one total) and titles it from its query. Set table to true only when the player asks to pin a table.",
+      "Pins a chart of one query (of one measure, or several, as query_data takes them) to the player's dashboard. Only when the player asks you to pin or keep a chart. The terminal chooses the chart as show_chart does (a line over months or quarters, bars for anything else, a table for one total) and titles it from its query. Set table to true only when the player asks to pin a table.",
     inputSchema: {
       type: "object",
       properties: {
@@ -214,10 +227,22 @@ function onlyKeys(o: Record<string, unknown>, allowed: readonly string[], what: 
 /** Checks a query from the model and rebuilds it from known parts only. Throws ToolInputError. */
 export function checkQuery(input: unknown): Query {
   if (!isObject(input)) throw new ToolInputError("The query must be an object.");
-  onlyKeys(input, ["measure", "by", "filter", "sort", "limit"], "The query");
-  const { measure, by = [], filter, sort, limit } = input;
+  onlyKeys(input, ["measure", "also", "by", "filter", "sort", "limit"], "The query");
+  const { measure, also, by = [], filter, sort, limit } = input;
   if (!has(MEASURES, measure))
     throw new ToolInputError(`Unknown measure. Measures: ${MEASURES.join(", ")}.`);
+  if (
+    also !== undefined &&
+    (!Array.isArray(also) ||
+      also.length < 1 ||
+      also.length > MAX_MEASURES - 1 ||
+      !also.every((m) => has(MEASURES, m)) ||
+      new Set([measure, ...also]).size !== also.length + 1)
+  )
+    throw new ToolInputError(
+      `"also" must list 1 to ${MAX_MEASURES - 1} more measures, each different from "measure" and from each other.`,
+    );
+  const measures: AgentMeasure[] = [measure, ...((also as AgentMeasure[] | undefined) ?? [])];
   if (
     !Array.isArray(by) ||
     by.length > QUERY_LIMITS.dimensions ||
@@ -228,12 +253,20 @@ export function checkQuery(input: unknown): Query {
       `"by" must list up to ${QUERY_LIMITS.dimensions} different dimensions from: ${DIMENSIONS.join(", ")}.`,
     );
   }
-  const allowed: readonly Dimension[] = MEASURE_DIMENSIONS[measure];
-  const query: { -readonly [K in keyof Query]: Query[K] } = { measure, by: by as Dimension[] };
+  // Every measure must support every dimension the query groups or filters by.
+  const allowed: readonly Dimension[] = DIMENSIONS.filter((d) =>
+    measures.every((m) => MEASURE_DIMENSIONS[m].includes(d)),
+  );
+  const named = measures.join(" and ");
+  const query: { -readonly [K in keyof Query]: Query[K] } = {
+    measure,
+    ...(measures.length > 1 ? { also: measures.slice(1) } : {}),
+    by: by as Dimension[],
+  };
   for (const d of by as Dimension[])
     if (!allowed.includes(d))
       throw new ToolInputError(
-        `${measure} can't be grouped by ${d}. It supports: ${allowed.join(", ")}.`,
+        `${named} can't be grouped by ${d}. ${measures.length > 1 ? "Together they support" : "It supports"}: ${allowed.join(", ")}.`,
       );
   if (filter !== undefined) {
     if (!isObject(filter)) throw new ToolInputError('"filter" must be an object.');
@@ -241,7 +274,7 @@ export function checkQuery(input: unknown): Query {
     for (const [d, values] of Object.entries(filter)) {
       if (!has(DIMENSIONS, d))
         throw new ToolInputError(`Unknown filter dimension: ${d.slice(0, 40)}.`);
-      if (!allowed.includes(d)) throw new ToolInputError(`${measure} can't be filtered by ${d}.`);
+      if (!allowed.includes(d)) throw new ToolInputError(`${named} can't be filtered by ${d}.`);
       if (
         !Array.isArray(values) ||
         values.length < 1 ||
@@ -259,7 +292,7 @@ export function checkQuery(input: unknown): Query {
   if (sort !== undefined) {
     if (!isObject(sort)) throw new ToolInputError('"sort" must be an object.');
     onlyKeys(sort, ["column", "direction"], '"sort"');
-    const columns: (Dimension | Measure)[] = [measure, ...(by as Dimension[])];
+    const columns: (Dimension | Measure)[] = [...measures, ...(by as Dimension[])];
     if (!has(columns, sort.column) || (sort.direction !== "asc" && sort.direction !== "desc"))
       throw new ToolInputError(
         `"sort" must name one of ${columns.join(", ")} and a direction, asc or desc.`,
@@ -313,9 +346,10 @@ export function checkComparison(input: unknown): Comparison {
   };
 }
 
-const MEASURE_TITLES: Record<Measure, string> = {
+/** As Investigate names them (investigate/format.ts, MEASURE_LABELS), so a pin reads as Dewey's table does. */
+export const MEASURE_TITLES: Record<Measure, string> = {
   revenue: "Revenue",
-  units: "Units",
+  units: "Units sold",
   orders: "Orders",
   avg_discount: "Average discount",
   avg_rating: "Average rating",
@@ -325,9 +359,18 @@ const MEASURE_TITLES: Record<Measure, string> = {
   ratings: "Ratings",
 };
 
+/** A query's measures as a title says them: "Revenue", "Revenue and units sold", "Revenue, units sold and orders". */
+const measureTitle = (query: Query) => {
+  const words = [
+    MEASURE_TITLES[query.measure],
+    ...(query.also ?? []).map((m) => MEASURE_TITLES[m].toLowerCase()),
+  ];
+  return words.length < 2 ? words[0]! : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
+};
+
 /** A chart's title, built from its query: the model doesn't title pins (Probe X1, #32). */
 export const chartTitle = (query: Query) =>
-  `${MEASURE_TITLES[query.measure]}${query.by.length ? ` by ${query.by.join(" and ").replace(/_/g, " ")}` : ""}${query.filter && Object.keys(query.filter).length ? ", filtered" : ""}`;
+  `${measureTitle(query)}${query.by.length ? ` by ${query.by.join(" and ").replace(/_/g, " ")}` : ""}${query.filter && Object.keys(query.filter).length ? ", filtered" : ""}`;
 
 const DIMENSION_WORDS = (by: readonly Dimension[]) => by.join(" and ").replace(/_/g, " ");
 
@@ -415,6 +458,7 @@ export function describeData() {
       `At most ${QUERY_LIMITS.rows} rows per query. The total covers every matching fact, before grouping or the row limit.`,
       "Only the periods the player can see are included; asking for others returns nothing.",
       "Labels: quarter like 2193-Q4; month as year and month, like 2193-04 (each year's months are separate); weekday Monday to Sunday; discounted yes or no; discount_rate a percent like 0% or 15%; list_price a price like $27.99; price_band one of under $10, $10 to $19.99, $20 to $29.99, $30 and up. Filter with these exactly; no need to look them up first.",
+      `Ask for up to ${MAX_MEASURES} measures in one query when they come from the same records: sales measures (${MEASURES.filter(isSalesMeasure).join(", ")}) together, or book measures (${MEASURES.filter((m) => !isSalesMeasure(m)).join(", ")}) together. The result is one table, with a column for each measure. Ask only for the measures the player asked for, and query unrelated ones separately.`,
       "edition is a title and its format, like Post Alley (Hardcover), with the year where a book has two editions in one format: group by edition to see them. list_price is a book's list price, before any discount.",
     ],
   };

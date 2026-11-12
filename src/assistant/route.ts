@@ -19,7 +19,11 @@ import { queryToken } from "./server/queryToken.server.ts";
 import { AssistantUnavailable, type AssistantProvider } from "./server/provider.server.ts";
 import { orbitalToolServer } from "./tools/toolServer.server.ts";
 import { checkQuery } from "./tools/definitions.ts";
-import { agentEvidence, dropAgentEvidence } from "~/query/agent-evidence.server";
+import {
+  agentEvidence,
+  agentMeasureEvidence,
+  dropAgentEvidence,
+} from "~/query/agent-evidence.server";
 import { validateQuery } from "~/query/validate";
 import type { Route } from "./+types/route";
 
@@ -55,6 +59,13 @@ function withQueryToken(
         evidenceFor(query) {
           try {
             return agentEvidence(capability.token, validateQuery(checkQuery(query)));
+          } catch {
+            return null;
+          }
+        },
+        measureEvidenceFor(query) {
+          try {
+            return agentMeasureEvidence(capability.token, validateQuery(checkQuery(query)));
           } catch {
             return null;
           }

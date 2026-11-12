@@ -26,6 +26,8 @@ export interface AssistantProvider {
    * answer's token (query/agent-evidence.server.ts), or null. Never part of what the model sees.
    */
   evidenceFor?(query: unknown): QueryResult["evidence"] | null;
+  /** For a lookup of several measures: each one's total and raw evidence, from the same store, or null. */
+  measureEvidenceFor?(query: unknown): QueryResult["measures"] | null;
   /** Streams the answer. Stops, and cleans up, when `signal` aborts. */
   ask(prompt: AssistantPrompt, signal: AbortSignal): AsyncIterable<ProviderEvent>;
 }
