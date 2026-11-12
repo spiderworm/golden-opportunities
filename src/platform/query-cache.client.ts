@@ -251,6 +251,9 @@ export function queryKey(query: Query): string {
     sortedFilter(query.filter),
     query.sort ?? null,
     query.limit ?? null,
+    // A lookup of several measures is its own answer (contract.md, "Several measures"), and so is one with last year.
+    query.also ?? null,
+    query.vs ?? null,
   ]);
 }
 

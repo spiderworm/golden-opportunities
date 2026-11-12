@@ -11,12 +11,16 @@
 import type { QueryResult } from "./types";
 
 type Evidence = NonNullable<QueryResult["evidence"]>;
+type Measures = NonNullable<QueryResult["measures"]>;
 
 export const TTL_MS = 10 * 60_000;
 export const MAX_TOKENS = 64;
 export const MAX_PER_TOKEN = 64;
 
-const store = new Map<string, Map<string, { evidence: Evidence; at: number }>>();
+const store = new Map<
+  string,
+  Map<string, { evidence: Evidence; measures: Measures | null; at: number }>
+>();
 
 /** A query as canonical JSON, its object keys sorted, so the handler and the assistant's server key it alike. */
 export function canonicalQuery(value: unknown): string {
@@ -40,12 +44,16 @@ function prune(now: number) {
   }
 }
 
-/** Keeps an answered lookup's evidence under its answer's token. A result without evidence keeps nothing. */
+/**
+ * Keeps an answered lookup's evidence under its answer's token: the first measure's, and with several measures each
+ * one's (contract.md, "Several measures"). A result without evidence keeps nothing.
+ */
 export function keepAgentEvidence(
   token: string,
   query: unknown,
   evidence: QueryResult["evidence"],
   now = Date.now(),
+  measures: QueryResult["measures"] = undefined,
 ) {
   if (!evidence) return;
   prune(now);
@@ -58,13 +66,23 @@ export function keepAgentEvidence(
   const key = canonicalQuery(query);
   entries.delete(key);
   if (entries.size >= MAX_PER_TOKEN) entries.delete(entries.keys().next().value!);
-  entries.set(key, { evidence, at: now });
+  entries.set(key, { evidence, measures: measures ?? null, at: now });
 }
 
 /** The evidence kept for this token and query, or null: expired, dropped, or never seen. */
 export function agentEvidence(token: string, query: unknown, now = Date.now()): Evidence | null {
   prune(now);
   return store.get(token)?.get(canonicalQuery(query))?.evidence ?? null;
+}
+
+/** Each measure's evidence kept for this token and query, for a lookup of several measures; else null. */
+export function agentMeasureEvidence(
+  token: string,
+  query: unknown,
+  now = Date.now(),
+): Measures | null {
+  prune(now);
+  return store.get(token)?.get(canonicalQuery(query))?.measures ?? null;
 }
 
 /** Drops everything kept for an answer: when it ends, or its token is revoked. */

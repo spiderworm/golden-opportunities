@@ -217,6 +217,12 @@ describe("a query's key", () => {
     expect(queryKey({ measure: "units", by: [] })).not.toBe(
       queryKey({ measure: "revenue", by: [] }),
     );
+    // Several measures, or last year beside it, are answers of their own.
+    expect(queryKey({ ...a, also: ["revenue"] })).not.toBe(queryKey(a));
+    expect(queryKey({ ...a, also: ["revenue", "orders"] })).not.toBe(
+      queryKey({ ...a, also: ["revenue"] }),
+    );
+    expect(queryKey({ ...a, vs: "last_year" })).not.toBe(queryKey(a));
   });
 });
 
