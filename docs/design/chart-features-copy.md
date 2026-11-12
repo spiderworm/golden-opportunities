@@ -374,7 +374,7 @@ David decided (12 Nov 2026; his go-ahead is req_2d436ee864cd, and the quote belo
 | --- | --- |
 | Four measures | `Too many measures to chart (4). A chart shows 3 at most.` |
 | A third unit, like revenue, units sold and average discount | `These measures need three axes, and a chart has two` |
-| A rating with sales measures | `Ratings and sales don't share a chart` |
+| Two or more book measures (average rating, ratings, checkouts), which Investigate's chart doesn't draw together. A rating with sales measures never gets this far: the engine refuses it (Chart, #414) | `Ratings and checkouts chart one at a time` |
 | Several measures with a second breakdown | `A chart of several measures takes one breakdown` |
 
 - **Discoveries:** a lookup of several measures counts for each measure it shows, as if each had been looked up alone. That's how Investigate's chart of several measures already counts, and it fits David's rule that "if dewey looked it up, they did it for the user" (3 Nov 2026). The engine's contract (`src/query/contract.md`) says so.
