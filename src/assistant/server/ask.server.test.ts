@@ -1062,7 +1062,7 @@ describe("answering", () => {
     ).toEqual({
       type: "data",
       ...table,
-      pin: { title: "Units by genre, filtered", kind: "table", query },
+      pin: { title: "Units sold by genre, filtered", kind: "table", query },
     });
     const comparison = {
       measure: "revenue",

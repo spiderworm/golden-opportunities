@@ -346,9 +346,10 @@ export function checkComparison(input: unknown): Comparison {
   };
 }
 
-const MEASURE_TITLES: Record<Measure, string> = {
+/** As Investigate names them (investigate/format.ts, MEASURE_LABELS), so a pin reads as Dewey's table does. */
+export const MEASURE_TITLES: Record<Measure, string> = {
   revenue: "Revenue",
-  units: "Units",
+  units: "Units sold",
   orders: "Orders",
   avg_discount: "Average discount",
   avg_rating: "Average rating",
@@ -358,7 +359,7 @@ const MEASURE_TITLES: Record<Measure, string> = {
   ratings: "Ratings",
 };
 
-/** A query's measures as a title says them: "Revenue", "Revenue and units", "Revenue, units and orders". */
+/** A query's measures as a title says them: "Revenue", "Revenue and units sold", "Revenue, units sold and orders". */
 const measureTitle = (query: Query) => {
   const words = [
     MEASURE_TITLES[query.measure],

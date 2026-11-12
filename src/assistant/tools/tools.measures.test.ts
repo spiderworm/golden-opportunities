@@ -11,10 +11,12 @@ import {
   checkShownChart,
   describeData,
   lookupPin,
+  MEASURE_TITLES,
   ToolInputError,
   TOOLS,
 } from "./definitions.ts";
 import { callTool, resetRefsForTests } from "./server.ts";
+import { MEASURE_LABELS } from "../../investigate/format.ts";
 import { measureCount, toWire, withEvidence } from "../server/ask.server.ts";
 import type { ProviderEvent } from "../server/provider.server.ts";
 import { Refs, renderSentence, WITHHELD } from "../server/figures.server.ts";
@@ -88,30 +90,34 @@ describe("checking a query of several measures", () => {
 
   it("titles charts and pins from every measure, and pins the query whole", () => {
     expect(chartTitle({ measure: "revenue", also: ["units"], by: ["quarter"] })).toBe(
-      "Revenue and units by quarter",
+      "Revenue and units sold by quarter",
     );
     expect(chartTitle({ measure: "revenue", also: ["units", "orders"], by: [] })).toBe(
-      "Revenue, units and orders",
+      "Revenue, units sold and orders",
     );
     expect(
       checkShownChart({ query: { measure: "revenue", also: ["units"], by: ["quarter"] } }),
     ).toEqual({
-      title: "Revenue and units by quarter",
+      title: "Revenue and units sold by quarter",
       kind: "line",
       query: { measure: "revenue", also: ["units"], by: ["quarter"] },
     });
     expect(checkChart({ query: { measure: "revenue", also: ["units"], by: ["genre"] } })).toEqual({
-      title: "Revenue and units by genre",
+      title: "Revenue and units sold by genre",
       kind: "bar",
       query: { measure: "revenue", also: ["units"], by: ["genre"] },
     });
     expect(lookupPin("query_data", { measure: "revenue", also: ["units"], by: ["genre"] })).toEqual(
       {
-        title: "Revenue and units by genre",
+        title: "Revenue and units sold by genre",
         kind: "table",
         query: { measure: "revenue", also: ["units"], by: ["genre"] },
       },
     );
+  });
+
+  it("names measures as Investigate does, so a pin's title matches the panel's table (Chart)", () => {
+    expect(MEASURE_TITLES).toEqual(MEASURE_LABELS);
   });
 
   it("keeps compare_data to one measure", () => {
@@ -301,7 +307,7 @@ describe("calling tools for several measures", () => {
     const pinned = JSON.parse((await callTool("pin_chart", { query }, env)).content[0].text);
     expect(pinned).toMatchObject({
       pinned: true,
-      chart: { title: "Revenue, units and average order value by quarter", query },
+      chart: { title: "Revenue, units sold and average order value by quarter", query },
     });
   });
 
