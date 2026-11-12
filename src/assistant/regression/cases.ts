@@ -44,6 +44,26 @@ const lookedUp: Case["checks"][number] = ({ events }) =>
   events.some((e) => e.type === "data" || e.type === "comparison" || e.type === "chart")
     ? null
     : "ran no lookup";
+/** The measures each table or chart lookup asked for, from its pin (the query the tool server ran). */
+const lookupMeasures = (events: WireEvent[]): string[][] =>
+  events.flatMap((e) => {
+    if (e.type !== "data" && e.type !== "chart") return [];
+    const query = e.pin && "query" in e.pin ? e.pin.query : null;
+    return query ? [[query.measure, ...(query.also ?? [])]] : [];
+  });
+/**
+ * Several measures in one lookup (David, 12 Nov 2026): the lookups asked for exactly these measure sets, each set
+ * in one lookup and nothing added ("A natural read of what they're asking for makes most sense to me").
+ */
+const measureSets =
+  (...sets: string[][]): Case["checks"][number] =>
+  ({ events }) => {
+    const got = lookupMeasures(events).map((m) => [...m].sort().join("+"));
+    const want = sets.map((m) => [...m].sort().join("+"));
+    return got.length === want.length && want.every((w) => got.includes(w))
+      ? null
+      : `asked for ${got.join(", ") || "nothing"}, expected ${want.join(", ")}`;
+  };
 const compared: Case["checks"][number] = ({ events }) =>
   events.some((e) => e.type === "comparison") ? null : "didn't use compare_data";
 
@@ -201,5 +221,25 @@ export const CASES: Case[] = [
         "confirmed the insight",
       ),
     ],
+  },
+  // Several measures in one lookup (Goldy's brief, req_2d436ee864cd): one table for measures asked for together,
+  // never a measure nobody asked for, and two lookups when the measures can't share one.
+  {
+    id: "measures-one-table",
+    finding: "several measures",
+    question: "Show me revenue and units by quarter.",
+    checks: [noUnbacked, measureSets(["revenue", "units"])],
+  },
+  {
+    id: "measures-none-added",
+    finding: "several measures",
+    question: "Show me revenue by genre.",
+    checks: [noUnbacked, measureSets(["revenue"])],
+  },
+  {
+    id: "measures-two-lookups",
+    finding: "several measures",
+    question: "Show me revenue and average rating by genre.",
+    checks: [noUnbacked, measureSets(["revenue"], ["avg_rating"])],
   },
 ];

@@ -130,6 +130,25 @@ discount rate, so no price of the model's own can show. Three more checks, in `p
   "under", "over", "at least", "at most" or "up to" directly before a price or figure withholds it. The words
   alone stay allowed: "the table is under this message", "over {{a.rows}} editions".
 
+**Several measures in one lookup** (David, 12 Nov 2026: "if a user asks for revenue and units sold over a
+quarter, that they appear in a single table"): `query_data`, `show_chart` and `pin_chart` take `also`, up to three
+more measures beside `measure`; `compare_data` stays one measure. The tool server gives the model a column per
+measure, `totals` keyed by measure in place of one total, and each average's evidence named by its measure
+(`avg_rating_n`), with `evidence_units`. In such a lookup:
+- A figure names its measure: `{{a3.units}}`, `{{a.revenue}}` (or `{{a.total.revenue}}`), `{{a.units.max}}`,
+  `{{a3.avg_rating.n}}`, `{{a.avg_rating.range}}`. Each renders in its own measure's unit and noun, and the
+  price checks read the cited measure's (a dollar figure is revenue's or average order value's, never units').
+- **A bare ref is refused, never defined**: `{{a3}}`, `{{a.total}}`, `{{a.max}}`, `{{a3.n}}` and `{{a.range}}`
+  name no measure, so they don't resolve and their sentence is withheld. Picking the first measure would let
+  "units came to {{a.total}}" render revenue. A measure the lookup didn't ask for doesn't resolve either, as
+  in a one-measure lookup (Probe's #252).
+- Evidence qualifies one measure: a sentence whose evidence ref names a measure may name no other measure in
+  any ref, so `{{a3.revenue}}, over {{a3.avg_order_value.n}}` is withheld (the row rule above still holds).
+- A one-measure lookup is unchanged, and accepts the named forms too (`{{a.revenue}}` is its total).
+- "Rose/fell the most" comes only from `compare_data`, which stays one measure.
+- Mixing sales measures with book ones (ratings, checkouts) is refused by the query layer
+  (`INCOMPATIBLE_MEASURES`); the tool passes the message on and Dewey runs one lookup for each.
+
 **What the filter caught is kept on this machine** (Probe's Q2 red-team, finding Q2): each withheld sentence is
 recorded as `assistant_sentence_withheld` (its text, cut at 1,000 characters, its length, and the question's
 kind), under the `agent_text` hold in `.data/analytics-server.json`. Held events are never sent; that's the

@@ -7,7 +7,7 @@
 
 import { createInterface } from "node:readline";
 import { EVIDENCE_UNITS, evidenceUnit, ratingRange, type Evidence } from "../../query/evidence.ts";
-import { QUERY_LIMITS, type Measure, type QueryResult } from "../../query/types.ts";
+import { QUERY_LIMITS, type Measure, type Query, type QueryResult } from "../../query/types.ts";
 import { combineComparison, comparisonQueries } from "./comparison.ts";
 import {
   checkChart,
@@ -46,8 +46,13 @@ export function queryEndpoint(env: NodeJS.ProcessEnv = process.env): { url: URL;
   return { url, token };
 }
 
-/** A result as the tool server keeps it: the query's figures and source, and their evidence when it checks out. */
-export type KeptResult = Pick<QueryResult, "columns" | "rows" | "total" | "source" | "evidence">;
+/**
+ * A result as the tool server keeps it: the query's figures and source, and their evidence when it checks out; for
+ * several measures, each one's total and evidence (Sim's `measures`).
+ */
+export type KeptResult = Pick<QueryResult, "columns" | "rows" | "total" | "source" | "evidence"> & {
+  measures?: Partial<Record<Measure, { total: number | null; evidence?: QueryResult["evidence"] }>>;
+};
 
 const isEvidence = (e: unknown): e is Evidence =>
   typeof e === "object" &&
@@ -102,9 +107,44 @@ async function runQuery(
       `${String(error?.code ?? res.status)}: ${String(error?.message ?? "the query failed").slice(0, 300)}`,
     );
   }
-  const { columns, rows, total, source, evidence } = body as QueryResult;
-  const kept = checkedEvidence(evidence, Array.isArray(rows) ? rows.length : -1);
-  return { columns, rows, total, source, ...(kept ? { evidence: kept } : {}) };
+  const { columns, rows, total, source, evidence, measures } = body as QueryResult;
+  const count = Array.isArray(rows) ? rows.length : -1;
+  const kept = checkedEvidence(evidence, count);
+  const several = keptMeasures(query, measures, count);
+  return {
+    columns,
+    rows,
+    total,
+    source,
+    ...(kept ? { evidence: kept } : {}),
+    ...(several ? { measures: several } : {}),
+  };
+}
+
+/**
+ * Each requested measure's total and evidence, for a query of several (null otherwise): a total that's a finite
+ * number or null for every one, and evidence only where it checks out. Missing any measure's total, it's no result
+ * at all: the figures gate would have nothing to render that measure's total from.
+ */
+function keptMeasures(
+  query: unknown,
+  measures: unknown,
+  rows: number,
+): KeptResult["measures"] | null {
+  const q = query as Partial<Query>;
+  if (!q.also?.length) return null;
+  if (typeof measures !== "object" || measures === null)
+    throw new Error("The data terminal left out the measures.");
+  const kept: NonNullable<KeptResult["measures"]> = {};
+  for (const m of [q.measure!, ...q.also]) {
+    const entry = (measures as Record<string, { total?: unknown; evidence?: unknown }>)[m];
+    const total = entry?.total;
+    if (total !== null && !(typeof total === "number" && Number.isFinite(total)))
+      throw new Error("The data terminal left out a measure's total.");
+    const evidence = checkedEvidence(entry?.evidence, rows);
+    kept[m] = { total, ...(evidence ? { evidence } : {}) };
+  }
+  return kept;
 }
 
 /**
@@ -114,21 +154,10 @@ async function runQuery(
  * (Plot's copy, section 4). Plain numbers, so a lookup the panel keeps still checks out (conversation.ts).
  */
 export function withEvidence(result: KeptResult, measure: Measure) {
-  const { evidence, ...rest } = result;
+  const { evidence, measures: _, ...rest } = result;
   const unit = evidenceUnit(measure);
   if (!evidence || !unit || evidence.unit !== unit) return rest;
-  const extra = (value: unknown, e: Evidence) => {
-    const range =
-      measure === "avg_rating" ? ratingRange(typeof value === "number" ? value : null, e) : null;
-    // Every rating the same (two or more, no spread at all): said outright, so the gate never has to infer it
-    // from a missing range (Plot, #343; Sim, #342).
-    const agree = measure === "avg_rating" && !range && e.n >= 2 && e.se === 0;
-    return {
-      n: e.n,
-      ...(range ? { range_low: range.low, range_high: range.high } : {}),
-      ...(agree ? { range_none: "agree" } : {}),
-    };
-  };
+  const extra = evidenceFields(measure);
   return {
     ...rest,
     unit,
@@ -136,6 +165,61 @@ export function withEvidence(result: KeptResult, measure: Measure) {
     ...extra(rest.total, evidence.total),
   };
 }
+
+/** An average's evidence fields beside one figure (see withEvidence). */
+const evidenceFields = (measure: Measure) => (value: unknown, e: Evidence) => {
+  const range =
+    measure === "avg_rating" ? ratingRange(typeof value === "number" ? value : null, e) : null;
+  // Every rating the same (two or more, no spread at all): said outright, so the gate never has to infer it
+  // from a missing range (Plot, #343; Sim, #342).
+  const agree = measure === "avg_rating" && !range && e.n >= 2 && e.se === 0;
+  return {
+    n: e.n,
+    ...(range ? { range_low: range.low, range_high: range.high } : {}),
+    ...(agree ? { range_none: "agree" } : {}),
+  };
+};
+
+/** Prefixes each key with a measure's name: `n` becomes `avg_rating_n`. */
+const named = (measure: Measure, fields: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(fields).map(([k, v]) => [`${measure}_${k}`, v]));
+
+/**
+ * A lookup of several measures, as the model sees it: a column per measure in each row, `totals` keyed by measure
+ * in place of one total, and each average's evidence named by its measure (`avg_rating_n`, `avg_rating_range_low`)
+ * with `evidence_units` saying what each n counts, so no figure or n can be read as another measure's. The figures
+ * gate cites them as {{a3.units}}, {{a.revenue}} and {{a3.avg_rating.n}}, and never a bare {{a3}} (figures.server.ts).
+ */
+export function withMeasuresEvidence(result: KeptResult, measures: readonly Measure[]) {
+  const { evidence: _, measures: kept = {}, total: __, ...rest } = result;
+  const units: Partial<Record<Measure, string>> = {};
+  const rowExtras = rest.rows.map(() => ({}) as Record<string, unknown>);
+  let topExtras: Record<string, unknown> = {};
+  for (const m of measures) {
+    const unit = evidenceUnit(m);
+    const e = kept[m]?.evidence;
+    if (!unit || !e || e.unit !== unit) continue;
+    units[m] = unit;
+    const extra = evidenceFields(m);
+    rest.rows.forEach((row, i) =>
+      Object.assign(rowExtras[i]!, named(m, extra(row[m], e.rows[i]!))),
+    );
+    topExtras = { ...topExtras, ...named(m, extra(kept[m]?.total ?? null, e.total)) };
+  }
+  return {
+    ...rest,
+    rows: rest.rows.map((row, i) => ({ ...row, ...rowExtras[i] })),
+    totals: Object.fromEntries(measures.map((m) => [m, kept[m]?.total ?? null])),
+    ...(Object.keys(units).length ? { evidence_units: units } : {}),
+    ...topExtras,
+  };
+}
+
+/** The model's view of a query's result: one measure's, or several's. */
+const forModel = (result: KeptResult, query: Query) =>
+  query.also?.length
+    ? withMeasuresEvidence(result, [query.measure, ...query.also])
+    : withEvidence(result, query.measure);
 
 /**
  * Runs a comparison as two queries, one per side, and works out the change here (comparison.ts), so the
@@ -201,17 +285,13 @@ export async function callTool(
     if (name === "query_data") {
       const query = checkQuery(args);
       const result = await runQuery(query, queryEndpoint(env));
-      return ok(
-        withRefs(withEvidence(result, query.measure), isComplete(result.rows.length, query.limit)),
-      );
+      return ok(withRefs(forModel(result, query), isComplete(result.rows.length, query.limit)));
     }
     if (name === "show_chart") {
       // Drawn in the chat; to the model it's a query_data lookup, refs and all.
       const { query } = checkShownChart(args);
       const result = await runQuery(query, queryEndpoint(env));
-      return ok(
-        withRefs(withEvidence(result, query.measure), isComplete(result.rows.length, query.limit)),
-      );
+      return ok(withRefs(forModel(result, query), isComplete(result.rows.length, query.limit)));
     }
     if (name === "compare_data") {
       const { result, sides } = await runComparison(checkComparison(args), queryEndpoint(env));

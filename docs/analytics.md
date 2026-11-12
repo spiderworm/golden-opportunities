@@ -121,7 +121,7 @@ One event to a line, under its area, so changes to different events don't collid
 - `assistant_sentence_withheld` (**held**)
 - `assistant_question_sent`
 - `assistant_reply_shown`
-- `assistant_answered`
+- `assistant_answered` (also `mostMeasures`, the most measures one lookup asked for, and `severalMeasures`, how many lookups asked for more than one; counts, never which measures)
 - `assistant_refused`
 - `assistant_limited`
 - `assistant_no_game` (a question with no game: told to start one, asking no model and counting toward no limit)
