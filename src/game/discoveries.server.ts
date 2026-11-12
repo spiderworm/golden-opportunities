@@ -16,6 +16,7 @@ import {
 } from "./later-discoveries";
 import { QueryError } from "../query/errors";
 import { resolveQuery } from "../query/relative";
+import { perMeasure } from "../query/result";
 
 export interface ObservedQuery {
   query: Query;
@@ -93,11 +94,12 @@ export function recordDiscoveries(
   observed: readonly ObservedQuery[],
   source: DiscoverySource = "investigate",
 ): void {
-  // Judged on the quarters a relative quarter resolved to, as the query was run (src/query/relative.ts).
-  observed = observed.map(({ query, result }) => ({
-    query: resolveQuery(query, view.periods).query,
-    result,
-  }));
+  // Judged on the quarters a relative quarter resolved to, as the query was run (src/query/relative.ts). A lookup of
+  // several measures counts for each, as if each had been looked up alone, as Investigate's chart of several already
+  // does (Plot, chart-features-copy.md section 11; David: "if dewey looked it up, they did it for the user").
+  observed = observed.flatMap(({ query, result }) =>
+    perMeasure(resolveQuery(query, view.periods).query, result),
+  );
   // A, B and C come from views before Q1's plan, D, E and F from views before Q2's; none after.
   const quarter = currentQuarter(save);
   if (!quarter) return;

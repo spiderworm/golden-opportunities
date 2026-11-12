@@ -405,3 +405,35 @@ describe("relative quarters count as the quarters they are now (David, 3 Nov 202
     expect(parts(asked.id)).toEqual(parts(dated.id));
   });
 });
+
+describe("a lookup of several measures counts for each (Plot, section 11)", () => {
+  it("records what each measure would have recorded looked up alone, through Dewey and the browser", async () => {
+    const parts = (id: string) =>
+      Object.values(saves.read(id).discoveryEvidence ?? {})
+        .flat()
+        .sort();
+    const byGenre = { by: ["genre", "quarter"], filter: { quarter: ["2193-Q3", "2193-Q4"] } };
+    const apart = saves.create();
+    const together = saves.create();
+    const browser = saves.create();
+    const cap = issueGameQueryToken(apart.id);
+    const both = issueGameQueryToken(together.id);
+    try {
+      expect((await api(apart.id, { measure: "revenue", ...byGenre }, cap.token)).status).toBe(200);
+      expect((await api(apart.id, { measure: "units", ...byGenre }, cap.token)).status).toBe(200);
+      const query = { measure: "revenue", also: ["units"], ...byGenre };
+      expect((await api(together.id, query, both.token)).status).toBe(200);
+    } finally {
+      cap.revoke();
+      both.revoke();
+    }
+    expect(
+      (await api(browser.id, { measure: "revenue", also: ["units"], ...byGenre })).status,
+    ).toBe(200);
+    const units = parts(apart.id).filter((k) => k.startsWith("a1:units:"));
+    expect(units.length).toBeGreaterThan(0);
+    expect(parts(apart.id).filter((k) => k.startsWith("a1:revenue:")).length).toBeGreaterThan(0);
+    expect(parts(together.id)).toEqual(parts(apart.id));
+    expect(parts(browser.id)).toEqual(parts(apart.id));
+  });
+});

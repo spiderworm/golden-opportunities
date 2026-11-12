@@ -294,6 +294,10 @@ the new version. Errors carry no version. Keep it out of analytics events: it's
 stable for a save within a server process, so it would work as a per-save
 identifier (Audit, #187).
 
+## Several measures, several discoveries
+
+A query with `also` is judged for discoveries as one view per measure (`perMeasure` in `result.ts`): each measure's rows, total and evidence, as if it had been looked up alone. So a lookup of revenue and units counts for both, as Investigate's chart of several measures already does, each measure being its own query there. Dewey's lookups are the player's own (David, 3 Nov 2026: "if dewey looked it up, they did it for the user"), so his count the same way (Plot, chart-features-copy.md section 11).
+
 ## Context, never evidence
 
 The server records discovery evidence from every `/api/query` answer. A request
