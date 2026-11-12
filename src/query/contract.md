@@ -134,6 +134,68 @@ Groups that sold last year but not this year are not added as rows. Dewey can't
 use `vs` yet. Discovery evidence comes from the result's rows and total, never
 from `lastYear`: last year's figures are context (Audit, #292).
 
+## Several measures
+
+A player who asks for several measures together ("revenue and units by
+quarter") gets one table (David, 12 Nov 2026: "if a user asks for revenue and
+units sold over a quarter, that they appear in a single table"). Unrelated
+measures aren't forced together unless that's asked for, and Dewey never adds a
+measure nobody asked for.
+
+- **Query.** `measure` is the first measure; `also` adds one to three more,
+  distinct and not `measure`, so a lookup has at most `QUERY_LIMITS.measures`
+  (4). A query without `also` is exactly what it was. `queryMeasures(query)`
+  lists them all, the first first.
+- **Families.** Sales measures (revenue, units, orders, avg_discount,
+  avg_order_value, orders_per_day) go together, and so do the book-record ones
+  (avg_rating, ratings, checkouts). A mix is refused with
+  `INCOMPATIBLE_MEASURES`: "revenue and avg_rating can't share a query: revenue
+  comes from sales, and avg_rating from book records (ratings and checkouts).
+  Query them separately." Dewey then runs two lookups. Lining sales up with
+  undated records in one table would put figures over different periods side by
+  side; that may come later, when a player asks for it, with a source line
+  saying which periods each covers.
+- **Dimensions.** Every grouping, filter and sort dimension must be one every
+  measure supports (the intersection of `MEASURE_DIMENSIONS`), else
+  `INCOMPATIBLE_DIMENSION` naming the measure that lacks it.
+- **Sales measures** are aggregated in one pass over the same facts, each in
+  its own aggregate, so each figure is exactly what it would be alone: distinct
+  orders stay exact across orders spanning cells, orders per day keeps its day
+  denominator, and no average is an average of group averages.
+- **Book-record measures** are each totalled alone by the grouping, then lined
+  up on the groups' values, never joined fact to fact (no multiplying ratings
+  by checkouts). A group one measure lacks is a row all the same, with a zero
+  for a count and null for an average, and evidence `{ n: 0, se: 0 }` or
+  `{ n: 0, se: null }` to match.
+- **Sort and limit.** `sort.column` may be any requested measure or a grouped
+  dimension. Rows are sorted, then cut to the limit: a top N sorts by the
+  measure it wants, and the other measures fill in those rows. Totals are
+  before the limit, as always.
+- **Result.** Columns are the grouping dimensions, then each measure in order,
+  and each row has a figure under every measure's name. `total` and `evidence`
+  stay the first measure's. `measures` holds every requested measure's
+  `{ total, evidence: { unit, rows, total } }`, the first's included, keyed by
+  measure; it's absent without `also`. `truncated` is one flag for the whole
+  result. `perMeasure(query, result)` (`result.ts`) splits a result into the
+  single-measure lookups it stands for, for code that reads one measure at a
+  time.
+- **Source line.** Measures of one grain share its count, and each names its
+  calculation: "Revenue and units from 56,350 visible matching sale lines:
+  revenue, sum of …; units, one unit per sale line; allowed periods: …".
+  Ratings and checkouts have a clause each. One measure reads as it always has.
+- **Not yet.** `vs: "last_year"` is one measure at a time: with `also` it's
+  `INVALID_QUERY`.
+- **Dewey.** `investigateOnly` checks every measure, so the HTTP adapter refuses
+  Dewey's token if any is Investigate-only. His kept evidence holds each
+  measure's (`agentMeasureEvidence`). His tools don't offer several measures
+  until Sage's PR and Probe's review against the figures gate land.
+- **Bounds.** The 16 KiB request cap and the 131,072-byte result cap hold. Four
+  sales measures over 200 rows of editions by month are 60,235 bytes.
+- **Caches and telemetry.** The server's results cache keys on the checked
+  query, `also` included, and the browser's `queryKey` names `also` and `vs`.
+  `query_completed` and `query_failed` record `measureCount` and `measures` (the
+  names, from the fixed list), never a value.
+
 ## How much evidence
 
 Every result carries `evidence: { unit, rows, total }` (`evidence.ts`; David,
@@ -209,7 +271,7 @@ only after Probe has reviewed it against Dewey's figures gate (Goldy, 2 Nov).
 Until then it's Investigate-only: left out of the tool schemas and
 `describe_data`, and refused by the HTTP adapter for Dewey's bearer token with
 `INVALID_QUERY` ("ratings isn't available to the assistant yet."), whether it
-is the measure, a grouping, a filter or the sort. Browser queries may use it.
+is the measure, one of `also`, a grouping, a filter or the sort. Browser queries may use it.
 
 Investigate-only now: the `ratings` measure, and the `stars`, `awarded`,
 `award`, `volume`, `in_series`, `edition`, `list_price` and `price_band`
