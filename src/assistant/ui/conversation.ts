@@ -88,6 +88,24 @@ const isEvidence = (e: unknown, rows: number) =>
     e.rows.length === rows &&
     e.rows.every(isOneEvidence) &&
     isOneEvidence(e.total));
+/**
+ * A lookup of several measures' own figures (Sim's `measures`, as Sage's tool server keeps them): each measure's total,
+ * a finite number or null, and its evidence where it has some, strictly as a single lookup's.
+ */
+const isMeasures = (m: unknown, rows: number) =>
+  m === undefined ||
+  (isObj(m) &&
+    Object.keys(m).length >= 2 &&
+    Object.keys(m).length <= 4 &&
+    Object.entries(m).every(
+      ([key, entry]) =>
+        isStr(key, 40) &&
+        isObj(entry) &&
+        only(entry, ["total", "evidence"]) &&
+        (entry.total === null ||
+          (typeof entry.total === "number" && Number.isFinite(entry.total))) &&
+        isEvidence(entry.evidence, rows),
+    ));
 /** A lookup's pin, loosely: Investigate checks it fully (parsePinSpec) before pinning, and runs it as a query. */
 const isPin = (p: unknown) =>
   p === undefined ||
@@ -111,8 +129,19 @@ function isLookup(l: unknown): boolean {
   if (!isObj(l)) return false;
   if (l.type === "data")
     return (
-      only(l, ["type", "columns", "rows", "total", "source", "query", "pin", "evidence"]) &&
+      only(l, [
+        "type",
+        "columns",
+        "rows",
+        "total",
+        "source",
+        "query",
+        "pin",
+        "evidence",
+        "measures",
+      ]) &&
       isEvidence(l.evidence, Array.isArray(l.rows) ? l.rows.length : -1) &&
+      isMeasures(l.measures, Array.isArray(l.rows) ? l.rows.length : -1) &&
       (l.query === undefined || isObj(l.query)) &&
       isPin(l.pin) &&
       isTable(l) &&
@@ -120,8 +149,19 @@ function isLookup(l: unknown): boolean {
     );
   if (l.type === "chart")
     return (
-      only(l, ["type", "chart", "columns", "rows", "total", "source", "pin", "evidence"]) &&
+      only(l, [
+        "type",
+        "chart",
+        "columns",
+        "rows",
+        "total",
+        "source",
+        "pin",
+        "evidence",
+        "measures",
+      ]) &&
       isEvidence(l.evidence, Array.isArray(l.rows) ? l.rows.length : -1) &&
+      isMeasures(l.measures, Array.isArray(l.rows) ? l.rows.length : -1) &&
       isChart(l.chart) &&
       ["bar", "line"].includes((l.chart as Obj).kind as string) &&
       isPin(l.pin) &&

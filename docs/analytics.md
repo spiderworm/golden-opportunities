@@ -94,7 +94,7 @@ One event to a line, under its area, so changes to different events don't collid
 - `investigate_pin_rejected`
 - `investigate_pin_failed`
 - `investigate_pin_reported` (Add to report on a pin: its kind, who pinned it, and `to`: `existing` or `new`)
-- `table_toggled` (a Table toggle anywhere but the main chart: `where` (`heatmap`, `pin`, `report` (on Reports), `decide` (Decide's panel) or `dewey` (a lookup in Dewey's chat, whose `kind` is its type: `data`, `chart` or `comparison`)), `shown` (whether the table now shows, as `investigate_table_toggled` has it) and the pin's or lookup's `kind`; never its title or values. The main chart keeps `investigate_table_toggled`)
+- `table_toggled` (a Table toggle anywhere but the main chart: `where` (`heatmap`, `pin`, `report` (on Reports), `decide` (Decide's panel) or `dewey` (a lookup in Dewey's chat, whose `kind` is its type: `data`, `chart` or `comparison`)), `shown` (whether the table now shows, as `investigate_table_toggled` has it) and the pin's or lookup's `kind`, and for a lookup in Dewey's chat its `measures` (how many it shows, 1 to 4); never its title, its measures' names or its values. The main chart keeps `investigate_table_toggled`)
 
 ### Queries (server)
 
@@ -128,8 +128,8 @@ One event to a line, under its area, so changes to different events don't collid
 - `assistant_capped` (a daily cap reached: `who`, `dewey` or `alma`, and `cap`, `instance` or `visitor`; never the question)
 - `assistant_unavailable`
 - `assistant_offline_shown`
-- `assistant_pin_placed`
-- `assistant_lookup_pinned`
+- `assistant_pin_placed` (`placed`, the chart's `kind`, and `measures`: how many it shows, never which)
+- `assistant_lookup_pinned` (`kind`, `placed`, and `measures`: how many the lookup shows, never which)
 - `assistant_conversation_restored`
 - `assistant_conversation_cleared`
 - `assistant_column_folded` (Dewey's column on Investigate folded away or opened again: `folded`)

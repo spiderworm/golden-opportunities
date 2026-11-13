@@ -1,12 +1,13 @@
 import { renderToString } from "react-dom/server";
 import { createRoutesStub } from "react-router";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { LookupPin } from "../tools/definitions";
 import {
   activityOf,
   AssistantPanel,
   fitToText,
   LookupView,
+  tableTitle,
   PORTRAIT,
   sendsQuestion,
   talkingTurn,
@@ -395,4 +396,85 @@ it("flags a comparison's change within noise after its percent, only where the d
   const html = renderToString(<LookupView lookup={comparison} />);
   expect(html.match(/· within noise/g)).toHaveLength(2);
   expect(html).toMatch(/title="A difference this small often shows up by chance/);
+});
+
+describe("a lookup of several measures (req_2d436ee864cd; Plot, section 11)", () => {
+  type Lookup = Parameters<typeof LookupView>[0]["lookup"];
+  const query = { measure: "revenue" as const, also: ["units" as const], by: ["quarter" as const] };
+  // A stored lookup keeps its query beside it (fold.ts's dataQuery); one with no pin titles its chart from its columns.
+  const data = {
+    type: "data",
+    query,
+    columns: [
+      { key: "quarter", label: "Quarter", type: "string", nullable: false },
+      { key: "revenue", label: "Revenue", type: "number", nullable: false },
+      { key: "units", label: "Units sold", type: "number", nullable: false },
+    ],
+    rows: [{ quarter: "2193-Q4", revenue: 50, units: 7 }],
+    total: 50,
+    source: "S",
+    measures: {
+      revenue: {
+        total: 50,
+        evidence: { unit: null, rows: [{ n: 7, se: 0 }], total: { n: 7, se: 0 } },
+      },
+      units: {
+        total: 7,
+        evidence: { unit: null, rows: [{ n: 7, se: 0 }], total: { n: 7, se: 0 } },
+      },
+    },
+  } as Lookup;
+  const ChartView = () => <div data-chart="" />;
+
+  it("ends its table with an All row of every measure's figure, with no Total line", () => {
+    const html = renderToString(<LookupView lookup={data} />);
+    expect(html.replace(/<[^>]+>/g, "|").replace(/\|+/g, "|")).toContain("|All|50|7|");
+    expect(html).not.toMatch(/Total:/);
+  });
+
+  it("with no breakdown, shows its one row without an All row repeating it (Audit, #419)", () => {
+    const overall = {
+      ...data,
+      columns: (data as Extract<Lookup, { type: "data" }>).columns.filter(
+        (c) => c.key !== "quarter",
+      ),
+      rows: [{ revenue: 50, units: 7 }],
+    } as Lookup;
+    const html = renderToString(<LookupView lookup={overall} />);
+    expect(html.match(/>50</g)).toHaveLength(1);
+    expect(html).not.toMatch(/>All</);
+  });
+
+  it("titles its chart from every measure, and says why there's none where the page's chart can't draw it", () => {
+    const fine = renderToString(
+      <LookupView lookup={data} ChartView={ChartView} chartProblem={() => null} />,
+    );
+    expect(fine).toMatch(/aria-label="Table: Revenue and units sold by quarter"/);
+    expect(fine).not.toMatch(/aria-disabled="true"/);
+    const off = renderToString(
+      <LookupView
+        lookup={data}
+        ChartView={ChartView}
+        chartProblem={() => "These measures need three axes, and a chart has two"}
+      />,
+    );
+    expect(off).toMatch(/These measures need three axes, and a chart has two/);
+  });
+
+  it("names its measures in the order the query does: a title for one, two or three", () => {
+    const column = (label: string, type = "number") => ({ label, type });
+    expect(tableTitle({ columns: [column("Genre", "string"), column("Revenue")] })).toBe(
+      "Revenue by genre",
+    );
+    expect(
+      tableTitle({
+        columns: [
+          column("Quarter", "string"),
+          column("Revenue"),
+          column("Units sold"),
+          column("Orders"),
+        ],
+      }),
+    ).toBe("Revenue, units sold and orders by quarter");
+  });
 });
